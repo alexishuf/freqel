@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.rdf.term;
 
-import br.ufsc.lapesd.riefederator.rdf.term.parse.TermTypeException;
+import br.ufsc.lapesd.riefederator.rdf.parse.TermTypeException;
+import br.ufsc.lapesd.riefederator.rdf.prefix.PrefixDict;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
@@ -18,22 +19,22 @@ public interface Term {
             if (Var.class.isAssignableFrom(cls))       return VAR;
             throw new IllegalArgumentException("Cannot handle" + cls);
         }
-    }
 
+    }
     Type getType();
+
     default boolean     isURI() { return getType() == Type.URI;    }
     default boolean isLiteral() { return getType() == Type.LITERAL;}
     default boolean   isBlank() { return getType() == Type.BLANK;  }
     default boolean     isVar() { return getType() == Type.VAR;    }
-
     default @Nonnull
     URI asURI() { return as(URI.class);  }
+
     default @Nonnull
     Lit asLiteral() { return as(Lit.class);  }
     default @Nonnull
     Blank asBlank() { return as(Blank.class);}
     default @Nonnull Var           asVar() { return as(Var.class);      }
-
     default @Nonnull <T extends Term> T as(Class<T> cls) {
         if (cls.isInstance(this)) {
             //noinspection unchecked
@@ -49,6 +50,8 @@ public interface Term {
         }
         return fallback;
     }
+
+    @Nonnull String toString(@Nonnull PrefixDict dict);
 
     default boolean accepts(@Nonnull Term other) {
         if (getType() != other.getType())

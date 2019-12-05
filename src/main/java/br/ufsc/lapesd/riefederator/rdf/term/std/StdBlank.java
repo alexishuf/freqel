@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.rdf.term.std;
 
+import br.ufsc.lapesd.riefederator.rdf.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.rdf.term.Blank;
 import com.google.errorprone.annotations.Immutable;
 
@@ -35,5 +36,16 @@ public class StdBlank implements Blank {
     @Override
     public Type getType() {
         return Type.BLANK;
+    }
+
+    @Override
+    public @Nonnull String toString() {
+        if (name != null) return "_:"+name;
+        return String.format("_:0x%x", id);
+    }
+
+    @Override
+    public @Nonnull String toString(@Nonnull PrefixDict dict) {
+        return toString();
     }
 }

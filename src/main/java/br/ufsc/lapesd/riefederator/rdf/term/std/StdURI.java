@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.rdf.term.std;
 
+import br.ufsc.lapesd.riefederator.rdf.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.rdf.term.URI;
 import com.google.common.base.Objects;
 import com.google.errorprone.annotations.Immutable;
@@ -40,5 +41,10 @@ public class StdURI implements URI {
     @Override
     public String toString() {
         return getURI();
+    }
+
+    @Override
+    public @Nonnull String toString(@Nonnull PrefixDict dict) {
+        return dict.shorten(uri).toString(uri);
     }
 }

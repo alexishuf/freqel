@@ -75,6 +75,7 @@ public class StdLit implements Lit {
         return Type.LITERAL;
     }
 
+    @Override
     public @Nonnull String toString(@Nonnull PrefixDict dict) {
         if (getLangTag() != null)
             return String.format("\"%s\"@%s", getLexicalForm(), getLangTag());
