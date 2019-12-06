@@ -1,10 +1,17 @@
 package br.ufsc.lapesd.riefederator.model;
 
+import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
+import br.ufsc.lapesd.riefederator.model.term.Lit;
+import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.URI;
+import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import java.util.regex.Pattern;
 
 @SuppressWarnings("WeakerAccess")
 public class RDFUtils {
@@ -12,6 +19,7 @@ public class RDFUtils {
 
     private static final @Nonnull String ESCAPES = "tbnrf\"'\\";
     private static final @Nonnull String ESCAPEE = "\t\b\n\r\f\"'\\";
+    private static final @Nonnull Pattern SPARQL_VAR_NAME = Pattern.compile("\\w+");
 
     /**
      * Escapes [1] a lexical form string.
@@ -69,5 +77,75 @@ public class RDFUtils {
             }
         }
         return builder.toString();
+    }
+    /**
+     * Gives a NTriples [1] representation of the literal
+     *
+     * [1]: http://www.w3.org/TR/2014/REC-n-triples-20140225/
+     */
+    public static @Nonnull String toNT(@Nonnull Lit literal) {
+        return toTurtle(literal, StdPrefixDict.EMPTY);
+    }
+
+    /** See toNT(Lit). */
+    public static @Nonnull String toNT(@Nonnull URI uri) {
+        return toTurtle(uri, StdPrefixDict.EMPTY);
+    }
+
+    /**
+     * Gives a Turtle [1] representation of the literal using the prefixes in <code>dict</code>.
+     *
+     * [1]: http://www.w3.org/TR/2014/REC-turtle-20140225/
+     */
+    public static @Nonnull String toTurtle(@Nonnull Lit literal, @Nonnull PrefixDict dict) {
+        StringBuilder b = new StringBuilder();
+        b.append('"').append(escapeLexicalForm(literal.getLexicalForm())).append('"');
+        if (literal.getLangTag() != null)
+            return b.append('@').append(literal.getLangTag()).toString();
+        b.append("^^");
+        PrefixDict.Shortened dt = dict.shorten(literal.getDatatype().getURI());
+        return b.append(dt.toString("<"+dt.getLongURI()+">")).toString();
+    }
+
+    public static @Nonnull String toTurtle(@Nonnull URI uri, @Nonnull PrefixDict dict) {
+        return dict.shorten(uri).toString("<"+uri.getURI()+">");
+    }
+
+    public static @Nonnull String term2SPARQL(@Nonnull Term t, @Nonnull PrefixDict dict) {
+        if (t.isBlank()) {
+            String name = t.asBlank().getName();
+            if (name == null) {
+                name = t.asBlank().getId().toString();
+            }
+            return SPARQL_VAR_NAME.matcher(name).matches() ? "_:"+name : "[]";
+        } else if (t.isVar()) {
+            String name = t.asVar().getName();
+            Preconditions.checkArgument(SPARQL_VAR_NAME.matcher(name).matches(),
+                    name+" cannot be used as a SPARQL variable name");
+            return name;
+        } else if (t.isLiteral()) {
+            return toTurtle(t.asLiteral(), StdPrefixDict.EMPTY);
+        } else if (t.isURI()) {
+            return toTurtle(t.asURI(), StdPrefixDict.EMPTY);
+        }
+        throw new IllegalArgumentException("Cannot represent "+t+" in SPARQL");
+    }
+
+    public static @Nonnull String term2SPARQL(@Nonnull Term t) {
+        return term2SPARQL(t, StdPrefixDict.EMPTY);
+    }
+
+    public static @Nonnull String triplePattern2SPARQL(@Nonnull Triple tp) {
+        StringBuilder b = new StringBuilder(64);
+        if (tp.isBound()) {
+            b.append("ASK");
+        } else {
+            b.append("SELECT");
+            tp.forEach(t -> { if (t.isVar()) b.append(" ?").append(t.asVar().getName()); });
+        }
+        b.append(" {\n  ");
+        tp.forEach(t -> b.append(term2SPARQL(t)).append(" "));
+        b.append(".\n}");
+        return b.toString();
     }
 }

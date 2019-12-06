@@ -2,10 +2,12 @@ package br.ufsc.lapesd.riefederator.model;
 
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import com.google.common.base.Objects;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
+import java.util.function.Consumer;
 
 @Immutable
 public class Triple {
@@ -25,6 +27,19 @@ public class Triple {
     }
     public @Nonnull Term getObject() {
         return object;
+    }
+
+    /**
+     * A triple is bound iff it has no {@link Var} terms
+     */
+    public boolean isBound() {
+        return !(subject instanceof Var) && !(predicate instanceof Var) && !(object instanceof Var);
+    }
+
+    public void forEach(@Nonnull Consumer<Term> consumer) {
+        consumer.accept(subject);
+        consumer.accept(predicate);
+        consumer.accept(object);
     }
 
     @Override

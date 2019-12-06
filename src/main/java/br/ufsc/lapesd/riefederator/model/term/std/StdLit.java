@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.model.term.std;
 
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
-import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
@@ -73,15 +72,6 @@ public class StdLit implements Lit {
     @Override
     public Type getType() {
         return Type.LITERAL;
-    }
-
-    @Override
-    public @Nonnull String toString(@Nonnull PrefixDict dict) {
-        if (getLangTag() != null)
-            return String.format("\"%s\"@%s", getLexicalForm(), getLangTag());
-        PrefixDict.Shortened dt = dict.shorten(getDatatype().getURI());
-        return  String.format("\"%s\"^^%s", getEscapedLexicalForm(),
-                dt.toString("<"+dt.getLongURI()+">"));
     }
 
     @Override

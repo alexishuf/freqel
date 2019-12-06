@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.model.jena.prefix;
+package br.ufsc.lapesd.riefederator.jena.model.prefix;
 
 import br.ufsc.lapesd.riefederator.model.prefix.AbstractPrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.MutablePrefixDict;

@@ -1,7 +1,7 @@
-package br.ufsc.lapesd.riefederator.model.jena;
+package br.ufsc.lapesd.riefederator.jena;
 
-import br.ufsc.lapesd.riefederator.model.jena.prefix.PrefixMappingDict;
-import br.ufsc.lapesd.riefederator.model.jena.term.*;
+import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
+import br.ufsc.lapesd.riefederator.jena.model.term.*;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Blank;
 import br.ufsc.lapesd.riefederator.model.term.Lit;

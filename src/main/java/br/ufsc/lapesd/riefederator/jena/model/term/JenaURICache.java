@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.model.jena.term;
+package br.ufsc.lapesd.riefederator.jena.model.term;
 
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;

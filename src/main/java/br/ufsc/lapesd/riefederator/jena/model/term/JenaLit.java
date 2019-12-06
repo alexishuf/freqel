@@ -1,6 +1,5 @@
-package br.ufsc.lapesd.riefederator.model.jena.term;
+package br.ufsc.lapesd.riefederator.jena.model.term;
 
-import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
@@ -10,8 +9,6 @@ import org.apache.jena.rdf.model.RDFNode;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-
-import static br.ufsc.lapesd.riefederator.model.RDFUtils.escapeLexicalForm;
 
 @Immutable
 public class JenaLit extends JenaTerm implements Lit {
@@ -56,19 +53,5 @@ public class JenaLit extends JenaTerm implements Lit {
     @Override
     public Type getType() {
         return Type.LITERAL;
-    }
-
-    @Override
-    public @Nonnull String toString(@Nonnull PrefixDict dict) {
-        StringBuilder builder = new StringBuilder();
-        builder.append('"').append(escapeLexicalForm(getLexicalForm())).append('"');
-
-        String lang = getLiteral().getLanguage();
-        if (lang != null && !lang.isEmpty())
-            return builder.append("@").append(lang).toString();
-
-        String uri = getLiteral().getDatatypeURI();
-        builder.append("^^").append(dict.shorten(uri).toString("<" + uri + ">"));
-        return builder.toString();
     }
 }

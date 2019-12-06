@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.model.jena.term;
+package br.ufsc.lapesd.riefederator.jena.model.term;
 
 import br.ufsc.lapesd.riefederator.model.term.Blank;
 import com.google.common.base.Preconditions;

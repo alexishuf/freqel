@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.model.prefix;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
-import br.ufsc.lapesd.riefederator.model.jena.prefix.PrefixMappingDict;
+import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import org.apache.jena.shared.impl.PrefixMappingImpl;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

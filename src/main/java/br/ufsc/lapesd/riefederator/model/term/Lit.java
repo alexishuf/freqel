@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.model.term;
 
+import br.ufsc.lapesd.riefederator.model.RDFUtils;
+import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
@@ -27,4 +29,16 @@ public interface Lit extends Term {
      * Language tag or null (if not a language literal). Returns "en" in Turtle's "@en"
      */
     @Nullable String getLangTag();
+
+    default @Nonnull String toNT() {
+        return RDFUtils.toNT(this);
+    }
+    default  @Nonnull String toTurtle(@Nonnull PrefixDict dict) {
+        return RDFUtils.toTurtle(this, dict);
+    }
+
+    @Override
+    default @Nonnull String toString(@Nonnull PrefixDict dict) {
+        return toTurtle(dict);
+    }
 }
