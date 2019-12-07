@@ -19,7 +19,7 @@ public class RDFUtils {
 
     private static final @Nonnull String ESCAPES = "tbnrf\"'\\";
     private static final @Nonnull String ESCAPEE = "\t\b\n\r\f\"'\\";
-    private static final @Nonnull Pattern SPARQL_VAR_NAME = Pattern.compile("\\w+");
+    private static final @Nonnull Pattern SPARQL_VAR_NAME = Pattern.compile("^[a-zA-Z_0-9\\-]+$");
 
     /**
      * Escapes [1] a lexical form string.
@@ -114,19 +114,16 @@ public class RDFUtils {
     public static @Nonnull String term2SPARQL(@Nonnull Term t, @Nonnull PrefixDict dict) {
         if (t.isBlank()) {
             String name = t.asBlank().getName();
-            if (name == null) {
-                name = t.asBlank().getId().toString();
-            }
-            return SPARQL_VAR_NAME.matcher(name).matches() ? "_:"+name : "[]";
+            return name != null && SPARQL_VAR_NAME.matcher(name).matches() ? "_:"+name : "[]";
         } else if (t.isVar()) {
             String name = t.asVar().getName();
             Preconditions.checkArgument(SPARQL_VAR_NAME.matcher(name).matches(),
                     name+" cannot be used as a SPARQL variable name");
-            return name;
+            return "?"+name;
         } else if (t.isLiteral()) {
-            return toTurtle(t.asLiteral(), StdPrefixDict.EMPTY);
+            return toTurtle(t.asLiteral(), dict);
         } else if (t.isURI()) {
-            return toTurtle(t.asURI(), StdPrefixDict.EMPTY);
+            return toTurtle(t.asURI(), dict);
         }
         throw new IllegalArgumentException("Cannot represent "+t+" in SPARQL");
     }
@@ -141,7 +138,10 @@ public class RDFUtils {
             b.append("ASK");
         } else {
             b.append("SELECT");
+            int oldLength = b.length();
             tp.forEach(t -> { if (t.isVar()) b.append(" ?").append(t.asVar().getName()); });
+            assert b.length() != oldLength;
+            b.append(" WHERE");
         }
         b.append(" {\n  ");
         tp.forEach(t -> b.append(term2SPARQL(t)).append(" "));
