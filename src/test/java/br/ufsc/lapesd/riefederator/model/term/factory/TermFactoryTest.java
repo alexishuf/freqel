@@ -2,11 +2,18 @@ package br.ufsc.lapesd.riefederator.model.term.factory;
 
 import br.ufsc.lapesd.riefederator.NamedFunction;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.jena.model.term.JenaTermFactory;
 import br.ufsc.lapesd.riefederator.model.term.Blank;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
+import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
+import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import com.google.common.collect.Lists;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -17,7 +24,6 @@ import java.util.function.Supplier;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
-import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
 public class TermFactoryTest {
@@ -25,8 +31,18 @@ public class TermFactoryTest {
             asList(new NamedFunction<>("SynchronizedTermFactory", SynchronizedTermFactory::new),
                    new NamedFunction<>("CachedTermFactory", CachedTermFactory::new));
     public static List<NamedSupplier<? extends TermFactory>> nativeSuppliers =
-            singletonList(new NamedSupplier<>(StdTermFactory.class));
+            asList(new NamedSupplier<>(StdTermFactory.class),
+                   new NamedSupplier<>(JenaTermFactory.class));
     public static List<Supplier<? extends TermFactory>> suppliers;
+    public static List<Term> stdTerms = asList(
+            new StdURI("https://example.org/Alice"),
+            StdLit.fromEscaped("1", new StdURI(XSDDatatype.XSDint.getURI())),
+            StdLit.fromUnescaped("1", new StdURI(XSDDatatype.XSDint.getURI())),
+            StdLit.fromUnescaped("bacon", "en"),
+            StdLit.fromUnescaped("ba\tcon", "en"),
+            StdLit.fromEscaped("ba\\tcon", "en"),
+            new StdVar("x")
+    );
 
     static {
         suppliers = new ArrayList<>();
@@ -43,6 +59,12 @@ public class TermFactoryTest {
     @DataProvider
     public static Object[][] factoriesData() {
         return suppliers.stream().map(s -> singleton(s).toArray()).toArray(Object[][]::new);
+    }
+
+    @DataProvider
+    public static Object[][] factoriesAndTermsData() {
+        return Lists.cartesianProduct(suppliers, stdTerms).stream().map(List::toArray)
+                .toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "factoriesData")
@@ -166,6 +188,34 @@ public class TermFactoryTest {
         assertNotEquals(a, b);
         assertEquals(a, c);
         assertEquals(a, d);
+    }
+
+    @Test(dataProvider = "factoriesAndTermsData")
+    public void testEqualsWithStdTerm(Supplier<TermFactory> supplier, Term std) {
+        TermFactory f = supplier.get();
+        System.out.printf("%s, %s\n", f, std);
+        Term instance = null;
+        if (std.isURI()) {
+            instance =f.createURI(std.asURI().getURI());
+        } else if (std.isVar()) {
+            try {
+                instance = f.createVar(std.asVar().getName());
+            } catch (UnsupportedOperationException ignored) {
+                // factory does not support createVar()
+                return;
+            }
+        } else if (std.isLiteral()) {
+            Lit lit = std.asLiteral();
+            String tag = lit.getLangTag();
+            if (tag != null) {
+                instance = f.createLangLit(lit.getLexicalForm(), tag);
+            } else {
+                instance = f.createLit(lit.getLexicalForm(), lit.getDatatype());
+            }
+        }
+        if (instance == null)
+            throw new SkipException("Could not create instance from"+std);
+        assertEquals(instance, std);
     }
 
 }

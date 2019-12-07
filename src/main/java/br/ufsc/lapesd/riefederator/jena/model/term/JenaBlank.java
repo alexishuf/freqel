@@ -36,4 +36,9 @@ public class JenaBlank extends JenaRes implements Blank {
     public Type getType() {
         return Type.BLANK;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        return (o instanceof Blank) && getId().equals(((Blank) o).getId());
+    }
 }

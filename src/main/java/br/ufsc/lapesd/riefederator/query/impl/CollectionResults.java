@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.Results;
 import br.ufsc.lapesd.riefederator.query.Solution;
-import br.ufsc.lapesd.riefederator.query.SolutionIterator;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
@@ -15,14 +15,14 @@ import java.util.Set;
 import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.EXACT;
 
 @NotThreadSafe
-public class CollectionSolutionIterator implements SolutionIterator {
+public class CollectionResults implements Results {
     private final @Nonnull Collection<Solution> collection;
     private @LazyInit @Nullable Iterator<Solution> iterator = null;
     private @LazyInit int size = -1;
     private @Nonnull Set<String> varNames;
 
-    public CollectionSolutionIterator(@Nonnull Collection<Solution> collection,
-                                      @Nonnull Set<String> varNames) {
+    public CollectionResults(@Nonnull Collection<Solution> collection,
+                             @Nonnull Set<String> varNames) {
         this.collection = collection;
         this.varNames = varNames;
     }
@@ -64,4 +64,7 @@ public class CollectionSolutionIterator implements SolutionIterator {
         --size;
         return solution;
     }
+
+    @Override
+    public void close() { }
 }

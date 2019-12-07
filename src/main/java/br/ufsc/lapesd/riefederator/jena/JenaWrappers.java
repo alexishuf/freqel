@@ -26,13 +26,13 @@ import static org.apache.jena.rdf.model.ResourceFactory.*;
 public class JenaWrappers {
     private static Logger logger = LoggerFactory.getLogger(JenaTerm.class);
 
-    /* ~~~~~~~~~ from(RDFNode) ~~~~~~~~~ */
+    /* ~~~~~~~~~ fromJena(RDFNode) ~~~~~~~~~ */
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static JenaTerm from(RDFNode node) {
+    public static JenaTerm fromJena(RDFNode node) {
         if (node == null)           return null;
-        else if (node.isLiteral())  return from(node.asLiteral());
-        else if (node.isResource()) return from(node.asResource());
+        else if (node.isLiteral())  return fromJena(node.asLiteral());
+        else if (node.isResource()) return fromJena(node.asResource());
         throw new UnsupportedOperationException("Do not know how to handle "+node);
     }
 
@@ -47,56 +47,56 @@ public class JenaWrappers {
     }
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static JenaRes from(Resource resource) {
+    public static JenaRes fromJena(Resource resource) {
         if (resource == null) return null;
         return  resource.isAnon() ? fromAnon(resource) : fromURIResource(resource);
     }
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static JenaLit from(Literal literal) {
+    public static JenaLit fromJena(Literal literal) {
         return literal == null ? null : new JenaLit(literal);
     }
 
-    /* ~~~~~~~~~ to(JenaTerm) ~~~~~~~~~ */
+    /* ~~~~~~~~~ toJena(JenaTerm) ~~~~~~~~~ */
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static RDFNode to(JenaTerm   t) {return t == null ? null : t.getNode(); }
+    public static RDFNode toJena(JenaTerm   t) {return t == null ? null : t.getNode(); }
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Resource to(JenaRes   t) {return t == null ? null : t.getNode().asResource();}
+    public static Resource toJena(JenaRes   t) {return t == null ? null : t.getNode().asResource();}
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Resource to(JenaBlank t) {return t == null ? null : t.getNode().asResource();}
+    public static Resource toJena(JenaBlank t) {return t == null ? null : t.getNode().asResource();}
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Resource to(JenaURI   t) {return t == null ? null : t.getNode().asResource();}
+    public static Resource toJena(JenaURI   t) {return t == null ? null : t.getNode().asResource();}
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Literal  to(JenaLit   t) {return t == null ? null : t.getNode().asLiteral(); }
+    public static Literal  toJena(JenaLit   t) {return t == null ? null : t.getNode().asLiteral(); }
 
-    /* ~~~~~~~~~ to(Term) ~~~~~~~~~ */
+    /* ~~~~~~~~~ toJena(Term) ~~~~~~~~~ */
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Resource to(Res res) {
+    public static Resource toJena(Res res) {
         if (res == null) return null;
-        if (res instanceof JenaRes) return to((JenaRes)res);
-        return res.isAnon() ? to(res.asBlank()) : to(res.asURI());
+        if (res instanceof JenaRes) return toJena((JenaRes)res);
+        return res.isAnon() ? toJena(res.asBlank()) : toJena(res.asURI());
     }
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Resource to(Blank blank) {
+    public static Resource toJena(Blank blank) {
         if (blank == null) return null;
-        if (blank instanceof JenaBlank) return to((JenaRes) blank);
+        if (blank instanceof JenaBlank) return toJena((JenaRes) blank);
         return createResource();
     }
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Resource to(URI uri) {
+    public static Resource toJena(URI uri) {
         if (uri == null) return null;
-        if (uri instanceof JenaURI) return to((JenaRes) uri);
+        if (uri instanceof JenaURI) return toJena((JenaRes) uri);
         return createResource(uri.getURI());
     }
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Literal to(Lit l) {
+    public static Literal toJena(Lit l) {
         if      (l == null)            return null;
-        else if (l instanceof JenaLit) return to((JenaLit)l);
+        else if (l instanceof JenaLit) return toJena((JenaLit)l);
         else if (l.getLangTag() != null)
             return createLangLiteral(l.getLexicalForm(), l.getLangTag());
 
@@ -109,15 +109,15 @@ public class JenaWrappers {
         return createTypedLiteral(l.getLexicalForm(), dt);
     }
 
-    /* ~~~~~~~~~ from(PrefixMapping) ~~~~~~~~~ */
+    /* ~~~~~~~~~ fromJena(PrefixMapping) ~~~~~~~~~ */
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static PrefixMappingDict from(PrefixMapping mapping) {
+    public static PrefixMappingDict fromJena(PrefixMapping mapping) {
         return mapping == null ? null : new PrefixMappingDict(mapping);
     }
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static PrefixMapping to(PrefixDict dict) {
+    public static PrefixMapping toJena(PrefixDict dict) {
         if (dict == null) return null;
         PrefixMappingImpl m = new PrefixMappingImpl();
         for (Map.Entry<String, String> entry : dict.entries())

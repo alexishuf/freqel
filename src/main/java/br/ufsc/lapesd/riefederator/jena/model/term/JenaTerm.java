@@ -26,14 +26,6 @@ public abstract class JenaTerm implements Term {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof JenaTerm)) return false;
-        JenaTerm jenaTerm = (JenaTerm) o;
-        return Objects.equal(getNode(), jenaTerm.getNode());
-    }
-
-    @Override
     public int hashCode() {
         return Objects.hashCode(getNode());
     }

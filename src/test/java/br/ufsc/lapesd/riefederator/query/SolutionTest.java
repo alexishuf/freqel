@@ -1,10 +1,12 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import org.apache.jena.query.QuerySolutionMap;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -14,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.function.Supplier;
 
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJena;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
@@ -26,6 +29,7 @@ public class SolutionTest {
     static {
         empty = new ArrayList<>();
         empty.add(new NamedSupplier<>("MapSolution", MapSolution::new));
+        empty.add(new NamedSupplier<>("JenaSolution", JenaSolution::new));
 
         nonEmpty = new ArrayList<>();
         nonEmpty.add(new NamedSupplier<>("MapSolution", () -> {
@@ -37,6 +41,14 @@ public class SolutionTest {
             HashMap<String, Term> map = new HashMap<>();
             map.put("x", ALICE);
             return new MapSolution(map);
+        }));
+        nonEmpty.add(new NamedSupplier<>("MapSolution(from builder)",
+                () -> MapSolution.builder().put("x", ALICE).build()
+        ));
+        nonEmpty.add(new NamedSupplier<>("JenaSolution", () -> {
+            QuerySolutionMap m = new QuerySolutionMap();
+            m.add("x", toJena(ALICE));
+            return new JenaSolution(m);
         }));
     }
 
@@ -76,5 +88,31 @@ public class SolutionTest {
         assertTrue(s.has("x"));
         assertFalse(s.has("missing"));
         assertFalse(s.has(""));
+    }
+
+    @Test(dataProvider = "nonEmptyData")
+    public void testEquals(Supplier<Solution> supplier) {
+        MapSolution std = MapSolution.build("x", ALICE);
+        assertEquals(supplier.get(), std);
+    }
+
+    @Test(dataProvider = "nonEmptyData")
+    public void testNotEquals(Supplier<Solution> supplier) {
+        MapSolution a = MapSolution.build("y", ALICE);
+        MapSolution b = MapSolution.build("x", BOB);
+        assertNotEquals(supplier.get(), a);
+        assertNotEquals(supplier.get(), b);
+    }
+
+    @Test(dataProvider = "nonEmptyData")
+    public void testNameIsCaseSensitive(Supplier<Solution> supplier) {
+        MapSolution a = MapSolution.build("X", ALICE);
+        assertNotEquals(supplier.get(), a);
+    }
+
+    @Test(dataProvider = "nonEmptyData")
+    public void testMoreVarsNotEquals(Supplier<Solution> supplier) {
+        MapSolution a = MapSolution.builder().put("x", ALICE).put("y", BOB).build();
+        assertNotEquals(supplier.get(), a);
     }
 }

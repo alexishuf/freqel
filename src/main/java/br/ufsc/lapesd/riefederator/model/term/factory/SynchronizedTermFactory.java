@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.model.term.factory;
 import br.ufsc.lapesd.riefederator.model.term.Blank;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
@@ -63,6 +64,11 @@ public class SynchronizedTermFactory implements ThreadSafeTermFactory {
     @Override
     public synchronized @Nonnull Lit createLangLit(@Nonnull String lexicalForm, @Nonnull String langTag) {
         return delegate.createLangLit(lexicalForm, langTag);
+    }
+
+    @Override
+    public @Nonnull Var createVar(@Nonnull String name) {
+        return delegate.createVar(name);
     }
 
     @Override

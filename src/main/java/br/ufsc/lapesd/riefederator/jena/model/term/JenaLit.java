@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.jena.model.term;
 
+import br.ufsc.lapesd.riefederator.model.RDFUtils;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
@@ -9,10 +11,13 @@ import org.apache.jena.rdf.model.RDFNode;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.lang.ref.WeakReference;
 
 @Immutable
 public class JenaLit extends JenaTerm implements Lit {
     private @LazyInit JenaURI dtURI = null;
+    @SuppressWarnings("Immutable")
+    private WeakReference<String> nt = new WeakReference<>(null);
 
     public JenaLit(@Nonnull RDFNode node) {
         super(node.asLiteral());
@@ -53,5 +58,23 @@ public class JenaLit extends JenaTerm implements Lit {
     @Override
     public Type getType() {
         return Type.LITERAL;
+    }
+
+    @Override
+    public String toString() {
+        return toTurtle(StdPrefixDict.STANDARD);
+    }
+
+    @Override
+    public @Nonnull String toNT() {
+        String strong = nt.get();
+        if (strong == null)
+            nt = new WeakReference<>(strong = RDFUtils.toNT(this));
+        return strong;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return (obj instanceof Lit) && toNT().equals(((Lit)obj).toNT());
     }
 }

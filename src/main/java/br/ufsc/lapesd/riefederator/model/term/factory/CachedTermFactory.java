@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.model.term.factory;
 import br.ufsc.lapesd.riefederator.model.term.Blank;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
@@ -13,6 +14,7 @@ import java.util.function.Supplier;
 public class CachedTermFactory implements TermFactory {
     private final  @Nonnull TermFactory delegate;
     private final @Nonnull WeakHashMap<String, URI> uriCache = new WeakHashMap<>();
+    private final @Nonnull WeakHashMap<String, Var> varCache = new WeakHashMap<>();
 
     private final @Nonnull HashMap<String, WeakHashMap<String, Lit>>
             escapedLitCache = new HashMap<>(128),
@@ -39,8 +41,7 @@ public class CachedTermFactory implements TermFactory {
 
     @Override
     public @Nonnull URI createURI(@Nonnull String uri) {
-        URI cached = uriCache.get(uri);
-        return cached != null ? cached : delegate.createURI(uri);
+        return uriCache.computeIfAbsent(uri, delegate::createURI);
     }
 
     @Override
@@ -55,6 +56,11 @@ public class CachedTermFactory implements TermFactory {
                                       boolean escaped) {
         return getCachedLit(escaped, langTag, lexicalForm,
                 () -> delegate.createLangLit(lexicalForm, langTag, escaped));
+    }
+
+    @Override
+    public @Nonnull Var createVar(@Nonnull String name) {
+        return varCache.computeIfAbsent(name, delegate::createVar);
     }
 
     @Override

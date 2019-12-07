@@ -30,10 +30,9 @@ public class PrefixMappingDict extends AbstractPrefixDict implements MutablePref
     public @Nonnull Shortened shorten(@Nonnull String uri) {
         String s = mapping.shortForm(uri);
         List<String> pieces = prefixSplitter.splitToList(s);
-        if (pieces.size() == 2 && mapping.getNsPrefixURI(pieces.get(0)) == null)
-            return new Shortened(false, uri, "", 0);
-        return new Shortened(true, uri, pieces.get(0),
-                uri.length()-pieces.get(1).length());
+        if (pieces.size() != 2 || mapping.getNsPrefixURI(pieces.get(0)) == null)
+            return new Shortened(uri);
+        return new Shortened(uri, pieces.get(0),uri.length()-pieces.get(1).length());
     }
 
     @Override

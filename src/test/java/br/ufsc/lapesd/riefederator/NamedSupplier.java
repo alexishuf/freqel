@@ -15,7 +15,7 @@ public class NamedSupplier<T> implements Supplier<T> {
     }
 
     public NamedSupplier(@Nonnull Class<T> cls) {
-        this.name = cls.getName();
+        this.name = cls.getName().replaceAll("(\\w)\\w+\\.", "$1.");
         try {
             Constructor<T> constructor = cls.getConstructor();
             wrapped = () -> {

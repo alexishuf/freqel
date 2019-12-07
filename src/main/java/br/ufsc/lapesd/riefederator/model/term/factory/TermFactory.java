@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.model.term.factory;
 import br.ufsc.lapesd.riefederator.model.term.Blank;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
@@ -63,4 +64,11 @@ public interface TermFactory {
     default @Nonnull Lit createLangLit(@Nonnull String lexicalForm, @Nonnull String langTag) {
         return createLangLit(lexicalForm, langTag, false);
     }
+
+    /**
+     * Create a {@link Var} instance from its name.
+     * @param name var name, the name in ?name
+     * @throws UnsupportedOperationException if this {@link TermFactory} cannot create such terms
+     */
+    @Nonnull Var createVar(@Nonnull String name);
 }

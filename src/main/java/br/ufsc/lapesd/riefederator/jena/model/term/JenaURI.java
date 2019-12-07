@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.jena.model.term;
 
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
@@ -22,5 +23,16 @@ public class JenaURI extends JenaRes implements URI {
     @Override
     public Type getType() {
         return Type.URI;
+    }
+
+    @Override
+    public String toString() {
+        return toTurtle(StdPrefixDict.STANDARD);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof JenaURI) return getNode().equals(((JenaURI) o).getNode());
+        return (o instanceof URI) && getURI().equals(((URI) o).getURI());
     }
 }

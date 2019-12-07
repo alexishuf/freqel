@@ -32,10 +32,16 @@ public class PrefixDictTest {
         }
     }
 
-    private final @Nonnull String RDF_PREFIX = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
-    private final @Nonnull String FOAF_PREFIX = "http://xmlns.com/foaf/0.1/";
-    private final @Nonnull String TYPE = RDF_PREFIX + "type";
-    private final @Nonnull String PERSON = FOAF_PREFIX+"Person";
+    private static final @Nonnull String RDF_PREFIX = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+    private static final @Nonnull String FOAF_PREFIX = "http://xmlns.com/foaf/0.1/";
+    private static final @Nonnull String TYPE = RDF_PREFIX + "type";
+    private static final @Nonnull String PERSON = FOAF_PREFIX+"Person";
+    private static final @Nonnull String ALICE = "http://example.org/Alice"; //ALICE < *_PREFIX
+    private static final @Nonnull String BOB = "https://example.org/Alice"; //"https:" > "http:"
+
+    public static void main(String[] args) {
+        System.out.println(ALICE.compareTo(RDF_PREFIX));
+    }
 
     @DataProvider
     public static Object[][] mutableData() {
@@ -55,7 +61,7 @@ public class PrefixDictTest {
         assertFalse(d.shorten(uri).isShortened());
         assertEquals(d.shorten(uri).getLongURI(), uri);
         assertEquals(d.shorten(uri).toString(), uri);
-        assertEquals(d.shorten(uri).getPrefixEndPos(), 0);
+        assertEquals(d.shorten(uri).getNamespaceEndPos(), 0);
 
         assertNull(d.expand("foaf:name", null));
         assertNull(d.expandPrefix("foaf", null));
@@ -69,7 +75,7 @@ public class PrefixDictTest {
         assertEquals(d.expand("rdf:type", null), TYPE);
         assertTrue(d.shorten(TYPE).isShortened());
         assertEquals(d.shorten(TYPE).toString(), "rdf:type");
-        assertEquals(d.shorten(TYPE).getPrefixEndPos(), TYPE.indexOf("#")+1);
+        assertEquals(d.shorten(TYPE).getNamespaceEndPos(), TYPE.indexOf("#")+1);
         assertEquals(d.shorten(TYPE).getLocalName(), "type");
         assertEquals(d.shorten(TYPE).getPrefix(), "rdf");
         assertEquals(d.shorten(TYPE).getNamespace(), RDF_PREFIX);
@@ -142,5 +148,18 @@ public class PrefixDictTest {
         HashSet<String> expected = new HashSet<>(asList("rdf:Person", "foaf:Person"));
         expected.retainAll(Collections.singleton(d.shorten(PERSON).toString(null)));
         assertEquals(expected.size(), 1);
+    }
+
+    @Test(dataProvider = "mutableData")
+    public void testNonPrefixable(Supplier<? extends MutablePrefixDict> supplier) {
+        MutablePrefixDict d = supplier.get();
+        d.put("rdf", RDF_PREFIX);
+        for (String uri : asList(ALICE, BOB)) {
+            assertFalse(d.shorten(uri).isShortened());
+            assertEquals(d.shorten(uri).toString(), uri);
+            assertEquals(d.shorten(uri).getNamespace(), "");
+            assertNull(d.shorten(uri).getPrefix());
+            assertEquals(d.shorten(uri).getLocalName(), uri);
+        }
     }
 }

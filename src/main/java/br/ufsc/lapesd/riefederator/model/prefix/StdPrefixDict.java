@@ -37,16 +37,15 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
     @Override
     public @Nonnull Shortened shorten(@Nonnull String uri) {
         SortedMap<String, String> map = uri2Prefix.headMap(uri);
-        String key = uri, prefix;
+        String key, prefix = null;
         if (map.isEmpty()) {
-            prefix = uri2Prefix.get(key); //uri matches entirelly to a prefix
+            prefix = uri2Prefix.get(key = uri); //uri matches entirelly to a prefix
         } else {
-            key = map.lastKey(); //longest subs-string of uri mapped to a prefix
-            prefix = map.get(key);
+            //if a prefix of uri is mapped, the longest will be the lastKey()
+            if (uri.startsWith(key = map.lastKey()))
+                prefix = map.get(key); // lastKey() is indeed a prefix of uri
         }
-        if (prefix != null) //got a match
-            return new Shortened(true, uri, prefix, key.length());
-        return new Shortened(false, uri, "", 0);
+        return prefix != null ? new Shortened(uri, prefix, key.length()) : new Shortened(uri);
     }
 
     @Override

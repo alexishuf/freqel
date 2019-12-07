@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.model.term.std;
 import br.ufsc.lapesd.riefederator.model.term.Blank;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.factory.ThreadSafeTermFactory;
 
 import javax.annotation.Nonnull;
@@ -37,5 +38,10 @@ public class StdTermFactory implements ThreadSafeTermFactory {
     @Override
     public @Nonnull Lit createLangLit(@Nonnull String lexical, @Nonnull String lang, boolean escaped) {
         return escaped ? fromEscaped(lexical, lang) : fromUnescaped(lexical, lang);
+    }
+
+    @Override
+    public @Nonnull Var createVar(@Nonnull String name) {
+        return new StdVar(name);
     }
 }

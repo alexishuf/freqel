@@ -15,14 +15,19 @@ import java.util.function.BiConsumer;
 
 public class MapSolution extends AbstractSolution {
     private final @Nonnull Map<String, Term> map;
+    public static final @Nonnull MapSolution EMPTY = new MapSolution(Collections.emptyMap());
 
     public MapSolution(@Nonnull Map<String, Term> map) {
         this.map = map;
     }
-
     public MapSolution() {
         this(new HashMap<>());
     }
+    public @Nonnull Map<String, Term> getMap() {
+        return map;
+    }
+
+    /* ~~~ builder and static method factories ~~~ */
 
     @NotThreadSafe
     public static class Builder {
@@ -63,9 +68,8 @@ public class MapSolution extends AbstractSolution {
         return builder().put(name, term).build();
     }
 
-    public @Nonnull Map<String, Term> getMap() {
-        return map;
-    }
+
+    /* ~~~ method overrides / implementations ~~~ */
 
     @Override
     @Contract(value = "_, !null -> !null", pure = true)
@@ -79,17 +83,7 @@ public class MapSolution extends AbstractSolution {
     }
 
     @Override
-    public boolean equals(@Nullable Object obj) {
-        if (obj == null)
-            return false;
-        else if (obj instanceof MapSolution)
-            return map.equals(((MapSolution) obj).map);
-        else
-            return super.equals(obj);
-    }
-
-    @Override
-    public int hashCode() {
-        return map.hashCode();
+    public boolean equals(@Nullable Object o) {
+        return ((o instanceof MapSolution) && map.equals(((MapSolution) o).map)) || super.equals(o);
     }
 }

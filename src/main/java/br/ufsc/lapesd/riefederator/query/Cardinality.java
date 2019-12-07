@@ -11,9 +11,14 @@ public class Cardinality  {
     public enum Reliability {
         UNSUPPORTED,
         /**
+         * No cardinality information byond the knwoledge that it is not empty. This differs
+         * from LOWER_BOUND by always returning 1 as value.
+         */
+        NON_EMPTY,
+        /**
          * A guess on the cardinality, no guarantees
          */
-        GUESS,             // less reliable
+        GUESS,
         /**
          * A lower bound on the results. Number of results is at least as big.
          */
@@ -25,13 +30,15 @@ public class Cardinality  {
         /**
          * Exact number of results
          */
-        EXACT              // more reliable
+        EXACT
     }
 
     private final @Nonnull Reliability reliability;
     private final int value;
-    public static final @Nonnull Cardinality UNSUPPORTED =
-            new Cardinality(Reliability.UNSUPPORTED, -1);
+    public static final @Nonnull Cardinality
+            UNSUPPORTED  = new Cardinality(Reliability.UNSUPPORTED, -1),
+            EMPTY = new Cardinality(Reliability.EXACT, 0),
+            NON_EMPTY = new Cardinality(Reliability.NON_EMPTY, 1);
 
     public Cardinality(@Nonnull Reliability reliability, int value) {
         Preconditions.checkArgument(reliability != Reliability.UNSUPPORTED || value == -1,

@@ -1,14 +1,14 @@
 package br.ufsc.lapesd.riefederator.model.term.std;
 
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import com.google.common.base.Objects;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
+import br.ufsc.lapesd.riefederator.model.term.AbstractURI;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
 
 @Immutable
-public class StdURI implements URI {
+public class StdURI extends AbstractURI {
     private final @Nonnull String uri;
 
     public StdURI(@Nonnull String uri) {
@@ -21,26 +21,18 @@ public class StdURI implements URI {
     }
 
     @Override
-    public Type getType() {
-        return Type.URI;
-    }
-
-    @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof StdURI)) return false;
-        StdURI stdURI = (StdURI) o;
-        return Objects.equal(uri, stdURI.uri);
+        return (o instanceof StdURI) ? uri.equals(((StdURI) o).uri) : super.equals(o);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(uri);
+        return uri.hashCode();
     }
 
     @Override
     public String toString() {
-        return getURI();
+        return toString(StdPrefixDict.STANDARD);
     }
 
     @Override
