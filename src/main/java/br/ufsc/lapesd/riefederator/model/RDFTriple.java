@@ -18,7 +18,7 @@ public class RDFTriple extends Triple {
     }
 
     public static @Nonnull RDFTriple fromTerms(@Nonnull Term subject, @Nonnull Term predicate,
-                                      @Nonnull Term object) {
+                                               @Nonnull Term object) {
         Preconditions.checkArgument(subject instanceof Res, "subject must be a Res");
         Preconditions.checkArgument(predicate instanceof Res, "predicate must be an URI");
         Preconditions.checkArgument(object instanceof Res || object instanceof Lit,
