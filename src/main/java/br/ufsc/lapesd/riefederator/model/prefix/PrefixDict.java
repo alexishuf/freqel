@@ -88,6 +88,8 @@ public interface PrefixDict {
      */
     @Nonnull Iterable<Map.Entry<String, String>> entries();
 
+    boolean isEmpty();
+
     default void forEach(BiConsumer<String, String> consumer) {
         for (Map.Entry<String, String> entry : entries()) {
             consumer.accept(entry.getKey(), entry.getValue());

@@ -8,6 +8,7 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static java.util.Arrays.asList;
@@ -56,7 +57,11 @@ public class PrefixDictTest {
     @Test(dataProvider = "emptyData")
     public void  testEmpty(Supplier<? extends PrefixDict> supplier) {
         PrefixDict d = supplier.get();
-        assertFalse(d.entries().iterator().hasNext());
+        assertTrue(d.isEmpty());
+        AtomicInteger entryCount = new AtomicInteger();
+        d.forEach((k, v) -> entryCount.incrementAndGet());
+        assertEquals(entryCount.get(), 0);
+
         String uri = "htttp://example.org/ns#";
         assertFalse(d.shorten(uri).isShortened());
         assertEquals(d.shorten(uri).getLongURI(), uri);
@@ -110,7 +115,7 @@ public class PrefixDictTest {
     @Test(dataProvider = "mutableData")
     public void testAddPrefixAndIterate(Supplier<? extends MutablePrefixDict> supplier) {
         MutablePrefixDict d = supplier.get();
-        assertFalse(d.entries().iterator().hasNext());
+        assertTrue(d.isEmpty());
 
         assertNull(d.put("rdf", RDF_PREFIX));
         assertNull(d.put("foaf", FOAF_PREFIX));

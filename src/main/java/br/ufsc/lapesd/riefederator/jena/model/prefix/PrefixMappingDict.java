@@ -27,6 +27,11 @@ public class PrefixMappingDict extends AbstractPrefixDict implements MutablePref
     }
 
     @Override
+    public boolean isEmpty() {
+        return mapping.hasNoMappings();
+    }
+
+    @Override
     public @Nonnull Shortened shorten(@Nonnull String uri) {
         String s = mapping.shortForm(uri);
         List<String> pieces = prefixSplitter.splitToList(s);

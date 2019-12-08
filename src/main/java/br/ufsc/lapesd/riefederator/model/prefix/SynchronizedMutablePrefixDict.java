@@ -43,9 +43,14 @@ public class SynchronizedMutablePrefixDict implements MutablePrefixDict {
         if (!Thread.holdsLock(this)) {
             logger.warn("Thread {} called entries() without holding monitor lock. Will dump a " +
                     "stack trace, but continue.", Thread.currentThread().getName(),
-                    new IllegalStateException("entries() without owning lock"));
+                    new IllegalStateException("entries() without owning monitor"));
         }
         return delegate.entries();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return delegate.isEmpty();
     }
 
     @Override

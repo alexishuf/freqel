@@ -35,6 +35,11 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
     }
 
     @Override
+    public boolean isEmpty() {
+        return prefix2URI.isEmpty();
+    }
+
+    @Override
     public @Nonnull Shortened shorten(@Nonnull String uri) {
         SortedMap<String, String> map = uri2Prefix.headMap(uri);
         String key, prefix = null;
