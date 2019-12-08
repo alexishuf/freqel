@@ -37,7 +37,7 @@ public class CQEndpointTest extends EndpointTestBase {
 
     @SuppressWarnings("SameParameterValue")
     protected void queryResourceTest(Function<InputStream, Fixture<CQEndpoint>> f,
-                                     @Nonnull Collection<Triple> query,
+                                     @Nonnull List<Triple> query,
                                      @Nonnull Set<Solution> ex) {
         String filename = "../rdf-2.nt";
         try (Fixture<CQEndpoint> fixture = f.apply(getClass().getResourceAsStream(filename))) {
@@ -52,7 +52,7 @@ public class CQEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testTPSelect(Function<InputStream, Fixture<CQEndpoint>> f) {
-        queryResourceTest(f, singleton(new Triple(S, KNOWS, BOB)),
+        queryResourceTest(f, singletonList(new Triple(S, KNOWS, BOB)),
                 newHashSet(MapSolution.build("S", ALICE),
                            MapSolution.build("S", DAVE)));
     }

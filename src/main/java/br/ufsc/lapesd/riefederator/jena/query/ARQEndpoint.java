@@ -22,6 +22,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Function;
 
 import static java.util.Collections.emptySet;
@@ -79,7 +80,7 @@ public class ARQEndpoint implements CQEndpoint {
     }
 
     @Override
-    public @Nonnull Results query(@Nonnull Collection<Triple> query, @Nonnull PrefixDict dict) {
+    public @Nonnull Results query(@Nonnull List<Triple> query, @Nonnull PrefixDict dict) {
         SPARQLString sparql = new SPARQLString(query, dict);
         if (sparql.getType() == SPARQLString.Type.ASK) {
             try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
