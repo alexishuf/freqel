@@ -12,6 +12,10 @@ public class NamedFunction<T, R> implements Function<T, R> {
         this.wrapped = wrapped;
     }
 
+    public @Nonnull Function<T, R> getWrapped() {
+        return wrapped;
+    }
+
     @Override
     public R apply(T t) {
         return wrapped.apply(t);

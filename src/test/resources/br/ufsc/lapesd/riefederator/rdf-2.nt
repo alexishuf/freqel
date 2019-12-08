@@ -1,0 +1,14 @@
+<http://example.org/Alice> <http://xmlns.com/foaf/0.1/knows>                 <http://example.org/Bob> .
+<http://example.org/Alice> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
+<http://example.org/Alice> <http://xmlns.com/foaf/0.1/age>                   "23"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://example.org/Alice> <http://xmlns.com/foaf/0.1/name>                  "alice"@en .
+
+<http://example.org/Bob> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
+<http://example.org/Bob> <http://xmlns.com/foaf/0.1/name>                  "bob"@en .
+<http://example.org/Bob> <http://xmlns.com/foaf/0.1/name>                  "beto"@pt .
+
+<http://example.org/Charlie> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
+<http://example.org/Charlie> <http://xmlns.com/foaf/0.1/age>                   "23"^^<http://www.w3.org/2001/XMLSchema#int> .
+
+<http://example.org/Dave> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://xmlns.com/foaf/0.1/Person> .
+<http://example.org/Dave> <http://xmlns.com/foaf/0.1/knows>                 <http://example.org/Bob> .

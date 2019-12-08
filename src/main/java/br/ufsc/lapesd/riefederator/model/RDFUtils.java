@@ -3,15 +3,12 @@ package br.ufsc.lapesd.riefederator.model;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
-import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
-import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.util.regex.Pattern;
 
 @SuppressWarnings("WeakerAccess")
 public class RDFUtils {
@@ -19,7 +16,6 @@ public class RDFUtils {
 
     private static final @Nonnull String ESCAPES = "tbnrf\"'\\";
     private static final @Nonnull String ESCAPEE = "\t\b\n\r\f\"'\\";
-    private static final @Nonnull Pattern SPARQL_VAR_NAME = Pattern.compile("^[a-zA-Z_0-9\\-]+$");
 
     /**
      * Escapes [1] a lexical form string.
@@ -109,43 +105,5 @@ public class RDFUtils {
 
     public static @Nonnull String toTurtle(@Nonnull URI uri, @Nonnull PrefixDict dict) {
         return dict.shorten(uri).toString("<"+uri.getURI()+">");
-    }
-
-    public static @Nonnull String term2SPARQL(@Nonnull Term t, @Nonnull PrefixDict dict) {
-        if (t.isBlank()) {
-            String name = t.asBlank().getName();
-            return name != null && SPARQL_VAR_NAME.matcher(name).matches() ? "_:"+name : "[]";
-        } else if (t.isVar()) {
-            String name = t.asVar().getName();
-            Preconditions.checkArgument(SPARQL_VAR_NAME.matcher(name).matches(),
-                    name+" cannot be used as a SPARQL variable name");
-            return "?"+name;
-        } else if (t.isLiteral()) {
-            return toTurtle(t.asLiteral(), dict);
-        } else if (t.isURI()) {
-            return toTurtle(t.asURI(), dict);
-        }
-        throw new IllegalArgumentException("Cannot represent "+t+" in SPARQL");
-    }
-
-    public static @Nonnull String term2SPARQL(@Nonnull Term t) {
-        return term2SPARQL(t, StdPrefixDict.EMPTY);
-    }
-
-    public static @Nonnull String triplePattern2SPARQL(@Nonnull Triple tp) {
-        StringBuilder b = new StringBuilder(64);
-        if (tp.isBound()) {
-            b.append("ASK");
-        } else {
-            b.append("SELECT");
-            int oldLength = b.length();
-            tp.forEach(t -> { if (t.isVar()) b.append(" ?").append(t.asVar().getName()); });
-            assert b.length() != oldLength;
-            b.append(" WHERE");
-        }
-        b.append(" {\n  ");
-        tp.forEach(t -> b.append(term2SPARQL(t)).append(" "));
-        b.append(".\n}");
-        return b.toString();
     }
 }

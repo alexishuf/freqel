@@ -1,9 +1,10 @@
 package br.ufsc.lapesd.riefederator.jena.query;
 
+import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.impl.IteratorResults;
@@ -20,11 +21,9 @@ import org.apache.jena.rdf.model.Model;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Collection;
 import java.util.function.Function;
 
-import static br.ufsc.lapesd.riefederator.model.RDFUtils.triplePattern2SPARQL;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.apache.jena.query.QueryExecutionFactory.create;
@@ -32,7 +31,7 @@ import static org.apache.jena.query.QueryExecutionFactory.sparqlService;
 
 @ThreadSafe
 @Immutable
-public class ARQEndpoint implements TPEndpoint {
+public class ARQEndpoint implements CQEndpoint {
     @SuppressWarnings("Immutable")
     private final @Nonnull Function<String, QueryExecution> executionFactory;
     private final @Nullable String name;
@@ -80,23 +79,20 @@ public class ARQEndpoint implements TPEndpoint {
     }
 
     @Override
-    public @Nonnull Results query(@Nonnull Triple query) {
-        String sparql = triplePattern2SPARQL(query);
-        if (query.isBound()) {
-            try (QueryExecution exec = executionFactory.apply(sparql)) {
+    public @Nonnull Results query(@Nonnull Collection<Triple> query, @Nonnull PrefixDict dict) {
+        SPARQLString sparql = new SPARQLString(query, dict);
+        if (sparql.getType() == SPARQLString.Type.ASK) {
+            try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
                 if (exec.execAsk())
-                    return new CollectionResults(singleton(new MapSolution()), emptySet());
+                    return new CollectionResults(singleton(MapSolution.EMPTY), emptySet());
                 return new CollectionResults(emptySet(), emptySet());
             }
         } else {
-            QueryExecution exec = executionFactory.apply(sparql);
+            QueryExecution exec = executionFactory.apply(sparql.getString());
             try {
                 ResultSet rs = exec.execSelect();
-                Set<String> ns = new HashSet<>();
-                query.forEach(t -> {
-                    if (t.isVar()) ns.add(((Var) t).getName());
-                });
-                return new IteratorResults(new TransformIterator<>(rs, JenaSolution::new), ns) {
+                return new IteratorResults(new TransformIterator<>(rs, JenaSolution::new),
+                                           sparql.getVarNames()) {
                     @Override
                     public void close() throws ResultsCloseException {
                         exec.close();
