@@ -40,7 +40,8 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
     }
 
     @Override
-    public @Nonnull Shortened shorten(@Nonnull String uri) {
+    public synchronized  @Nonnull Shortened shorten(@Nonnull String uri) {
+        // TODO remove synchronized from here after replacing PatriciaTrie (lookups may cause a remove followed by add)
         SortedMap<String, String> map = uri2Prefix.headMap(uri);
         String key, prefix = null;
         if (map.isEmpty()) {
@@ -59,7 +60,7 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
     }
 
     @Override
-    public @Nullable String put(@Nonnull String prefix, @Nonnull String uri) {
+    public synchronized @Nullable String put(@Nonnull String prefix, @Nonnull String uri) {
         String old = prefix2URI.put(prefix, uri);
         uri2Prefix.remove(old, prefix);
         uri2Prefix.put(uri, prefix);
@@ -67,7 +68,7 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
     }
 
     @Override
-    public @Nullable String remove(@Nonnull String prefix) {
+    public synchronized @Nullable String remove(@Nonnull String prefix) {
         String uri = prefix2URI.remove(prefix);
         if (uri != null)
             uri2Prefix.remove(uri);
