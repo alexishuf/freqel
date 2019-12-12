@@ -40,10 +40,6 @@ public class PrefixDictTest {
     private static final @Nonnull String ALICE = "http://example.org/Alice"; //ALICE < *_PREFIX
     private static final @Nonnull String BOB = "https://example.org/Alice"; //"https:" > "http:"
 
-    public static void main(String[] args) {
-        System.out.println(ALICE.compareTo(RDF_PREFIX));
-    }
-
     @DataProvider
     public static Object[][] mutableData() {
         return mutable.stream().map(s -> singleton(s).toArray()).toArray(Object[][]::new);
@@ -73,10 +69,7 @@ public class PrefixDictTest {
         assertNull(d.shortenPrefix("http://xmlns.com/foaf/0.1/", null));
     }
 
-    @Test
-    public void testStandard() {
-        PrefixDict d = StdPrefixDict.STANDARD;
-
+    private void standardTest(@Nonnull PrefixDict d) {
         assertEquals(d.expand("rdf:type", null), TYPE);
         assertTrue(d.shorten(TYPE).isShortened());
         assertEquals(d.shorten(TYPE).toString(), "rdf:type");
@@ -91,6 +84,16 @@ public class PrefixDictTest {
         Map<String, String> map = new HashMap<>();
         for (Map.Entry<String, String> e : d.entries()) map.put(e.getKey(), e.getValue());
         assertEquals(map.get("rdf"), RDF_PREFIX);
+    }
+
+    @Test
+    public void testStandard() {
+        standardTest(StdPrefixDict.STANDARD);
+    }
+
+    @Test
+    public void testDefault() {
+        standardTest(StdPrefixDict.DEFAULT);
     }
 
     @Test(dataProvider = "mutableData")
