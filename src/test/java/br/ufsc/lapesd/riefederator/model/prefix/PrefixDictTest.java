@@ -170,4 +170,33 @@ public class PrefixDictTest {
             assertEquals(d.shorten(uri).getLocalName(), uri);
         }
     }
+
+    @Test(dataProvider = "mutableData")
+    public void testAddAlphabet(Supplier<? extends MutablePrefixDict> supplier) {
+        MutablePrefixDict d = supplier.get();
+        String preamble = "http://example.org/";
+        String letters = "abcdefghijklmnoprstuvxywz";
+        for (int i = 0; i < letters.length(); i++)
+            d.put(letters.substring(i, i + 1), preamble + letters.substring(i, i + 1) + "/");
+        // cannto shorten: too short
+        assertFalse(d.shorten(preamble).isShortened());
+        // shorten the prefixes
+        for (int i = 0; i < letters.length(); i++) {
+            String uri = preamble + letters.substring(i, i + 1) + "/";
+            PrefixDict.Shortened shortened = d.shorten(uri);
+            assertTrue(shortened.isShortened());
+            assertEquals(shortened.getNamespace(), uri);
+            assertEquals(shortened.getPrefix(), letters.substring(i, i+1));
+            assertEquals(shortened.getLocalName(), "");
+        }
+        // shorten URIs
+        for (int i = 0; i < letters.length(); i++) {
+            String namespace = preamble + letters.substring(i, i + 1) + "/";
+            PrefixDict.Shortened shortened = d.shorten(namespace+"inst");
+            assertTrue(shortened.isShortened());
+            assertEquals(shortened.getNamespace(), namespace);
+            assertEquals(shortened.getPrefix(), letters.substring(i, i+1));
+            assertEquals(shortened.getLocalName(), "inst");
+        }
+    }
 }
