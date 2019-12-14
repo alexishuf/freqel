@@ -8,7 +8,10 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 import static com.google.common.collect.Sets.newHashSet;
@@ -42,7 +45,7 @@ public class CQEndpointTest extends EndpointTestBase {
         String filename = "../rdf-2.nt";
         try (Fixture<CQEndpoint> fixture = f.apply(getClass().getResourceAsStream(filename))) {
             Set<Solution> ac = new HashSet<>();
-            try (Results results = fixture.endpoint.query(query)) {
+            try (Results results = fixture.endpoint.query(CQuery.from(query))) {
                 results.forEachRemaining(ac::add);
             }
             assertEquals(ac.stream().filter(s -> !ex.contains(s)).collect(toList()), emptyList());

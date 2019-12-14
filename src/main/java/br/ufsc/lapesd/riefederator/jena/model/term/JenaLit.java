@@ -62,7 +62,7 @@ public class JenaLit extends JenaTerm implements Lit {
 
     @Override
     public String toString() {
-        return toTurtle(StdPrefixDict.STANDARD);
+        return toTurtle(StdPrefixDict.DEFAULT);
     }
 
     @Override

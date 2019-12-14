@@ -27,14 +27,13 @@ public interface Term {
     default boolean isLiteral() { return getType() == Type.LITERAL;}
     default boolean   isBlank() { return getType() == Type.BLANK;  }
     default boolean     isVar() { return getType() == Type.VAR;    }
-    default @Nonnull
-    URI asURI() { return as(URI.class);  }
+    /** A Term is ground iff it is not a variable nor a blank node. */
+    default boolean  isGround() { return !isVar() && !isBlank();   }
 
-    default @Nonnull
-    Lit asLiteral() { return as(Lit.class);  }
-    default @Nonnull
-    Blank asBlank() { return as(Blank.class);}
-    default @Nonnull Var           asVar() { return as(Var.class);      }
+    default @Nonnull URI asURI() { return as(URI.class);  }
+    default @Nonnull Lit asLiteral() { return as(Lit.class);  }
+    default @Nonnull Blank asBlank() { return as(Blank.class);}
+    default @Nonnull Var     asVar() { return as(Var.class);  }
     default @Nonnull <T extends Term> T as(Class<T> cls) {
         if (cls.isInstance(this)) {
             //noinspection unchecked

@@ -1,9 +1,9 @@
 package br.ufsc.lapesd.riefederator.jena.query;
 
 import br.ufsc.lapesd.riefederator.model.SPARQLString;
-import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Results;
 import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
@@ -21,8 +21,6 @@ import org.apache.jena.rdf.model.Model;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.Collection;
-import java.util.List;
 import java.util.function.Function;
 
 import static java.util.Collections.emptySet;
@@ -80,7 +78,7 @@ public class ARQEndpoint implements CQEndpoint {
     }
 
     @Override
-    public @Nonnull Results query(@Nonnull List<Triple> query, @Nonnull PrefixDict dict) {
+    public @Nonnull Results query(@Nonnull CQuery query, @Nonnull PrefixDict dict) {
         SPARQLString sparql = new SPARQLString(query, dict);
         if (sparql.getType() == SPARQLString.Type.ASK) {
             try (QueryExecution exec = executionFactory.apply(sparql.getString())) {

@@ -32,7 +32,7 @@ public class StdURI extends AbstractURI {
 
     @Override
     public String toString() {
-        return toString(StdPrefixDict.STANDARD);
+        return toString(StdPrefixDict.DEFAULT);
     }
 
     @Override

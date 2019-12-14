@@ -3,15 +3,24 @@ package br.ufsc.lapesd.riefederator.model;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import com.google.common.base.Objects;
 import com.google.errorprone.annotations.Immutable;
+import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 @Immutable
 public class Triple {
     private final @Nonnull Term subject, predicate, object;
+    private @LazyInit int hash = 0;
+
+    public enum Position {
+        SUBJ, PRED, OBJ;
+        public static List<Position> VALUES_LIST = Arrays.asList(values());
+    }
 
     public Triple(@Nonnull Term subject, @Nonnull Term predicate, @Nonnull Term object) {
         this.subject = subject;
@@ -28,6 +37,14 @@ public class Triple {
     public @Nonnull Term getObject() {
         return object;
     }
+    public @Nonnull Term get(@Nonnull Position position) {
+        switch (position) {
+            case SUBJ: return subject;
+            case PRED: return predicate;
+            case  OBJ: return object;
+        }
+        throw new UnsupportedOperationException("Cannot handle get("+position+")");
+    }
 
     /**
      * A triple is bound iff it has no {@link Var} terms
@@ -36,10 +53,16 @@ public class Triple {
         return !(subject instanceof Var) && !(predicate instanceof Var) && !(object instanceof Var);
     }
 
+    /** Executes consumer for each member of the {@link Triple} */
     public void forEach(@Nonnull Consumer<Term> consumer) {
         consumer.accept(subject);
         consumer.accept(predicate);
         consumer.accept(object);
+    }
+
+    /** Indicates whether term is a member (<code>equals()</code>) of this triple */
+    public boolean contains(@Nonnull Term term) {
+        return subject.equals(term) || predicate.equals(term) || object.equals(term);
     }
 
     @Override
@@ -57,13 +80,15 @@ public class Triple {
         if (this == o) return true;
         if (!(o instanceof Triple)) return false;
         Triple triple = (Triple) o;
-        return Objects.equal(subject, triple.subject) &&
-                Objects.equal(predicate, triple.predicate) &&
-                Objects.equal(object, triple.object);
+        return Objects.equals(subject, triple.subject) &&
+                Objects.equals(predicate, triple.predicate) &&
+                Objects.equals(object, triple.object);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(subject, predicate, object);
+        if (hash == 0)
+            hash = Objects.hash(subject, predicate, object);
+        return hash;
     }
 }

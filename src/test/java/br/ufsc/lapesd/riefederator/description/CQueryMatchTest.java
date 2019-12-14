@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.description;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import com.google.common.base.Splitter;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDF;
@@ -27,7 +28,7 @@ public class CQueryMatchTest {
 
     @Test
     public void testEmpty() {
-        CQueryMatch m = new CQueryMatch(emptyList(), emptyList(), emptyList());
+        CQueryMatch m = new CQueryMatch(CQuery.EMPTY, emptyList(), emptyList());
         assertTrue(m.isEmpty());
         assertEquals(m.getAllRelevant(), emptyList());
         assertEquals(m.getKnownExclusiveGroups(), emptyList());
@@ -39,7 +40,7 @@ public class CQueryMatchTest {
     @Test
     public void testRequireValidTriple() {
         List<Triple> query = asList(new Triple(ALICE, KNOWS, X), new Triple(X, TYPE, PERSON));
-        CQueryMatch.Builder builder = CQueryMatch.builder(query);
+        CQueryMatch.Builder builder = CQueryMatch.builder(CQuery.from(query));
         builder.addTriple(new Triple(ALICE, KNOWS, X));
         assertThrows(IllegalArgumentException.class,
                 () -> builder.addTriple(new Triple(ALICE, TYPE, PERSON)));
@@ -48,7 +49,7 @@ public class CQueryMatchTest {
     @Test
     public void testRequireValidTripleInExclusiveGroup() {
         List<Triple> query = asList(new Triple(ALICE, KNOWS, X), new Triple(X, TYPE, PERSON));
-        CQueryMatch.Builder builder = CQueryMatch.builder(query);
+        CQueryMatch.Builder builder = CQueryMatch.builder(CQuery.from(query));
         List<Triple> badGroup = asList(new Triple(ALICE, KNOWS, X), new Triple(ALICE, TYPE, PERSON));
         assertThrows(IllegalArgumentException.class,
                 () -> builder.addExclusiveGroup(badGroup));
@@ -57,7 +58,7 @@ public class CQueryMatchTest {
     @Test
     public void testRequireNonEmptyExclusiveGroup() {
         List<Triple> query = asList(new Triple(ALICE, KNOWS, X), new Triple(X, TYPE, PERSON));
-        CQueryMatch.Builder builder = CQueryMatch.builder(query);
+        CQueryMatch.Builder builder = CQueryMatch.builder(CQuery.from(query));
         assertThrows(IllegalArgumentException.class,
                 () -> builder.addExclusiveGroup(emptyList()));
     }
@@ -68,7 +69,7 @@ public class CQueryMatchTest {
                                     new Triple(X, TYPE, PERSON),
                                     new Triple(X, KNOWS, BOB),
                                     new Triple(X, KNOWS, X));
-        CQueryMatch m = CQueryMatch.builder(query)
+        CQueryMatch m = CQueryMatch.builder(CQuery.from(query))
                 .addExclusiveGroup(asList(new Triple(ALICE, KNOWS, X),
                                           new Triple(X, TYPE, PERSON)))
                 .addTriple(new Triple(X, KNOWS, BOB)).build();

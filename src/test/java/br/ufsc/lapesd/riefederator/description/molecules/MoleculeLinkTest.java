@@ -7,15 +7,14 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 
-import static java.util.Collections.emptySet;
 import static org.testng.Assert.*;
 
 public class MoleculeLinkTest {
     public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
     public static final @Nonnull StdURI AGE = new StdURI(FOAF.age.getURI());
-    public static final @Nonnull Atom a1 = new Atom("a", false, emptySet(), emptySet());
-    public static final @Nonnull Atom a2 = new Atom("a", false, emptySet(), emptySet());
-    public static final @Nonnull Atom b  = new Atom("b", false, emptySet(), emptySet());
+    public static final @Nonnull Atom a1 = new Atom("a");
+    public static final @Nonnull Atom a2 = new Atom("a");
+    public static final @Nonnull Atom b  = new Atom("b");
 
     @DataProvider
     public static @Nonnull Object[][] equalsData() {

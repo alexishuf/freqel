@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Contract;
 
@@ -20,24 +21,24 @@ import static java.util.Collections.unmodifiableList;
 public class CQueryMatch {
     private @Nonnull List<List<Triple>> exclusiveGroups;
     private @Nonnull List<Triple> nonExclusiveRelevant;
-    private @Nonnull List<Triple> query;
+    private @Nonnull CQuery query;
 
-    public CQueryMatch(@Nonnull List<Triple> query, @Nonnull List<List<Triple>> exclusiveGroups,
+    public CQueryMatch(@Nonnull CQuery query, @Nonnull List<List<Triple>> exclusiveGroups,
                        @Nonnull List<Triple> nonExclusiveRelevant) {
         for (int i = 0; i < exclusiveGroups.size(); i++)
             exclusiveGroups.set(i, unmodifiableList(exclusiveGroups.get(i)));
         this.exclusiveGroups = unmodifiableList(exclusiveGroups);
         this.nonExclusiveRelevant = unmodifiableList(nonExclusiveRelevant);
-        this.query = unmodifiableList(query);
+        this.query = query;
     }
 
     public static class Builder {
-        private final @Nonnull List<Triple> query;
+        private final @Nonnull CQuery query;
         private final @Nonnull ArrayList<List<Triple>> exclusiveGroups;
         private final @Nonnull ArrayList<Triple> nonExclusive;
         private boolean built = false;
 
-        private Builder(@Nonnull List<Triple> query) {
+        private Builder(@Nonnull CQuery query) {
             this.query = query;
             int capacity = Math.max(query.size() / 2, 10);
             exclusiveGroups = new ArrayList<>(capacity);
@@ -73,7 +74,7 @@ public class CQueryMatch {
         }
     }
 
-    public static @Nonnull Builder builder(@Nonnull List<Triple> query) {
+    public static @Nonnull Builder builder(@Nonnull CQuery query) {
         return new Builder(query);
     }
 
@@ -82,6 +83,13 @@ public class CQueryMatch {
      */
     public boolean isEmpty() {
         return exclusiveGroups.isEmpty() && nonExclusiveRelevant.isEmpty();
+    }
+
+    /**
+     * The full query for which this {@link CQueryMatch} is a result
+     */
+    public @Nonnull CQuery getQuery() {
+        return query;
     }
 
     /**
@@ -137,7 +145,7 @@ public class CQueryMatch {
     }
 
     @Override
-    public @Nonnull String toString() { return toString(StdPrefixDict.STANDARD); }
+    public @Nonnull String toString() { return toString(StdPrefixDict.DEFAULT); }
 
     public @Nonnull String toString(@Nonnull PrefixDict dict) {
         if (isEmpty()) {

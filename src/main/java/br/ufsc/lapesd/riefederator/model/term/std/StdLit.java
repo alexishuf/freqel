@@ -69,6 +69,6 @@ public class StdLit extends AbstractLit {
 
     @Override
     public String toString() {
-        return toString(StdPrefixDict.STANDARD);
+        return toString(StdPrefixDict.DEFAULT);
     }
 }

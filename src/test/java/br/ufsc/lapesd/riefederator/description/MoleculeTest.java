@@ -6,15 +6,14 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 
-import static java.util.Collections.emptySet;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 
 public class MoleculeTest {
-    public static final @Nonnull Atom a1 = new Atom("a", false, emptySet(), emptySet());
-    public static final @Nonnull Atom a2 = new Atom("a", false, emptySet(), emptySet());
-    public static final @Nonnull Atom b  = new Atom("b", false, emptySet(), emptySet());
-    public static final @Nonnull Atom c  = new Atom("c", false, emptySet(), emptySet());
+    public static final @Nonnull Atom a1 = new Atom("a");
+    public static final @Nonnull Atom a2 = new Atom("a");
+    public static final @Nonnull Atom b  = new Atom("b");
+    public static final @Nonnull Atom c  = new Atom("c");
 
     @DataProvider
     public static Object[][] equalsData() {

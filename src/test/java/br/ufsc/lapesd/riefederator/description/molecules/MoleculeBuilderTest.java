@@ -15,9 +15,9 @@ import static org.testng.Assert.*;
 public class MoleculeBuilderTest {
     public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
     public static final @Nonnull StdURI AGE = new StdURI(FOAF.age.getURI());
-    public static final @Nonnull Atom a1 = new Atom("a", false, emptySet(), emptySet());
-    public static final @Nonnull Atom b  = new Atom("b", false, emptySet(), emptySet());
-    public static final @Nonnull Atom c  = new Atom("c", false, emptySet(), emptySet());
+    public static final @Nonnull Atom a1 = new Atom("a");
+    public static final @Nonnull Atom b  = new Atom("b");
+    public static final @Nonnull Atom c  = new Atom("c");
 
     @Test
     public void testBuildAtomOnlyIn() {

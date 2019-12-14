@@ -6,9 +6,6 @@ import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Conjunctive query endpoint. Any such endpoint is also a {@link TPEndpoint}
@@ -28,16 +25,16 @@ public interface CQEndpoint extends TPEndpoint {
      * @return An {@link Results} iterator
      */
     @Contract("_, _ -> new")
-    @Nonnull Results query(@Nonnull List<Triple> query, @Nonnull PrefixDict dict);
+    @Nonnull Results query(@Nonnull CQuery query, @Nonnull PrefixDict dict);
 
     @Contract("_ -> new")
-    default @Nonnull Results query(@Nonnull List<Triple> query) {
+    default @Nonnull Results query(@Nonnull CQuery query) {
         return query(query, StdPrefixDict.EMPTY);
     }
 
     @Override
     @Contract("_ -> new")
     default @Nonnull Results query(@Nonnull Triple query) {
-        return query(Collections.singletonList(query));
+        return query(CQuery.from(query));
     }
 }
