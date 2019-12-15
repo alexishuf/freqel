@@ -11,13 +11,13 @@ import org.apache.jena.rdf.model.RDFNode;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 
 @Immutable
 public class JenaLit extends JenaTerm implements Lit {
     private @LazyInit JenaURI dtURI = null;
     @SuppressWarnings("Immutable")
-    private WeakReference<String> nt = new WeakReference<>(null);
+    private SoftReference<String> nt = new SoftReference<>(null);
 
     public JenaLit(@Nonnull RDFNode node) {
         super(node.asLiteral());
@@ -69,12 +69,17 @@ public class JenaLit extends JenaTerm implements Lit {
     public @Nonnull String toNT() {
         String strong = nt.get();
         if (strong == null)
-            nt = new WeakReference<>(strong = RDFUtils.toNT(this));
+            nt = new SoftReference<>(strong = RDFUtils.toNT(this));
         return strong;
     }
 
     @Override
     public boolean equals(Object obj) {
         return (obj instanceof Lit) && toNT().equals(((Lit)obj).toNT());
+    }
+
+    @Override
+    public int hashCode() {
+        return toNT().hashCode();
     }
 }

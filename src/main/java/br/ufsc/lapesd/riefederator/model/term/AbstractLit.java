@@ -4,12 +4,12 @@ import br.ufsc.lapesd.riefederator.model.RDFUtils;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
-import java.lang.ref.WeakReference;
+import java.lang.ref.SoftReference;
 
 @Immutable
 public abstract class AbstractLit implements Lit {
     @SuppressWarnings("Immutable")
-    private @Nonnull WeakReference<String> nt = new WeakReference<>(null);
+    private @Nonnull SoftReference<String> nt = new SoftReference<>(null);
 
     @Override
     public Type getType() {
@@ -20,7 +20,7 @@ public abstract class AbstractLit implements Lit {
     public @Nonnull String toNT() {
         String strong = nt.get();
         if (strong == null)
-            nt = new WeakReference<>(strong = RDFUtils.toNT(this));
+            nt = new SoftReference<>(strong = RDFUtils.toNT(this));
         return strong;
     }
 

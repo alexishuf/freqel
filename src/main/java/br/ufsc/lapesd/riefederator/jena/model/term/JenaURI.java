@@ -35,4 +35,9 @@ public class JenaURI extends JenaRes implements URI {
         if (o instanceof JenaURI) return getNode().equals(((JenaURI) o).getNode());
         return (o instanceof URI) && getURI().equals(((URI) o).getURI());
     }
+
+    @Override
+    public int hashCode() {
+        return getURI().hashCode();
+    }
 }

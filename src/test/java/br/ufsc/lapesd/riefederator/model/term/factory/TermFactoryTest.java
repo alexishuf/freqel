@@ -13,6 +13,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import com.google.common.collect.Lists;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -24,7 +25,8 @@ import java.util.function.Supplier;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertNotEquals;
+import static org.testng.Assert.assertNull;
 
 public class TermFactoryTest {
     public static List<NamedFunction<TermFactory, TermFactory>> wrappers =
@@ -54,6 +56,12 @@ public class TermFactoryTest {
                         () -> wrapper.apply(supplier.get())
                 ));
         }
+    }
+
+    private static void assertEquals(Object actual, Object expected) {
+        Assert.assertEquals(actual, expected);
+        if (actual instanceof Term && actual.equals(expected))
+            Assert.assertEquals(actual.hashCode(), expected.hashCode());
     }
 
     @DataProvider
