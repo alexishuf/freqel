@@ -6,6 +6,9 @@ import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
@@ -45,6 +48,7 @@ public class CQuery implements  List<Triple> {
     public static final @Nonnull CQuery EMPTY = from(Collections.emptyList());
 
     private final @Nonnull ImmutableList<Triple> list;
+    private final @Nonnull ImmutableList<Modifier> modifiers;
 
     /* ~~~ cache attributes ~~~ */
 
@@ -53,29 +57,80 @@ public class CQuery implements  List<Triple> {
     private @LazyInit int hash = 0;
     private @LazyInit @Nullable Boolean ask = null;
 
-    /* ~~~ constructor & factories ~~~ */
+    /* ~~~ constructor, builder & factories ~~~ */
 
-    protected CQuery(@Nonnull ImmutableList<Triple> query) {
+    public CQuery(@Nonnull ImmutableList<Triple> query,
+                     @Nonnull ImmutableList<Modifier> modifiers) {
         this.list = query;
+        this.modifiers = modifiers;
         t2triple = new SoftReference<>(null);
         s2triple = new SoftReference<>(null);
         o2triple = new SoftReference<>(null);
     }
 
-    public static @Contract("_ -> new") @Nonnull CQuery from(@Nonnull ImmutableList<Triple> query) {
-        return new CQuery(query);
+    public static class WithBuilder {
+        private final  @Nonnull ImmutableList<Triple> list;
+        private Projection.Builder projection = null;
+        private boolean distinct = false;
+
+        public WithBuilder(@Nonnull ImmutableList<Triple> list) {
+            this.list = list;
+        }
+
+        @Contract("_ -> this")
+        public @Nonnull WithBuilder project(String... names) {
+            if (projection == null)
+                projection = Projection.builder();
+            for (String name : names) projection.add(name);
+            return this;
+        }
+
+        public @Contract("_ -> this") @Nonnull WithBuilder distinct(boolean value) {
+            distinct = value;
+            return this;
+        }
+        public @Contract("-> this") @Nonnull WithBuilder distinct() { return distinct(true); }
+        public @Contract("-> this") @Nonnull WithBuilder nonDistinct() { return distinct(false); }
+
+        public @Nonnull CQuery build() {
+            @SuppressWarnings("UnstableApiUsage")
+            ImmutableList.Builder<Modifier> b = builderWithExpectedSize(2);
+            if (projection != null)
+                b.add(projection.build());
+            if (distinct)
+                b.add(Distinct.REQUIRED);
+            return new CQuery(list, b.build());
+        }
     }
+
+    public static @Contract("_ -> new") @Nonnull WithBuilder with(@Nonnull ImmutableList<Triple> query) {
+        return new WithBuilder(query);
+    }
+    public static @Nonnull WithBuilder with(@Nonnull List<Triple> query) {
+        if (query instanceof CQuery)
+            return new WithBuilder(((CQuery)query).getList());
+        if (query instanceof ImmutableList)
+            return new WithBuilder(((ImmutableList<Triple>)query));
+        return new WithBuilder(ImmutableList.copyOf(query));
+    }
+    public static @Contract("_ -> new") @Nonnull WithBuilder with(@Nonnull Triple triple) {
+        return new WithBuilder(ImmutableList.of(triple));
+    }
+
     public static @Nonnull CQuery from(@Nonnull List<Triple> query) {
-        return query instanceof CQuery ? (CQuery) query : new CQuery(ImmutableList.copyOf(query));
+        return query instanceof CQuery ? (CQuery)query : with(query).build();
     }
     public static @Contract("_ -> new") @Nonnull CQuery from(@Nonnull Triple triple) {
-        return new CQuery(ImmutableList.of(triple));
+        return new CQuery(ImmutableList.of(triple), ImmutableList.of());
     }
 
     /* ~~~ CQuery methods ~~~ */
 
     /** Gets the underlying immutable triple {@link List} of this {@link CQuery}. */
     public @Nonnull ImmutableList<Triple> getList() { return list; }
+
+    /** Gets the modifiers of this query. */
+    public @Nonnull ImmutableList<Modifier> getModifiers() { return modifiers; }
 
     /** A {@link CQuery} is a ASK-type query iff all its triples are bound
      * (i.e., no triple has a {@link Var} term). */
@@ -201,7 +256,7 @@ public class CQuery implements  List<Triple> {
             if (i != last)
                 builder.add(list.get(last = i));
         }
-        return new CQuery(builder.build());
+        return new CQuery(builder.build(), getModifiers());
     }
 
     /** Equivalent to <code>containing(term, asList(positions))</code>. */

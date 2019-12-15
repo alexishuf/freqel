@@ -4,11 +4,13 @@ import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Capability;
 import br.ufsc.lapesd.riefederator.query.Results;
 import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.impl.IteratorResults;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.commons.collections4.iterators.TransformIterator;
 import org.apache.http.client.HttpClient;
@@ -78,8 +80,20 @@ public class ARQEndpoint implements CQEndpoint {
     }
 
     @Override
+    public boolean hasCapability(@Nonnull Capability capability) {
+        switch (capability) {
+            case PROJECTION:
+            case DISTINCT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public @Nonnull Results query(@Nonnull CQuery query, @Nonnull PrefixDict dict) {
-        SPARQLString sparql = new SPARQLString(query, dict);
+        ModifierUtils.check(this, query.getModifiers());
+        SPARQLString sparql = new SPARQLString(query, dict, query.getModifiers());
         if (sparql.getType() == SPARQLString.Type.ASK) {
             try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
                 if (exec.execAsk())

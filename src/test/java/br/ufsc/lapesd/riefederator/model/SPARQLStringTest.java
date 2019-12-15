@@ -7,6 +7,8 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdBlank;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDFS;
@@ -16,12 +18,13 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Arrays;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import static br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict.EMPTY;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.expectThrows;
+import static org.testng.Assert.*;
 
 public class SPARQLStringTest {
     private final static @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
@@ -74,5 +77,22 @@ public class SPARQLStringTest {
                 singleton(new Triple(ALICE, KNOWS, new StdVar("who"))), EMPTY);
         assertEquals(s.getType(), SPARQLString.Type.SELECT);
         assertEquals(s.getVarNames(), singleton("who"));
+    }
+
+    @Test
+    public void testDistinct() {
+        StdVar s = new StdVar("s"), o = new StdVar("o");
+        Set<Triple> qry = singleton(new Triple(s, KNOWS, o));
+        String str = new SPARQLString(qry, EMPTY, singleton(Distinct.REQUIRED)).toString();
+        assertTrue(Pattern.compile("SELECT +DISTINCT +").matcher(str).find());
+    }
+
+    @Test
+    public void testProjection() {
+        StdVar s = new StdVar("s"), o = new StdVar("o");
+        Set<Triple> qry = singleton(new Triple(s, KNOWS, o));
+        Projection mod = Projection.builder().add("o").build();
+        String str = new SPARQLString(qry, EMPTY, singleton(mod)).toString();
+        assertTrue(Pattern.compile("SELECT +\\?o +WHERE").matcher(str).find());
     }
 }

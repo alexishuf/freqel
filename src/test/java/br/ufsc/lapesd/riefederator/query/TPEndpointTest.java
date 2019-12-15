@@ -4,6 +4,11 @@ import br.ufsc.lapesd.riefederator.NamedFunction;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
+import com.google.common.collect.ImmutableList;
 import org.apache.jena.fuseki.main.FusekiServer;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
@@ -18,12 +23,11 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
+import static br.ufsc.lapesd.riefederator.query.Capability.DISTINCT;
+import static br.ufsc.lapesd.riefederator.query.Capability.PROJECTION;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.net.InetAddress.getLocalHost;
 import static java.util.Collections.emptyList;
@@ -92,12 +96,29 @@ public class TPEndpointTest extends EndpointTestBase {
     }
 
     @SuppressWarnings("SameParameterValue")
-    protected void queryResourceTest(Function<InputStream, Fixture<TPEndpoint>> f, @Nonnull String filename,
-                                     @Nonnull Triple query, @Nonnull Set<Solution> ex) {
+    protected void queryResourceTest(Function<InputStream, Fixture<TPEndpoint>> f,
+                                     @Nonnull String filename,
+                                     @Nonnull Triple query, @Nonnull Set<Solution> ex,
+                                     Modifier... modifiers) {
         try (Fixture<TPEndpoint> fixture = f.apply(getClass().getResourceAsStream(filename))) {
             Set<Solution> ac = new HashSet<>();
-            try (Results results = fixture.endpoint.query(query)) {
-                results.forEachRemaining(ac::add);
+            if (modifiers.length > 0) {
+                CQuery cQuery = new CQuery(ImmutableList.of(query),
+                                           ImmutableList.copyOf(modifiers));
+                boolean repeated = false;
+                try (Results results = fixture.endpoint.query(cQuery)) {
+                    while (results.hasNext()) repeated |= !ac.add(results.next());
+                }
+                if (ModifierUtils.getFirst(DISTINCT, Arrays.asList(modifiers)) != null) {
+                    if (fixture.endpoint.hasCapability(DISTINCT))
+                        assertFalse(repeated);
+                }
+                if (!fixture.endpoint.hasCapability(PROJECTION))
+                    return; // silently do not test result since it would fail
+            } else {
+                try (Results results = fixture.endpoint.query(query)) {
+                    results.forEachRemaining(ac::add);
+                }
             }
             assertEquals(ac.stream().filter(s -> !ex.contains(s)).collect(toList()), emptyList());
             assertEquals(ex.stream().filter(s -> !ac.contains(s)).collect(toList()), emptyList());
@@ -155,10 +176,21 @@ public class TPEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories")
-    public void testQuerySUbjectObject(Function<InputStream, Fixture<TPEndpoint>> f) {
+    public void testQuerySubjectObject(Function<InputStream, Fixture<TPEndpoint>> f) {
         queryResourceTest(f, "../rdf-1.nt", new Triple(S, NAME, O),
                 newHashSet(MapSolution.builder().put("S", ALICE).put("O", A_NAME).build(),
                            MapSolution.builder().put("S",   BOB).put("O", B_NAME1).build(),
                            MapSolution.builder().put("S",   BOB).put("O", B_NAME2).build()));
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testQueryDistinctPredicates(Function<InputStream, Fixture<TPEndpoint>> f) {
+        queryResourceTest(f, "../rdf-1.nt", new Triple(S, P, O),
+                newHashSet(MapSolution.build("P", KNOWS),
+                        MapSolution.build("P", TYPE),
+                        MapSolution.build("P", AGE),
+                        MapSolution.build("P", NAME)
+                        ),
+                Distinct.ADVISED, Projection.advised("P"));
     }
 }

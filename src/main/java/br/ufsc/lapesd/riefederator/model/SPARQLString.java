@@ -2,13 +2,20 @@ package br.ufsc.lapesd.riefederator.model;
 
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.Capability;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import static br.ufsc.lapesd.riefederator.query.Capability.PROJECTION;
 
 public class SPARQLString {
     public enum Type {
@@ -21,6 +28,11 @@ public class SPARQLString {
     private final @Nonnull Set<String> varNames;
 
     public SPARQLString(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict) {
+        this(triples, dict, ImmutableList.of());
+    }
+
+    public SPARQLString(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict,
+                        @Nonnull Collection<Modifier> modifiers) {
         Preconditions.checkArgument(!triples.isEmpty(), "triples cannot be empty");
         // find var names
         varNames = new HashSet<>(triples.size() * 2);
@@ -41,8 +53,18 @@ public class SPARQLString {
             b.append("ASK {\n");
         } else {
             b.append("SELECT");
-            for (String name : varNames) b.append(" ?").append(name);
-            b.append(" {\n");
+            if (ModifierUtils.getFirst(Capability.DISTINCT, modifiers) != null)
+                b.append(" DISTINCT");
+            Projection project = (Projection)ModifierUtils.getFirst(PROJECTION, modifiers);
+            if (project != null) {
+                for (String name : project.getVarNames()) {
+                    if (varNames.contains(name))
+                        b.append(" ?").append(name);
+                }
+            } else {
+                for (String name : varNames) b.append(" ?").append(name);
+            }
+            b.append(" WHERE {\n");
         }
 
         // add BGP
@@ -52,6 +74,7 @@ public class SPARQLString {
         }
         this.string = b.append("}\n").toString();
     }
+
 
     static @Nonnull String term2SPARQL(@Nonnull Term t, @Nonnull PrefixDict dict) {
         if (t.isBlank()) {

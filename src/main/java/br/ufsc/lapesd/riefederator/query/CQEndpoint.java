@@ -27,6 +27,7 @@ public interface CQEndpoint extends TPEndpoint {
     @Contract("_, _ -> new")
     @Nonnull Results query(@Nonnull CQuery query, @Nonnull PrefixDict dict);
 
+    @Override
     @Contract("_ -> new")
     default @Nonnull Results query(@Nonnull CQuery query) {
         return query(query, StdPrefixDict.EMPTY);
