@@ -269,6 +269,26 @@ public class CQueryTest {
     }
 
     @Test
+    public void testEqualsConsidersModifiers() {
+        Triple triple = new Triple(X, KNOWS, Y);
+        CQuery plain1 = CQuery.from(triple);
+        CQuery plain2 = CQuery.from(triple);
+        CQuery distinct1 = CQuery.with(triple).distinct().build();
+        CQuery distinct2 = CQuery.with(triple).distinct().build();
+        CQuery projected = CQuery.with(triple).project("y").build();
+
+        assertEquals(plain1, plain2);
+        assertEquals(distinct1, distinct2);
+
+        assertEquals(plain1.hashCode(), plain2.hashCode());
+        assertEquals(distinct1.hashCode(), distinct2.hashCode());
+
+        assertNotEquals(plain1, distinct1);
+        assertNotEquals(plain1, projected);
+        assertNotEquals(distinct1, projected);
+    }
+
+    @Test
     public void testIsASK() {
         Triple t1 = new Triple(ALICE, KNOWS, BOB), t2 = new Triple(BOB, KNOWS, ALICE),
                t3 = new Triple(BOB, KNOWS, X);

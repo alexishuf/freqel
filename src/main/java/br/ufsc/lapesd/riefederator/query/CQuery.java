@@ -297,13 +297,14 @@ public class CQuery implements  List<Triple> {
 
     @Override
     public boolean equals(Object o) {
-        return (o instanceof CQuery) && list.equals(((CQuery) o).list);
+        return (o instanceof CQuery) && list.equals(((CQuery) o).list)
+                && modifiers.equals(((CQuery) o).modifiers);
     }
 
     @Override
     public int hashCode() {
         if (hash == 0)
-            hash = list.hashCode();
+            hash = Objects.hash(list, modifiers);
         return hash;
     }
 
