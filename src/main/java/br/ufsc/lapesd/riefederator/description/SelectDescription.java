@@ -18,18 +18,18 @@ import static java.util.Objects.requireNonNull;
  * A description that performs a SPARQL SELECT against the endpoint to get predicates
  * (and possibly classes).
  */
-public class SELECTDescription implements Description {
+public class SelectDescription implements Description {
     private static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
 
     private final @Nonnull CQEndpoint endpoint;
     private final boolean fetchClasses;
     private @Nullable Set<Term> predicates, classes;
 
-    public SELECTDescription(@Nonnull CQEndpoint endpoint) throws MissingCapabilityException {
+    public SelectDescription(@Nonnull CQEndpoint endpoint) throws MissingCapabilityException {
         this(endpoint, false);
     }
 
-    public SELECTDescription(@Nonnull CQEndpoint endpoint,
+    public SelectDescription(@Nonnull CQEndpoint endpoint,
                              boolean fetchClasses) throws MissingCapabilityException {
         Capability.PROJECTION.requireFrom(endpoint);
         Capability.DISTINCT.requireFrom(endpoint);

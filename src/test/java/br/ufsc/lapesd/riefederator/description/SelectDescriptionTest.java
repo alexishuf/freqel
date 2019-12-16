@@ -28,7 +28,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.testng.Assert.assertEquals;
 
-public class SELECTDescriptionTest {
+public class SelectDescriptionTest {
     public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
     public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
     public static final @Nonnull StdURI CHARLIE = new StdURI("http://example.org/Charlie");
@@ -127,7 +127,7 @@ public class SELECTDescriptionTest {
     @Test(dataProvider = "matchData")
     public void testMatch(boolean fetchClasses, @Nonnull List<Triple> query,
                           @Nonnull List<Triple> expected) {
-        SELECTDescription description = new SELECTDescription(rdf1, fetchClasses);
+        SelectDescription description = new SelectDescription(rdf1, fetchClasses);
 
         CQueryMatch match = description.match(CQuery.from(query));
         assertEquals(match.getQuery(), CQuery.from(query));
