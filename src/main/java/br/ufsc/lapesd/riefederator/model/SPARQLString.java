@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static br.ufsc.lapesd.riefederator.query.Capability.ASK;
 import static br.ufsc.lapesd.riefederator.query.Capability.PROJECTION;
 
 public class SPARQLString {
@@ -48,7 +49,8 @@ public class SPARQLString {
         if (b.length() > 0) b.append('\n');
 
         // add query command
-        type = varNames.isEmpty() ? Type.ASK : Type.SELECT;
+        type = varNames.isEmpty() || ModifierUtils.getFirst(ASK, modifiers) != null
+                ? Type.ASK : Type.SELECT;
         if (type == Type.ASK) {
             b.append("ASK {\n");
         } else {

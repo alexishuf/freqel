@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
@@ -71,7 +72,8 @@ public class CQuery implements  List<Triple> {
     public static class WithBuilder {
         private final  @Nonnull ImmutableList<Triple> list;
         private Projection.Builder projection = null;
-        private boolean distinct = false;
+        private boolean distinct = false, ask = false;
+        private boolean distinctRequired = false, askRequired = false;
 
         public WithBuilder(@Nonnull ImmutableList<Triple> list) {
             this.list = list;
@@ -84,21 +86,47 @@ public class CQuery implements  List<Triple> {
             for (String name : names) projection.add(name);
             return this;
         }
+        public @Contract("-> this") @Nonnull WithBuilder requireProjection() {
+            if (projection == null)
+                projection = Projection.builder();
+            projection.required();
+            return this;
+        }
+        public @Contract("-> this") @Nonnull WithBuilder adviseProjection() {
+            if (projection == null)
+                projection = Projection.builder();
+            projection.advised();
+            return this;
+        }
 
-        public @Contract("_ -> this") @Nonnull WithBuilder distinct(boolean value) {
-            distinct = value;
+        public @Contract("_ -> this") @Nonnull WithBuilder distinct(boolean required) {
+            this.distinct = true;
+            this.distinctRequired = required;
             return this;
         }
         public @Contract("-> this") @Nonnull WithBuilder distinct() { return distinct(true); }
-        public @Contract("-> this") @Nonnull WithBuilder nonDistinct() { return distinct(false); }
+        public @Contract("-> this") @Nonnull WithBuilder nonDistinct() {
+            this.distinct = this.distinctRequired = false;
+            return this;
+        }
+
+        public @Contract("_ -> this") @Nonnull WithBuilder ask(boolean required) {
+            this.ask = true;
+            this.askRequired = required;
+            return this;
+        }
+        public @Contract("-> this") @Nonnull WithBuilder ask() { return ask(true); }
 
         public @Nonnull CQuery build() {
             @SuppressWarnings("UnstableApiUsage")
-            ImmutableList.Builder<Modifier> b = builderWithExpectedSize(2);
+            ImmutableList.Builder<Modifier> b = builderWithExpectedSize(4);
             if (projection != null)
                 b.add(projection.build());
             if (distinct)
-                b.add(Distinct.REQUIRED);
+                b.add(distinctRequired ? Distinct.REQUIRED : Distinct.ADVISED);
+            if (ask)
+                b.add(askRequired ? Ask.REQUIRED : Ask.ADVISED);
+
             return new CQuery(list, b.build());
         }
     }

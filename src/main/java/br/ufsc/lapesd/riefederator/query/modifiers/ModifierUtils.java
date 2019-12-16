@@ -26,7 +26,7 @@ public class ModifierUtils {
     public static void check(@Nonnull TPEndpoint endpoint,
                              @Nonnull Collection<Modifier> modifiers) {
         StringBuilder b = new StringBuilder();
-        b.append("Modifiers not supported by ").append(endpoint).append(":");
+        b.append("Modifiers not supported by ").append(endpoint).append(": ");
         boolean  ok = true;
         for (Modifier mod : modifiers) {
             if (!endpoint.hasCapability(mod.getCapability()) && mod.isRequired()) {

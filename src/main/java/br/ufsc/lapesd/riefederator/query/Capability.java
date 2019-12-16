@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.query;
 import javax.annotation.Nonnull;
 
 public enum  Capability {
+    ASK,
     PROJECTION,
     DISTINCT;
 

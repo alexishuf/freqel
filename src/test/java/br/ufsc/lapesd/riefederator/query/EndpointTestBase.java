@@ -18,6 +18,7 @@ public class EndpointTestBase {
     public static final @Nonnull StdURI DAVE = new StdURI("http://example.org/Dave");
     public static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
     public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
+    public static final @Nonnull StdURI PRIMARY_TOPIC = new StdURI(FOAF.primaryTopic.getURI());
     public static final @Nonnull StdURI AGE = new StdURI(FOAF.age.getURI());
     public static final @Nonnull StdURI NAME = new StdURI(FOAF.name.getURI());
     public static final @Nonnull StdURI PERSON = new StdURI(FOAF.Person.getURI());

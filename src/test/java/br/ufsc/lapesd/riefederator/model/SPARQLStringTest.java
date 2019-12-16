@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdBlank;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
@@ -94,5 +95,13 @@ public class SPARQLStringTest {
         Projection mod = Projection.builder().add("o").build();
         String str = new SPARQLString(qry, EMPTY, singleton(mod)).toString();
         assertTrue(Pattern.compile("SELECT +\\?o +WHERE").matcher(str).find());
+    }
+
+    @Test
+    public void testAskWithVars() {
+        StdVar s = new StdVar("s"), o = new StdVar("o");
+        Set<Triple> qry = singleton(new Triple(s, KNOWS, o));
+        String str = new SPARQLString(qry, EMPTY, singleton(Ask.REQUIRED)).toString();
+        assertTrue(Pattern.compile("ASK +\\{").matcher(str).find());
     }
 }

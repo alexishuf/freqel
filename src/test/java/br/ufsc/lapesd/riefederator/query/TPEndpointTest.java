@@ -33,8 +33,7 @@ import static java.net.InetAddress.getLocalHost;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.*;
 
 public class TPEndpointTest extends EndpointTestBase {
     public static final @Nonnull List<NamedFunction<InputStream, Fixture<TPEndpoint>>> endpoints;
@@ -192,5 +191,28 @@ public class TPEndpointTest extends EndpointTestBase {
                         MapSolution.build("P", NAME)
                         ),
                 Distinct.ADVISED, Projection.advised("P"));
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testForceAskWithVars(Function<InputStream, Fixture<TPEndpoint>> f) {
+        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
+            CQuery cQuery = CQuery.with(new Triple(S, P, O)).ask(true).build();
+            try (Results results = fix.endpoint.query(cQuery)) {
+                assertTrue(results.hasNext());
+                assertFalse(results.next().has("P"));
+            }
+        }
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testForceAskWithVarsNegative(Function<InputStream, Fixture<TPEndpoint>> f) {
+        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
+            CQuery cQuery = CQuery.with(new Triple(S, PRIMARY_TOPIC, O)).ask(true).build();
+            try (Results results = fix.endpoint.query(cQuery)) {
+                assertFalse(results.hasNext());
+            }
+        }
     }
 }

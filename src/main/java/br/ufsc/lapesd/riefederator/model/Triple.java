@@ -19,13 +19,23 @@ public class Triple {
 
     public enum Position {
         SUBJ, PRED, OBJ;
+
         public static List<Position> VALUES_LIST = Arrays.asList(values());
     }
-
     public Triple(@Nonnull Term subject, @Nonnull Term predicate, @Nonnull Term object) {
         this.subject = subject;
         this.predicate = predicate;
         this.object = object;
+    }
+
+    public @Nonnull Triple withSubject(@Nonnull Term term) {
+        return new Triple(term, getPredicate(), getObject());
+    }
+    public @Nonnull Triple withPredicate(@Nonnull Term term) {
+        return new Triple(getSubject(), term, getObject());
+    }
+    public @Nonnull Triple withObject(@Nonnull Term term) {
+        return new Triple(getSubject(), getPredicate(), term);
     }
 
     public @Nonnull Term getSubject() {

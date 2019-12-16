@@ -159,4 +159,23 @@ public class TripleTest {
             else          assertNotEquals(left, rRight);
         }
     }
+
+    @Test
+    public void testWith() {
+        StdURI alice = new StdURI("http://example.org/Alice");
+        StdURI bob = new StdURI("http://example.org/Bob");
+        StdURI charlie = new StdURI("http://example.org/Charlie");
+        StdURI knows = new StdURI(FOAF.knows.getURI());
+        StdURI interest = new StdURI(FOAF.interest.getURI());
+
+        Triple t0 = new Triple(alice, knows, bob);
+        Triple t1 = t0.withSubject(charlie);
+        Triple t2 = t0.withObject(charlie);
+        Triple t3 = t0.withPredicate(interest);
+
+        assertEquals(t0, new Triple(alice, knows, bob));
+        assertEquals(t1, new Triple(charlie, knows, bob));
+        assertEquals(t2, new Triple(alice, knows, charlie));
+        assertEquals(t3, new Triple(alice, interest, bob));
+    }
 }

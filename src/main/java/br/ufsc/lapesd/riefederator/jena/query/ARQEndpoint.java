@@ -55,7 +55,9 @@ public class ARQEndpoint implements CQEndpoint {
     /* ~~~ static method factories over some common source types  ~~~ */
 
     public static ARQEndpoint forModel(@Nonnull Model model) {
-        return new ARQEndpoint(model.toString(), sparql -> create(sparql, model));
+        String name = String.format("%s@%x", model.getClass().getSimpleName(),
+                                             System.identityHashCode(model));
+        return new ARQEndpoint(name, sparql -> create(sparql, model));
     }
     public static ARQEndpoint forDataset(@Nonnull Dataset dataset) {
         return new ARQEndpoint(dataset.toString(), sparql -> create(sparql, dataset));
@@ -84,6 +86,7 @@ public class ARQEndpoint implements CQEndpoint {
         switch (capability) {
             case PROJECTION:
             case DISTINCT:
+            case ASK:
                 return true;
             default:
                 return false;
