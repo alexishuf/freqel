@@ -31,8 +31,6 @@ import static org.testng.Assert.assertEquals;
 public class SelectDescriptionTest {
     public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
     public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
-    public static final @Nonnull StdURI CHARLIE = new StdURI("http://example.org/Charlie");
-    public static final @Nonnull StdURI DAVE = new StdURI("http://example.org/Dave");
     public static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
     public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
     public static final @Nonnull StdURI AGE = new StdURI(FOAF.age.getURI());
@@ -42,8 +40,6 @@ public class SelectDescriptionTest {
     public static final @Nonnull StdURI DOCUMENT = new StdURI(FOAF.Document.getURI());
     public static final @Nonnull StdURI INT = new StdURI(XSDDatatype.XSDint.getURI());
     public static final @Nonnull StdLit A_AGE = fromUnescaped("23", INT);
-    public static final @Nonnull StdLit A_NAME = fromUnescaped("alice", "en");
-    public static final @Nonnull StdVar X = new StdVar("X");
     public static final @Nonnull StdVar S = new StdVar("S");
     public static final @Nonnull StdVar P = new StdVar("P");
     public static final @Nonnull StdVar O = new StdVar("O");
