@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.description.molecules;
 
 import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
@@ -56,6 +57,12 @@ public class MoleculeBuilder {
         return this;
     }
 
+    @Contract("_ -> this")
+    public @Nonnull MoleculeBuilder add(@Nonnull Atom atom) {
+        checkAtom(atom);
+        return this;
+    }
+
     @Contract("_, _ -> this")
     public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull Atom atom) {
         return in(edge, atom, false);
@@ -70,6 +77,21 @@ public class MoleculeBuilder {
         checkAtom(atom);
         this.in.add(new MoleculeLink(edge, atom, authoritative));
         return this;
+    }
+    @Contract("_, _ -> this")
+    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull String atomName) {
+        return in(edge, atomName, false);
+    }
+    @Contract("_, _-> this")
+    public @Nonnull MoleculeBuilder inAuthoritative(@Nonnull Term edge, @Nonnull String atomName) {
+        return in(edge, atomName, true);
+    }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull String atomName,
+                                       boolean authoritative) {
+        Preconditions.checkArgument(name2atom.containsKey(atomName),
+                "No Atom named "+atomName+" in this molecule so far");
+        return in(edge, name2atom.get(atomName), authoritative);
     }
 
 
@@ -88,7 +110,21 @@ public class MoleculeBuilder {
         this.out.add(new MoleculeLink(edge, atom, authoritative));
         return this;
     }
-
+    @Contract("_, _ -> this")
+    public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull String atomName) {
+        return out(edge, atomName, false);
+    }
+    @Contract("_, _-> this")
+    public @Nonnull MoleculeBuilder outAuthoritative(@Nonnull Term edge, @Nonnull String atomName) {
+        return out(edge, atomName, true);
+    }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull String atomName,
+                                        boolean authoritative) {
+        Preconditions.checkArgument(name2atom.containsKey(atomName),
+                "No Atom named "+atomName+" in this molecule so far");
+        return out(edge, name2atom.get(atomName), authoritative);
+    }
 
     @Contract("-> new") public @Nonnull Atom buildAtom() {
         return new Atom(name, exclusive, closed, disjoint, in, out);

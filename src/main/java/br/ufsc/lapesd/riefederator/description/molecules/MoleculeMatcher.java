@@ -10,7 +10,6 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
-import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -23,6 +22,7 @@ import java.lang.ref.SoftReference;
 import java.util.*;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.*;
 
 @Immutable
 public class MoleculeMatcher {
@@ -82,6 +82,8 @@ public class MoleculeMatcher {
     private SoftReference<Map<String, Multimap<Term, LinkInfo>>> linkAtomIndex
             = new SoftReference<>(null);
     private final @Nonnull Molecule molecule;
+    @SuppressWarnings("Immutable") // it really is immutable but errorprone can't prove it.
+    private final @Nonnull Set<Triple> BAD_SET = unmodifiableSet(singleton(null));
 
     public MoleculeMatcher(@Nonnull Molecule molecule) {
         this.molecule = molecule;
@@ -151,9 +153,9 @@ public class MoleculeMatcher {
 
     private final  class State {
         private final @Nonnull  CQuery parentQuery;
-        private final @Nonnull  List<List<Triple>> exclusiveGroups;
+        private final @Nonnull  Set<Set<Triple>> exclusiveGroups;
         private final @Nonnull  Set<Triple> nonExclusiveRelevant;
-        private final @Nonnull HashMap<ImmutablePair<Term, Atom>, Boolean> visited;
+        private final @Nonnull HashMap<ImmutablePair<Term, Atom>, Set<Triple>> visited;
         private final @Nonnull Map<Term, Atom> lastMatched;
         private final @Nonnull Map<Term, CQuery> subQueries;
         private boolean built = false;
@@ -161,7 +163,7 @@ public class MoleculeMatcher {
         public State(@Nonnull CQuery query) {
             this.parentQuery = query;
             int count = query.size();
-            exclusiveGroups = new ArrayList<>(count);
+            exclusiveGroups = Sets.newHashSetWithExpectedSize(count);
             nonExclusiveRelevant = Sets.newHashSetWithExpectedSize(count);
             visited = Maps.newHashMapWithExpectedSize(molecule.getAtomCount()*2);
             lastMatched = Maps.newHashMapWithExpectedSize(count*2);
@@ -189,21 +191,28 @@ public class MoleculeMatcher {
         }
 
         private class AtomBinding {
-            private final @Nullable Term bound;
+            private final @Nonnull List<Term> bound;
             private final boolean valid;
 
+            private AtomBinding() {
+                this(null, true);
+            }
             private AtomBinding(@Nullable Term bound, boolean valid) {
-                this.bound = bound;
+                this.bound = new ArrayList<>(parentQuery.size());
+                if (bound != null)
+                    this.bound.add(bound);
                 this.valid = valid;
             }
+            public void addAll(@Nonnull AtomBinding other) {
+                this.bound.addAll(other.bound);
+            }
+
             public boolean isValid() {
                 return valid;
             }
-            @Contract("_ -> param1") @CanIgnoreReturnValue
-            public boolean rollbackIf(boolean value) {
-                if (value)
-                    lastMatched.remove(bound);
-                return value;
+
+            public void rollback() {
+                bound.forEach(lastMatched::remove);
             }
 
             @Override
@@ -223,6 +232,10 @@ public class MoleculeMatcher {
             if (old != null && (old.isDisjoint() || atom.isDisjoint())) {
                 boolean ok = old.getName().equals(atom.getName());
                 assert !ok || old.equals(atom) : "Non-unique atom names: " + old + ", " + atom;
+                if (!ok) {
+                    visited.put(ImmutablePair.of(term, atom), BAD_SET); // term is contradictory
+                    visited.put(ImmutablePair.of(term, old ), BAD_SET); // term is contradictory
+                }
                 return new AtomBinding(null, ok);
             }
             lastMatched.put(term, atom);
@@ -239,7 +252,7 @@ public class MoleculeMatcher {
                     for (LinkInfo info : lGetter.get(triple.getPredicate())) {
                         Atom atom = info.reference;
                         if (atom.isExclusive() && info.getReferenceTerm(triple).equals(term))
-                            visit(term, atom, entry.getValue());
+                            visit(term, atom, entry.getValue(), null);
                     }
                 }
             }
@@ -264,41 +277,69 @@ public class MoleculeMatcher {
             return this;
         }
 
-        public boolean visit(@Nonnull Term term, @Nonnull Atom atom, @Nonnull CQuery atomQuery) {
+        public Set<Triple> visit(@Nonnull Term term, @Nonnull Atom atom,
+                                 @Nonnull CQuery atomQuery,
+                                 @Nullable AtomBinding parentBinding) {
             if (atomQuery.isEmpty())
-                return true; //consider a a match bcs we have no evidence to cascade a failure
+                return emptySet(); //consider a a match due to lack of evidence
+
             ImmutablePair<Term, Atom> pair = ImmutablePair.of(term, atom);
-            Boolean cached = visited.get(pair);
-            if (cached != null)
-                return cached; // visit already complete or in progress
-            AtomBinding binding = bindAtom(term, atom);//check disjointness
-            visited.put(pair, binding.isValid()); //assume true until we fail
-            boolean ok = binding.isValid()
-                    && (!atom.isExclusive() || visitExclusive(atom, atomQuery));
-            if (!ok)
-                visited.put(pair, false); // record failure
-            return !binding.rollbackIf(!ok);
+            Set<Triple> matched = visited.get(pair);
+            if (matched != null)
+                return matched == BAD_SET ? null : matched; // visit already complete or in progress
+
+            AtomBinding binding = bindAtom(term, atom); //check disjointness
+            visited.put(pair, binding.isValid() ? emptySet() : BAD_SET); //assume ok until we fail
+
+            if (binding.isValid()) //only recurse if valid and exclusive
+                matched = atom.isExclusive() ? visitExclusive(atom,atomQuery,binding) : emptySet();
+
+            if (matched == null) { // failed. Undo atom bindings & record failure
+                visited.put(pair, BAD_SET);
+                binding.rollback();
+            } else if (parentBinding != null) { // not a failure
+                visited.put(pair, matched);
+                parentBinding.addAll(binding);
+            }
+
+            return matched;
         }
 
-        private boolean visitExclusive(@Nonnull Atom atom, @Nonnull CQuery qry) {
+        @Nullable
+        private Set<Triple> visitExclusive(@Nonnull Atom atom, @Nonnull CQuery qry,
+                                           @Nonnull AtomBinding parentBinding) {
             AtomLinkGetter alGetter = new AtomLinkGetter();
-            List<Triple> satisfied = new ArrayList<>(qry.size());
+            Set<Triple> satisfied = Sets.newHashSetWithExpectedSize(parentQuery.size());
+            List<Set<Triple>> absorbed = new ArrayList<>(parentQuery.size());
+            AtomBinding local = new AtomBinding(null, true);
 
             for (Triple t : qry) {
-                boolean found = false;
+                Set<Triple> found = null;
                 for (LinkInfo info : alGetter.get(atom, t.getPredicate())) {
                     Term oppTerm = info.getOpposite(atom, t);
                     Atom oppAtom = info.getOpposite(atom);
-                    if ((found = visit(oppTerm, oppAtom, subQueries.get(oppTerm)))) {
+                    if ((found = visit(oppTerm, oppAtom, subQueries.get(oppTerm), local)) != null){
                         satisfied.add(t);
+                        absorbed.add(found);
+                        satisfied.addAll(found);
                         break; // no need for further exploration
                     }
                 }
-                if (!found && atom.isClosed())
-                    return false; // zero'd out the query results. stop trying
+                if (found == null && atom.isClosed()) {
+                    local.rollback();
+                    return null; // zero'd out the query results. stop trying
+                }
             }
-            exclusiveGroups.add(satisfied); // save the group for later
-            return true;
+            if (satisfied.isEmpty()) {
+                local.rollback();
+                return null;
+            } else {
+                absorbed.forEach(exclusiveGroups::remove);
+                if (exclusiveGroups.stream().noneMatch(g -> g.containsAll(satisfied)))
+                    exclusiveGroups.add(satisfied); // save the group for later
+                parentBinding.addAll(local);
+                return satisfied;
+            }
         }
     }
 

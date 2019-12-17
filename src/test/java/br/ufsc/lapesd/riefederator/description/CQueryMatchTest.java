@@ -28,7 +28,7 @@ public class CQueryMatchTest {
 
     @Test
     public void testEmpty() {
-        CQueryMatch m = new CQueryMatch(CQuery.EMPTY, emptyList(), emptyList());
+        CQueryMatch m = new CQueryMatch(CQuery.EMPTY);
         assertTrue(m.isEmpty());
         assertEquals(m.getAllRelevant(), emptyList());
         assertEquals(m.getKnownExclusiveGroups(), emptyList());
