@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.model.term;
 
-import br.ufsc.lapesd.riefederator.model.parse.TermTypeException;
+import br.ufsc.lapesd.riefederator.model.TermTypeException;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import com.google.errorprone.annotations.Immutable;
 

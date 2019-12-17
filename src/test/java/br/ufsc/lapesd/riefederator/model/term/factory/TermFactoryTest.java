@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.model.term.factory;
 import br.ufsc.lapesd.riefederator.NamedFunction;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.jena.model.term.JenaTermFactory;
-import br.ufsc.lapesd.riefederator.model.parse.TermTypeException;
+import br.ufsc.lapesd.riefederator.model.TermTypeException;
 import br.ufsc.lapesd.riefederator.model.term.*;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
