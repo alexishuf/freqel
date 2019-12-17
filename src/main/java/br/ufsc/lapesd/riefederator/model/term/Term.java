@@ -51,22 +51,4 @@ public interface Term {
     }
 
     @Nonnull String toString(@Nonnull PrefixDict dict);
-
-    default boolean accepts(@Nonnull Term other) {
-        if (getType() != other.getType())
-            return false;
-        switch (getType()) {
-            case URI:
-                return asURI().getURI().equals(other.asURI().getURI());
-            case LITERAL:
-                Lit me = asLiteral(), him = other.asLiteral();
-                return me.getLexicalForm().equals(him.getLexicalForm())
-                        && me.getDatatype().equals(him.getDatatype());
-            case BLANK:
-                return asBlank().getId().equals(other.asBlank().getId());
-            case VAR:
-                return asVar().getName().equals(other.asVar().getName());
-        }
-        throw new IllegalStateException("Unknown type " + getType());
-    }
 }

@@ -3,10 +3,8 @@ package br.ufsc.lapesd.riefederator.model.term.factory;
 import br.ufsc.lapesd.riefederator.NamedFunction;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.jena.model.term.JenaTermFactory;
-import br.ufsc.lapesd.riefederator.model.term.Blank;
-import br.ufsc.lapesd.riefederator.model.term.Lit;
-import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.parse.TermTypeException;
+import br.ufsc.lapesd.riefederator.model.term.*;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
@@ -25,8 +23,7 @@ import java.util.function.Supplier;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
-import static org.testng.Assert.assertNotEquals;
-import static org.testng.Assert.assertNull;
+import static org.testng.Assert.*;
 
 public class TermFactoryTest {
     public static List<NamedFunction<TermFactory, TermFactory>> wrappers =
@@ -84,6 +81,9 @@ public class TermFactoryTest {
         assertEquals(b1, b1);
         assertNotEquals(b1, b2);
         assertNotEquals(b1, b3);
+        assertTrue(b1.isAnon());
+        assertTrue(b2.isAnon());
+        assertTrue(b3.isAnon());
     }
 
     @Test(dataProvider = "factoriesData")
@@ -104,6 +104,24 @@ public class TermFactoryTest {
         TermFactory f = supplier.get();
         URI u = f.createURI("http://example.org/ns#1");
         assertEquals(u.getURI(), "http://example.org/ns#" + "1");
+
+        assertFalse(u.isAnon());
+    }
+
+    @Test(dataProvider = "factoriesData")
+    public void testAs(Supplier<TermFactory> supplier) {
+        TermFactory fac = supplier.get();
+        URI u = fac.createURI("http://example.org/Alice");
+        Blank b = fac.createBlank();
+
+        assertSame(u.asURI(), u);
+        assertSame(b.asBlank(), b);
+
+        expectThrows(TermTypeException.class, () -> u.as(Blank.class));
+        expectThrows(TermTypeException.class, () -> b.as(Var.class));
+
+        assertNull(u.as(Blank.class, null));
+        assertNull(b.as(Var.class, null));
     }
 
     @Test(dataProvider = "factoriesData")

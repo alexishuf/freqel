@@ -134,6 +134,18 @@ public class TripleTest {
         assertEquals(actual, expected);
     }
 
+    @Test
+    public void testGet() {
+        StdURI alice = new StdURI("http://example.org/Alice");
+        StdURI knows = new StdURI(FOAF.knows.getURI());
+        StdURI bob = new StdURI("http://example.org/Bob");
+        Triple t = new Triple(alice, knows, bob);
+
+        assertEquals(t.get(Triple.Position.SUBJ), alice);
+        assertEquals(t.get(Triple.Position.PRED), knows);
+        assertEquals(t.get(Triple.Position.OBJ ), bob);
+    }
+
     @Test(dataProvider = "equalsData")
     public void testEquals(@Nonnull Triple left, @Nullable Triple right, boolean expected) {
         if (expected)    assertEquals(left, right);

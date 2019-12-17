@@ -311,7 +311,7 @@ public class MoleculeMatcher {
             AtomLinkGetter alGetter = new AtomLinkGetter();
             Set<Triple> satisfied = Sets.newHashSetWithExpectedSize(parentQuery.size());
             List<Set<Triple>> absorbed = new ArrayList<>(parentQuery.size());
-            AtomBinding local = new AtomBinding(null, true);
+            AtomBinding local = new AtomBinding();
 
             for (Triple t : qry) {
                 Set<Triple> found = null;

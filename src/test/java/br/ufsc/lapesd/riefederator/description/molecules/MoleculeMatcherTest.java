@@ -25,7 +25,8 @@ public class MoleculeMatcherTest {
     public static @Nonnull StdURI knows = new StdURI(FOAF.knows.getURI());
     public static @Nonnull StdURI name = new StdURI(FOAF.name.getURI());
     public static @Nonnull StdURI age = new StdURI(FOAF.age.getURI());
-    public static @Nonnull StdURI promaryTopic = new StdURI(FOAF.primaryTopic.getURI());
+    public static @Nonnull StdURI primaryTopic = new StdURI(FOAF.primaryTopic.getURI());
+    public static @Nonnull StdURI Alice = new StdURI("http://example.org/Alice");
     public static @Nonnull StdVar X = new StdVar("x");
     public static @Nonnull StdVar Y = new StdVar("y");
     public static @Nonnull StdVar Z = new StdVar("z");
@@ -38,7 +39,7 @@ public class MoleculeMatcherTest {
     public static @Nonnull Molecule person2o = Molecule.builder("Person2o")
             .out(name, new Atom("name")).out(age, new Atom("age")).build();
     public static @Nonnull Molecule person1i2o = Molecule.builder("Person1i2o")
-            .in(promaryTopic, new Atom("Document"))
+            .in(primaryTopic, new Atom("Document"))
             .out(name, new Atom("name")).out(age, new Atom("age")).build();
 
     /* ~~~ same as above but disjoint ~~~ */
@@ -68,7 +69,7 @@ public class MoleculeMatcherTest {
             .exclusive().closed().build();
     public static @Nonnull Molecule person1i2oe = Molecule.builder("Person1i2oe")
             .exclusive().closed()
-            .in(promaryTopic, new Atom("Document"))
+            .in(primaryTopic, new Atom("Document"))
             .out(name, new Atom("name")).out(age, new Atom("age"))
             .exclusive().closed().build();
 
@@ -91,7 +92,7 @@ public class MoleculeMatcherTest {
             .exclusive().closed().disjoint().build();
     public static @Nonnull Molecule person1i2oed = Molecule.builder("Person1i2oed")
             .exclusive().closed()
-            .in(promaryTopic, new Atom("Document"))
+            .in(primaryTopic, new Atom("Document"))
             .out(name, new Atom("name")).out(age, new Atom("age"))
             .exclusive().closed().disjoint().build();
 
@@ -176,42 +177,49 @@ public class MoleculeMatcherTest {
         List<Object> e = emptyList();
         return asList(
                 asList(person1o, singletonList(new Triple(X, name, Y)),
-                        e, singleton(new Triple(X, name, Y))),
+                                 e, singleton(new Triple(X, name, Y))),
                 asList(person1o, singletonList(new Triple(X, knows, Y)), e, e),
                 asList(person1o, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
-                        e, singletonList(new Triple(X, name, Y))),
+                                 e, singletonList(new Triple(X, name, Y))),
+                asList(person1o, singletonList(new Triple(X, Y, Z)),
+                                 e, singletonList(new Triple(X, Y, Z))),
                 //ok: neither "name" nor "person1o" is disjoint
                 asList(person1o, singletonList(new Triple(X, name, X)),
-                        e, singleton(new Triple(X, name, X))),
+                                   e, singleton(new Triple(X, name, X))),
 
                 asList(person2o, singletonList(new Triple(X, name, Y)),
-                        e, singleton(new Triple(X, name, Y))),
+                                   e, singleton(new Triple(X, name, Y))),
                 asList(person2o, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
-                        e, newHashSet(new Triple(X, name, Y), new Triple(X, age, Z))),
+                                 e, newHashSet(new Triple(X, name, Y), new Triple(X, age, Z))),
                 asList(person2o, asList(new Triple(X, knows, Y), new Triple(Y, age, Z)),
-                        e, singleton(new Triple(Y, age, Z))),
+                                   e, singleton(new Triple(Y, age, Z))),
                 asList(person2o, singletonList(new Triple(X, knows, Y)), e, e),
-                asList(person2o, asList(new Triple(X, knows, Y), new Triple(Y, promaryTopic, X)),
-                        e, e),
+                asList(person2o, asList(new Triple(X, knows, Y), new Triple(Y, primaryTopic, X)),
+                                 e, e),
+                asList(person2o, singletonList(new Triple(X, Y, Z)),
+                                 e, singletonList(new Triple(X, Y, Z))),
 
                 /* the extra input in person1i2o should not change the person2o results */
                 asList(person1i2o, singletonList(new Triple(X, name, Y)),
-                        e, singleton(new Triple(X, name, Y))),
+                                   e, singleton(new Triple(X, name, Y))),
                 asList(person1i2o, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
-                        e, newHashSet(new Triple(X, name, Y), new Triple(X, age, Z))),
+                                   e, newHashSet(new Triple(X, name, Y), new Triple(X, age, Z))),
                 asList(person1i2o, asList(new Triple(X, knows, Y), new Triple(Y, age, Z)),
-                        e, singleton(new Triple(Y, age, Z))),
+                                   e, singleton(new Triple(Y, age, Z))),
                 asList(person1i2o, singletonList(new Triple(X, knows, Y)), e, e),
-                asList(person1i2o, asList(new Triple(X, knows, Y), new Triple(Y, promaryTopic, X)),
-                        e, singleton(new Triple(Y, promaryTopic, X))),
+                asList(person1i2o, asList(new Triple(X, knows, Y), new Triple(Y, primaryTopic, X)),
+                                   e, singleton(new Triple(Y, primaryTopic, X))),
+                asList(person1i2o, singletonList(new Triple(X, Y, Z)),
+                                   e, singletonList(new Triple(X, Y, Z))),
 
                 /* test matching of the input link in person1i2o */
-                asList(person1i2o, singletonList(new Triple(X, promaryTopic, Y)),
-                        e, singleton(new Triple(X, promaryTopic, Y))),
-                asList(person1i2o, asList(new Triple(X, promaryTopic, Y), new Triple(X, name, Y)),
-                        e, newHashSet(new Triple(X, promaryTopic, Y), new Triple(X, name, Y))),
-                asList(person1i2o, asList(new Triple(X, promaryTopic, Y), new Triple(X, knows, Y)),
-                        e, singleton(new Triple(X, promaryTopic, Y)))
+                asList(person1i2o, singletonList(new Triple(X, primaryTopic, Y)),
+                                   e, singleton(new Triple(X, primaryTopic, Y))),
+                asList(person1i2o, asList(new Triple(X, primaryTopic, Y), new Triple(X, name, Y)),
+                                   e, newHashSet(new Triple(X, primaryTopic, Y),
+                                                 new Triple(X, name, Y))),
+                asList(person1i2o, asList(new Triple(X, primaryTopic, Y), new Triple(X, knows, Y)),
+                                   e, singleton(new Triple(X, primaryTopic, Y)))
         );
     }
 
@@ -254,6 +262,8 @@ public class MoleculeMatcherTest {
                 asList(person1oe, singletonList(new Triple(X, knows, Y)), e, e),
                 // fails bcs AGE is not in molecule
                 asList(person1oe, asList(new Triple(X, name, Y), new Triple(X, age, Z)), e, e),
+                asList(person1oe, singletonList(new Triple(X, Y, Z)),
+                                  singleton(singleton(new Triple(X, Y, Z))), e),
 
                 asList(person2oe, singletonList(new Triple(X, name, Y)),
                                   singleton(singleton(new Triple(X, name, Y))), e),
@@ -268,8 +278,10 @@ public class MoleculeMatcherTest {
                 asList(person2oe, asList(new Triple(X, knows, Y), new Triple(Y, age, Z)), e, e),
                 // fail for the same reason as non-exclusive
                 asList(person2oe, singletonList(new Triple(X, knows, Y)), e, e),
-                asList(person2oe, asList(new Triple(X, knows, Y), new Triple(Y, promaryTopic, X)),
-                        e, e),
+                asList(person2oe, asList(new Triple(X, knows, Y), new Triple(Y, primaryTopic, X)),
+                                  e, e),
+                asList(person2oe, singletonList(new Triple(X, Y, Z)),
+                                  singleton(singleton(new Triple(X, Y, Z))), e),
 
                 /* the extra input in person1i2o should not change the person2o results */
                 asList(person1i2oe, singletonList(new Triple(X, name, Y)),
@@ -283,24 +295,26 @@ public class MoleculeMatcherTest {
                 asList(person1i2oe, singletonList(new Triple(X, knows, Y)), e, e),
                 // PRIMARY_TOPIC is in molecule, but KNOWS causes its elimination
                 asList(person1i2oe, asList(new Triple(X, knows, Y),
-                        new Triple(Y, promaryTopic, X)), e, e),
+                        new Triple(Y, primaryTopic, X)), e, e),
+                asList(person1i2oe, singletonList(new Triple(X, Y, Z)),
+                                    singleton(singleton(new Triple(X, Y, Z))), e),
 
                 /* test matching of the input link in person1i2o */
-                asList(person1i2oe, singletonList(new Triple(X, promaryTopic, Y)),
-                        singleton(singleton(new Triple(X, promaryTopic, Y))), e),
-                asList(person1i2oe, asList(new Triple(X, promaryTopic, Y),
+                asList(person1i2oe, singletonList(new Triple(X, primaryTopic, Y)),
+                        singleton(singleton(new Triple(X, primaryTopic, Y))), e),
+                asList(person1i2oe, asList(new Triple(X, primaryTopic, Y),
                         new Triple(Y, age, Z),
                         new Triple(Y, name, W)),
-                        singleton(newHashSet(new Triple(X, promaryTopic, Y),
+                        singleton(newHashSet(new Triple(X, primaryTopic, Y),
                                 new Triple(Y, age, Z),
                                 new Triple(Y, name, W))), e),
                 // ok bcs X can be both Document and person, given that they are not disjoint
-                asList(person1i2oe, asList(new Triple(X, promaryTopic, Y),
+                asList(person1i2oe, asList(new Triple(X, primaryTopic, Y),
                                            new Triple(X, name, Y)),
-                                    singleton(asList(new Triple(X, promaryTopic, Y),
+                                    singleton(asList(new Triple(X, primaryTopic, Y),
                                                      new Triple(X, name, Y))), e),
                 // fail bcs X KNOWS fail and Y matches a exclusive&complete atom
-                asList(person1i2oe, asList(new Triple(X, promaryTopic, Y),
+                asList(person1i2oe, asList(new Triple(X, primaryTopic, Y),
                         new Triple(X, knows, Y)), e, e)
         );
     }
@@ -330,18 +344,18 @@ public class MoleculeMatcherTest {
                 asList(person1i2oed, asList(new Triple(X, name, Y), new Triple(X, age, Y)),
                            singleton(asList(new Triple(X, name, Y), new Triple(X, age, Y))), e),
                 // fail: Document and Person1i2oed are disjoint
-                asList(person1i2oed, asList(new Triple(X, promaryTopic, Y),
+                asList(person1i2oed, asList(new Triple(X, primaryTopic, Y),
                                             new Triple(X, name, Y)),
                                      e, e),
                 // ok: name and age are not declared disjoint
                 asList(person1i2oed, asList(new Triple(X, name, Y), new Triple(X, age, Y),
-                        new Triple(W, promaryTopic, X)),
+                        new Triple(W, primaryTopic, X)),
                         singleton(asList(new Triple(X, name, Y),
                                 new Triple(X, age, Y),
-                                new Triple(W, promaryTopic, X))), e),
+                                new Triple(W, primaryTopic, X))), e),
                 // fail: X binds to both "person1i2oed" and "Document"
                 asList(person1i2oed, asList(new Triple(X, name, Y), new Triple(X, age, Y),
-                        new Triple(X, promaryTopic, X)),
+                        new Triple(X, primaryTopic, X)),
                         e, e)
         );
     }
@@ -351,6 +365,10 @@ public class MoleculeMatcherTest {
         return asList(
                 asList(univ, singletonList(new Triple(X, name, Y)),
                              e, singletonList(new Triple(X, name, Y))),
+                asList(univ, singletonList(new Triple(X, Y, Z)),
+                             e, singletonList(new Triple(X, Y, Z))),
+                asList(univ, singletonList(new Triple(Alice, Y, Z)),
+                             e, singletonList(new Triple(Alice, Y, Z))),
                 asList(univ, singletonList(new Triple(X, advises, Y)),
                              e, singletonList(new Triple(X, advises, Y))),
                 asList(univ, asList(new Triple(X, advises, Y), new Triple(Y, name, Z),
@@ -366,6 +384,10 @@ public class MoleculeMatcherTest {
         return asList(
                 asList(unive, singletonList(new Triple(X, name, Y)),
                               singleton(singleton(new Triple(X, name, Y))), e),
+                asList(unive, singletonList(new Triple(X, Y, Z)),
+                              singleton(singleton(new Triple(X, Y, Z))), e),
+                asList(unive, singletonList(new Triple(Alice, Y, Z)),
+                              singleton(singleton(new Triple(Alice, Y, Z))), e),
                 asList(unive, singletonList(new Triple(X, advises, Y)),
                               singleton(singleton(new Triple(X, advises, Y))), e),
                 asList(unive, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
