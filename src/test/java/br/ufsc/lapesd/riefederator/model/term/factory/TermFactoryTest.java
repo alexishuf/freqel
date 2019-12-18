@@ -219,7 +219,6 @@ public class TermFactoryTest {
     @Test(dataProvider = "factoriesAndTermsData")
     public void testEqualsWithStdTerm(Supplier<TermFactory> supplier, Term std) {
         TermFactory f = supplier.get();
-        System.out.printf("%s, %s\n", f, std);
         Term instance = null;
         if (std.isURI()) {
             instance =f.createURI(std.asURI().getURI());

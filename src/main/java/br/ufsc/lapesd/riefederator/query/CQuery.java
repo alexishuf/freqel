@@ -421,12 +421,10 @@ public class CQuery implements  List<Triple> {
                                  .hashSetValues(Math.min(count, 8)).build();
             for (int i = 0; i < list.size(); i++) {
                 Triple triple = list.get(i);
-                System.out.printf("i=%d :: %s\n", i, triple);
                 map.put(triple.getSubject(), i);
                 map.put(triple.getPredicate(), i);
                 map.put(triple.getObject(), i);
             }
-            System.out.println(t2triple);
             t2triple = new SoftReference<>(map);
         }
         return map;
