@@ -33,6 +33,19 @@ public class TBoxLoaderTest {
     }
 
     @Test
+    public void testLoadOWLByURI() {
+        Model model = new TBoxLoader().addFromResource("onto-1.ttl").getModel();
+
+        Set<Resource> ontologies = list(model, null, RDF.type, OWL2.Ontology,
+                Statement::getSubject).collect(Collectors.toSet());
+        HashSet<Resource> expected = new HashSet<>(Arrays.asList(
+                ResourceFactory.createResource("http://example.org/onto"),
+                ResourceFactory.createResource(RDFS.getURI()),
+                ResourceFactory.createResource("http://www.w3.org/2002/07/owl")));
+        assertEquals(ontologies, expected);
+    }
+
+    @Test
     public void testLoadSKOS() {
         String uri = "http://www.w3.org/2004/02/skos/core#";
         Model model = new TBoxLoader().addRDF().fetchOntology(uri).getModel();
