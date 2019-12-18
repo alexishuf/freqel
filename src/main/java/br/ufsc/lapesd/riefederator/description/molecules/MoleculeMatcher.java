@@ -36,15 +36,6 @@ public class MoleculeMatcher {
             this.link = link;
             this.incoming = incoming;
         }
-        public boolean isIncoming() {
-            return incoming;
-        }
-        public @Nonnull Atom getSubject() {
-            return incoming ? link.getAtom() : reference;
-        }
-        public @Nonnull Atom getObject() {
-            return incoming ? reference : link.getAtom();
-        }
         public @Nonnull Atom getOpposite(@Nonnull Atom other) {
             return reference.getName().equals(other.getName()) ? link.getAtom() : reference;
         }
@@ -96,12 +87,12 @@ public class MoleculeMatcher {
             synchronized (MoleculeMatcher.this) {
                 if (map == null) {
                     map = HashMultimap.create(32, 2);
-                    Set<Atom> visited = new HashSet<>();
+                    Set<String> visited = new HashSet<>();
                     ArrayDeque<Atom> stack = new ArrayDeque<>();
                     stack.push(molecule.getCore());
                     while (!stack.isEmpty()) {
                         Atom atom = stack.pop();
-                        if (!visited.add(atom)) continue;
+                        if (!visited.add(atom.getName())) continue;
                         atom.getIn ().forEach(l -> stack.push(l.getAtom()));
                         atom.getOut().forEach(l -> stack.push(l.getAtom()));
                         for (MoleculeLink link : atom.getIn())
@@ -259,21 +250,12 @@ public class MoleculeMatcher {
 
             // only try these atom-bindings after we exhausted alternatives for
             // the exclusive group candidates.
-            Set<Term> contradicted = new HashSet<>(subQueries.size());
             for (Triple triple : parentQuery) {
                 for (LinkInfo info : lGetter.get(triple.getPredicate())) {
                     if (info.reference.isExclusive()) continue;
-                    boolean fail = false;
-                    if (!bindAtom(triple.getSubject(), info.getSubject()).isValid())
-                        fail  = contradicted.add(triple.getSubject());
-                    if (!bindAtom(triple.getObject(), info.getObject()).isValid())
-                        fail |= contradicted.add(triple.getObject());
-                    if (!fail)
-                        nonExclusiveRelevant.add(triple);
+                    nonExclusiveRelevant.add(triple);
                 }
             }
-            nonExclusiveRelevant.removeIf(t ->
-                    contradicted.contains(t.getSubject()) || contradicted.contains(t.getObject()));
             return this;
         }
 
@@ -287,6 +269,7 @@ public class MoleculeMatcher {
             Set<Triple> matched = visited.get(pair);
             if (matched != null)
                 return matched == BAD_SET ? null : matched; // visit already complete or in progress
+
 
             AtomBinding binding = bindAtom(term, atom); //check disjointness
             visited.put(pair, binding.isValid() ? emptySet() : BAD_SET); //assume ok until we fail

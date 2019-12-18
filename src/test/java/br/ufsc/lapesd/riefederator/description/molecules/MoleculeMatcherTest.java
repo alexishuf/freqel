@@ -228,8 +228,9 @@ public class MoleculeMatcherTest {
         return asList(
                 asList(person1od, singletonList(new Triple(X, name, Y)),
                                   e, singleton(new Triple(X, name, Y))),
-                // fails because of disjointness
-                asList(person1od, singletonList(new Triple(X, name, X)), e, e),
+                // do not fail because person is not exclusive & closed
+                asList(person1od, singletonList(new Triple(X, name, X)),
+                                  e, singleton(new Triple(X, name, X))),
                 // ok: no conflicts (and age is not described)
                 asList(person1od, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
                                   e, singleton(new Triple(X, name, Y))),
@@ -242,10 +243,12 @@ public class MoleculeMatcherTest {
                 // ok: "name" and "age" are not declared disjoint
                 asList(person2od, asList(new Triple(X, name, Y), new Triple(X, age, Y)),
                                   e, asList(new Triple(X, name, Y), new Triple(X, age, Y))),
-                // fail: "age" is declared disjoint
-                asList(person2od1, asList(new Triple(X, name, Y), new Triple(X, age, Y)), e, e),
-                // fail: "name" and "age" are declared disjoint
-                asList(person2od2, asList(new Triple(X, name, Y), new Triple(X, age, Y)), e, e)
+                // ok: "age" is declared disjoint but not as exclusive & closed
+                asList(person2od1, asList(new Triple(X, name, Y), new Triple(X, age, Y)),
+                                   e, asList(new Triple(X, name, Y), new Triple(X, age, Y))),
+                // ok: "name" and "age" are disjoint but not exclusive&closed
+                asList(person2od2, asList(new Triple(X, name, Y), new Triple(X, age, Y)),
+                                   e, asList(new Triple(X, name, Y), new Triple(X, age, Y)))
         );
     }
 
