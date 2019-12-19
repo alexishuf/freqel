@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.model.term.std;
 
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
-import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.AbstractLit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import com.google.errorprone.annotations.Immutable;
@@ -65,10 +64,5 @@ public class StdLit extends AbstractLit {
     @Override
     public @Nullable String getLangTag() {
         return lang;
-    }
-
-    @Override
-    public String toString() {
-        return toString(StdPrefixDict.DEFAULT);
     }
 }

@@ -45,4 +45,9 @@ public class JenaTermFactory implements TermFactory {
     public @Nonnull Var createVar(@Nonnull String name) {
         throw new UnsupportedOperationException("Jena does not allow variables in RDF");
     }
+
+    @Override
+    public boolean canCreateVar() {
+        return false;
+    }
 }

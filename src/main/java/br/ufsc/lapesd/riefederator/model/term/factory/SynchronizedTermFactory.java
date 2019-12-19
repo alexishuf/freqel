@@ -72,6 +72,11 @@ public class SynchronizedTermFactory implements ThreadSafeTermFactory {
     }
 
     @Override
+    public boolean canCreateVar() {
+        return delegate.canCreateVar();
+    }
+
+    @Override
     public @Nonnull String toString() {
         return String.format("Synchronized(%s)", delegate.toString());
     }

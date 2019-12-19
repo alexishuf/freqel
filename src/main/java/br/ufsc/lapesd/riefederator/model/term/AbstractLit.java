@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.model.term;
 
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
@@ -32,5 +33,10 @@ public abstract class AbstractLit implements Lit {
     @Override
     public boolean equals(Object obj) {
         return (obj instanceof Lit) && toNT().equals(((Lit)obj).toNT());
+    }
+
+    @Override
+    public String toString() {
+        return toString(StdPrefixDict.DEFAULT);
     }
 }

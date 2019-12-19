@@ -24,10 +24,13 @@ import java.util.Set;
 
 import static br.ufsc.lapesd.riefederator.jena.ModelUtils.list;
 
+/**
+ * Builder-style class to load ontologies and their imports
+ */
 public class TBoxLoader {
     private boolean fetchImports = true;
     private final @Nonnull Set<Resource> fetched = new HashSet<>();
-    private final @Nonnull Model model;
+    private @Nullable Model model;
     private final @Nullable String name;
 
     /* --- configurations --- */
@@ -43,7 +46,6 @@ public class TBoxLoader {
     /* --- general --- */
 
     public TBoxLoader(@Nullable String name) {
-        this.model = ModelFactory.createDefaultModel();
         this.name = name;
     }
 
@@ -58,10 +60,18 @@ public class TBoxLoader {
     }
 
     public @Nonnull Model getModel() {
+        if (model == null)
+            model = ModelFactory.createDefaultModel();
         return model;
     }
 
+
     /* --- load stuff --- */
+
+    @Contract("_ -> this") @CanIgnoreReturnValue
+    public @Nonnull TBoxLoader setModel(@Nonnull Model model) {
+        return fetchImportsFor(this.model = model);
+    }
 
     /**
      * Copies the contents of model into the TBox. Ownership of model is not transferred
@@ -69,7 +79,13 @@ public class TBoxLoader {
     @Contract("_ -> this") @CanIgnoreReturnValue
     public @Nonnull TBoxLoader addModel(@Nonnull Model model) {
         list(model, null, RDF.type, OWL2.Ontology, Statement::getSubject).forEach(fetched::add);
-        this.model.add(model);
+        this.getModel().add(model);
+        fetchImportsFor(model);
+        return this;
+    }
+
+    @Contract("_ -> this") @CanIgnoreReturnValue
+    private @Nonnull TBoxLoader fetchImportsFor(@Nonnull Model model) {
         if (fetchImports) {
             list(model, null, OWL2.imports, null, Statement::getResource)
                     .filter(r -> !fetched.contains(r))

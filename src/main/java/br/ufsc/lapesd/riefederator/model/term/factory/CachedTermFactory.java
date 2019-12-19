@@ -64,6 +64,11 @@ public class CachedTermFactory implements TermFactory {
     }
 
     @Override
+    public boolean canCreateVar() {
+        return delegate.canCreateVar();
+    }
+
+    @Override
     public @Nonnull String toString() {
         return String.format("Cached(%s)", delegate);
     }

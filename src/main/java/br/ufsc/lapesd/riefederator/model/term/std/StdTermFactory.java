@@ -44,4 +44,9 @@ public class StdTermFactory implements ThreadSafeTermFactory {
     public @Nonnull Var createVar(@Nonnull String name) {
         return new StdVar(name);
     }
+
+    @Override
+    public boolean canCreateVar() {
+        return true;
+    }
 }

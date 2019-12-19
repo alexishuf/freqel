@@ -9,8 +9,11 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.owlapi.model.OWLAPITermFactory;
 import com.google.common.collect.Lists;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
@@ -31,7 +34,12 @@ public class TermFactoryTest {
                    new NamedFunction<>("CachedTermFactory", CachedTermFactory::new));
     public static List<NamedSupplier<? extends TermFactory>> nativeSuppliers =
             asList(new NamedSupplier<>(StdTermFactory.class),
-                   new NamedSupplier<>(JenaTermFactory.class));
+                   new NamedSupplier<>(JenaTermFactory.class),
+                   new NamedSupplier<>("OWLAPITermFactory", () -> {
+                       OWLOntologyManager mgr = OWLManager.createOWLOntologyManager();
+                       return new OWLAPITermFactory(mgr.getOWLDataFactory());
+                   })
+            );
     public static List<Supplier<? extends TermFactory>> suppliers;
     public static List<Term> stdTerms = asList(
             new StdURI("https://example.org/Alice"),
@@ -223,12 +231,8 @@ public class TermFactoryTest {
         if (std.isURI()) {
             instance =f.createURI(std.asURI().getURI());
         } else if (std.isVar()) {
-            try {
-                instance = f.createVar(std.asVar().getName());
-            } catch (UnsupportedOperationException ignored) {
-                // factory does not support createVar()
-                return;
-            }
+            if (!f.canCreateVar()) return;
+            instance = f.createVar(std.asVar().getName());
         } else if (std.isLiteral()) {
             Lit lit = std.asLiteral();
             String tag = lit.getLangTag();

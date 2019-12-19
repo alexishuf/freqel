@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.model.term.std;
 
-import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.AbstractBlank;
 import com.google.errorprone.annotations.Immutable;
 
@@ -37,10 +36,5 @@ public class StdBlank extends AbstractBlank {
     public @Nonnull String toString() {
         if (name != null) return "_:"+name;
         return String.format("_:0x%x", id);
-    }
-
-    @Override
-    public @Nonnull String toString(@Nonnull PrefixDict dict) {
-        return toString();
     }
 }

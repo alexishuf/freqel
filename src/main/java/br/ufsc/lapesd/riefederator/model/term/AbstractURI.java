@@ -1,6 +1,10 @@
 package br.ufsc.lapesd.riefederator.model.term;
 
+import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import com.google.errorprone.annotations.Immutable;
+
+import javax.annotation.Nonnull;
 
 @Immutable
 public abstract class AbstractURI implements URI {
@@ -10,12 +14,22 @@ public abstract class AbstractURI implements URI {
     }
 
     @Override
-    public int hashCode() {
-        return toNT().hashCode();
+    public boolean equals(Object o) {
+        return (o instanceof URI) ? getURI().equals(((URI) o).getURI()) : super.equals(o);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        return (obj instanceof URI) && toNT().equals(((URI)obj).toNT());
+    public int hashCode() {
+        return getURI().hashCode();
+    }
+
+    @Override
+    public @Nonnull String toString(@Nonnull PrefixDict dict) {
+        return dict.shorten(getURI()).toString(getURI());
+    }
+
+    @Override
+    public String toString() {
+        return toString(StdPrefixDict.DEFAULT);
     }
 }

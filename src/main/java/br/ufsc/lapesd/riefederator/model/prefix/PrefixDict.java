@@ -3,9 +3,9 @@ package br.ufsc.lapesd.riefederator.model.prefix;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
-import org.checkerframework.checker.index.qual.Positive;
 import org.jetbrains.annotations.Contract;
 
+import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Map;
@@ -66,7 +66,7 @@ public interface PrefixDict {
         /**
          * Gets the position where the namespace portion of the URI ends and the local name begins.
          */
-        public @Positive int getNamespaceEndPos() {
+        public @Nonnegative int getNamespaceEndPos() {
             return prefixEndPos;
         }
 

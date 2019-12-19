@@ -29,6 +29,8 @@ public interface Term {
     default boolean     isVar() { return getType() == Type.VAR;    }
     /** A Term is ground iff it is not a variable nor a blank node. */
     default boolean  isGround() { return !isVar() && !isBlank();   }
+    /** Implements {@link Res}, i.e., it is a blank node or an URI. */
+    default boolean     isRes() { return this instanceof Res;      }
 
     default @Nonnull URI asURI() { return as(URI.class);  }
     default @Nonnull Lit asLiteral() { return as(Lit.class);  }
