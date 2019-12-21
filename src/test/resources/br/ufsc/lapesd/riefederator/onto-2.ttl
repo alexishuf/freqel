@@ -1,0 +1,14 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix ex: <http://example.org/> .
+@prefix : <http://example.org/onto-2.ttl#> .
+
+:onto a owl:Ontology;
+  owl:imports <http://www.w3.org/ns/prov-o> ;
+  owl:imports <http://www.w3.org/2002/07/owl>, <http://www.w3.org/2000/01/rdf-schema>.
+
+:A a owl:Class.
+:A1 a owl:Class; rdfs:subClassOf :A.
+:A2 a owl:Class; rdfs:subClassOf :A.

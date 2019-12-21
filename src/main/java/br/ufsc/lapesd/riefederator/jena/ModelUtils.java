@@ -27,10 +27,14 @@ public class ModelUtils {
         return StreamSupport.stream(spl, false);
     }
 
-    public static @Nonnull <R>
-    Stream<R> list(@Nonnull Model model, @Nullable Resource s, @Nullable Property p,
-                   @Nullable Object o,
-                   @Nonnull Function<Statement, R> project) {
+    public static @Nonnull  Stream<Statement> list(@Nonnull Model model, @Nullable Resource s,
+                                                   @Nullable Property p, @Nullable Object o) {
+        return list(model, s, p, o, Function.identity());
+    }
+
+    public static @Nonnull <R> Stream<R> list(@Nonnull Model model, @Nullable Resource s,
+                                              @Nullable Property p, @Nullable Object o,
+                                              @Nonnull Function<Statement, R> project) {
         Stream<Statement> ss;
         if (o == null || o instanceof RDFNode)
             ss = toStream(model.listStatements(s, p, (RDFNode) o));

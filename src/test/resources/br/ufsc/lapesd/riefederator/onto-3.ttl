@@ -2,9 +2,11 @@
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix : <http://example.org/onto-1.ttl#> .
+@prefix ex: <http://example.org/> .
+@prefix : <http://example.org/onto-3.ttl#> .
 
 :onto a owl:Ontology.
 
-:Thingy a owl:Class;
-  rdfs:subClassOf owl:Thing.
+:B a owl:Class.
+:B1 a owl:Class; rdfs:subClassOf :B.
+:B2 a owl:Class; rdfs:subClassOf :B.
