@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator;
+package br.ufsc.lapesd.riefederator.util;
 
 import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;

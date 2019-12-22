@@ -4,22 +4,24 @@ import br.ufsc.lapesd.riefederator.jena.ModelUtils;
 import br.ufsc.lapesd.riefederator.jena.TBoxLoader;
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
+import br.ufsc.lapesd.riefederator.util.ExtractedResource;
+import br.ufsc.lapesd.riefederator.util.ExtractedResources;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFLanguages;
+import org.jetbrains.annotations.NotNull;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.util.SimpleIRIMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.apache.jena.riot.RDFLanguages.filenameToLang;
 
@@ -228,9 +230,66 @@ public class TBoxSpec implements AutoCloseable {
         return mgr;
     }
 
+    private static class ResourceExtractedOntologies extends ExtractedResources {
+        private static final @Nonnull Map<String, String> uri2resource;
+        private final @Nonnull List<SimpleIRIMapper> mappers;
+        private final @Nonnull OWLOntologyManager manager;
+
+        static {
+            Map<String, String> map = new LinkedHashMap<>();
+            String dir = "br/ufsc/lapesd/riefederator";
+            map.put("http://www.w3.org/1999/02/22-rdf-syntax-ns", dir+"/rdf.ttl");
+            map.put("http://www.w3.org/2000/01/rdf-schema", dir+"/rdf-schema.ttl");
+            map.put("http://www.w3.org/2002/07/owl", dir+"/owl.ttl");
+            map.put("http://xmlns.com/foaf/0.1/", dir+"/foaf.rdf");
+            map.put("http://www.w3.org/2006/time", dir+"/time.ttl");
+            map.put("http://www.w3.org/ns/prov", dir+"/prov-o.ttl");
+            map.put("http://www.w3.org/ns/prov-o", dir+"/prov-o.ttl");
+            map.put("http://www.w3.org/2004/02/skos/core", dir+"/skos.rdf");
+            map.put("http://purl.org/dc/elements/1.1/", dir+"/dcelements.ttl");
+            map.put("http://purl.org/dc/dcam/", dir+"/dcam.ttl");
+            map.put("http://purl.org/dc/dcmitype/", dir+"/dctype.ttl");
+            map.put("http://purl.org/dc/terms/", dir+"/dcterms.ttl");
+            uri2resource = map;
+        }
+
+        public ResourceExtractedOntologies(@NotNull OWLOntologyManager mgr) throws IOException {
+            super(createExtractedResources());
+            manager = mgr;
+            mappers = new ArrayList<>(list.size());
+            int i = 0;
+            for (Map.Entry<String, String> e : uri2resource.entrySet()) {
+                ExtractedResource ex = list.get(i++);
+                assert ex.getResourcePath().equals(e.getValue());
+                mappers.add(new SimpleIRIMapper(IRI.create(e.getKey()), IRI.create(ex.getFile())));
+            }
+            mappers.forEach(mgr.getIRIMappers()::add);
+        }
+
+        private static @Nonnull List<ExtractedResource>
+        createExtractedResources() throws IOException {
+            List<ExtractedResource> list = new ArrayList<>();
+            try {
+                for (String resource : uri2resource.values()) {
+                    list.add(new ExtractedResource(resource));
+                }
+                return list;
+            } catch (IOException e) {
+                list.forEach(ExtractedResource::close);
+                throw e;
+            }
+        }
+
+        @Override
+        public void close() {
+            mappers.forEach(manager.getIRIMappers()::remove);
+            super.close();
+        }
+    }
+
     public @Nonnull OWLOntology loadOWLOntology(@Nonnull OWLOntologyManager mgr) {
         List<FileHandle> handles = Collections.emptyList();
-        try {
+        try (ResourceExtractedOntologies extracted = new ResourceExtractedOntologies(mgr)) {
             handles = toFileHandles();
             File main = File.createTempFile("onto_imports", ".nt");
             main.deleteOnExit();

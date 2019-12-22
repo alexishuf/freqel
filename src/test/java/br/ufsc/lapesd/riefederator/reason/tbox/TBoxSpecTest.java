@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.reason.tbox;
 
-import br.ufsc.lapesd.riefederator.ExtractedResource;
 import br.ufsc.lapesd.riefederator.jena.ModelUtils;
 import br.ufsc.lapesd.riefederator.jena.TBoxLoader;
+import br.ufsc.lapesd.riefederator.util.ExtractedResource;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.riot.Lang;

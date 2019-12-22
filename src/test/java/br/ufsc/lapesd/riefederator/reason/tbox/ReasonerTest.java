@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.reason.tbox;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.reason.tbox.owlapi.OWLAPIReasoner;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -47,11 +47,19 @@ public class ReasonerTest {
     private static final StdURI p2 = new StdURI("http://example.org/onto-5.ttl#p2");
 
     private TBoxSpec onto4, onto5;
+    private Reasoner reasoner;
 
     @BeforeMethod
     public void setUp() {
         onto4 = new TBoxSpec().addResource(getClass(), "../../onto-4.ttl");
         onto5 = new TBoxSpec().addResource(getClass(), "../../onto-5.ttl");
+    }
+
+    @AfterMethod
+    public void tearDown() throws Exception {
+        Reasoner local = this.reasoner;
+        reasoner = null;
+        if (local != null) local.close();
     }
 
     @DataProvider
@@ -66,7 +74,7 @@ public class ReasonerTest {
 
     @Test(dataProvider = "supplierData")
     public void testDirectSubclass(Supplier<Reasoner> supplier) {
-        Reasoner reasoner = supplier.get();
+        reasoner = supplier.get();
         reasoner.load(onto5);
         Set<Term> set = reasoner.subClasses(d).collect(toSet());
         assertTrue(set.contains(d1));
@@ -80,7 +88,7 @@ public class ReasonerTest {
 
     @Test(dataProvider = "supplierData")
     public void testLoadOverwrites(Supplier<Reasoner> supplier) {
-        Reasoner reasoner = supplier.get();
+        reasoner = supplier.get();
         reasoner.load(onto5);
         assertTrue(reasoner.subClasses(d).collect(toSet()).contains(d1));
         assertFalse(reasoner.subClasses(c).collect(toSet()).contains(c1));
@@ -95,7 +103,7 @@ public class ReasonerTest {
     public void testIndirectSubclass(NamedSupplier<Reasoner> supplier) {
         if (supplier.getName().equals("StructuralReasoner"))
             return; // mock reasoner, no transitivity
-        Reasoner reasoner = supplier.get();
+        reasoner = supplier.get();
         reasoner.load(onto5);
 
         Set<Term> set = reasoner.subClasses(d).collect(toSet());
@@ -118,7 +126,7 @@ public class ReasonerTest {
 
     @Test(dataProvider = "supplierData")
     public void testDirectSubProperty(Supplier<Reasoner> supplier) {
-        Reasoner reasoner = supplier.get();
+        reasoner = supplier.get();
         reasoner.load(onto5);
 
         Set<Term> set = reasoner.subProperties(p).collect(toSet());
@@ -137,7 +145,7 @@ public class ReasonerTest {
     public void testIndirectSubProperty(NamedSupplier<Reasoner> supplier) {
         if (supplier.getName().equals("StructuralReasoner"))
             return; // mock reasoner, no transitivity
-        Reasoner reasoner = supplier.get();
+        reasoner = supplier.get();
         reasoner.load(onto5);
 
         Set<Term> set = reasoner.subProperties(p).collect(toSet());

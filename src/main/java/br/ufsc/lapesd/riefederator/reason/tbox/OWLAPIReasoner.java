@@ -1,10 +1,8 @@
-package br.ufsc.lapesd.riefederator.reason.tbox.owlapi;
+package br.ufsc.lapesd.riefederator.reason.tbox;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.owlapi.model.OWLAPITerm;
 import br.ufsc.lapesd.riefederator.owlapi.model.OWLAPITermFactory;
-import br.ufsc.lapesd.riefederator.reason.tbox.Reasoner;
-import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import com.google.common.base.Preconditions;
 import org.semanticweb.HermiT.ReasonerFactory;
 import org.semanticweb.owlapi.model.AsOWLObjectProperty;
