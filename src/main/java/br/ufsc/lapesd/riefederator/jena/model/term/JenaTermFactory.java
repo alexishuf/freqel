@@ -16,6 +16,8 @@ import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
 import static org.apache.jena.rdf.model.ResourceFactory.*;
 
 public class JenaTermFactory implements TermFactory {
+    public static @Nonnull JenaTermFactory INSTANCE = new JenaTermFactory();
+
     @Override
     public @Nonnull Blank createBlank() {
         return JenaWrappers.fromAnon(createResource());

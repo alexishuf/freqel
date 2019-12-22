@@ -14,10 +14,10 @@ public class NamedSupplier<T> implements Supplier<T> {
         this.wrapped = wrapped;
     }
 
-    public NamedSupplier(@Nonnull Class<T> cls) {
+    public NamedSupplier(@Nonnull Class<? extends T> cls) {
         this.name = cls.getName().replaceAll("(\\w)\\w+\\.", "$1.");
         try {
-            Constructor<T> constructor = cls.getConstructor();
+            Constructor<? extends T> constructor = cls.getConstructor();
             wrapped = () -> {
                 try {
                     return constructor.newInstance();

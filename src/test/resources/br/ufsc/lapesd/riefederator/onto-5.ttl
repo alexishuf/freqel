@@ -1,0 +1,24 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix ex: <http://example.org/> .
+@prefix : <http://example.org/onto-5.ttl#> .
+
+:onto a owl:Ontology.
+
+:D a owl:Class.
+:D1 a owl:Class; rdfs:subClassOf :D.
+:D11 a owl:Class; rdfs:subClassOf :D1.
+:D111 a owl:Class; rdfs:subClassOf :D11.
+:D1111 a owl:Class; rdfs:subClassOf :D111.
+:D12 a owl:Class; rdfs:subClassOf :D1.
+:D2 a owl:Class; rdfs:subClassOf :D.
+
+:p a owl:ObjectProperty.
+:p1 a owl:ObjectProperty; rdfs:subPropertyOf :p.
+:p11 a owl:ObjectProperty; rdfs:subPropertyOf :p1.
+:p111 a owl:ObjectProperty; rdfs:subPropertyOf :p11.
+:p1111 a owl:ObjectProperty; rdfs:subPropertyOf :p111.
+:p12 a owl:ObjectProperty; rdfs:subPropertyOf :p1.
+:p2 a owl:ObjectProperty; rdfs:subPropertyOf :p.
