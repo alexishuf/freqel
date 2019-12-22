@@ -94,6 +94,11 @@
       <version>1.4.3.517</version>
     </dependency>
     <dependency>
+      <groupId>net.sourceforge.owlapi</groupId>
+      <artifactId>jfact</artifactId>
+      <version>5.0.3</version>
+    </dependency>
+    <dependency>
       <groupId>org.testng</groupId>
       <artifactId>testng</artifactId>
       <version>6.14.3</version>

@@ -20,7 +20,9 @@ import static org.testng.Assert.assertTrue;
 
 public class ReasonerTest {
     public static final List<NamedSupplier<Reasoner>> suppliers = Arrays.asList(
-            new NamedSupplier<>("HermiT", OWLAPIReasoner::hermitReasoner),
+            new NamedSupplier<>("HermiT", OWLAPIReasoner::hermit),
+            new NamedSupplier<>("StructuralReasoner", OWLAPIReasoner::structural),
+            new NamedSupplier<>("JFact", OWLAPIReasoner::jFact),
             new NamedSupplier<>(TransitiveClosureReasoner.class)
     );
 
@@ -90,7 +92,9 @@ public class ReasonerTest {
     }
 
     @Test(dataProvider = "supplierData")
-    public void testIndirectSubclass(Supplier<Reasoner> supplier) {
+    public void testIndirectSubclass(NamedSupplier<Reasoner> supplier) {
+        if (supplier.getName().equals("StructuralReasoner"))
+            return; // mock reasoner, no transitivity
         Reasoner reasoner = supplier.get();
         reasoner.load(onto5);
 
@@ -130,7 +134,9 @@ public class ReasonerTest {
     }
 
     @Test(dataProvider = "supplierData")
-    public void testIndirectSubProperty(Supplier<Reasoner> supplier) {
+    public void testIndirectSubProperty(NamedSupplier<Reasoner> supplier) {
+        if (supplier.getName().equals("StructuralReasoner"))
+            return; // mock reasoner, no transitivity
         Reasoner reasoner = supplier.get();
         reasoner.load(onto5);
 

@@ -10,11 +10,14 @@ import org.semanticweb.HermiT.ReasonerFactory;
 import org.semanticweb.owlapi.model.AsOWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLObject;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLRuntimeException;
 import org.semanticweb.owlapi.reasoner.InferenceType;
 import org.semanticweb.owlapi.reasoner.OWLReasoner;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
+import org.semanticweb.owlapi.reasoner.structural.StructuralReasonerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.ac.manchester.cs.jfact.JFactFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -27,15 +30,33 @@ import java.util.stream.Stream;
 public class OWLAPIReasoner implements Reasoner {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(OWLAPIReasoner.class);
     private @Nonnull OWLReasonerFactory factory;
+    private final boolean ignoreExceptionOnStreamClosure;
     private @Nullable OWLReasoner reasoner;
     private @Nullable OWLAPITermFactory termFactory;
 
     public OWLAPIReasoner(@Nonnull OWLReasonerFactory factory) {
-        this.factory = factory;
+        this(factory, false);
     }
 
-    public static @Nonnull OWLAPIReasoner hermitReasoner() {
+    public OWLAPIReasoner(@Nonnull OWLReasonerFactory factory,
+                          boolean ignoreExceptionOnStreamClosure) {
+        this.factory = factory;
+        this.ignoreExceptionOnStreamClosure = ignoreExceptionOnStreamClosure;
+    }
+
+    /** Uses HermiT through owlapi. */
+    public static @Nonnull OWLAPIReasoner hermit() {
         return new OWLAPIReasoner(new ReasonerFactory());
+    }
+
+    /** Uses owlapi's strutural reasoner. It does no reasoning, not even transitivity. */
+    public static @Nonnull OWLAPIReasoner structural() {
+        return new OWLAPIReasoner(new StructuralReasonerFactory());
+    }
+
+    /** Uses JFact reasoner. */
+    public static @Nonnull OWLAPIReasoner jFact() {
+        return new OWLAPIReasoner(new JFactFactory(), true);
     }
 
     @Override
@@ -50,7 +71,14 @@ public class OWLAPIReasoner implements Reasoner {
 
     private @Nonnull <T extends OWLObject>
     Stream<Term> streamClosure(@Nullable T s, @Nonnull BiFunction<T, Boolean, Stream<T>> getter) {
-        return s == null ? Stream.empty() : getter.apply(s, false).map(OWLAPITerm::wrap);
+        try {
+            if (s != null) return getter.apply(s, false).map(OWLAPITerm::wrap);
+        } catch (OWLRuntimeException e) {
+            if (!ignoreExceptionOnStreamClosure)
+                throw e;
+            logger.debug("streamClosure({}, {}) threw (this is somewhat expected)", s, getter, e);
+        }
+        return Stream.empty();
     }
 
     @Override

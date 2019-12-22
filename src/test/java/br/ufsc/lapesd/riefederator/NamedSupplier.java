@@ -36,6 +36,9 @@ public class NamedSupplier<T> implements Supplier<T> {
         return wrapped.get();
     }
 
+    public @Nonnull String getName() {
+        return name;
+    }
 
     @Override
     public String toString() {
