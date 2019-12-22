@@ -18,7 +18,7 @@ public class OWLAPIAnonymous extends OWLAPITerm implements Blank {
 
     @Override
     public @Nonnull Object getId() {
-        return asOWLAnonymousIndividual().getID();
+        return ((OWLAnonymousIndividual)asOWLObject()).getID();
     }
 
     @Override

@@ -4,7 +4,10 @@ import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import com.google.errorprone.annotations.Immutable;
 import org.jetbrains.annotations.Contract;
-import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.model.HasIRI;
+import org.semanticweb.owlapi.model.OWLAnonymousIndividual;
+import org.semanticweb.owlapi.model.OWLLiteral;
+import org.semanticweb.owlapi.model.OWLObject;
 
 import javax.annotation.Nonnull;
 
@@ -22,7 +25,7 @@ public abstract class OWLAPITerm implements Term {
         if (o == null) return null;
         else if (o instanceof OWLAPITerm) return (OWLAPITerm) o;
         else if (o instanceof OWLAnonymousIndividual) return new OWLAPIAnonymous(o);
-        else if (o instanceof OWLNamedIndividual) return new OWLAPINamed(o);
+        else if (o instanceof HasIRI) return new OWLAPIHasIRI(o);
         else if (o instanceof OWLLiteral) return new OWLAPILit(o);
 
         String simpleName = o.getClass().getSimpleName();
@@ -30,14 +33,6 @@ public abstract class OWLAPITerm implements Term {
     }
 
     public @Nonnull OWLObject asOWLObject() {return object;}
-    public @Nonnull OWLNamedIndividual asOWLNamedIndividual() {return (OWLNamedIndividual) object;}
-    public @Nonnull OWLAnonymousIndividual asOWLAnonymousIndividual() {return (OWLAnonymousIndividual) object;}
-    public @Nonnull OWLClass asOWLClass() {return (OWLClass)object;}
-    public @Nonnull OWLProperty asOWLProperty() {return (OWLProperty)object;}
-    public @Nonnull OWLObjectProperty asOWLObjectProperty() {return (OWLObjectProperty)object;}
-    public @Nonnull OWLDataProperty asOWLDataProperty() {return (OWLDataProperty)object;}
-    public @Nonnull OWLAnnotationProperty asOWLAnnotationProperty() {return (OWLAnnotationProperty)object;}
-    public @Nonnull OWLLiteral asOWLLiteral() {return (OWLLiteral)object;}
 
     @Override
     public String toString() {

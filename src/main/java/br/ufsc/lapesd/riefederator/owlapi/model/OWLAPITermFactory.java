@@ -1,21 +1,23 @@
 package br.ufsc.lapesd.riefederator.owlapi.model;
 
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
-import br.ufsc.lapesd.riefederator.model.term.Blank;
-import br.ufsc.lapesd.riefederator.model.term.Lit;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.model.term.*;
 import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
-import org.semanticweb.owlapi.model.OWLDataFactory;
-import org.semanticweb.owlapi.model.OWLDatatype;
+import org.semanticweb.owlapi.model.*;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.function.Function;
 
 public class OWLAPITermFactory implements TermFactory {
     private @Nonnull final OWLDataFactory dataFactory;
 
     public OWLAPITermFactory(@Nonnull OWLDataFactory dataFactory) {
         this.dataFactory = dataFactory;
+    }
+
+    public@Nonnull OWLDataFactory getDF() {
+        return dataFactory;
     }
 
     @Override
@@ -25,7 +27,7 @@ public class OWLAPITermFactory implements TermFactory {
 
     @Override
     public @Nonnull URI createURI(@Nonnull String uri) {
-        return new OWLAPINamed(dataFactory.getOWLNamedIndividual(uri));
+        return new OWLAPIHasIRI(dataFactory.getOWLNamedIndividual(uri));
     }
 
     @Override
@@ -53,5 +55,26 @@ public class OWLAPITermFactory implements TermFactory {
     @Override
     public boolean canCreateVar() {
         return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    public @Nullable <T> T convertTo(@Nonnull Term term, @Nonnull Class<T> clazz,
+                                     @Nonnull Function<String, T> fac) {
+        if (term instanceof OWLAPITerm) {
+            OWLObject object = ((OWLAPITerm) term).asOWLObject();
+            if (clazz.isAssignableFrom(object.getClass())) return (T) object;
+        }
+        if (term.isURI()) return fac.apply(term.asURI().getURI());
+        return null;
+    }
+
+    public @Nullable OWLClass convertToOWLClass(@Nonnull Term term) {
+        return convertTo(term, OWLClass.class, dataFactory::getOWLClass);
+    }
+    public @Nullable OWLObjectProperty convertToOWLObjectProperty(@Nonnull Term term) {
+        return convertTo(term, OWLObjectProperty.class, dataFactory::getOWLObjectProperty);
+    }
+    public @Nullable OWLDataProperty convertToOWLDataProperty(@Nonnull Term term) {
+        return convertTo(term, OWLDataProperty.class, dataFactory::getOWLDataProperty);
     }
 }

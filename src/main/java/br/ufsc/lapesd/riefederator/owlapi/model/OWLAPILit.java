@@ -25,17 +25,17 @@ public class OWLAPILit extends OWLAPITerm implements Lit {
 
     @Override
     public @Nonnull String getLexicalForm() {
-        return asOWLLiteral().getLiteral();
+        return ((OWLLiteral)asOWLObject()).getLiteral();
     }
 
     @Override
     public @Nonnull URI getDatatype() {
-        return new OWLAPIIRI(asOWLLiteral().getDatatype().getIRI());
+        return new OWLAPIIRI(((OWLLiteral)asOWLObject()).getDatatype().getIRI());
     }
 
     @Override
     public @Nullable String getLangTag() {
-        OWLLiteral lit = asOWLLiteral();
+        OWLLiteral lit = (OWLLiteral)asOWLObject();
         return lit.hasLang() ? lit.getLang() : null;
     }
 

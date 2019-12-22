@@ -3,22 +3,22 @@ package br.ufsc.lapesd.riefederator.owlapi.model;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import com.google.common.base.Preconditions;
-import org.semanticweb.owlapi.model.OWLNamedIndividual;
+import org.semanticweb.owlapi.model.HasIRI;
 import org.semanticweb.owlapi.model.OWLObject;
 
 import javax.annotation.Nonnull;
 
-public class OWLAPINamed extends OWLAPITerm implements URI {
+public class OWLAPIHasIRI extends OWLAPITerm implements URI {
 
-    public OWLAPINamed(@Nonnull OWLObject object) {
+    public OWLAPIHasIRI(@Nonnull OWLObject object) {
         super(object);
-        Preconditions.checkArgument(object instanceof OWLNamedIndividual,
+        Preconditions.checkArgument(object instanceof HasIRI,
                 "object must be a OWLNamedIndividual");
     }
 
     @Override
     public @Nonnull String getURI() {
-        return asOWLNamedIndividual().getIRI().toString();
+        return ((HasIRI)asOWLObject()).getIRI().toString();
     }
 
     @Override
