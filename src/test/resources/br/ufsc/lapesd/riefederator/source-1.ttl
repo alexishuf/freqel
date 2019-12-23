@@ -1,0 +1,14 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix : <http://example.org/> .
+@prefix onto: <http://example.org/source-onto-1.ttl#> .
+
+:Alice   onto:manages :Bob.
+:Bob     onto:advises :Charlie.
+:Charlie onto:mentors :Dave.
+
+:Alice   a onto:Manager.
+:Bob     a onto:Employee.
+:Charlie a onto:Employee.

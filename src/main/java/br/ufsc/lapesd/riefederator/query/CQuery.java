@@ -347,8 +347,8 @@ public class CQuery implements  List<Triple> {
         StringBuilder b = new StringBuilder(list.size()*16);
         b.append("{\n");
         for (Triple t : list) {
-            b.append("  ").append(t.getSubject().toString(dict))
-                    .append(t.getPredicate().toString(dict))
+            b.append("  ").append(t.getSubject().toString(dict)).append(' ')
+                    .append(t.getPredicate().toString(dict)).append(' ')
                     .append(t.getObject().toString(dict)).append(" .\n");
         }
         return b.append("}").toString();

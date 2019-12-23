@@ -1,0 +1,17 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix ex: <http://example.org/> .
+@prefix : <http://example.org/source-onto-1.ttl#> .
+
+: a owl:Ontology .
+
+:Person a owl:Class .
+:Employee a owl:Class; rdfs:subClassOf :Person.
+:Manager a owl:Class; rdfs:subClassOf :Employee.
+
+:knows a owl:ObjectProperty.
+:advises a owl:ObjectProperty; rdfs:subPropertyOf :knows.
+:mentors a owl:ObjectProperty; rdfs:subPropertyOf :advises.
+:manages a owl:ObjectProperty; rdfs:subPropertyOf :knows.
