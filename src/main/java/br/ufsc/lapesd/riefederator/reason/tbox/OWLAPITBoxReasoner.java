@@ -25,36 +25,39 @@ import java.util.stream.Stream;
 /**
  * Adaptor for using owlapi reasoners.
  */
-public class OWLAPIReasoner implements Reasoner {
-    private static final @Nonnull Logger logger = LoggerFactory.getLogger(OWLAPIReasoner.class);
+public class OWLAPITBoxReasoner implements TBoxReasoner {
+    private static final @Nonnull Logger logger = LoggerFactory.getLogger(OWLAPITBoxReasoner.class);
     private @Nonnull OWLReasonerFactory factory;
     private final boolean ignoreExceptionOnStreamClosure;
     private @Nullable OWLReasoner reasoner;
     private @Nullable OWLAPITermFactory termFactory;
 
-    public OWLAPIReasoner(@Nonnull OWLReasonerFactory factory) {
+    public OWLAPITBoxReasoner(@Nonnull OWLReasonerFactory factory) {
         this(factory, false);
     }
 
-    public OWLAPIReasoner(@Nonnull OWLReasonerFactory factory,
-                          boolean ignoreExceptionOnStreamClosure) {
+    public OWLAPITBoxReasoner(@Nonnull OWLReasonerFactory factory,
+                              boolean ignoreExceptionOnStreamClosure) {
         this.factory = factory;
         this.ignoreExceptionOnStreamClosure = ignoreExceptionOnStreamClosure;
     }
 
     /** Uses HermiT through owlapi. */
-    public static @Nonnull OWLAPIReasoner hermit() {
-        return new OWLAPIReasoner(new ReasonerFactory());
+    public static @Nonnull
+    OWLAPITBoxReasoner hermit() {
+        return new OWLAPITBoxReasoner(new ReasonerFactory());
     }
 
     /** Uses owlapi's strutural reasoner. It does no reasoning, not even transitivity. */
-    public static @Nonnull OWLAPIReasoner structural() {
-        return new OWLAPIReasoner(new StructuralReasonerFactory());
+    public static @Nonnull
+    OWLAPITBoxReasoner structural() {
+        return new OWLAPITBoxReasoner(new StructuralReasonerFactory());
     }
 
     /** Uses JFact reasoner. */
-    public static @Nonnull OWLAPIReasoner jFact() {
-        return new OWLAPIReasoner(new JFactFactory(), true);
+    public static @Nonnull
+    OWLAPITBoxReasoner jFact() {
+        return new OWLAPITBoxReasoner(new JFactFactory(), true);
     }
 
     @Override

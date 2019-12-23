@@ -134,7 +134,7 @@ public class CQuery implements  List<Triple> {
     public static @Contract("_ -> new") @Nonnull WithBuilder with(@Nonnull ImmutableList<Triple> query) {
         return new WithBuilder(query);
     }
-    public static @Nonnull WithBuilder with(@Nonnull List<Triple> query) {
+    public static @Nonnull WithBuilder with(@Nonnull Collection<Triple> query) {
         if (query instanceof CQuery)
             return new WithBuilder(((CQuery)query).getList());
         if (query instanceof ImmutableList)
@@ -145,7 +145,7 @@ public class CQuery implements  List<Triple> {
         return new WithBuilder(ImmutableList.of(triple));
     }
 
-    public static @Nonnull CQuery from(@Nonnull List<Triple> query) {
+    public static @Nonnull CQuery from(@Nonnull Collection<Triple> query) {
         return query instanceof CQuery ? (CQuery)query : with(query).build();
     }
     public static @Contract("_ -> new") @Nonnull CQuery from(@Nonnull Triple triple) {
@@ -325,8 +325,9 @@ public class CQuery implements  List<Triple> {
 
     @Override
     public boolean equals(Object o) {
-        return (o instanceof CQuery) && list.equals(((CQuery) o).list)
-                && modifiers.equals(((CQuery) o).modifiers);
+        if (o instanceof CQuery)
+            return list.equals(((CQuery) o).list) && modifiers.equals(((CQuery) o).modifiers);
+        return modifiers.isEmpty() && list.equals(o); //fallback only if we have no modifier
     }
 
     @Override

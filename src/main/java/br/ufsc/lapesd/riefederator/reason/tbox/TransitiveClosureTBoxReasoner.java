@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 /**
  * A Simple reasoner that only processes the transitivity of subClassOf/subPropertyOf properties.
  */
-public class TransitiveClosureReasoner implements Reasoner {
+public class TransitiveClosureTBoxReasoner implements TBoxReasoner {
     private @Nullable Model model;
 
     @Override

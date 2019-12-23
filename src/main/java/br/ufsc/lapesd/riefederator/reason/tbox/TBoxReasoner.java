@@ -5,13 +5,13 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import javax.annotation.Nonnull;
 import java.util.stream.Stream;
 
-public interface Reasoner extends AutoCloseable {
+public interface TBoxReasoner extends AutoCloseable {
     /**
      * Loads the sources into the reasoner.
      *
      * This method dicards any previously loaded TBox. This may also cause pre-materialization
      * by the reasoner. What is pre-materialized (and if something is prematerialized) is up to
-     * the {@link Reasoner} implementation.
+     * the {@link TBoxReasoner} implementation.
      *
      * @param sources source TBox
      */

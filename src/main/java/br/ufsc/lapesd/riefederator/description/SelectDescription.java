@@ -19,11 +19,11 @@ import static java.util.Objects.requireNonNull;
  * (and possibly classes).
  */
 public class SelectDescription implements Description {
-    private static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
+    protected static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
 
     private final @Nonnull CQEndpoint endpoint;
     private final boolean fetchClasses;
-    private @Nullable Set<Term> predicates, classes;
+    protected @Nullable Set<Term> predicates, classes;
 
     public SelectDescription(@Nonnull CQEndpoint endpoint) throws MissingCapabilityException {
         this(endpoint, false);
@@ -37,7 +37,7 @@ public class SelectDescription implements Description {
         this.fetchClasses = fetchClasses;
     }
 
-    private synchronized void ensureHasData() {
+    protected synchronized void ensureHasData() {
         if (predicates != null) return;
         update();
     }

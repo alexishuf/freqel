@@ -18,12 +18,12 @@ import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
-public class ReasonerTest {
-    public static final List<NamedSupplier<Reasoner>> suppliers = Arrays.asList(
-            new NamedSupplier<>("HermiT", OWLAPIReasoner::hermit),
-            new NamedSupplier<>("StructuralReasoner", OWLAPIReasoner::structural),
-            new NamedSupplier<>("JFact", OWLAPIReasoner::jFact),
-            new NamedSupplier<>(TransitiveClosureReasoner.class)
+public class TBoxReasonerTest {
+    public static final List<NamedSupplier<TBoxReasoner>> suppliers = Arrays.asList(
+            new NamedSupplier<>("HermiT", OWLAPITBoxReasoner::hermit),
+            new NamedSupplier<>("StructuralReasoner", OWLAPITBoxReasoner::structural),
+            new NamedSupplier<>("JFact", OWLAPITBoxReasoner::jFact),
+            new NamedSupplier<>(TransitiveClosureTBoxReasoner.class)
     );
 
     private static final StdURI c = new StdURI("http://example.org/onto-4.ttl#C");
@@ -47,7 +47,7 @@ public class ReasonerTest {
     private static final StdURI p2 = new StdURI("http://example.org/onto-5.ttl#p2");
 
     private TBoxSpec onto4, onto5;
-    private Reasoner reasoner;
+    private TBoxReasoner TBoxReasoner;
 
     @BeforeMethod
     public void setUp() {
@@ -57,8 +57,8 @@ public class ReasonerTest {
 
     @AfterMethod
     public void tearDown() throws Exception {
-        Reasoner local = this.reasoner;
-        reasoner = null;
+        TBoxReasoner local = this.TBoxReasoner;
+        TBoxReasoner = null;
         if (local != null) local.close();
     }
 
@@ -68,45 +68,45 @@ public class ReasonerTest {
     }
 
     @Test(dataProvider = "supplierData")
-    public void testLoadDoesNotBlowUp(@Nonnull Supplier<Reasoner> supplier) {
+    public void testLoadDoesNotBlowUp(@Nonnull Supplier<TBoxReasoner> supplier) {
         supplier.get().load(onto5);
     }
 
     @Test(dataProvider = "supplierData")
-    public void testDirectSubclass(Supplier<Reasoner> supplier) {
-        reasoner = supplier.get();
-        reasoner.load(onto5);
-        Set<Term> set = reasoner.subClasses(d).collect(toSet());
+    public void testDirectSubclass(Supplier<TBoxReasoner> supplier) {
+        TBoxReasoner = supplier.get();
+        TBoxReasoner.load(onto5);
+        Set<Term> set = TBoxReasoner.subClasses(d).collect(toSet());
         assertTrue(set.contains(d1));
         assertFalse(set.contains(d));
 
-        set = reasoner.subClasses(d1).collect(toSet());
+        set = TBoxReasoner.subClasses(d1).collect(toSet());
         assertTrue(set.contains(d11));
         assertFalse(set.contains(d1));
         assertFalse(set.contains(d2));
     }
 
     @Test(dataProvider = "supplierData")
-    public void testLoadOverwrites(Supplier<Reasoner> supplier) {
-        reasoner = supplier.get();
-        reasoner.load(onto5);
-        assertTrue(reasoner.subClasses(d).collect(toSet()).contains(d1));
-        assertFalse(reasoner.subClasses(c).collect(toSet()).contains(c1));
+    public void testLoadOverwrites(Supplier<TBoxReasoner> supplier) {
+        TBoxReasoner = supplier.get();
+        TBoxReasoner.load(onto5);
+        assertTrue(TBoxReasoner.subClasses(d).collect(toSet()).contains(d1));
+        assertFalse(TBoxReasoner.subClasses(c).collect(toSet()).contains(c1));
 
-        reasoner.load(onto4);
-        assertFalse(reasoner.subClasses(d).collect(toSet()).contains(d1));
-        assertTrue(reasoner.subClasses(c).collect(toSet()).contains(c1));
-        assertTrue(reasoner.subClasses(c).collect(toSet()).contains(c2));
+        TBoxReasoner.load(onto4);
+        assertFalse(TBoxReasoner.subClasses(d).collect(toSet()).contains(d1));
+        assertTrue(TBoxReasoner.subClasses(c).collect(toSet()).contains(c1));
+        assertTrue(TBoxReasoner.subClasses(c).collect(toSet()).contains(c2));
     }
 
     @Test(dataProvider = "supplierData")
-    public void testIndirectSubclass(NamedSupplier<Reasoner> supplier) {
+    public void testIndirectSubclass(NamedSupplier<TBoxReasoner> supplier) {
         if (supplier.getName().equals("StructuralReasoner"))
             return; // mock reasoner, no transitivity
-        reasoner = supplier.get();
-        reasoner.load(onto5);
+        TBoxReasoner = supplier.get();
+        TBoxReasoner.load(onto5);
 
-        Set<Term> set = reasoner.subClasses(d).collect(toSet());
+        Set<Term> set = TBoxReasoner.subClasses(d).collect(toSet());
         assertTrue(set.contains(d1));
         assertTrue(set.contains(d2));
         assertTrue(set.contains(d11));
@@ -114,7 +114,7 @@ public class ReasonerTest {
         assertTrue(set.contains(d111));
         assertTrue(set.contains(d1111));
 
-        set = reasoner.subClasses(d1).collect(toSet());
+        set = TBoxReasoner.subClasses(d1).collect(toSet());
         assertFalse(set.contains(d1));
         assertFalse(set.contains(d2));
         assertTrue(set.contains(d11));
@@ -125,16 +125,16 @@ public class ReasonerTest {
 
 
     @Test(dataProvider = "supplierData")
-    public void testDirectSubProperty(Supplier<Reasoner> supplier) {
-        reasoner = supplier.get();
-        reasoner.load(onto5);
+    public void testDirectSubProperty(Supplier<TBoxReasoner> supplier) {
+        TBoxReasoner = supplier.get();
+        TBoxReasoner.load(onto5);
 
-        Set<Term> set = reasoner.subProperties(p).collect(toSet());
+        Set<Term> set = TBoxReasoner.subProperties(p).collect(toSet());
         assertFalse(set.contains(p));
         assertTrue(set.contains(p1));
         assertTrue(set.contains(p2));
 
-        set = reasoner.subProperties(p1).collect(toSet());
+        set = TBoxReasoner.subProperties(p1).collect(toSet());
         assertFalse(set.contains(p1));
         assertFalse(set.contains(p2));
         assertTrue(set.contains(p11));
@@ -142,13 +142,13 @@ public class ReasonerTest {
     }
 
     @Test(dataProvider = "supplierData")
-    public void testIndirectSubProperty(NamedSupplier<Reasoner> supplier) {
+    public void testIndirectSubProperty(NamedSupplier<TBoxReasoner> supplier) {
         if (supplier.getName().equals("StructuralReasoner"))
             return; // mock reasoner, no transitivity
-        reasoner = supplier.get();
-        reasoner.load(onto5);
+        TBoxReasoner = supplier.get();
+        TBoxReasoner.load(onto5);
 
-        Set<Term> set = reasoner.subProperties(p).collect(toSet());
+        Set<Term> set = TBoxReasoner.subProperties(p).collect(toSet());
         assertFalse(set.contains(p));
         assertTrue(set.contains(p1));
         assertTrue(set.contains(p11));
@@ -157,7 +157,7 @@ public class ReasonerTest {
         assertTrue(set.contains(p12));
         assertTrue(set.contains(p2));
 
-        set = reasoner.subProperties(p1).collect(toSet());
+        set = TBoxReasoner.subProperties(p1).collect(toSet());
         assertFalse(set.contains(p));
         assertFalse(set.contains(p1));
         assertTrue(set.contains(p11));
