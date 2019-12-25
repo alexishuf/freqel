@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.jena.query;
 
 import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Capability;
@@ -94,8 +95,9 @@ public class ARQEndpoint implements CQEndpoint {
     }
 
     @Override
-    public @Nonnull Results query(@Nonnull CQuery query, @Nonnull PrefixDict dict) {
+    public @Nonnull Results query(@Nonnull CQuery query) {
         ModifierUtils.check(this, query.getModifiers());
+        PrefixDict dict = query.getPrefixDict(StdPrefixDict.EMPTY);
         SPARQLString sparql = new SPARQLString(query, dict, query.getModifiers());
         if (sparql.getType() == SPARQLString.Type.ASK) {
             try (QueryExecution exec = executionFactory.apply(sparql.getString())) {

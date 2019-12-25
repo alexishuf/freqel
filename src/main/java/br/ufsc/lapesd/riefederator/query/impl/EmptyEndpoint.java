@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
-import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -15,7 +14,7 @@ import static java.util.stream.Collectors.toSet;
 public class EmptyEndpoint implements CQEndpoint {
     @Override
     public @Nonnull
-    Results query(@Nonnull CQuery query, @Nonnull PrefixDict dict) {
+    Results query(@Nonnull CQuery query) {
         return new CollectionResults(Collections.emptyList(),
                 query.streamTerms(Var.class).map(Var::getName).collect(toSet()));
     }

@@ -51,6 +51,8 @@ public class CQuery implements  List<Triple> {
 
     private final @Nonnull ImmutableList<Triple> list;
     private final @Nonnull ImmutableList<Modifier> modifiers;
+    @SuppressWarnings("Immutable") // PrefixDict is not immutable
+    private final @Nullable PrefixDict prefixDict;
 
     /* ~~~ cache attributes ~~~ */
 
@@ -64,12 +66,18 @@ public class CQuery implements  List<Triple> {
     /* ~~~ constructor, builder & factories ~~~ */
 
     public CQuery(@Nonnull ImmutableList<Triple> query,
-                     @Nonnull ImmutableList<Modifier> modifiers) {
+                  @Nonnull ImmutableList<Modifier> modifiers, @Nullable PrefixDict prefixDict) {
         this.list = query;
         this.modifiers = modifiers;
+        this.prefixDict = prefixDict;
         t2triple = new SoftReference<>(null);
         s2triple = new SoftReference<>(null);
         o2triple = new SoftReference<>(null);
+    }
+
+    public CQuery(@Nonnull ImmutableList<Triple> query,
+                  @Nonnull ImmutableList<Modifier> modifiers) {
+        this(query, modifiers, null);
     }
 
     public static class WithBuilder {
@@ -77,6 +85,7 @@ public class CQuery implements  List<Triple> {
         private Projection.Builder projection = null;
         private boolean distinct = false, ask = false;
         private boolean distinctRequired = false, askRequired = false;
+        private @Nullable PrefixDict prefixDict = null;
 
         public WithBuilder(@Nonnull ImmutableList<Triple> list) {
             this.list = list;
@@ -120,6 +129,11 @@ public class CQuery implements  List<Triple> {
         }
         public @Contract("-> this") @Nonnull WithBuilder ask() { return ask(true); }
 
+        public @Contract("_ -> this") @Nonnull WithBuilder prefixDict(@Nonnull PrefixDict dict) {
+            prefixDict = dict;
+            return this;
+        }
+
         public @Nonnull CQuery build() {
             @SuppressWarnings("UnstableApiUsage")
             ImmutableList.Builder<Modifier> b = builderWithExpectedSize(4);
@@ -130,7 +144,7 @@ public class CQuery implements  List<Triple> {
             if (ask)
                 b.add(askRequired ? Ask.REQUIRED : Ask.ADVISED);
 
-            return new CQuery(list, b.build());
+            return new CQuery(list, b.build(), prefixDict);
         }
     }
 
@@ -155,6 +169,17 @@ public class CQuery implements  List<Triple> {
         return new CQuery(ImmutableList.of(triple), ImmutableList.of());
     }
 
+    public @Contract("_ -> new") @Nonnull CQuery withPrefixDict(@Nullable PrefixDict dict) {
+        CQuery copy = new CQuery(list, modifiers, dict);
+        copy.hash = hash;
+        copy.ask = ask;
+        copy.varsCache = varsCache;
+        copy.t2triple = t2triple;
+        copy.s2triple = s2triple;
+        copy.o2triple = o2triple;
+        return copy;
+    }
+
     /* ~~~ CQuery methods ~~~ */
 
     /** Gets the underlying immutable triple {@link List} of this {@link CQuery}. */
@@ -169,6 +194,14 @@ public class CQuery implements  List<Triple> {
         if (ask == null)
             ask = !list.isEmpty() && list.stream().allMatch(Triple::isBound);
         return ask;
+    }
+
+    public @Nullable PrefixDict getPrefixDict() {
+        return prefixDict;
+    }
+
+    public @Nonnull PrefixDict getPrefixDict(@Nonnull PrefixDict fallback) {
+        return prefixDict == null ? fallback : prefixDict;
     }
 
     /** All terms are bound, either because <code>isAsk()</code> or because it is empty. */
@@ -357,7 +390,7 @@ public class CQuery implements  List<Triple> {
 
     @Override
     public @Nonnull String toString() {
-        return toString(StdPrefixDict.DEFAULT);
+        return toString(getPrefixDict(StdPrefixDict.DEFAULT));
     }
 
     public @Nonnull String toString(@Nonnull PrefixDict dict) {

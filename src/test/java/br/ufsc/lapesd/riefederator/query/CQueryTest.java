@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -296,6 +297,22 @@ public class CQueryTest {
         assertNotEquals(CQuery.from(asList(t1, t2)), singletonList(t1));
         assertNotEquals(CQuery.from(asList(t1, t2)), asList(t2, t1));
         assertNotEquals(CQuery.EMPTY,                singletonList(t1));
+    }
+
+    @Test
+    public void testPrefixDictIgnoredOnEquals() {
+        CQuery q1 = CQuery.from(new Triple(ALICE, KNOWS, X));
+        CQuery q2 = CQuery.from(new Triple(ALICE, KNOWS, X));
+        CQuery qd = q1.withPrefixDict(StdPrefixDict.DEFAULT);
+
+        assertEquals(q1, q2);
+        assertEquals(q1.hashCode(), q2.hashCode());
+        assertEquals(q1, qd);
+        assertEquals(q1.hashCode(), qd.hashCode());
+
+        CQuery qd2 = q1.withPrefixDict(StdPrefixDict.STANDARD);
+        assertEquals(qd, qd2);
+        assertEquals(qd.hashCode(), qd2.hashCode());
     }
 
     @Test

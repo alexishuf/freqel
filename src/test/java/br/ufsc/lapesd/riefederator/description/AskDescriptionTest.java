@@ -2,7 +2,6 @@ package br.ufsc.lapesd.riefederator.description;
 
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -61,9 +60,9 @@ public class AskDescriptionTest {
         }
 
         @Override
-        public @Nonnull Results query(@Nonnull CQuery query, @Nonnull PrefixDict dict) {
+        public @Nonnull Results query(@Nonnull CQuery query) {
             ++calls;
-            return super.query(query, dict);
+            return super.query(query);
         }
     }
 

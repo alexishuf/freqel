@@ -2,7 +2,6 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
-import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
@@ -25,13 +24,13 @@ public interface CQEndpoint extends TPEndpoint {
      * @return An {@link Results} iterator
      */
     @Contract("_, _ -> new")
-    @Nonnull Results query(@Nonnull CQuery query, @Nonnull PrefixDict dict);
+    default @Nonnull Results query(@Nonnull CQuery query, @Nonnull PrefixDict dict) {
+        return query(query.withPrefixDict(dict));
+    }
 
     @Override
     @Contract("_ -> new")
-    default @Nonnull Results query(@Nonnull CQuery query) {
-        return query(query, StdPrefixDict.EMPTY);
-    }
+    @Nonnull Results query(@Nonnull CQuery query);
 
     @Override
     @Contract("_ -> new")
