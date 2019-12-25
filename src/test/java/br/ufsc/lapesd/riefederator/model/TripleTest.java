@@ -18,6 +18,7 @@ import java.util.List;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
 import static org.apache.jena.datatypes.xsd.XSDDatatype.XSDstring;
 import static org.apache.jena.rdf.model.ResourceFactory.*;
 import static org.testng.Assert.assertEquals;
@@ -132,6 +133,15 @@ public class TripleTest {
         actual.clear();
         new RDFTriple(s, p, o).forEach(actual::add);
         assertEquals(actual, expected);
+    }
+
+    @Test
+    public void testStream() {
+        StdBlank s = new StdBlank();
+        StdURI p = new StdURI(FOAF.name.getURI());
+        StdLit o = StdLit.fromEscaped("alice", "pt");
+
+        assertEquals(new Triple(s, p, o).stream().collect(toList()), asList(s, p, o));
     }
 
     @Test

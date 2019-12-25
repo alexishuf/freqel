@@ -2,6 +2,8 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
@@ -14,17 +16,15 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 
 import static br.ufsc.lapesd.riefederator.query.JoinType.OBJ_SUBJ;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 public class CQueryTest {
@@ -207,6 +207,36 @@ public class CQueryTest {
         };
     }
 
+    @DataProvider
+    public static Object[][] streamVarsData() {
+        List<Triple> triples = asList(
+                new Triple(ALICE, KNOWS, BOB),
+                new Triple(BOB, KNOWS, X),
+                new Triple(X, KNOWS, Y),
+                new Triple(ALICE, P, Z));
+        return new Object[][] {
+                new Object[] {triples.subList(0, 1), emptyList()},
+                new Object[] {triples.subList(0, 2), singletonList(X)},
+                new Object[] {triples.subList(0, 3), asList(X, Y)},
+                new Object[] {triples.subList(0, 4), asList(X, Y, P, Z)},
+        };
+    }
+
+    @DataProvider
+    public static Object[][] streamURIsData() {
+        List<Triple> triples = asList(
+                new Triple(X, P, Y),
+                new Triple(X, KNOWS, ALICE),
+                new Triple(ALICE, KNOWS, Y),
+                new Triple(ALICE, KNOWS, BOB));
+        return new Object[][] {
+                new Object[] {triples.subList(0, 1), emptyList()},
+                new Object[] {triples.subList(0, 2), asList(KNOWS, ALICE)},
+                new Object[] {triples.subList(0, 3), asList(KNOWS, ALICE)},
+                new Object[] {triples.subList(0, 4), asList(KNOWS, ALICE, BOB)},
+        };
+    }
+
     /* ~~~ test methods ~~~ */
 
     @Test
@@ -242,7 +272,7 @@ public class CQueryTest {
             copy.add(iterator.next());
         assertEquals(copy, asList(t1, t2));
 
-        assertEquals(q.stream().collect(Collectors.toList()), asList(t1, t2));
+        assertEquals(q.stream().collect(toList()), asList(t1, t2));
 
         assertEquals(q.indexOf(t1), 0);
         assertEquals(q.indexOf(t2), 1);
@@ -357,10 +387,19 @@ public class CQueryTest {
                                               @Nonnull List<Triple> seed, @Nonnull JoinType pol,
                                               @Nonnull List<Triple> expected) throws Exception {
         ExecutorService exec = Executors.newCachedThreadPool();
+        CQuery cquery = CQuery.from(query);
         ArrayList<Future<?>> futures = new ArrayList<>();
         try {
             for (int i = 0; i < 32; i++)
-                futures.add(exec.submit(() -> testTripleJoinClosure(query, seed, pol, expected)));
+                futures.add(exec.submit(() -> {
+                    CQuery closure = cquery.joinClosure(seed, pol);
+                    assertEquals(closure, expected);
+
+                    CQuery closureIncluding = cquery.joinClosure(seed, true, pol);
+                    Set<Triple> expectedIncluding = Sets.newHashSet(expected);
+                    expectedIncluding.addAll(seed);
+                    assertEquals(Sets.newHashSet(closureIncluding), expectedIncluding);
+                }));
         } finally {
             exec.shutdown();
             exec.awaitTermination(10, TimeUnit.SECONDS);
@@ -383,15 +422,50 @@ public class CQueryTest {
                                @Nonnull List<Triple.Position> positions,
                                @Nonnull List<Triple> expected) throws Exception {
         ExecutorService exec = Executors.newCachedThreadPool();
+        CQuery cQuery = CQuery.from(query);
         List<Future<?>> futures = new ArrayList<>();
         try {
             for (int i = 0; i < 32; i++)
-                futures.add(exec.submit(() -> testContaining(query, term, positions, expected)));
+                futures.add(exec.submit(
+                        () -> assertEquals(cQuery.containing(term, positions), expected)));
         } finally {
             exec.shutdown();
             exec.awaitTermination(10, TimeUnit.SECONDS);
         }
         for (Future<?> f : futures) f.get(); // throws AssertionError as ExecutionException
+    }
+
+    @Test(dataProvider = "streamVarsData")
+    public void testStreamVars(@Nonnull List<Triple> query, @Nonnull List<Var> expected) {
+        CQuery cQuery = CQuery.from(query);
+        Set<Var> actual = cQuery.streamTerms(Var.class).collect(toSet());
+        assertEquals(actual, new HashSet<>(expected));
+    }
+
+    @Test(dataProvider = "streamVarsData")
+    public void testParallelStreamVars(@Nonnull List<Triple> query,
+                                       @Nonnull List<Var> expected) throws Exception {
+        ExecutorService exec = Executors.newCachedThreadPool();
+        List<Future<?>> futures = new ArrayList<>();
+        CQuery cQuery = CQuery.from(query);
+        try {
+            for (int i = 0; i < 64; i++) {
+                futures.add(exec.submit(() -> assertEquals(cQuery.streamTerms(Var.class)
+                                                                 .collect(toSet()),
+                                                           new HashSet<>(expected))));
+            }
+        } finally {
+            exec.shutdown();
+            exec.awaitTermination(10, TimeUnit.SECONDS);
+        }
+        for (Future<?> f : futures) f.get(); // throws on test failure
+    }
+
+    @Test(dataProvider = "streamURIsData")
+    public void testStreamURIs(@Nonnull List<Triple> query, @Nonnull List<URI> expected) {
+        CQuery cQuery = CQuery.from(query);
+        Set<URI> actual = cQuery.streamTerms(URI.class).collect(toSet());
+        assertEquals(actual, new HashSet<>(expected));
     }
 
 }

@@ -27,6 +27,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.lang.ref.SoftReference;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.JoinType.Position.OBJ;
 import static br.ufsc.lapesd.riefederator.query.JoinType.Position.SUBJ;
@@ -55,6 +56,8 @@ public class CQuery implements  List<Triple> {
 
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<Multimap<Term, Integer>> t2triple, s2triple, o2triple;
+    @SuppressWarnings("Immutable")
+    private @LazyInit @Nonnull SoftReference<Set<Var>> varsCache = new SoftReference<>(null);
     private @LazyInit int hash = 0;
     private @LazyInit @Nullable Boolean ask = null;
 
@@ -171,6 +174,21 @@ public class CQuery implements  List<Triple> {
     /** All terms are bound, either because <code>isAsk()</code> or because it is empty. */
     public boolean allBound() {
         return isAsk() || list.isEmpty();
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends Term> Stream<T> streamTerms(@Nonnull Class<T> cls) {
+        if (cls == Var.class) {
+            Set<Var> strong = varsCache.get();
+            if (strong == null) {
+                strong = list.stream().flatMap(Triple::stream)
+                        .filter(t -> t instanceof Var).map(t -> (Var) t)
+                        .collect(Collectors.toSet());
+            }
+            return (Stream<T>)strong.stream();
+        }
+        return list.stream().flatMap(Triple::stream)
+                .filter(t -> cls.isAssignableFrom(t.getClass())).map(t -> (T)t).distinct();
     }
 
     /**

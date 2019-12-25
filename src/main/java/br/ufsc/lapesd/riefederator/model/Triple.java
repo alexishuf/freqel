@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 @Immutable
 public class Triple {
@@ -83,6 +84,10 @@ public class Triple {
         consumer.accept(subject);
         consumer.accept(predicate);
         consumer.accept(object);
+    }
+
+    public Stream<Term> stream() {
+        return Stream.of(subject, predicate, object);
     }
 
     /** Indicates whether term is a member (<code>equals()</code>) of this triple */
