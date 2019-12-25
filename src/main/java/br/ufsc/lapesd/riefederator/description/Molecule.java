@@ -2,9 +2,7 @@ package br.ufsc.lapesd.riefederator.description;
 
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeBuilder;
-import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
@@ -16,10 +14,9 @@ import java.util.Set;
 import static java.util.stream.Stream.concat;
 
 @Immutable
-public class Molecule implements Description {
+public class Molecule {
     private @Nonnull final Atom core;
     private final int atomCount;
-    private @Nonnull final MoleculeMatcher matcher;
 
     public static @Nonnull MoleculeBuilder builder(@Nonnull String name) {
         return new MoleculeBuilder(name);
@@ -28,7 +25,6 @@ public class Molecule implements Description {
     public Molecule(@Nonnull Atom core, int atomCount) {
         this.core = core;
         this.atomCount = atomCount;
-        this.matcher = new MoleculeMatcher(this);
     }
     public Molecule(@Nonnull Atom core) {
         this(core, countAtoms(core));
@@ -72,10 +68,5 @@ public class Molecule implements Description {
     @Override
     public int hashCode() {
         return core.hashCode();
-    }
-
-    @Override
-    public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
-        return matcher.match(query);
     }
 }

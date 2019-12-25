@@ -11,6 +11,7 @@ import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
 import javax.annotation.WillClose;
+import java.util.Collection;
 import java.util.Set;
 
 @Immutable
@@ -50,6 +51,18 @@ public class SemanticCQueryMatch extends CQueryMatch {
             if (getClass().desiredAssertionStatus())
                 Preconditions.checkArgument(this.query.contains(query), "triple not in query");
             alternatives.put(query, alternative);
+            return this;
+        }
+
+        @Override @CanIgnoreReturnValue
+        public @Nonnull Builder addExclusiveGroup(@Nonnull Collection<Triple> group) {
+            super.addExclusiveGroup(group);
+            return this;
+        }
+
+        @Override @CanIgnoreReturnValue
+        public @Nonnull Builder addTriple(@Nonnull Triple triple) {
+            super.addTriple(triple);
             return this;
         }
 

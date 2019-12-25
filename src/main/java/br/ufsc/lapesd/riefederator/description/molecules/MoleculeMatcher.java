@@ -2,163 +2,249 @@ package br.ufsc.lapesd.riefederator.description.molecules;
 
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.Molecule;
+import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
+import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Sets;
-import com.google.errorprone.annotations.Immutable;
-import com.google.errorprone.annotations.concurrent.LazyInit;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.annotation.WillClose;
 import java.lang.ref.SoftReference;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.stream.Collectors.toList;
 
-@Immutable
-public class MoleculeMatcher {
-    private static final class LinkInfo {
-        final @Nonnull Atom reference;
-        final boolean incoming;
-        final @Nonnull MoleculeLink link;
+public class MoleculeMatcher implements SemanticDescription {
+    private final @Nonnull Molecule molecule;
+    private final @Nonnull TBoxReasoner reasoner;
+    private @Nonnull SoftReference<Index> index = new SoftReference<>(null);
 
-        public LinkInfo(@Nonnull Atom reference, @Nonnull MoleculeLink link, boolean incoming) {
-            this.reference = reference;
-            this.link = link;
-            this.incoming = incoming;
-        }
-        public @Nonnull Atom getOpposite(@Nonnull Atom other) {
-            return reference.getName().equals(other.getName()) ? link.getAtom() : reference;
-        }
-        public @Nonnull Term getOpposite(@Nonnull Atom other,
-                                         @Nonnull Triple triple) {
-            if (reference.getName().equals(other.getName())) {
-                return incoming ? triple.getSubject() : triple.getObject();
-            } else {
-                return incoming ? triple.getObject() : triple.getSubject();
-            }
-        }
-        public @Nonnull Term getReferenceTerm(@Nonnull Triple triple) {
-            return incoming ? triple.getObject() : triple.getSubject();
+    public MoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBoxReasoner reasoner) {
+        this.molecule = molecule;
+        this.reasoner = reasoner;
+    }
+
+    @Override
+    public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
+        return new State(query, false).matchExclusive().matchNonExclusive().build();
+    }
+
+    @Override
+    public @Nonnull SemanticCQueryMatch semanticMatch(@Nonnull CQuery query) {
+        return new State(query, true).matchExclusive().matchNonExclusive().build();
+    }
+
+    @Override
+    public @Nonnull String toString() {
+        return String.format("MoleculeMatcher2(%s)", molecule.getCore().getName());
+    }
+
+    private @Nonnull Index getIndex() {
+        Index strong = this.index.get();
+        if (strong == null) index = new SoftReference<>(strong = new Index());
+        return strong;
+    }
+
+    private final static class Link {
+        @Nonnull Atom s, o;
+        @Nonnull Term p;
+        private int hash = 0;
+
+        public Link(@Nonnull Atom s, @Nonnull Term p, @Nonnull Atom o) {
+            this.s = s;
+            this.p = p;
+            this.o = o;
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof LinkInfo)) return false;
-            LinkInfo linkInfo = (LinkInfo) o;
-            return incoming == linkInfo.incoming &&
-                    reference.equals(linkInfo.reference) &&
-                    link.equals(linkInfo.link);
+        public boolean equals(Object o1) {
+            if (this == o1) return true;
+            if (o1 == null || getClass() != o1.getClass()) return false;
+            Link other = (Link) o1;
+            return s.equals(other.s) && p.equals(other.p) && o.equals(other.o);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(reference, incoming, link);
+            if (hash == 0)
+                hash = Objects.hash(s, o, p, hash);
+            return hash;
         }
     }
 
-    @SuppressWarnings("Immutable") @Nonnull @LazyInit
-    private SoftReference<Multimap<Term, LinkInfo>> linkIndex = new SoftReference<>(null);
-    @SuppressWarnings("Immutable") @Nonnull @LazyInit
-    private SoftReference<Map<String, Multimap<Term, LinkInfo>>> linkAtomIndex
-            = new SoftReference<>(null);
-    private final @Nonnull Molecule molecule;
-    @SuppressWarnings("Immutable") // it really is immutable but errorprone can't prove it.
-    private final @Nonnull Set<Triple> BAD_SET = unmodifiableSet(singleton(null));
+    private final static class LinkMatch {
+        @Nonnull Link l;
+        @Nonnull ImmutablePair<Term, Atom> from;
+        int tripleIdx;
+        @Nonnull Triple triple;
 
-    public MoleculeMatcher(@Nonnull Molecule molecule) {
-        this.molecule = molecule;
+        public LinkMatch(@Nonnull Link l, @Nonnull ImmutablePair<Term, Atom> from, int tripleIdx,
+                         @Nonnull Triple triple) {
+            this.l = l;
+            this.from = from;
+            this.tripleIdx = tripleIdx;
+            this.triple = triple;
+        }
+
+        public @Nonnull ImmutablePair<Term, Atom> getTo() {
+            String atomName = from.right.getName();
+            if (l.s.getName().equals(atomName) && triple.getSubject().equals(from.left))
+                return ImmutablePair.of(triple.getObject(), l.o);
+            else
+                return ImmutablePair.of(triple.getSubject(), l.s);
+        }
     }
 
-    private class LinkGetter {
-        private Multimap<Term, LinkInfo> map = linkIndex.get();
+    private class Index {
+        private final @Nonnull Map<Term, SetMultimap<String, Link>> map;
+        private final @Nonnull Multimap<Term, Link> pred2link;
+        private final @Nonnull Multimap<String, Link> subj, obj;
+        private final @Nonnull List<Atom> exclusive;
+        private final @Nonnull LoadingCache<Term, List<Term>> predicatesInIndex;
 
-        public LinkGetter() {
-            synchronized (MoleculeMatcher.this) {
-                if (map == null) {
-                    map = HashMultimap.create(32, 2);
-                    Set<String> visited = new HashSet<>();
-                    ArrayDeque<Atom> stack = new ArrayDeque<>();
-                    stack.push(molecule.getCore());
-                    while (!stack.isEmpty()) {
-                        Atom atom = stack.pop();
-                        if (!visited.add(atom.getName())) continue;
-                        atom.getIn ().forEach(l -> stack.push(l.getAtom()));
-                        atom.getOut().forEach(l -> stack.push(l.getAtom()));
-                        for (MoleculeLink link : atom.getIn())
-                            map.put(link.getEdge(), new LinkInfo(atom, link, true));
-                        for (MoleculeLink link : atom.getOut())
-                            map.put(link.getEdge(), new LinkInfo(atom, link, false));
-                    }
-                    linkIndex = new SoftReference<>(map);
+        private final int atomCount;
+
+        private Index() {
+            atomCount = molecule.getAtomCount();
+            int capacity = atomCount * 8;
+            map = new HashMap<>(capacity);
+            subj = MultimapBuilder.hashKeys(atomCount).hashSetValues().build();
+            obj = MultimapBuilder.hashKeys(atomCount).hashSetValues().build();
+            pred2link = MultimapBuilder.hashKeys(capacity).arrayListValues().build();
+            exclusive = new ArrayList<>(atomCount);
+            predicatesInIndex = CacheBuilder.newBuilder().build(new CacheLoader<Term, List<Term>>() {
+                @Override
+                public List<Term> load(@Nonnull Term key) {
+                    return loadIndexedSubProperties(key);
+                }
+            });
+
+            Queue<Atom> queue = new ArrayDeque<>();
+            queue.add(molecule.getCore());
+            HashSet<String> visited = new HashSet<>();
+            while (!queue.isEmpty()) {
+                Atom a = queue.remove();
+                if (!visited.add(a.getName()))
+                    continue;
+                if (a.isExclusive())
+                    exclusive.add(a);
+                for (MoleculeLink l : a.getIn()) {
+                    queue.add(l.getAtom());
+                    Link link = new Link(l.getAtom(), l.getEdge(), a);
+                    if (!a.isExclusive())
+                        pred2link.put(l.getEdge(), link);
+                    getAtom2Link(l.getEdge()).put(a.getName(), link);
+                    subj.put(a.getName(), link);
+                }
+                for (MoleculeLink l : a.getOut()) {
+                    queue.add(l.getAtom());
+                    Link link = new Link(a, l.getEdge(), l.getAtom());
+                    if (!a.isExclusive())
+                        pred2link.put(l.getEdge(), link);
+                    getAtom2Link(l.getEdge()).put(a.getName(), link);
+                    obj.put(a.getName(), link);
                 }
             }
         }
 
-        public @Nonnull Collection<LinkInfo> get(@Nonnull Term predicate) {
-            return predicate.isGround() ? map.get(predicate) : map.values();
+        private List<Term> loadIndexedSubProperties(@Nonnull Term predicate)  {
+            Preconditions.checkArgument(predicate.isGround());
+            return Stream.concat(reasoner.subProperties(predicate), Stream.of(predicate))
+                    .filter(p -> map.containsKey(p) || pred2link.containsKey(p)).collect(toList());
         }
-    }
 
-    private class AtomLinkGetter {
-        private final @Nonnull Map<String, Multimap<Term, LinkInfo>> map;
+        private @Nonnull SetMultimap<String, Link> getAtom2Link(@Nonnull Term predicate) {
+            return map.computeIfAbsent(predicate, k -> MultimapBuilder.hashKeys(atomCount)
+                                                                      .hashSetValues().build());
+        }
 
-        public AtomLinkGetter() {
-            synchronized (MoleculeMatcher.this) {
-                LinkGetter linkGetter = new LinkGetter();
-                Map<String, Multimap<Term, LinkInfo>> local = linkAtomIndex.get();
-                if (local == null) {
-                    local = Maps.newHashMapWithExpectedSize(molecule.getAtomCount());
-                    for (LinkInfo i : linkGetter.map.values()) {
-                        Multimap<Term, LinkInfo> mm = local.computeIfAbsent(i.reference.getName(),
-                                k -> HashMultimap.create(i.reference.edgesCount(), 4));
-                        mm.put(i.link.getEdge(), i);
-                        // record also for the other counterpart
-                        mm = local.computeIfAbsent(i.link.getAtom().getName(),
-                                k -> HashMultimap.create(i.reference.edgesCount(), 4));
-                        mm.put(i.link.getEdge(), i);
-                    }
-                    linkAtomIndex = new SoftReference<>(local);
-                }
-                map = local;
+        @Nonnull List<Atom> getExclusive() {
+            return exclusive;
+        }
+
+        @Nonnull Stream<Link> streamNE(@Nonnull Term predicate, boolean reason) {
+            Preconditions.checkArgument(predicate.isGround());
+            if (!reason)
+                return pred2link.get(predicate).stream();
+            try {
+                return predicatesInIndex.get(predicate).stream()
+                        .flatMap(p -> pred2link.get(p).stream());
+            } catch (ExecutionException e) { // should never throw
+                throw new RuntimeException(e);
             }
         }
 
-        public @Nonnull Collection<LinkInfo> get(@Nonnull Atom atom, @Nonnull Term predicate) {
-            Multimap<Term, LinkInfo> mm = map.get(atom.getName());
-            if (predicate.isGround())
-                return mm == null ? Collections.emptyList() : mm.get(predicate);
-            return mm.values();
+        @Nonnull Stream<Link> stream(@Nonnull Term predicate, @Nonnull Atom atom,
+                                     @Nullable Triple.Position atomPosition,
+                                     boolean reason) {
+            if (atomPosition == Triple.Position.PRED)
+                return Stream.empty();
+            String name = atom.getName();
+            if (predicate.isVar()) {
+                if      (atomPosition == Triple.Position.SUBJ) return subj.get(name).stream();
+                else if (atomPosition == Triple.Position.OBJ)  return  obj.get(name).stream();
+                return Stream.concat(subj.get(name).stream(), obj.get(name).stream());
+            }
+            Stream<Link> stream;
+            if (!reason) {
+                SetMultimap<String, Link> mMap = map.get(predicate);
+                stream = mMap == null ? Stream.empty() : mMap.get(name).stream();
+            } else {
+                try {
+                    stream = predicatesInIndex.get(predicate).stream()
+                                              .flatMap(p -> map.get(p).get(name).stream());
+                } catch (ExecutionException e) {
+                    throw new RuntimeException(e); // should never throw
+                }
+            }
+            if (atomPosition == Triple.Position.SUBJ)
+                return stream.filter(l -> l.s.getName().equals(name));
+            else if (atomPosition == Triple.Position.OBJ)
+                return stream.filter(l -> l.o.getName().equals(name));
+            return stream.filter(l -> l.s.getName().equals(name) || l.o.getName().equals(name));
+        }
+
+        public boolean hasPredicate(@Nonnull Term predicate, boolean reason) {
+            if (predicate.isVar())
+                return true;
+            if (reason) {
+                try {
+                    return !predicatesInIndex.get(predicate).isEmpty();
+                } catch (ExecutionException e) {
+                    throw new RuntimeException(e); // never throws
+                }
+            } else {
+                return map.containsKey(predicate) || pred2link.containsKey(predicate);
+            }
         }
     }
 
-    private final  class State {
-        private final @Nonnull  CQuery parentQuery;
-        private final @Nonnull  Set<Set<Triple>> exclusiveGroups;
-        private final @Nonnull  Set<Triple> nonExclusiveRelevant;
-        private final @Nonnull HashMap<ImmutablePair<Term, Atom>, Set<Triple>> visited;
-        private final @Nonnull Map<Term, Atom> lastMatched;
-        private final @Nonnull Map<Term, CQuery> subQueries;
-        private boolean built = false;
+    private final class State {
+        private @Nonnull final CQuery parentQuery;
+        private boolean reason;
+        private @Nonnull Map<Term, CQuery> subQueries;
+        private @Nonnull Map<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> visited;
+        private @Nonnull Multimap<ImmutablePair<Term, Atom>, LinkMatch>  incoming;
+        private @Nonnull SemanticCQueryMatch.Builder builder;
+        private @Nonnull Index idx;
 
-        public State(@Nonnull CQuery query) {
+        public State(@Nonnull CQuery query, boolean reason) {
             this.parentQuery = query;
+            this.reason = reason;
+            this.idx = getIndex();
+            this.builder = SemanticCQueryMatch.builder(query);
             int count = query.size();
-            exclusiveGroups = Sets.newHashSetWithExpectedSize(count);
-            nonExclusiveRelevant = Sets.newHashSetWithExpectedSize(count);
-            visited = Maps.newHashMapWithExpectedSize(molecule.getAtomCount()*2);
-            lastMatched = Maps.newHashMapWithExpectedSize(count*2);
-
             HashSet<Term> sos = Sets.newHashSetWithExpectedSize(count * 2);
             for (Triple t : query) {
                 sos.add(t.getSubject());
@@ -168,165 +254,120 @@ public class MoleculeMatcher {
             List<Triple.Position> positions = asList(Triple.Position.SUBJ, Triple.Position.OBJ);
             for (Term term : sos)
                 subQueries.put(term, query.containing(term, positions));
+            int atomCount = molecule.getAtomCount();
+            visited = new HashMap<>(count*atomCount);
+            incoming = MultimapBuilder.hashKeys(count*atomCount)
+                                      .arrayListValues().build();
         }
 
-        @Contract(value = "-> new")
-        @WillClose
-        public @Nonnull CQueryMatch build() {
-            Preconditions.checkState(!built, "State already built into a CQueryMatch");
-            built = true;
-            CQueryMatch.Builder builder = CQueryMatch.builder(parentQuery);
-            exclusiveGroups.forEach(builder::addExclusiveGroup);
-            nonExclusiveRelevant.forEach(builder::addTriple);
+        public @Nonnull SemanticCQueryMatch build() {
             return builder.build();
         }
 
-        private class AtomBinding {
-            private final @Nonnull List<Term> bound;
-            private final boolean valid;
-
-            private AtomBinding() {
-                this(null, true);
-            }
-            private AtomBinding(@Nullable Term bound, boolean valid) {
-                this.bound = new ArrayList<>(parentQuery.size());
-                if (bound != null)
-                    this.bound.add(bound);
-                this.valid = valid;
-            }
-            public void addAll(@Nonnull AtomBinding other) {
-                this.bound.addAll(other.bound);
-            }
-
-            public boolean isValid() {
-                return valid;
-            }
-
-            public void rollback() {
-                bound.forEach(lastMatched::remove);
-            }
-
-            @Override
-            public @Nonnull String toString() {
-                return String.format("AtomBinding(%s, %s)", valid, bound);
-            }
-        }
-
-        /**
-         * Records that a term was bound to an {@link Atom} in this molecule. The binding may
-         * be rejected by disjunction axioms within the molecule given previous bindings.
-         *
-         * @return true iff the binding was accepted.
-         */
-        private @Nonnull AtomBinding bindAtom(@Nonnull Term term, @Nonnull Atom atom) {
-            Atom old = lastMatched.get(term);
-            if (old != null && (old.isDisjoint() || atom.isDisjoint())) {
-                boolean ok = old.getName().equals(atom.getName());
-                assert !ok || old.equals(atom) : "Non-unique atom names: " + old + ", " + atom;
-                if (!ok) {
-                    visited.put(ImmutablePair.of(term, atom), BAD_SET); // term is contradictory
-                    visited.put(ImmutablePair.of(term, old ), BAD_SET); // term is contradictory
-                }
-                return new AtomBinding(null, ok);
-            }
-            lastMatched.put(term, atom);
-            return new AtomBinding(term, true);
-        }
-
-        @Contract("-> this")
-        public @Nonnull State start() {
-            LinkGetter lGetter = new LinkGetter();
-            // explore the possible exclusive groups
-            for (Map.Entry<Term, CQuery> entry : subQueries.entrySet()) {
-                Term term = entry.getKey();
-                for (Triple triple : entry.getValue()) {
-                    for (LinkInfo info : lGetter.get(triple.getPredicate())) {
-                        Atom atom = info.reference;
-                        if (atom.isExclusive() && info.getReferenceTerm(triple).equals(term))
-                            visit(term, atom, entry.getValue(), null);
-                    }
-                }
-            }
-
-            // only try these atom-bindings after we exhausted alternatives for
-            // the exclusive group candidates.
-            for (Triple triple : parentQuery) {
-                for (LinkInfo info : lGetter.get(triple.getPredicate())) {
-                    if (info.reference.isExclusive()) continue;
-                    nonExclusiveRelevant.add(triple);
+        public @Nonnull State matchNonExclusive() {
+            for (Triple t : parentQuery) {
+                if (t.getPredicate().isVar()) {
+                    builder.addTriple(t).addAlternative(t, t);
+                } else {
+                    Iterator<Link> it = idx.streamNE(t.getPredicate(), reason).iterator();
+                    if (it.hasNext())
+                        builder.addTriple(t);
+                    while (it.hasNext())
+                        builder.addAlternative(t, t.withPredicate(it.next().p));
                 }
             }
             return this;
         }
 
-        public Set<Triple> visit(@Nonnull Term term, @Nonnull Atom atom,
-                                 @Nonnull CQuery atomQuery,
-                                 @Nullable AtomBinding parentBinding) {
-            if (atomQuery.isEmpty())
-                return emptySet(); //consider a a match due to lack of evidence
-
-            ImmutablePair<Term, Atom> pair = ImmutablePair.of(term, atom);
-            Set<Triple> matched = visited.get(pair);
-            if (matched != null)
-                return matched == BAD_SET ? null : matched; // visit already complete or in progress
-
-
-            AtomBinding binding = bindAtom(term, atom); //check disjointness
-            visited.put(pair, binding.isValid() ? emptySet() : BAD_SET); //assume ok until we fail
-
-            if (binding.isValid()) //only recurse if valid and exclusive
-                matched = atom.isExclusive() ? visitExclusive(atom,atomQuery,binding) : emptySet();
-
-            if (matched == null) { // failed. Undo atom bindings & record failure
-                visited.put(pair, BAD_SET);
-                binding.rollback();
-            } else if (parentBinding != null) { // not a failure
-                visited.put(pair, matched);
-                parentBinding.addAll(binding);
-            }
-
-            return matched;
-        }
-
-        @Nullable
-        private Set<Triple> visitExclusive(@Nonnull Atom atom, @Nonnull CQuery qry,
-                                           @Nonnull AtomBinding parentBinding) {
-            AtomLinkGetter alGetter = new AtomLinkGetter();
-            Set<Triple> satisfied = Sets.newHashSetWithExpectedSize(parentQuery.size());
-            List<Set<Triple>> absorbed = new ArrayList<>(parentQuery.size());
-            AtomBinding local = new AtomBinding();
-
-            for (Triple t : qry) {
-                Set<Triple> found = null;
-                for (LinkInfo info : alGetter.get(atom, t.getPredicate())) {
-                    Term oppTerm = info.getOpposite(atom, t);
-                    Atom oppAtom = info.getOpposite(atom);
-                    if ((found = visit(oppTerm, oppAtom, subQueries.get(oppTerm), local)) != null){
-                        satisfied.add(t);
-                        absorbed.add(found);
-                        satisfied.addAll(found);
-                        break; // no need for further exploration
+        public @Nonnull State matchExclusive() {
+            Index idx = getIndex();
+            // try all term - atom combinations.
+            for (Map.Entry<Term, CQuery> entry : subQueries.entrySet()) {
+                for (Atom atom : idx.getExclusive()) {
+                    ImmutablePair<Term, Atom> termAtom = ImmutablePair.of(entry.getKey(), atom);
+                    List<List<LinkMatch>> linkLists = findLinks(entry.getValue(), termAtom);
+                    if (linkLists == null)
+                        continue; // unsatisfiable
+                    visited.put(termAtom, linkLists);
+                    for (List<LinkMatch> list : linkLists) {
+                        for (LinkMatch match : list)  incoming.put(match.getTo(), match);
                     }
                 }
-                if (found == null && atom.isClosed()) {
-                    local.rollback();
-                    return null; // zero'd out the query results. stop trying
-                }
             }
-            if (satisfied.isEmpty()) {
-                local.rollback();
-                return null;
-            } else {
-                absorbed.forEach(exclusiveGroups::remove);
-                if (exclusiveGroups.stream().noneMatch(g -> g.containsAll(satisfied)))
-                    exclusiveGroups.add(satisfied); // save the group for later
-                parentBinding.addAll(local);
-                return satisfied;
+            cascadeEliminations();
+            // save remaining exclusive groups
+            for (Map.Entry<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> e : visited.entrySet()) {
+                if (e.getValue() == null) continue;
+                saveExclusiveGroup(subQueries.get(e.getKey().left), e.getValue());
+            }
+            return this;
+        }
+
+        private void cascadeEliminations() {
+            Queue<ImmutablePair<Term, Atom>> queue = new ArrayDeque<>();
+            for (Map.Entry<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> e : visited.entrySet()) {
+                if (e.getValue() != null) continue;
+                for (LinkMatch linkMatch : incoming.get(e.getKey())) queue.add(linkMatch.from);
+            }
+            while (!queue.isEmpty()) {
+                ImmutablePair<Term, Atom> pair = queue.remove();
+                if (visited.remove(pair) == null)
+                    continue; // was previously eliminated
+                for (LinkMatch match : incoming.get(pair)) queue.add(match.from);
             }
         }
-    }
 
-    public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
-        return new State(query).start().build();
+        @Nullable List<List<LinkMatch>> findLinks(@Nonnull CQuery query,
+                                                  @Nonnull ImmutablePair<Term, Atom> termAtom) {
+            Atom atom = termAtom.right;
+            int linkCount = atom.getIn().size() + atom.getOut().size();
+            if (atom.isClosed() && query.size() > linkCount)
+                return null;
+            ArrayList<List<LinkMatch>> linkLists = new ArrayList<>(query.size());
+            int tripleIdx = -1;
+            for (Triple triple : query) {
+                int fTripleIdx = ++tripleIdx;
+                Triple.Position pos = triple.where(termAtom.left);
+                assert pos != null;
+                ArrayList<LinkMatch> found = new ArrayList<>();
+                idx.stream(triple.getPredicate(), atom, pos, reason)
+                        .forEach(l -> found.add(new LinkMatch(l, termAtom, fTripleIdx, triple)));
+                if (atom.isClosed() && found.isEmpty())
+                    return null;
+                linkLists.add(found);
+            }
+            return linkLists;
+        }
+
+        @SuppressWarnings("UnstableApiUsage")
+        void saveExclusiveGroup(@Nonnull CQuery query, @Nonnull List<List<LinkMatch>> linkLists) {
+            ArrayList<List<Term>> predicatesList = new ArrayList<>();
+            ArrayList<Triple> subQuery = new ArrayList<>(query.size());
+            HashSet<Term> temp = new HashSet<>();
+            Iterator<Triple> queryIt = query.iterator();
+            for (List<LinkMatch> list : linkLists) {
+                Triple triple = queryIt.next();
+                if (list.isEmpty())
+                    continue;
+                temp.clear();
+                for (LinkMatch linkMatch : list) temp.add(linkMatch.l.p);
+                predicatesList.add(new ArrayList<>(temp));
+                subQuery.add(triple);
+            }
+            if (subQuery.isEmpty())
+                return; //nothing to do
+            if (subQuery.size() != query.size()) //avoid new instance creation
+                query = CQuery.from(subQuery);
+            builder.addExclusiveGroup(query);
+            for (List<Term> ps : Lists.cartesianProduct(predicatesList)) {
+                ImmutableList.Builder<Triple> b =
+                        ImmutableList.builderWithExpectedSize(ps.size());
+                assert ps.size() == query.size();
+                Iterator<Term> it = ps.iterator();
+                for (Triple triple : query) b.add(triple.withPredicate(it.next()));
+                builder.addAlternative(query, CQuery.from(b.build()));
+            }
+        }
+
     }
 }

@@ -13,10 +13,7 @@ import org.jetbrains.annotations.Contract;
 import javax.annotation.Nonnull;
 import javax.annotation.WillClose;
 import java.lang.ref.SoftReference;
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 /**
@@ -47,6 +44,8 @@ public class CQueryMatch {
         protected final @Nonnull CQuery query;
         protected final @Nonnull ImmutableList.Builder<CQuery> exclusiveGroupsBuilder;
         protected final @Nonnull ImmutableList.Builder<Triple> nonExclusiveBuilder;
+        private final @Nonnull HashSet<CQuery> exclusiveGroups;
+        private final @Nonnull HashSet<Triple> nonExclusive;
         protected boolean built = false;
 
         @SuppressWarnings("UnstableApiUsage")
@@ -55,6 +54,8 @@ public class CQueryMatch {
             int capacity = Math.max(query.size() / 2, 10);
             exclusiveGroupsBuilder = ImmutableList.builderWithExpectedSize(capacity);
             nonExclusiveBuilder = ImmutableList.builderWithExpectedSize(capacity);
+            exclusiveGroups = new HashSet<>(capacity);
+            nonExclusive = new HashSet<>(capacity);
         }
 
         @Contract("_ -> this")
@@ -65,7 +66,9 @@ public class CQueryMatch {
                         "Triple in group not in query");
             }
             Preconditions.checkArgument(!group.isEmpty(), "Exclusive group cannot be empty");
-            exclusiveGroupsBuilder.add(CQuery.from(group));
+            CQuery cQuery = CQuery.from(group);
+            if (exclusiveGroups.add(cQuery))
+                exclusiveGroupsBuilder.add(cQuery);
             return this;
         }
 
@@ -74,7 +77,8 @@ public class CQueryMatch {
             Preconditions.checkState(!built);
             if (CQueryMatch.class.desiredAssertionStatus())
                 Preconditions.checkArgument(query.contains(triple), "Triple not in query");
-            nonExclusiveBuilder.add(triple);
+            if (nonExclusive.add(triple))
+                nonExclusiveBuilder.add(triple);
             return this;
         }
 
@@ -83,7 +87,7 @@ public class CQueryMatch {
             Preconditions.checkState(!built);
             built = true;
             return new CQueryMatch(query, exclusiveGroupsBuilder.build(),
-                    nonExclusiveBuilder.build());
+                                   nonExclusiveBuilder.build());
         }
     }
 

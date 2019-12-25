@@ -7,6 +7,7 @@ import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +20,14 @@ public class Triple {
 
     public enum Position {
         SUBJ, PRED, OBJ;
-
+        public Position opposite() {
+            switch (this) {
+                case SUBJ: return OBJ;
+                case PRED: return PRED;
+                case OBJ: return SUBJ;
+            }
+            throw new UnsupportedOperationException("Unkown Postion "+this);
+        }
         public static List<Position> VALUES_LIST = Arrays.asList(values());
     }
     public Triple(@Nonnull Term subject, @Nonnull Term predicate, @Nonnull Term object) {
@@ -54,6 +62,13 @@ public class Triple {
             case  OBJ: return object;
         }
         throw new UnsupportedOperationException("Cannot handle get("+position+")");
+    }
+
+    public @Nullable Position where(@Nonnull Term term) {
+        if      (  subject.equals(term)) return Position.SUBJ;
+        else if (predicate.equals(term)) return Position.PRED;
+        else if (   object.equals(term)) return Position.OBJ;
+        else                             return null;
     }
 
     /**

@@ -22,6 +22,12 @@ import java.util.stream.Stream;
 public class TransitiveClosureTBoxReasoner implements TBoxReasoner {
     private @Nullable Model model;
 
+    public TransitiveClosureTBoxReasoner() { }
+
+    public TransitiveClosureTBoxReasoner(@Nonnull TBoxSpec spec) throws TBoxLoadException {
+        load(spec);
+    }
+
     @Override
     public void load(@Nonnull TBoxSpec sources) {
         model = sources.loadModel();

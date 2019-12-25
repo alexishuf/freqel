@@ -43,20 +43,17 @@ public class OWLAPITBoxReasoner implements TBoxReasoner {
     }
 
     /** Uses HermiT through owlapi. */
-    public static @Nonnull
-    OWLAPITBoxReasoner hermit() {
+    public static @Nonnull OWLAPITBoxReasoner hermit() {
         return new OWLAPITBoxReasoner(new ReasonerFactory());
     }
 
     /** Uses owlapi's strutural reasoner. It does no reasoning, not even transitivity. */
-    public static @Nonnull
-    OWLAPITBoxReasoner structural() {
+    public static @Nonnull OWLAPITBoxReasoner structural() {
         return new OWLAPITBoxReasoner(new StructuralReasonerFactory());
     }
 
     /** Uses JFact reasoner. */
-    public static @Nonnull
-    OWLAPITBoxReasoner jFact() {
+    public static @Nonnull OWLAPITBoxReasoner jFact() {
         return new OWLAPITBoxReasoner(new JFactFactory(), true);
     }
 
