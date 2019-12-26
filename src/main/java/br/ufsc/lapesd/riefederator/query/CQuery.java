@@ -396,13 +396,17 @@ public class CQuery implements  List<Triple> {
     public @Nonnull String toString(@Nonnull PrefixDict dict) {
         if (list.isEmpty()) return "{}";
         StringBuilder b = new StringBuilder(list.size()*16);
-        b.append("{\n");
+        b.append('{');
+        if (list.size() > 1)
+            b.append('\n');
         for (Triple t : list) {
             b.append("  ").append(t.getSubject().toString(dict)).append(' ')
                     .append(t.getPredicate().toString(dict)).append(' ')
                     .append(t.getObject().toString(dict)).append(" .\n");
         }
-        return b.append("}").toString();
+        if (list.size() == 1)
+            b.setLength(b.length()-1);
+        return b.append('}').toString();
     }
 
     /* ~~~ private methods & classes ~~~ */
