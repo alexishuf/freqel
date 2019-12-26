@@ -17,7 +17,9 @@ public abstract class PlanNode {
         this.projecting = projecting;
     }
     protected PlanNode(@Nonnull Collection<String> resultVars, boolean projecting) {
-        this(new HashSet<>(resultVars), projecting);
+        this.resultVars = resultVars instanceof Set ? (Set<String>)resultVars
+                                                    : new HashSet<>(resultVars);
+        this.projecting = projecting;
     }
 
     public @Nonnull Set<String> getResultVars() {
