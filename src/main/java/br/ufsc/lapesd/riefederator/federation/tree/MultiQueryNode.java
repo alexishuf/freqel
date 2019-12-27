@@ -14,8 +14,6 @@ import static java.util.stream.Collectors.toSet;
  * There is no need to perform duplicate removals at this stage (hence it is not a Union).
  */
 public class MultiQueryNode extends PlanNode {
-    private List<PlanNode> children;
-
     public static class Builder {
         private List<PlanNode> list = new ArrayList<>();
         private Set<String> resultVars = null;
@@ -83,19 +81,15 @@ public class MultiQueryNode extends PlanNode {
 
     protected MultiQueryNode(@Nonnull List<PlanNode> children, @Nonnull Collection<String> resultVars,
                              boolean projecting) {
-        super(resultVars, projecting);
-        this.children = children;
-    }
-
-    public List<PlanNode> getChildren() {
-        return children;
+        super(resultVars, projecting, children);
     }
 
     @Override
     protected @Nonnull StringBuilder toString(@Nonnull StringBuilder b) {
         if (isProjecting())
             b.append(getPiWithNames()).append('(');
-        for (PlanNode child : children) b.append(child).append(" + ");
+        for (PlanNode child : getChildren())
+            child.toString(b).append(" + ");
         b.setLength(b.length()-3);
         if (isProjecting())
             b.append(')');

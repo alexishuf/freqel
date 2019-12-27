@@ -6,24 +6,34 @@ import org.jetbrains.annotations.Contract;
 import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public abstract class PlanNode {
     private @Nonnull Set<String> resultVars;
     private boolean projecting;
+    private @Nonnull List<PlanNode> children;
 
-    protected PlanNode(@Nonnull Set<String> resultVars, boolean projecting) {
+    protected PlanNode(@Nonnull Set<String> resultVars, boolean projecting,
+                       @Nonnull List<PlanNode> children) {
         this.resultVars = resultVars;
         this.projecting = projecting;
+        this.children = children;
     }
-    protected PlanNode(@Nonnull Collection<String> resultVars, boolean projecting) {
+    protected PlanNode(@Nonnull Collection<String> resultVars, boolean projecting,
+                       @Nonnull List<PlanNode> children) {
         this.resultVars = resultVars instanceof Set ? (Set<String>)resultVars
                                                     : new HashSet<>(resultVars);
         this.projecting = projecting;
+        this.children = children;
     }
 
     public @Nonnull Set<String> getResultVars() {
         return resultVars;
+    }
+
+    public @Nonnull List<PlanNode> getChildren() {
+        return children;
     }
 
     public boolean isProjecting() {

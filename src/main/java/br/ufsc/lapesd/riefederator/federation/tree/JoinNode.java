@@ -6,14 +6,10 @@ import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class JoinNode extends PlanNode {
     private @Nonnull Set<String> joinVars;
-    private @Nonnull PlanNode left, right;
 
     public static class Builder {
         private @Nonnull PlanNode left, right;
@@ -98,9 +94,7 @@ public class JoinNode extends PlanNode {
     protected JoinNode(@Nonnull PlanNode left, @Nonnull PlanNode right,
                        @Nonnull Set<String> joinVars,
                        @Nonnull Set<String> resultVars, boolean projecting) {
-        super(resultVars, projecting);
-        this.left = left;
-        this.right = right;
+        super(resultVars, projecting, Arrays.asList(left, right));
         this.joinVars = joinVars;
     }
 
@@ -109,18 +103,18 @@ public class JoinNode extends PlanNode {
     }
 
     public @Nonnull PlanNode getLeft() {
-        return left;
+        return getChildren().get(0);
     }
 
     public @Nonnull PlanNode getRight() {
-        return right;
+        return getChildren().get(1);
     }
 
     @Override
     public @Nonnull StringBuilder toString(@Nonnull StringBuilder builder) {
         if (isProjecting())
             builder.append(getPiWithNames()).append('(');
-        right.toString(left.toString(builder).append(" ⋈ "));
+        getRight().toString(getLeft().toString(builder).append(" ⋈ "));
         if (isProjecting())
             builder.append(')');
         return builder;

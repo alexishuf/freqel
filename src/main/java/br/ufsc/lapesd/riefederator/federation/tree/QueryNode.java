@@ -7,6 +7,7 @@ import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -28,7 +29,7 @@ public class QueryNode extends PlanNode {
 
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
                      @Nonnull Collection<String> varNames, boolean projecting) {
-        super(varNames, projecting);
+        super(varNames, projecting, Collections.emptyList());
         if (QueryNode.class.desiredAssertionStatus()) { //expensive checks
             Set<String> all = query.streamTerms(Var.class).map(Var::getName).collect(toSet());
             Preconditions.checkArgument(all.containsAll(varNames), "There are extra varNames");

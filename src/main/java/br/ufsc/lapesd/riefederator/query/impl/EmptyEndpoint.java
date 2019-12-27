@@ -23,4 +23,9 @@ public class EmptyEndpoint implements CQEndpoint {
     public boolean hasCapability(@Nonnull Capability capability) {
         return true;
     }
+
+    @Override
+    public @Nonnull String toString() {
+        return String.format("EmptyEndpoint@%x", System.identityHashCode(this));
+    }
 }
