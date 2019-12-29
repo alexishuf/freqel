@@ -44,6 +44,10 @@ public class CollectionResults implements Results {
         return varNames;
     }
 
+    public @Nonnull Collection<Solution> getCollection() {
+        return collection;
+    }
+
     private @Nonnull Iterator<Solution> getIterator() {
         Iterator<Solution> local = this.iterator;
         if (local == null) {

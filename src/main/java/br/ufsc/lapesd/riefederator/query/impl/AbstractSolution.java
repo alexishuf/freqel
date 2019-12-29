@@ -6,6 +6,8 @@ import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import javax.annotation.Nonnull;
+
 public abstract class AbstractSolution implements Solution {
     private static @LazyInit int hashCache = 0;
 
@@ -31,5 +33,16 @@ public abstract class AbstractSolution implements Solution {
         forEach((name, term) -> builder.append(term, rhs.get(name)));
         rhs.forEach((name, term) -> builder.append(get(name), term));
         return builder.isEquals();
+    }
+
+    @Override
+    public @Nonnull String toString() {
+        StringBuilder b = new StringBuilder();
+        b.append(getClass().getSimpleName()).append('@')
+                .append(Integer.toHexString(System.identityHashCode(this)))
+                .append('{');
+        forEach((name, value) -> b.append(name).append('=').append(value).append(", "));
+        b.setLength(b.length()-2);
+        return b.append('}').toString();
     }
 }
