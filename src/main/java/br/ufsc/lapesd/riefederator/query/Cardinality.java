@@ -47,6 +47,19 @@ public class Cardinality  {
         this.value = value;
     }
 
+    public static @Nonnull Cardinality guess(int value) {
+        return new Cardinality(Reliability.GUESS, value);
+    }
+    public static @Nonnull Cardinality lowerBound(int value) {
+        return new Cardinality(Reliability.LOWER_BOUND, value);
+    }
+    public static @Nonnull Cardinality upperBound(int value) {
+        return new Cardinality(Reliability.UPPER_BOUND, value);
+    }
+    public static @Nonnull Cardinality exact(int value) {
+        return new Cardinality(Reliability.EXACT, value);
+    }
+
     public @Nonnull Reliability getReliability() {
         return reliability;
     }
