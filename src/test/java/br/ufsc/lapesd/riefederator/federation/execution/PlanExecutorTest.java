@@ -59,6 +59,16 @@ public class PlanExecutorTest {
         return new StdURI("http://example.org/"+local);
     }
 
+    public static class SimpleModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            bind(QueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
+            bind(MultiQueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
+            bind(CartesianNodeExecutor.class).to(SimpleCartesianNodeExecutor.class);
+            bind(PlanExecutor.class).to(InjectedExecutor.class);
+        }
+    }
+
     public static final @Nonnull List<Module> modules = asList(
             new SimpleModule() {
                 @Override
@@ -104,16 +114,6 @@ public class PlanExecutorTest {
         joinsEp = ARQEndpoint.forModel(model);
     }
 
-    public static class SimpleModule extends AbstractModule {
-        @Override
-        protected void configure() {
-            bind(QueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
-            bind(MultiQueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
-            bind(CartesianNodeExecutor.class).to(SimpleCartesianNodeExecutor.class);
-            bind(PlanExecutor.class).to(InjectedExecutor.class);
-        }
-    }
-
     private void test(@Nonnull Module module, @Nonnull PlanNode root,
                       @Nonnull Set<Solution> expected) {
         Set<Solution> all = new HashSet<>();
@@ -129,7 +129,7 @@ public class PlanExecutorTest {
     @Test(dataProvider = "modulesData")
     public void testSingleQueryNode(@Nonnull Module module) {
         QueryNode node = new QueryNode(ep, CQuery.from(new Triple(ALICE, knows, X)));
-        test(module, node, Sets.newHashSet(MapSolution.build("x", BOB)));
+        test(module, node, Sets.newHashSet(MapSolution.build(X, BOB)));
     }
 
     @Test(dataProvider = "modulesData")
@@ -138,8 +138,8 @@ public class PlanExecutorTest {
         QueryNode q2 = new QueryNode(ep, CQuery.from(new Triple(X, knows, BOB)));
         MultiQueryNode node = MultiQueryNode.builder().add(q1).add(q2).build();
         test(module, node, Sets.newHashSet(
-                MapSolution.build("x", BOB),
-                MapSolution.build("x", ALICE)));
+                MapSolution.build(X, BOB),
+                MapSolution.build(X, ALICE)));
     }
 
     @Test(dataProvider = "modulesData")
@@ -148,8 +148,8 @@ public class PlanExecutorTest {
         QueryNode q2 = new QueryNode(ep, CQuery.from(new Triple(Y, knows, BOB)));
         MultiQueryNode node = MultiQueryNode.builder().add(q1).add(q2).build();
         test(module, node, Sets.newHashSet(
-                MapSolution.build("x", BOB),
-                MapSolution.build("y", ALICE)));
+                MapSolution.build(X, BOB),
+                MapSolution.build(Y, ALICE)));
     }
 
     @Test(dataProvider = "modulesData")
@@ -160,15 +160,15 @@ public class PlanExecutorTest {
 
         MultiQueryNode node = MultiQueryNode.builder().add(q1).add(q2).build();
         test(module, node, Sets.newHashSet(
-                MapSolution.build("x", Person),
+                MapSolution.build(X, Person),
                 MapSolution.builder().put("x", BOB).put("y", bob).build(),
                 MapSolution.builder().put("x", BOB).put("y", beto).build()));
 
         // intersecting...
         node = MultiQueryNode.builder().intersect().add(q1).add(q2).build();
         test(module, node, Sets.newHashSet(
-                MapSolution.build("x", Person),
-                MapSolution.build("x", BOB)));
+                MapSolution.build(X, Person),
+                MapSolution.build(X, BOB)));
     }
 
     @Test(dataProvider = "modulesData")
@@ -195,7 +195,7 @@ public class PlanExecutorTest {
         QueryNode r = new QueryNode(joinsEp, CQuery.from(new Triple(X, knows, ex("h3"))));
         JoinNode node = JoinNode.builder(l, r).build();
         test(module, node, Sets.newHashSet(
-                MapSolution.build("x", ex("h2"))
+                MapSolution.build(X, ex("h2"))
         ));
     }
 
@@ -309,16 +309,16 @@ public class PlanExecutorTest {
         QueryNode r = new QueryNode(joinsEp, CQuery.from(new Triple(Y, type, ex("Costumer"))));
         JoinNode join = JoinNode.builder(l, r).addResultVar("x").build();
         test(module, join, Sets.newHashSet(
-                MapSolution.build("x", ex("product/3")),
-                MapSolution.build("x", ex("product/4")),
-                MapSolution.build("x", ex("product/5"))
+                MapSolution.build(X, ex("product/3")),
+                MapSolution.build(X, ex("product/4")),
+                MapSolution.build(X, ex("product/5"))
         ));
 
         join = JoinNode.builder(r, l).addResultVar("x").build();
         test(module, join, Sets.newHashSet(
-                MapSolution.build("x", ex("product/3")),
-                MapSolution.build("x", ex("product/4")),
-                MapSolution.build("x", ex("product/5"))
+                MapSolution.build(X, ex("product/3")),
+                MapSolution.build(X, ex("product/4")),
+                MapSolution.build(X, ex("product/5"))
         ));
     }
 
@@ -328,16 +328,16 @@ public class PlanExecutorTest {
         QueryNode r = new QueryNode(joinsEp, CQuery.from(new Triple(Y, type, ex("Costumer"))));
         JoinNode join = JoinNode.builder(l, r).addResultVar("y").build();
         test(module, join, Sets.newHashSet(
-                MapSolution.build("y", ex("costumer/1")),
-                MapSolution.build("y", ex("costumer/2")),
-                MapSolution.build("y", ex("costumer/3"))
+                MapSolution.build(Y, ex("costumer/1")),
+                MapSolution.build(Y, ex("costumer/2")),
+                MapSolution.build(Y, ex("costumer/3"))
         ));
 
         join = JoinNode.builder(r, l).addResultVar("y").build();
         test(module, join, Sets.newHashSet(
-                MapSolution.build("y", ex("costumer/1")),
-                MapSolution.build("y", ex("costumer/2")),
-                MapSolution.build("y", ex("costumer/3"))
+                MapSolution.build(Y, ex("costumer/1")),
+                MapSolution.build(Y, ex("costumer/2")),
+                MapSolution.build(Y, ex("costumer/3"))
         ));
     }
 

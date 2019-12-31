@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Multimap;
@@ -17,7 +18,7 @@ public class HeuristicPlanner implements Planner {
         Preconditions.checkArgument(!conjunctiveNodes.isEmpty(), "Cannot plan empty queries");
         if (conjunctiveNodes.size() == 1)
             return conjunctiveNodes.iterator().next();
-        List<PlanNode> leaves = groupSameVars(conjunctiveNodes);
+        List<PlanNode> leaves = groupSameQueries(conjunctiveNodes);
         JoinGraph firstGraph = new JoinGraph(leaves);
         List<PlanNode> roots = new ArrayList<>();
         firstGraph.forEachConnectedComponent(component -> {
@@ -178,21 +179,19 @@ public class HeuristicPlanner implements Planner {
 
     }
 
-    private List<PlanNode> groupSameVars(@Nonnull Collection<QueryNode> leafs) {
-        Multimap<Set<String>, QueryNode> v2qn = MultimapBuilder.hashKeys(leafs.size())
-                .arrayListValues().build();
+    private List<PlanNode> groupSameQueries(@Nonnull Collection<QueryNode> leafs) {
+        Multimap<CQuery, QueryNode> q2qn = MultimapBuilder.hashKeys(leafs.size())
+                                                          .arrayListValues().build();
         for (QueryNode qn : leafs)
-            v2qn.put(qn.getResultVars(), qn);
-        List<PlanNode> grouped = new ArrayList<>(v2qn.keySet().size());
-        for (Set<String> key : v2qn.keySet()) {
-            Collection<QueryNode> values = v2qn.get(key);
-            if (values.size() > 1) {
-                grouped.add(MultiQueryNode.builder().addAll(values)
-                        .setResultVarsNoProjection(key).build());
-            } else {
-                assert !values.isEmpty();
+            q2qn.put(qn.getQuery(), qn);
+        List<PlanNode> grouped = new ArrayList<>(q2qn.keySet().size());
+        for (CQuery query : q2qn.keySet()) {
+            Collection<QueryNode> values = q2qn.get(query);
+            assert !values.isEmpty();
+            if (values.size() > 1)
+                grouped.add(MultiQueryNode.builder().addAll(values).build());
+            else
                 grouped.add(values.iterator().next());
-            }
         }
         return grouped;
     }

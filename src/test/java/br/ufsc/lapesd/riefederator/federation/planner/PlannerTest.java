@@ -99,7 +99,9 @@ public class PlannerTest {
         CQuery q2 = CQuery.from(new Triple(X, manages, Y));
         PlanNode root = planner.plan(asList(new QueryNode(empty1, q1), new QueryNode(empty2, q2)));
 
-        assertEquals(TreeUtils.streamDepthLeft(root).filter(n -> n instanceof JoinNode).count(), 0);
+        assertEquals(TreeUtils.streamDepthLeft(root).filter(n -> n instanceof JoinNode).count(), 1);
+        assertEquals(TreeUtils.streamDepthLeft(root)
+                              .filter(n -> n instanceof MultiQueryNode).count(), 0);
         // a sane count is 3: MultiQuery(q1, q2)
         assertTrue(TreeUtils.streamDepthLeft(root).count() <= 4);
     }

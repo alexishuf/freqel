@@ -41,11 +41,4 @@ public class JenaSolution extends AbstractSolution {
             consumer.accept(name, term);
         }
     }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o instanceof JenaSolution)
-            return querySolution.equals(((JenaSolution) o).querySolution);
-        return super.equals(o);
-    }
 }

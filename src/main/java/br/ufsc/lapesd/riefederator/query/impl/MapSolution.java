@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Contract;
 
@@ -39,6 +40,10 @@ public class MapSolution extends AbstractSolution {
             map.put(name, term);
             return this;
         }
+        @Contract("_, _ -> this")
+        public @Nonnull Builder put(@Nonnull Var var, @Nonnull Term term) {
+            return put(var.getName(), term);
+        }
 
         public @WillClose @Nonnull MapSolution build() {
             Preconditions.checkState(map != null, "Closed builder");
@@ -66,6 +71,10 @@ public class MapSolution extends AbstractSolution {
     @Contract("_, _ -> new")
     public static @Nonnull MapSolution build(@Nonnull String name, @Nonnull Term term) {
         return builder().put(name, term).build();
+    }
+    @Contract("_, _ -> new")
+    public static @Nonnull MapSolution build(@Nonnull Var var, @Nonnull Term term) {
+        return builder().put(var, term).build();
     }
 
 
