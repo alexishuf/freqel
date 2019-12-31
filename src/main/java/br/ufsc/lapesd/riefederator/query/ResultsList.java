@@ -23,6 +23,12 @@ public class ResultsList extends ArrayList<Results> implements AutoCloseable {
         super(c);
     }
 
+    public @Nonnull ResultsList steal() {
+        ResultsList copy = new ResultsList(this);
+        clear();
+        return copy;
+    }
+
     @Override
     public void close() throws ResultsCloseException {
         List<ResultsCloseException> exceptionList = new ArrayList<>();

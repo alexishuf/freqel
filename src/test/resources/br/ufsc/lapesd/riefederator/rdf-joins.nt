@@ -1,0 +1,94 @@
+#
+# Path-like joins
+#
+<http://example.org/h1>  <http://xmlns.com/foaf/0.1/knows> <http://example.org/h2>  .
+<http://example.org/h2>  <http://xmlns.com/foaf/0.1/knows> <http://example.org/h3>  .
+<http://example.org/h3>  <http://xmlns.com/foaf/0.1/knows> <http://example.org/h4>  .
+<http://example.org/h4>  <http://xmlns.com/foaf/0.1/knows> <http://example.org/h5>  .
+<http://example.org/h5>  <http://xmlns.com/foaf/0.1/knows> <http://example.org/h6>  .
+<http://example.org/h6>  <http://xmlns.com/foaf/0.1/knows> <http://example.org/h7>  .
+<http://example.org/h7>  <http://xmlns.com/foaf/0.1/knows> <http://example.org/h8>  .
+<http://example.org/h8>  <http://xmlns.com/foaf/0.1/knows> <http://example.org/h9>  .
+<http://example.org/h9>  <http://xmlns.com/foaf/0.1/knows> <http://example.org/h10> .
+<http://example.org/h10> <http://xmlns.com/foaf/0.1/knows> <http://example.org/h11> .
+<http://example.org/h11> <http://xmlns.com/foaf/0.1/knows> <http://example.org/h12> .
+<http://example.org/h12> <http://xmlns.com/foaf/0.1/knows> <http://example.org/h13> .
+<http://example.org/h13> <http://xmlns.com/foaf/0.1/knows> <http://example.org/h14> .
+
+#
+# Orders and consumers, with every consumer having an order.
+#
+<http://example.org/order/1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .
+<http://example.org/order/2> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .
+<http://example.org/order/3> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .
+<http://example.org/order/4> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .
+<http://example.org/order/5> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .
+<http://example.org/order/6> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .
+<http://example.org/order/7> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .
+<http://example.org/order/8> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .
+<http://example.org/order/9> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .
+<http://example.org/order/1> <http://example.org/hasConsumer> <http://example.org/consumer/1> .
+<http://example.org/order/2> <http://example.org/hasConsumer> <http://example.org/consumer/2> .
+<http://example.org/order/3> <http://example.org/hasConsumer> <http://example.org/consumer/3> .
+<http://example.org/order/4> <http://example.org/hasConsumer> <http://example.org/consumer/4> .
+<http://example.org/order/5> <http://example.org/hasConsumer> <http://example.org/consumer/5> .
+<http://example.org/order/6> <http://example.org/hasConsumer> <http://example.org/consumer/6> .
+<http://example.org/order/7> <http://example.org/hasConsumer> <http://example.org/consumer/7> .
+<http://example.org/order/8> <http://example.org/hasConsumer> <http://example.org/consumer/8> .
+<http://example.org/order/9> <http://example.org/hasConsumer> <http://example.org/consumer/9> .
+<http://example.org/consumer/1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Consumer> .
+<http://example.org/consumer/2> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Consumer> .
+<http://example.org/consumer/3> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Consumer> .
+<http://example.org/consumer/4> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Consumer> .
+<http://example.org/consumer/5> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Consumer> .
+<http://example.org/consumer/6> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Consumer> .
+<http://example.org/consumer/7> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Consumer> .
+<http://example.org/consumer/8> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Consumer> .
+<http://example.org/consumer/9> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Consumer> .
+<http://example.org/consumer/2> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/PremiumConsumer> .
+<http://example.org/consumer/3> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/PremiumConsumer> .
+<http://example.org/consumer/4> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/PremiumConsumer> .
+
+#
+# Quotes and clients, with many quotes and few clients
+#
+<http://example.org/client/1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Client> .
+<http://example.org/client/2> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Client> .
+<http://example.org/quote/1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Quote> .
+<http://example.org/quote/2> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Quote> .
+<http://example.org/quote/3> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Quote> .
+<http://example.org/quote/4> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Quote> .
+<http://example.org/quote/5> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Quote> .
+<http://example.org/quote/6> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Quote> .
+<http://example.org/quote/7> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Quote> .
+<http://example.org/quote/8> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Quote> .
+<http://example.org/quote/9> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Quote> .
+<http://example.org/quote/1> <http://example.org/hasClient> <http://example.org/client/1> .
+<http://example.org/quote/2> <http://example.org/hasClient> <http://example.org/client/1> .
+<http://example.org/quote/3> <http://example.org/hasClient> <http://example.org/client/1> .
+<http://example.org/quote/4> <http://example.org/hasClient> <http://example.org/client/1> .
+<http://example.org/quote/5> <http://example.org/hasClient> <http://example.org/client/1> .
+<http://example.org/quote/6> <http://example.org/hasClient> <http://example.org/client/2> .
+<http://example.org/quote/7> <http://example.org/hasClient> <http://example.org/client/2> .
+<http://example.org/quote/8> <http://example.org/hasClient> <http://example.org/client/2> .
+<http://example.org/quote/9> <http://example.org/hasClient> <http://example.org/client/2> .
+
+
+#
+# Products and clients who bought them. Most products were never sold
+#
+<http://example.org/product/1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Product> .
+<http://example.org/product/2> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Product> .
+<http://example.org/product/3> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Product> .
+<http://example.org/product/4> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Product> .
+<http://example.org/product/5> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Product> .
+<http://example.org/product/6> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Product> .
+<http://example.org/product/7> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Product> .
+<http://example.org/product/8> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Product> .
+<http://example.org/product/9> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Product> .
+<http://example.org/costumer/1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Costumer> .
+<http://example.org/costumer/2> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Costumer> .
+<http://example.org/costumer/3> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Costumer> .
+<http://example.org/product/3> <http://example.org/soldTo> <http://example.org/costumer/1> .
+<http://example.org/product/4> <http://example.org/soldTo> <http://example.org/costumer/2> .
+<http://example.org/product/5> <http://example.org/soldTo> <http://example.org/costumer/3> .

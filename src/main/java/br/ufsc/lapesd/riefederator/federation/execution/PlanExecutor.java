@@ -6,5 +6,6 @@ import br.ufsc.lapesd.riefederator.query.Results;
 import javax.annotation.Nonnull;
 
 public interface PlanExecutor {
-    @Nonnull Results execute(@Nonnull PlanNode plan);
+    @Nonnull Results executePlan(@Nonnull PlanNode plan);
+    @Nonnull Results executeNode(@Nonnull PlanNode node);
 }

@@ -18,7 +18,7 @@ public class MultiQueryNode extends PlanNode {
         private List<PlanNode> list = new ArrayList<>();
         private Set<String> resultVars = null;
         private boolean project = false;
-        private boolean intersect = true;
+        private boolean intersect = false;
 
         public @Nonnull Builder add(@Nonnull PlanNode node) {
             list.add(node);
@@ -38,6 +38,7 @@ public class MultiQueryNode extends PlanNode {
 
         public @Nonnull Builder intersect() {
             intersect = true;
+            project = true;
             return this;
         }
 
@@ -49,7 +50,6 @@ public class MultiQueryNode extends PlanNode {
         public @Nonnull
         MultiQueryNode build() {
             if (resultVars == null) {
-                project = false;
                 if (intersect) {
                     Iterator<PlanNode> i = list.iterator();
                     resultVars = new HashSet<>(i.hasNext() ? i.next().getResultVars() : emptySet());
@@ -60,6 +60,7 @@ public class MultiQueryNode extends PlanNode {
                             project = true;
                     }
                 } else {
+                    project = false;
                     resultVars = list.stream().flatMap(n -> n.getResultVars().stream())
                                               .collect(toSet());
                 }
