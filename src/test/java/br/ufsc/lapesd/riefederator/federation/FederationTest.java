@@ -54,8 +54,10 @@ public class FederationTest {
     public static final @Nonnull StdURI age = new StdURI(FOAF.age.getURI());
     public static final @Nonnull StdURI author = new StdURI("http://example.org/author");
     public static final @Nonnull StdURI name = new StdURI("http://example.org/name");
+    public static final @Nonnull StdURI title = new StdURI("http://example.org/title");
     public static final @Nonnull StdURI genre = new StdURI("http://example.org/genre");
     public static final @Nonnull StdURI genreName = new StdURI("http://example.org/genreName");
+    public static final @Nonnull StdLit title1 = StdLit.fromUnescaped("title 1", "en");
     public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author1", "en");
     public static final @Nonnull StdLit genre1 = StdLit.fromUnescaped("genre1", "en");
     public static final @Nonnull StdLit i23 = StdLit.fromUnescaped("23", new StdURI(XSD.xint.getURI()));
@@ -230,7 +232,19 @@ public class FederationTest {
                                            new Triple(X, genre, Z),
                                            new Triple(Y, name, author1),
                                            new Triple(Z, genreName, genre1))).project(Y).build(),
-                        newHashSet(MapSolution.build(Y, ex("authors/1"))))
+                        newHashSet(MapSolution.build(Y, ex("authors/1")))),
+                asList(new SetupBookShop(),
+                       CQuery.from(asList(new Triple(X, title, title1),
+                                          new Triple(X, genre, Y),
+                                          new Triple(Y, genreName, Z))),
+                       newHashSet(MapSolution.builder().put(X, ex("books/1"))
+                                                       .put(Y, ex("genres/1"))
+                                                       .put(Z, genre1).build())),
+                asList(new SetupBookShop(),
+                       CQuery.with(asList(new Triple(X, title, title1),
+                                          new Triple(X, genre, Y),
+                                          new Triple(Y, genreName, Z))).project(X).build(),
+                       newHashSet(MapSolution.build(X, ex("books/1"))))
         );
     }
 
