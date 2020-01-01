@@ -7,6 +7,10 @@ import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Capability;
 import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.impl.HashDistinctResults;
+import br.ufsc.lapesd.riefederator.query.impl.ProjectingResults;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
 
@@ -36,12 +40,27 @@ public class Federation implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
+        ModifierUtils.check(this, query.getModifiers());
         PlanNode plan = strategy.decompose(query);
-        return executor.executePlan(plan);
+        Results results = executor.executePlan(plan);
+
+        Projection projection = (Projection) ModifierUtils.getFirst(Capability.PROJECTION,
+                                                                    query.getModifiers());
+        if (projection != null)
+            results = new ProjectingResults(results, projection.getVarNames());
+        if (ModifierUtils.getFirst(Capability.DISTINCT, query.getModifiers()) != null)
+            results = new HashDistinctResults(results);
+        return results;
     }
 
     @Override
     public boolean hasCapability(@Nonnull Capability capability) {
-        return false;
+        switch (capability){
+            case DISTINCT:
+            case PROJECTION:
+                return true;
+            default:
+                return false;
+        }
     }
 }

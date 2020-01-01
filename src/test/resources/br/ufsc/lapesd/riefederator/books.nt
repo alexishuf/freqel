@@ -1,0 +1,23 @@
+<http://example.org/books/1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Book> .
+<http://example.org/books/2> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Book> .
+<http://example.org/books/3> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Book> .
+<http://example.org/books/4> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Book> .
+<http://example.org/books/5> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Book> .
+
+<http://example.org/books/1> <http://example.org/title> "title 1"@en .
+<http://example.org/books/2> <http://example.org/title> "title 2"@en .
+<http://example.org/books/3> <http://example.org/title> "title 3"@en .
+<http://example.org/books/4> <http://example.org/title> "title 4"@en .
+<http://example.org/books/5> <http://example.org/title> "title 5"@en .
+
+<http://example.org/books/1> <http://example.org/author> <http://example.org/authors/1> .
+<http://example.org/books/2> <http://example.org/author> <http://example.org/authors/2> .
+<http://example.org/books/3> <http://example.org/author> <http://example.org/authors/3> .
+<http://example.org/books/4> <http://example.org/author> <http://example.org/authors/4> .
+<http://example.org/books/5> <http://example.org/author> <http://example.org/authors/5> .
+
+<http://example.org/books/1> <http://example.org/genre> <http://example.org/genres/1> .
+<http://example.org/books/2> <http://example.org/genre> <http://example.org/genres/2> .
+<http://example.org/books/3> <http://example.org/genre> <http://example.org/genres/1> .
+<http://example.org/books/4> <http://example.org/genre> <http://example.org/genres/2> .
+<http://example.org/books/5> <http://example.org/genre> <http://example.org/genres/1> .

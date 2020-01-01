@@ -98,6 +98,13 @@ public class CQuery implements  List<Triple> {
             for (String name : names) projection.add(name);
             return this;
         }
+        @Contract("_ -> this")
+        public @Nonnull WithBuilder project(Var... vars) {
+            if (projection == null)
+                projection = Projection.builder();
+            for (Var var : vars) projection.add(var.getName());
+            return this;
+        }
         public @Contract("-> this") @Nonnull WithBuilder requireProjection() {
             if (projection == null)
                 projection = Projection.builder();

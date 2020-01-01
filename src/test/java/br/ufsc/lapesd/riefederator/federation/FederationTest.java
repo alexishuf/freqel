@@ -52,11 +52,21 @@ public class FederationTest {
     public static final @Nonnull StdURI DAVE = new StdURI("http://example.org/Dave");
     public static final @Nonnull StdURI knows = new StdURI(FOAF.knows.getURI());
     public static final @Nonnull StdURI age = new StdURI(FOAF.age.getURI());
+    public static final @Nonnull StdURI author = new StdURI("http://example.org/author");
+    public static final @Nonnull StdURI name = new StdURI("http://example.org/name");
+    public static final @Nonnull StdURI genre = new StdURI("http://example.org/genre");
+    public static final @Nonnull StdURI genreName = new StdURI("http://example.org/genreName");
+    public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author1", "en");
+    public static final @Nonnull StdLit genre1 = StdLit.fromUnescaped("genre1", "en");
     public static final @Nonnull StdLit i23 = StdLit.fromUnescaped("23", new StdURI(XSD.xint.getURI()));
     public static final @Nonnull StdLit i25 = StdLit.fromUnescaped("25", new StdURI(XSD.xint.getURI()));
     public static final @Nonnull StdVar X = new StdVar("x");
     public static final @Nonnull StdVar Y = new StdVar("y");
+    public static final @Nonnull StdVar Z = new StdVar("z");
 
+    private static @Nonnull StdURI ex(@Nonnull String local) {
+        return new StdURI("http://example.org/"+local);
+    }
 
     private static  @Nonnull ARQEndpoint createEndpoint(@Nonnull String filename) {
         Model m = ModelFactory.createDefaultModel();
@@ -84,6 +94,20 @@ public class FederationTest {
         }
         @Override
         public String toString() { return "SetupTwoEps";}
+    }
+
+    private static final class SetupBookShop implements Consumer<Federation> {
+        @Override
+        public void accept(Federation federation) {
+            ARQEndpoint authors = createEndpoint("authors.nt");
+            federation.addSource(new Source(new SelectDescription(authors), authors));
+            ARQEndpoint books = createEndpoint("books.nt");
+            federation.addSource(new Source(new SelectDescription(books), books));
+            ARQEndpoint genres = createEndpoint("genres.nt");
+            federation.addSource(new Source(new SelectDescription(genres), genres));
+        }
+        @Override
+        public String toString() { return "SetupBookShop"; }
     }
 
     private static final @Nonnull List<Module> moduleList = asList(
@@ -176,11 +200,46 @@ public class FederationTest {
         );
     }
 
+    public static List<List<Object>> crossEpJoinsData() {
+        return asList(
+                asList(new SetupBookShop(),
+                       CQuery.from(asList(new Triple(X, author, Y),
+                                          new Triple(Y, name, author1))),
+                       newHashSet(MapSolution.builder().put(X, ex("books/1"))
+                                                       .put(Y, ex("authors/1")).build())),
+                asList(new SetupBookShop(),
+                       CQuery.with(asList(new Triple(X, author, Y),
+                                          new Triple(Y, name, author1))).project(X).build(),
+                        newHashSet(MapSolution.build(X, ex("books/1")))),
+                asList(new SetupBookShop(),
+                        CQuery.from(asList(new Triple(X, author, Y),
+                                           new Triple(X, genre, Z),
+                                           new Triple(Y, name, author1),
+                                           new Triple(Z, genreName, genre1))),
+                        newHashSet(MapSolution.builder().put(X, ex("books/1"))
+                                                        .put(Y, ex("authors/1"))
+                                                        .put(Z, ex("genres/1")).build())),
+                asList(new SetupBookShop(),
+                        CQuery.with(asList(new Triple(X, author, Y),
+                                           new Triple(X, genre, Z),
+                                           new Triple(Y, name, author1),
+                                           new Triple(Z, genreName, genre1))).project(X).build(),
+                        newHashSet(MapSolution.build(X, ex("books/1")))),
+                asList(new SetupBookShop(),
+                        CQuery.with(asList(new Triple(X, author, Y),
+                                           new Triple(X, genre, Z),
+                                           new Triple(Y, name, author1),
+                                           new Triple(Z, genreName, genre1))).project(Y).build(),
+                        newHashSet(MapSolution.build(Y, ex("authors/1"))))
+        );
+    }
+
     @DataProvider
     public static Object[][] queryData() {
         List<List<Object>> list = new ArrayList<>();
         list.addAll(singleTripleData());
         list.addAll(singleEpQueryData());
+        list.addAll(crossEpJoinsData());
         return prependModules(list);
     }
 

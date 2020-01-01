@@ -61,8 +61,9 @@ public class InMemoryHashJoinResults implements Results {
 
     private void fetchAll() {
         try {
-            while (!stop && smaller.hasNext())
+            while (!stop && smaller.hasNext()) {
                 hashTable.add(smaller.next());
+            }
         } catch (Exception e) {
             logger.error("Fetch Task for {} dying with exception", smaller, e);
         }
@@ -94,14 +95,16 @@ public class InMemoryHashJoinResults implements Results {
     }
 
     private boolean tryJoin(@Nonnull Solution fromLarger) {
+        boolean joined = false;
         for (Solution fromSmaller : hashTable.getAll(fromLarger)) {
             MapSolution.Builder builder = MapSolution.builder();
             for (String name : resultsVars)
                 builder.put(name, fromSmaller.get(name, fromLarger.get(name)));
-            queue.add(builder.build());
-            return true;
+            MapSolution result = builder.build();
+            queue.add(result);
+            joined = true;
         }
-        return false;
+        return joined;
     }
 
     @Override
@@ -156,5 +159,10 @@ public class InMemoryHashJoinResults implements Results {
         } finally {
             smaller.close();
         }
+    }
+
+    @Override
+    public @Nonnull String toString() {
+        return String.format("InMemoryHashJoinResults@%x", System.identityHashCode(this));
     }
 }
