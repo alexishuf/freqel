@@ -1,9 +1,11 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
@@ -80,9 +82,21 @@ public class MultiQueryNode extends PlanNode {
         return new Builder();
     }
 
-    protected MultiQueryNode(@Nonnull List<PlanNode> children, @Nonnull Collection<String> resultVars,
+    protected MultiQueryNode(@Nonnull List<PlanNode> children,
+                             @Nonnull Collection<String> resultVars,
                              boolean projecting) {
         super(resultVars, projecting, children);
+    }
+
+    @Override
+    public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
+        List<PlanNode> children = getChildren().stream().map(n -> n.createBound(solution))
+                                                        .collect(Collectors.toList());
+        Set<String> all = children.stream().flatMap(n -> getResultVars().stream()).collect(toSet());
+        HashSet<String> names = new HashSet<>(getResultVars());
+        names.retainAll(all);
+        boolean projecting = names.size() < all.size();
+        return new MultiQueryNode(children, names, projecting);
     }
 
     @Override

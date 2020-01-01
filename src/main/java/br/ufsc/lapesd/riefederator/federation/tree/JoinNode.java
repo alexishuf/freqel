@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
@@ -108,6 +109,22 @@ public class JoinNode extends PlanNode {
 
     public @Nonnull PlanNode getRight() {
         return getChildren().get(1);
+    }
+
+    @Override
+    public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
+        PlanNode left = getLeft().createBound(solution);
+        PlanNode right = getRight().createBound(solution);
+        HashSet<String> all = new HashSet<>(left.getResultVars());
+        all.addAll(right.getResultVars());
+
+        HashSet<String> joinVars = new HashSet<>(getJoinVars());
+        joinVars.retainAll(all);
+
+        HashSet<String> resultVars = new HashSet<>(getResultVars());
+        resultVars.retainAll(all);
+        boolean projecting = resultVars.size() < all.size();
+        return new JoinNode(left, right, joinVars, resultVars, projecting);
     }
 
     @Override

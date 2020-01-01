@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
 
@@ -43,6 +45,14 @@ public abstract class PlanNode {
     protected @Nonnull String getPiWithNames() {
         return "π[" + String.join(",", getResultVars()) + "]";
     }
+
+    /**
+     * Return a new tree with the variables in solution bound to the respective {@link Term}s
+     *
+     * @param solution source of bindings
+     * @return new plan tree
+     */
+    public abstract @Nonnull PlanNode createBound(@Nonnull Solution solution);
 
     @Override
     public @Nonnull String toString() {

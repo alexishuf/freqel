@@ -16,6 +16,20 @@
 <http://example.org/h13> <http://xmlns.com/foaf/0.1/knows> <http://example.org/h14> .
 
 #
+# Multiple paths between src and dst
+#
+<http://example.org/src> <http://xmlns.com/foaf/0.1/knows> <http://example.org/i1> .
+<http://example.org/i1> <http://xmlns.com/foaf/0.1/knows> <http://example.org/i2> .
+<http://example.org/i2> <http://xmlns.com/foaf/0.1/knows> <http://example.org/i3> .
+<http://example.org/i3> <http://xmlns.com/foaf/0.1/knows> <http://example.org/dst> .
+<http://example.org/src> <http://xmlns.com/foaf/0.1/knows> <http://example.org/j1> .
+<http://example.org/j1> <http://xmlns.com/foaf/0.1/knows> <http://example.org/j2> .
+<http://example.org/j2> <http://xmlns.com/foaf/0.1/knows> <http://example.org/j3> .
+<http://example.org/j3> <http://xmlns.com/foaf/0.1/knows> <http://example.org/dst> .
+<http://example.org/src> <http://xmlns.com/foaf/0.1/knows> <http://example.org/k1> .
+<http://example.org/k1> <http://xmlns.com/foaf/0.1/knows> <http://example.org/i2> .
+
+#
 # Orders and consumers, with every consumer having an order.
 #
 <http://example.org/order/1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Order> .

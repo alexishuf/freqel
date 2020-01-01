@@ -6,8 +6,11 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.MultiQueryNodeExecu
 import br.ufsc.lapesd.riefederator.federation.execution.tree.QueryNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleCartesianNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleQueryNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.HashJoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
@@ -40,6 +43,7 @@ import java.util.List;
 import java.util.Set;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 
 public class PlanExecutorTest {
@@ -54,6 +58,7 @@ public class PlanExecutorTest {
     public static final @Nonnull StdVar X = new StdVar("x");
     public static final @Nonnull StdVar Y = new StdVar("y");
     public static final @Nonnull StdVar Z = new StdVar("z");
+    public static final @Nonnull StdVar W = new StdVar("w");
 
     public static @Nonnull StdURI ex(@Nonnull String local) {
         return new StdURI("http://example.org/"+local);
@@ -77,6 +82,10 @@ public class PlanExecutorTest {
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults.FACTORY);
                 }
+                @Override
+                public @Nonnull String toString() {
+                    return "Fixed InMemoryHashJoinResults";
+                }
             },
             new SimpleModule() {
                 @Override
@@ -85,12 +94,33 @@ public class PlanExecutorTest {
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults.FACTORY);
                 }
+                @Override
+                public @Nonnull String toString() {
+                    return "Fixed ParallelInMemoryHashJoinResults";
+                }
             },
             new SimpleModule() {
                 @Override
                 protected void configure() {
                     super.configure();
                     bind(JoinNodeExecutor.class).to(HashJoinNodeExecutor.class);
+
+                }
+                @Override
+                public @Nonnull String toString() {
+                    return "HashJoinNodeExecutor";
+                }
+            },
+            new SimpleModule() {
+                @Override
+                protected void configure() {
+                    super.configure();
+                    bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
+                    bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
+                }
+                @Override
+                public @Nonnull String toString() {
+                    return "Fixed SimpleBindJoinResults";
                 }
             }
     );
@@ -208,6 +238,121 @@ public class PlanExecutorTest {
         JoinNode  root = JoinNode.builder(lRoot, rr).build();
         test(module, root, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("h2")).put("y", ex("h3")).build()
+        ));
+    }
+
+    @Test(dataProvider = "modulesData")
+    public void testFiveHopsPathJoinLeftDeep(@Nonnull Module module) {
+        QueryNode[] leafs = {
+          /*0*/ new QueryNode(joinsEp, CQuery.from(new Triple(ex("h1"), knows, X))),
+          /*1*/ new QueryNode(joinsEp, CQuery.from(new Triple(X       , knows, Y))),
+          /*2*/ new QueryNode(joinsEp, CQuery.from(new Triple(Y       , knows, Z))),
+          /*3*/ new QueryNode(joinsEp, CQuery.from(new Triple(Z       , knows, W))),
+          /*4*/ new QueryNode(joinsEp, CQuery.from(new Triple(W       , knows, ex("h6")))),
+        };
+        JoinNode j0 = JoinNode.builder(leafs[0], leafs[1]).build();
+        JoinNode j1 = JoinNode.builder(j0, leafs[2]).build();
+        JoinNode j2 = JoinNode.builder(j1, leafs[3]).build();
+        JoinNode j3 = JoinNode.builder(j2, leafs[4]).build();
+        test(module, j3, singleton(MapSolution.builder().put(X, ex("h2"))
+                                                        .put(Y, ex("h3"))
+                                                        .put(Z, ex("h4"))
+                                                        .put(W, ex("h5")).build()));
+    }
+
+    @Test(dataProvider = "modulesData")
+    public void testFiveHopsPathJoinRightDeep(@Nonnull Module module) {
+        QueryNode[] leafs = {
+                /*0*/ new QueryNode(joinsEp, CQuery.from(new Triple(ex("h1"), knows, X))),
+                /*1*/ new QueryNode(joinsEp, CQuery.from(new Triple(X       , knows, Y))),
+                /*2*/ new QueryNode(joinsEp, CQuery.from(new Triple(Y       , knows, Z))),
+                /*3*/ new QueryNode(joinsEp, CQuery.from(new Triple(Z       , knows, W))),
+                /*4*/ new QueryNode(joinsEp, CQuery.from(new Triple(W       , knows, ex("h6")))),
+        };
+        JoinNode j0 = JoinNode.builder(leafs[4], leafs[3]).build();
+        JoinNode j1 = JoinNode.builder(j0, leafs[2]).build();
+        JoinNode j2 = JoinNode.builder(j1, leafs[1]).build();
+        JoinNode j3 = JoinNode.builder(j2, leafs[0]).build();
+        test(module, j3, singleton(MapSolution.builder().put(X, ex("h2"))
+                .put(Y, ex("h3"))
+                .put(Z, ex("h4"))
+                .put(W, ex("h5")).build()));
+    }
+
+    @Test(dataProvider = "modulesData")
+    public void testFiveHopsPathJoinBalanced(@Nonnull Module module) {
+        QueryNode[] leafs = {
+                /*0*/ new QueryNode(joinsEp, CQuery.from(new Triple(ex("h1"), knows, X))),
+                /*1*/ new QueryNode(joinsEp, CQuery.from(new Triple(X       , knows, Y))),
+                /*2*/ new QueryNode(joinsEp, CQuery.from(new Triple(Y       , knows, Z))),
+                /*3*/ new QueryNode(joinsEp, CQuery.from(new Triple(Z       , knows, W))),
+                /*4*/ new QueryNode(joinsEp, CQuery.from(new Triple(W       , knows, ex("h6")))),
+        };
+        JoinNode j0 = JoinNode.builder(leafs[0], leafs[1]).build();
+        JoinNode j1 = JoinNode.builder(leafs[2], j0).build();
+        JoinNode j2 = JoinNode.builder(leafs[3], leafs[4]).build();
+        JoinNode j3 = JoinNode.builder(j1, j2).build();
+
+        test(module, j3, singleton(MapSolution.builder().put(X, ex("h2"))
+                                                        .put(Y, ex("h3"))
+                                                        .put(Z, ex("h4"))
+                                                        .put(W, ex("h5")).build()));
+    }
+
+    @Test(dataProvider = "modulesData")
+    public void testThreeHopsMultiPathsLeftDeep(@Nonnull Module module) {
+        QueryNode[] leafs = {
+                /*0*/ new QueryNode(joinsEp, CQuery.from(new Triple(ex("src"), knows, X        ))),
+                /*1*/ new QueryNode(joinsEp, CQuery.from(new Triple(X        , knows, Y        ))),
+                /*2*/ new QueryNode(joinsEp, CQuery.from(new Triple(Y        , knows, Z        ))),
+                /*3*/ new QueryNode(joinsEp, CQuery.from(new Triple(Z        , knows, ex("dst")))),
+        };
+        JoinNode j0 = JoinNode.builder(leafs[0], leafs[1]).build();
+        JoinNode j1 = JoinNode.builder(j0, leafs[2]).build();
+        JoinNode j2 = JoinNode.builder(j1, leafs[3]).build();
+
+        test(module, j2, Sets.newHashSet(
+                MapSolution.builder().put(X, ex("i1")).put(Y, ex("i2")).put(Z, ex("i3")).build(),
+                MapSolution.builder().put(X, ex("j1")).put(Y, ex("j2")).put(Z, ex("j3")).build(),
+                MapSolution.builder().put(X, ex("k1")).put(Y, ex("i2")).put(Z, ex("i3")).build()
+        ));
+    }
+
+    @Test(dataProvider = "modulesData")
+    public void testThreeHopsMultiPathsRightDeep(@Nonnull Module module) {
+        QueryNode[] leafs = {
+                /*0*/ new QueryNode(joinsEp, CQuery.from(new Triple(ex("src"), knows, X        ))),
+                /*1*/ new QueryNode(joinsEp, CQuery.from(new Triple(X        , knows, Y        ))),
+                /*2*/ new QueryNode(joinsEp, CQuery.from(new Triple(Y        , knows, Z        ))),
+                /*3*/ new QueryNode(joinsEp, CQuery.from(new Triple(Z        , knows, ex("dst")))),
+        };
+        JoinNode j0 = JoinNode.builder(leafs[2], leafs[3]).build();
+        JoinNode j1 = JoinNode.builder(leafs[1], j0).build();
+        JoinNode j2 = JoinNode.builder(leafs[0], j1).build();
+
+        test(module, j2, Sets.newHashSet(
+                MapSolution.builder().put(X, ex("i1")).put(Y, ex("i2")).put(Z, ex("i3")).build(),
+                MapSolution.builder().put(X, ex("j1")).put(Y, ex("j2")).put(Z, ex("j3")).build(),
+                MapSolution.builder().put(X, ex("k1")).put(Y, ex("i2")).put(Z, ex("i3")).build()
+        ));
+    }
+
+    @Test(dataProvider = "modulesData")
+    public void testThreeHopsMultiPathsBalanced(@Nonnull Module module) {
+        QueryNode[] leafs = {
+                /*0*/ new QueryNode(joinsEp, CQuery.from(new Triple(ex("src"), knows, X        ))),
+                /*1*/ new QueryNode(joinsEp, CQuery.from(new Triple(X        , knows, Y        ))),
+                /*2*/ new QueryNode(joinsEp, CQuery.from(new Triple(Y        , knows, Z        ))),
+                /*3*/ new QueryNode(joinsEp, CQuery.from(new Triple(Z        , knows, ex("dst")))),
+        };
+        JoinNode j0 = JoinNode.builder(leafs[0], leafs[1]).build();
+        JoinNode j1 = JoinNode.builder(leafs[2], leafs[3]).build();
+        JoinNode j2 = JoinNode.builder(j0, j1).build();
+
+        test(module, j2, Sets.newHashSet(
+                MapSolution.builder().put(X, ex("i1")).put(Y, ex("i2")).put(Z, ex("i3")).build(),
+                MapSolution.builder().put(X, ex("j1")).put(Y, ex("j2")).put(Z, ex("j3")).build(),
+                MapSolution.builder().put(X, ex("k1")).put(Y, ex("i2")).put(Z, ex("i3")).build()
         ));
     }
 
