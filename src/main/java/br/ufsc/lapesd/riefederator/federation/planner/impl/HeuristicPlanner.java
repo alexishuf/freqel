@@ -112,7 +112,7 @@ public class HeuristicPlanner implements Planner {
                     if (visited.get(idx)) continue;
                     visited.set(idx);
                     component.set(idx);
-                    for (int i = 0; i < idx-1; i++) {
+                    for (int i = 0; i < idx; i++) {
                         if ( intersection[i][idx] > 0) queue.add(i);
                     }
                     for (int i = idx+1; i < size; i++) {
