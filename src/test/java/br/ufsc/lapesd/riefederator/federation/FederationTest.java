@@ -6,7 +6,10 @@ import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.EvenDecomposer;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
@@ -143,6 +146,17 @@ public class FederationTest {
                 }
                 @Override
                 public String toString() { return "HeuristicPlanner+EvenDecomposer+ParallelInMemoryHashJoinResults"; }
+            },
+            new AbstractModule() {
+                @Override
+                protected void configure() {
+                    bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
+                    bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
+                    bind(Planner.class).to(HeuristicPlanner.class);
+                    bind(DecompositionStrategy.class).to(EvenDecomposer.class);
+                }
+                @Override
+                public String toString() { return "HeuristicPlanner+EvenDecomposer+SimpleBindJoinResults"; }
             }
     );
 
