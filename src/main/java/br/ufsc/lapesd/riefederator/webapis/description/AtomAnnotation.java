@@ -15,6 +15,10 @@ public class AtomAnnotation implements TermAnnotation, TripleAnnotation {
         this.atom = atom;
     }
 
+    public static @Nonnull AtomAnnotation of(@Nonnull Atom atom) {
+        return new AtomAnnotation(atom);
+    }
+
     public static @Nonnull AtomInputAnnotation asOptional(@Nonnull Atom atom) {
         return AtomInputAnnotation.asOptional(atom);
     }

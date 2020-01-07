@@ -8,9 +8,9 @@ import static org.testng.Assert.*;
 public class AtomAnnotationTest {
     private static final Atom BOOK = new Atom("Book");
     private static final Atom AUTHOR = new Atom("Author");
-    private static final AtomAnnotation BOOK_AN_1 = new AtomAnnotation(BOOK);
-    private static final AtomAnnotation BOOK_AN_2 = new AtomAnnotation(BOOK);
-    private static final AtomAnnotation AUTHOR_AN = new AtomAnnotation(AUTHOR);
+    private static final AtomAnnotation BOOK_AN_1 = AtomAnnotation.of(BOOK);
+    private static final AtomAnnotation BOOK_AN_2 = AtomAnnotation.of(BOOK);
+    private static final AtomAnnotation AUTHOR_AN = AtomAnnotation.of(AUTHOR);
     private static final AtomInputAnnotation R_AUTHOR_AN_1 = AtomInputAnnotation.asRequired(AUTHOR);
     private static final AtomInputAnnotation R_AUTHOR_AN_2 = AtomInputAnnotation.asRequired(AUTHOR);
     private static final AtomInputAnnotation O_AUTHOR_AN_1 = AtomInputAnnotation.asOptional(AUTHOR);

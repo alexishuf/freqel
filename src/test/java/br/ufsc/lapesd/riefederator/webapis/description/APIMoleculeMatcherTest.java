@@ -134,7 +134,7 @@ public class APIMoleculeMatcherTest {
                 asList(BOOKS_BY_AUTHOR, singleton(new Triple(X, authorName, authorName1)),
                        singleton(CQuery.builder()
                                .add(new Triple(X, authorName, authorName1))
-                               .annotate(X, new AtomAnnotation(AUTHOR))
+                               .annotate(X, AtomAnnotation.of(AUTHOR))
                                .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                                .build())),
                 asList(BOOKS_BY_AUTHOR,
@@ -142,8 +142,8 @@ public class APIMoleculeMatcherTest {
                        singleton(CQuery.builder()
                                 .add(new Triple(X, author, Y),
                                      new Triple(Y, authorName, authorName1))
-                                .annotate(X, new AtomAnnotation(BOOKS_BY_AUTHOR.getMolecule().getCore()))
-                                .annotate(Y, new AtomAnnotation(AUTHOR))
+                                .annotate(X, AtomAnnotation.of(BOOKS_BY_AUTHOR.getMolecule().getCore()))
+                                .annotate(Y, AtomAnnotation.of(AUTHOR))
                                 .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                                 .build())),
                 asList(BOOKS_BY_AUTHOR,
@@ -153,14 +153,14 @@ public class APIMoleculeMatcherTest {
                               new Triple(W, authorName, Y)),
                        singleton(CQuery.with(asList(new Triple(Z, author, W),
                                                     new Triple(W, authorName, Y)))
-                                       .annotate(Z, new AtomAnnotation(BOOKS_BY_AUTHOR.getMolecule().getCore()))
-                                       .annotate(W, new AtomAnnotation(AUTHOR))
+                                       .annotate(Z, AtomAnnotation.of(BOOKS_BY_AUTHOR.getMolecule().getCore()))
+                                       .annotate(W, AtomAnnotation.of(AUTHOR))
                                        .annotate(Y, AtomAnnotation.asRequired(AUTHOR_NAME))
                                        .build()
                                )),
                 asList(BOOK_CITATIONS, singleton(new Triple(X, title, title1)),
                         singleton(CQuery.with(new Triple(X, title, title1))
-                                .annotate(X, new AtomAnnotation(BOOK_CITATIONS.getMolecule().getCore()))
+                                .annotate(X, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
                                 .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
                                 .build())),
                 asList(BOOK_CITATIONS, asList(new Triple(X, title, title1),
@@ -169,10 +169,10 @@ public class APIMoleculeMatcherTest {
                         singleton(CQuery.with(new Triple(X, title, title1),
                                               new Triple(X, cites, Y),
                                               new Triple(Y, author, author1))
-                                .annotate(X, new AtomAnnotation(BOOK_CITATIONS.getMolecule().getCore()))
+                                .annotate(X, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
                                 .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
-                                .annotate(Y, new AtomAnnotation(CITED_BOOK))
-                                .annotate(author1, new AtomAnnotation(AUTHOR))
+                                .annotate(Y, AtomAnnotation.of(CITED_BOOK))
+                                .annotate(author1, AtomAnnotation.of(AUTHOR))
                                 .build())),
                 asList(BOOK_CITATIONS, asList(new Triple(X, title, title1),
                                               new Triple(X, cites, Y),
@@ -180,13 +180,13 @@ public class APIMoleculeMatcherTest {
                         asList(CQuery.with(new Triple(X, title, title1),
                                               new Triple(X, cites, Y),
                                               new Triple(Y, title, Z))
-                                .annotate(X, new AtomAnnotation(BOOK_CITATIONS.getMolecule().getCore()))
+                                .annotate(X, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
                                 .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
-                                .annotate(Y, new AtomAnnotation(CITED_BOOK))
-                                .annotate(Z, new AtomAnnotation(CITED_BOOK_TITLE))
+                                .annotate(Y, AtomAnnotation.of(CITED_BOOK))
+                                .annotate(Z, AtomAnnotation.of(CITED_BOOK_TITLE))
                                 .build(),
                                CQuery.with(new Triple(Y, title, Z))
-                                       .annotate(Y, new AtomAnnotation(BOOK_CITATIONS.getMolecule().getCore()))
+                                       .annotate(Y, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
                                        .annotate(Z, AtomAnnotation.asRequired(BOOK_TITLE))
                                        .build())),
                 asList(AM_BOOK_CITATIONS, asList(new Triple(X, title, title1),
@@ -235,16 +235,16 @@ public class APIMoleculeMatcherTest {
                                                 new Triple(Y, authorName, authorName1)),
                    singleton(CQuery.with(new Triple(X, mainAuthor, Y),
                                          new Triple(Y, authorName, authorName1))
-                           .annotate(X, new AtomAnnotation(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
-                           .annotate(Y, new AtomAnnotation(MAIN_AUTHOR))
+                           .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                           .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                            .build())),
             asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, author, Y),
                                                 new Triple(Y, authorName, authorName1)),
                     singleton(CQuery.with(new Triple(X, author, Y),
                                           new Triple(Y, authorName, authorName1))
-                            .annotate(X, new AtomAnnotation(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
-                            .annotate(Y, new AtomAnnotation(MAIN_AUTHOR))
+                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                             .build())),
             asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, title,  Z),
@@ -253,9 +253,9 @@ public class APIMoleculeMatcherTest {
                     singleton(CQuery.with(new Triple(X, title,  Z),
                                           new Triple(X, author, Y),
                                           new Triple(Y, authorName, authorName1))
-                            .annotate(X, new AtomAnnotation(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
-                            .annotate(Z, new AtomAnnotation(BOOK_TITLE))
-                            .annotate(Y, new AtomAnnotation(MAIN_AUTHOR))
+                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(Z, AtomAnnotation.of(BOOK_TITLE))
+                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                             .build())),
             asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, title,  title1),
@@ -264,9 +264,9 @@ public class APIMoleculeMatcherTest {
                     singleton(CQuery.with(new Triple(X, title,  title1),
                                           new Triple(X, author, Y),
                                           new Triple(Y, authorName, authorName1))
-                            .annotate(X, new AtomAnnotation(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
-                            .annotate(title1, new AtomAnnotation(BOOK_TITLE))
-                            .annotate(Y, new AtomAnnotation(MAIN_AUTHOR))
+                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(title1, AtomAnnotation.of(BOOK_TITLE))
+                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                             .build())),
             asList(BOOKS_BY_MAIN_AUTHOR, singleton(new Triple(X, author, author1)),

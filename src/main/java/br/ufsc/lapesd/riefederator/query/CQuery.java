@@ -371,9 +371,12 @@ public class CQuery implements  List<Triple> {
         }
     }
 
+    @CheckReturnValue
     public static @Contract("_ -> new") @Nonnull WithBuilder with(@Nonnull ImmutableList<Triple> query) {
         return new WithBuilder(query);
     }
+
+    @CheckReturnValue
     public static @Nonnull WithBuilder with(@Nonnull Collection<Triple> query) {
         if (query instanceof CQuery)
             return new WithBuilder(((CQuery)query).getList());
@@ -381,13 +384,18 @@ public class CQuery implements  List<Triple> {
             return new WithBuilder(((ImmutableList<Triple>)query));
         return new WithBuilder(ImmutableList.copyOf(query));
     }
+
+    @CheckReturnValue
     public static @Contract("_ -> new") @Nonnull WithBuilder with(@Nonnull Triple... triples) {
         return new WithBuilder(ImmutableList.copyOf(triples));
     }
 
+    @CheckReturnValue
     public static @Nonnull CQuery from(@Nonnull Collection<Triple> query) {
         return query instanceof CQuery ? (CQuery)query : with(query).build();
     }
+
+    @CheckReturnValue
     public static @Contract("_ -> new") @Nonnull CQuery from(@Nonnull Triple... triples) {
         return new CQuery(ImmutableList.copyOf(triples), ImmutableList.of());
     }

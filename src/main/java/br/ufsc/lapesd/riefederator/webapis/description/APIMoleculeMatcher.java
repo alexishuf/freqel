@@ -48,7 +48,7 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                 return AtomAnnotation.asRequired(atom);
             else if (optional.contains(atom.getName()))
                 return AtomAnnotation.asOptional(atom);
-            return new AtomAnnotation(atom);
+            return AtomAnnotation.of(atom);
         }
 
         public int size() {
