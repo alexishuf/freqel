@@ -132,9 +132,9 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                 if (parentEG == null) { // only check if creating the top-level exclusive group
                     boolean[] hasVar = {false};
                     Multiset<String> observed = HashMultiset.create(inputAtoms.size());
-                    query.forEachTermAnnotation((t, a) -> {
-                        if (a instanceof AtomAnnotation && ((AtomAnnotation)a).isRequired()) {
-                            observed.add(((AtomAnnotation) a).getAtomName());
+                    query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
+                        if (a.isRequired()) {
+                            observed.add(a.getAtomName());
                             if (t.isVar()) hasVar[0] = true;
                         }
                     });
