@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import com.google.common.collect.Sets;
+import com.google.errorprone.annotations.Immutable;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDFS;
@@ -333,6 +334,51 @@ public class CQueryTest {
         assertNotEquals(plain1, distinct1);
         assertNotEquals(plain1, projected);
         assertNotEquals(distinct1, projected);
+    }
+
+    @Immutable
+    public static class MockAnnotation implements TermAnnotation, TripleAnnotation {
+    }
+
+    @Test
+    public void testEqualsConsidersTermAnnotations() {
+        CQuery qy = CQuery.with(new Triple(X, KNOWS, Y)).annotate(Y, new MockAnnotation()).build();
+        CQuery qx = CQuery.with(new Triple(X, KNOWS, Y)).annotate(X, new MockAnnotation()).build();
+        MockAnnotation annotation = new MockAnnotation();
+        CQuery qk1 = CQuery.with(new Triple(X, KNOWS, Y)).annotate(KNOWS, annotation).build();
+        CQuery qk2 = CQuery.with(new Triple(X, KNOWS, Y)).annotate(KNOWS, annotation).build();
+        CQuery plain = CQuery.from(new Triple(X, KNOWS, Y));
+
+        assertEquals(qy, qy);
+        assertEquals(qk1, qk1);
+        assertNotEquals(qy, qx);
+        assertEquals(qk1, qk2);
+
+        assertNotEquals(qy, plain);
+        assertNotEquals(qx, plain);
+        assertNotEquals(qk1, plain);
+
+        assertEquals(qx, singletonList(new Triple(X, KNOWS, Y)));
+    }
+
+    @Test
+    public void testEqualsConsidersTripleAnnotations() {
+        Triple triple = new Triple(X, KNOWS, Y);
+        CQuery q1 = CQuery.with(triple).annotate(triple, new MockAnnotation()).build();
+        CQuery q2 = CQuery.with(triple).annotate(triple, new MockAnnotation()).build();
+        MockAnnotation annotation = new MockAnnotation();
+        CQuery qs1 = CQuery.with(triple).annotate(triple, annotation).build();
+        CQuery qs2 = CQuery.with(triple).annotate(triple, annotation).build();
+        CQuery plain = CQuery.from(triple);
+
+        assertEquals(q1, q1);
+        assertEquals(qs1, qs1);
+        assertNotEquals(q1, q2);
+        assertEquals(qs1, qs2);
+        assertNotEquals(qs1, plain);
+
+        assertEquals(plain, singletonList(triple));
+        assertEquals(q1, singletonList(triple));
     }
 
     @Test

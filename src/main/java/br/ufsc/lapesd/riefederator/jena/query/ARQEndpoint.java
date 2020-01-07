@@ -36,17 +36,32 @@ import static org.apache.jena.query.QueryExecutionFactory.sparqlService;
 public class ARQEndpoint implements CQEndpoint {
     @SuppressWarnings("Immutable")
     private final @Nonnull Function<String, QueryExecution> executionFactory;
+    @SuppressWarnings("Immutable")
+    private final @Nonnull Runnable closer;
     private final @Nullable String name;
 
     public ARQEndpoint(@Nonnull Function<String, QueryExecution> executionFactory) {
+        this(executionFactory, () -> {});
+    }
+
+    public ARQEndpoint(@Nonnull Function<String, QueryExecution> executionFactory,
+                       @Nonnull Runnable closer) {
         this.executionFactory = executionFactory;
         this.name = null;
+        this.closer = closer;
     }
 
     public ARQEndpoint(@Nonnull String name,
                        @Nonnull Function<String, QueryExecution> executionFactory) {
+        this(name, executionFactory, () -> {});
+    }
+
+    public ARQEndpoint(@Nonnull String name,
+                       @Nonnull Function<String, QueryExecution> executionFactory,
+                       @Nonnull Runnable closer) {
         this.executionFactory = executionFactory;
         this.name = name;
+        this.closer = closer;
     }
 
     public @Nullable String getName() {
@@ -60,8 +75,11 @@ public class ARQEndpoint implements CQEndpoint {
                                              System.identityHashCode(model));
         return new ARQEndpoint(name, sparql -> create(sparql, model));
     }
-    public static ARQEndpoint forDataset(@Nonnull Dataset dataset) {
-        return new ARQEndpoint(dataset.toString(), sparql -> create(sparql, dataset));
+    public static ARQEndpoint forDataset(@Nonnull Dataset ds) {
+        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds));
+    }
+    public static ARQEndpoint forCloseableDataset(@Nonnull Dataset ds) {
+        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds), ds::close);
     }
 
     public static ARQEndpoint forService(@Nonnull String uri) {
@@ -121,5 +139,10 @@ public class ARQEndpoint implements CQEndpoint {
                 throw t;
             }
         }
+    }
+
+    @Override
+    public void close() {
+        closer.run();
     }
 }

@@ -27,7 +27,7 @@ public class JenaURI extends JenaRes implements URI {
 
     @Override
     public String toString() {
-        return toTurtle(StdPrefixDict.DEFAULT);
+        return toString(StdPrefixDict.DEFAULT);
     }
 
     @Override

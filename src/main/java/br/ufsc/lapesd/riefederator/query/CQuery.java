@@ -11,27 +11,30 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.MultimapBuilder;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.DoNotCall;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.lang.ref.SoftReference;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.JoinType.Position.OBJ;
 import static br.ufsc.lapesd.riefederator.query.JoinType.Position.SUBJ;
 import static com.google.common.collect.ImmutableList.builderWithExpectedSize;
+import static java.util.Collections.emptySet;
 
 /**
  * A {@link CQuery} is essentially a list of {@link Triple} instances which MAY contain variables.
@@ -46,6 +49,8 @@ import static com.google.common.collect.ImmutableList.builderWithExpectedSize;
 @ThreadSafe
 @Immutable
 public class CQuery implements  List<Triple> {
+    public static final @Nonnull Logger logger = LoggerFactory.getLogger(CQuery.class);
+
     /** An empty {@link CQuery} instance. */
     public static final @Nonnull CQuery EMPTY = from(Collections.emptyList());
 
@@ -54,25 +59,55 @@ public class CQuery implements  List<Triple> {
     @SuppressWarnings("Immutable") // PrefixDict is not immutable
     private final @Nullable PrefixDict prefixDict;
 
+    private final @Nullable ImmutableSetMultimap<Term, TermAnnotation> termAnnotations;
+    private final @Nullable ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnnotations;
+
     /* ~~~ cache attributes ~~~ */
 
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<Multimap<Term, Integer>> t2triple, s2triple, o2triple;
     @SuppressWarnings("Immutable")
-    private @LazyInit @Nonnull SoftReference<Set<Var>> varsCache = new SoftReference<>(null);
+    private @LazyInit @Nonnull SoftReference<Set<Var>> varsCache
+            = new SoftReference<>(null);
+    @SuppressWarnings("Immutable")
+    private @LazyInit @Nonnull SoftReference<ImmutableSet<Triple>> set
+            = new SoftReference<>(null);
     private @LazyInit int hash = 0;
     private @LazyInit @Nullable Boolean ask = null;
 
     /* ~~~ constructor, builder & factories ~~~ */
 
-    public CQuery(@Nonnull ImmutableList<Triple> query,
-                  @Nonnull ImmutableList<Modifier> modifiers, @Nullable PrefixDict prefixDict) {
+    public CQuery(@Nonnull ImmutableList<Triple> query, @Nonnull ImmutableList<Modifier> modifiers,
+                  @Nullable PrefixDict prefixDict,
+                  @Nullable ImmutableSetMultimap<Term, TermAnnotation> termAnn,
+                  @Nullable ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnn) {
         this.list = query;
         this.modifiers = modifiers;
         this.prefixDict = prefixDict;
+        this.termAnnotations = termAnn != null && termAnn.isEmpty() ? null : termAnn;
+        this.tripleAnnotations = tripleAnn != null && tripleAnn.isEmpty() ? null : tripleAnn;
+        if (CQuery.class.desiredAssertionStatus()) {
+            Set<Term> terms = streamTerms(Term.class).collect(Collectors.toSet());
+            boolean[] fail = {false};
+            forEachTermAnnotation((t, a) -> {
+                if ((fail[0] |= !terms.contains(t)))
+                    logger.error("Foreign term {} has annotation {} in {}!", t, a, CQuery.this);
+            });
+            ImmutableSet<Triple> triples = getSet();
+            forEachTripleAnnotation((t, a) -> {
+                if ((fail[0] |= !triples.contains(t)))
+                    logger.error("Foreign Triple {} has annotation {} in {}!", t, a, CQuery.this);
+            });
+            Preconditions.checkArgument(!fail[0], "Foreign annotations (see the logger output)");
+        }
         t2triple = new SoftReference<>(null);
         s2triple = new SoftReference<>(null);
         o2triple = new SoftReference<>(null);
+    }
+
+    public CQuery(@Nonnull ImmutableList<Triple> query,
+                  @Nonnull ImmutableList<Modifier> modifiers, @Nullable PrefixDict prefixDict) {
+        this(query, modifiers, prefixDict, null, null);
     }
 
     public CQuery(@Nonnull ImmutableList<Triple> query,
@@ -81,16 +116,22 @@ public class CQuery implements  List<Triple> {
     }
 
     public static class WithBuilder {
-        private final  @Nonnull ImmutableList<Triple> list;
+        protected  @Nullable ImmutableList<Triple> list;
         private Projection.Builder projection = null;
         private boolean distinct = false, ask = false;
         private boolean distinctRequired = false, askRequired = false;
         private @Nullable PrefixDict prefixDict = null;
+        private @Nullable ImmutableSetMultimap.Builder<Term, TermAnnotation> termAnnBuilder;
+        private @Nullable ImmutableSetMultimap.Builder<Triple, TripleAnnotation> tripleAnnBuilder;
 
+        protected WithBuilder() {
+            this.list = null;
+        }
         public WithBuilder(@Nonnull ImmutableList<Triple> list) {
             this.list = list;
         }
 
+        @CanIgnoreReturnValue
         @Contract("_ -> this")
         public @Nonnull WithBuilder project(String... names) {
             if (projection == null)
@@ -98,19 +139,23 @@ public class CQuery implements  List<Triple> {
             for (String name : names) projection.add(name);
             return this;
         }
+
         @Contract("_ -> this")
+        @CanIgnoreReturnValue
         public @Nonnull WithBuilder project(Var... vars) {
             if (projection == null)
                 projection = Projection.builder();
             for (Var var : vars) projection.add(var.getName());
             return this;
         }
+        @CanIgnoreReturnValue
         public @Contract("-> this") @Nonnull WithBuilder requireProjection() {
             if (projection == null)
                 projection = Projection.builder();
             projection.required();
             return this;
         }
+        @CanIgnoreReturnValue
         public @Contract("-> this") @Nonnull WithBuilder adviseProjection() {
             if (projection == null)
                 projection = Projection.builder();
@@ -118,29 +163,68 @@ public class CQuery implements  List<Triple> {
             return this;
         }
 
+        @CanIgnoreReturnValue
         public @Contract("_ -> this") @Nonnull WithBuilder distinct(boolean required) {
             this.distinct = true;
             this.distinctRequired = required;
             return this;
         }
+        @CanIgnoreReturnValue
         public @Contract("-> this") @Nonnull WithBuilder distinct() { return distinct(true); }
+        @CanIgnoreReturnValue
         public @Contract("-> this") @Nonnull WithBuilder nonDistinct() {
             this.distinct = this.distinctRequired = false;
             return this;
         }
 
+        @CanIgnoreReturnValue
         public @Contract("_ -> this") @Nonnull WithBuilder ask(boolean required) {
             this.ask = true;
             this.askRequired = required;
             return this;
         }
+        @CanIgnoreReturnValue
         public @Contract("-> this") @Nonnull WithBuilder ask() { return ask(true); }
 
+        @CanIgnoreReturnValue
         public @Contract("_ -> this") @Nonnull WithBuilder prefixDict(@Nonnull PrefixDict dict) {
             prefixDict = dict;
             return this;
         }
 
+        @CanIgnoreReturnValue
+        public @Contract("_, _ -> this") @Nonnull
+        WithBuilder annotate(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
+            if (termAnnBuilder == null) termAnnBuilder = ImmutableSetMultimap.builder();
+            termAnnBuilder.put(term, annotation);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_, _ -> this") @Nonnull
+        WithBuilder annotate(@Nonnull Triple triple, @Nonnull TripleAnnotation annotation) {
+            if (tripleAnnBuilder == null) tripleAnnBuilder = ImmutableSetMultimap.builder();
+            tripleAnnBuilder.put(triple, annotation);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_ -> this") @Nonnull
+        WithBuilder annotateAllTerms(Multimap<Term, TermAnnotation> multimap) {
+            if (termAnnBuilder == null) termAnnBuilder = ImmutableSetMultimap.builder();
+            termAnnBuilder.putAll(multimap);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_ -> this") @Nonnull
+        WithBuilder annotateAllTriples(Multimap<Triple, TripleAnnotation> multimap) {
+            if (tripleAnnBuilder == null) tripleAnnBuilder = ImmutableSetMultimap.builder();
+            tripleAnnBuilder.putAll(multimap);
+            return this;
+        }
+
+        @CheckReturnValue
         public @Nonnull CQuery build() {
             @SuppressWarnings("UnstableApiUsage")
             ImmutableList.Builder<Modifier> b = builderWithExpectedSize(4);
@@ -150,8 +234,140 @@ public class CQuery implements  List<Triple> {
                 b.add(distinctRequired ? Distinct.REQUIRED : Distinct.ADVISED);
             if (ask)
                 b.add(askRequired ? Ask.REQUIRED : Ask.ADVISED);
+            ImmutableSetMultimap<Term, TermAnnotation> termAnn =
+                    termAnnBuilder == null ? null : termAnnBuilder.build();
+            ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnn =
+                    tripleAnnBuilder == null ? null : tripleAnnBuilder.build();
+            assert list != null;
+            return new CQuery(list, b.build(), prefixDict, termAnn, tripleAnn);
+        }
+    }
 
-            return new CQuery(list, b.build(), prefixDict);
+    public static class Builder extends WithBuilder {
+        private ImmutableList.Builder<Triple> listBuilder;
+        private int size = 0;
+
+        public Builder() {
+            listBuilder = ImmutableList.builder();
+        }
+        public Builder(int sizeHint) {
+            //noinspection UnstableApiUsage
+            listBuilder = ImmutableList.builderWithExpectedSize(sizeHint);
+        }
+
+        public int size() {
+            return size;
+        }
+
+        public boolean isEmpty() {
+            return size() == 0;
+        }
+
+        public @Contract("_ -> this") @Nonnull Builder add(@Nonnull Triple... triples) {
+            size += triples.length;
+            listBuilder.add(triples);
+            return this;
+        }
+        public @Contract("_ -> this") @Nonnull Builder addAll(@Nonnull Collection<Triple> triples) {
+            size += triples.size();
+            listBuilder.addAll(triples);
+            if (triples instanceof CQuery) {
+                ((CQuery) triples).forEachTermAnnotation(  this::annotate);
+                ((CQuery) triples).forEachTripleAnnotation(this::annotate);
+            }
+            return this;
+        }
+
+        @Override
+        public @Contract("_ -> this") @Nonnull Builder project(String... names) {
+            super.project(names);
+            return this;
+        }
+
+        @Override
+        public @Contract("_ -> this") @Nonnull Builder project(Var... vars) {
+            super.project(vars);
+            return this;
+        }
+
+        @Override
+        public @Contract("-> this") @Nonnull Builder requireProjection() {
+            super.requireProjection();
+            return this;
+        }
+
+        @Override
+        public @Contract("-> this") @Nonnull Builder adviseProjection() {
+            super.adviseProjection();
+            return this;
+        }
+
+        @Override
+        public @Contract("_ -> this") @Nonnull Builder distinct(boolean required) {
+            super.distinct(required);
+            return this;
+        }
+
+        @Override
+        public @Contract("-> this") @Nonnull Builder distinct() {
+            super.distinct();
+            return this;
+        }
+
+        @Override
+        public @Contract("-> this") @Nonnull Builder nonDistinct() {
+            super.nonDistinct();
+            return this;
+        }
+
+        @Override
+        public @Contract("_ -> this") @Nonnull Builder ask(boolean required) {
+            super.ask(required);
+            return this;
+        }
+
+        @Override
+        public @Contract("-> this") @Nonnull Builder ask() {
+            super.ask();
+            return this;
+        }
+
+        @Override
+        public @Contract("_ -> this") @Nonnull Builder prefixDict(@Nonnull PrefixDict dict) {
+            super.prefixDict(dict);
+            return this;
+        }
+
+        @Override
+        public @Contract("_, _ -> this") @Nonnull
+        Builder annotate(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
+            super.annotate(term, annotation);
+            return this;
+        }
+
+        @Override
+        public @Contract("_, _ -> this") @Nonnull
+        Builder annotate(@Nonnull Triple triple, @Nonnull TripleAnnotation annotation) {
+            super.annotate(triple, annotation);
+            return this;
+        }
+
+        @Override @Contract("_ -> this")
+        public @Nonnull WithBuilder annotateAllTerms(Multimap<Term, TermAnnotation> multimap) {
+            super.annotateAllTerms(multimap);
+            return this;
+        }
+
+        @Override @Contract("_ -> this")
+        public @Nonnull WithBuilder annotateAllTriples(Multimap<Triple, TripleAnnotation> multimap) {
+            super.annotateAllTriples(multimap);
+            return this;
+        }
+
+        @Override
+        public @Nonnull CQuery build() {
+            list = listBuilder.build();
+            return super.build();
         }
     }
 
@@ -165,15 +381,22 @@ public class CQuery implements  List<Triple> {
             return new WithBuilder(((ImmutableList<Triple>)query));
         return new WithBuilder(ImmutableList.copyOf(query));
     }
-    public static @Contract("_ -> new") @Nonnull WithBuilder with(@Nonnull Triple triple) {
-        return new WithBuilder(ImmutableList.of(triple));
+    public static @Contract("_ -> new") @Nonnull WithBuilder with(@Nonnull Triple... triples) {
+        return new WithBuilder(ImmutableList.copyOf(triples));
     }
 
     public static @Nonnull CQuery from(@Nonnull Collection<Triple> query) {
         return query instanceof CQuery ? (CQuery)query : with(query).build();
     }
-    public static @Contract("_ -> new") @Nonnull CQuery from(@Nonnull Triple triple) {
-        return new CQuery(ImmutableList.of(triple), ImmutableList.of());
+    public static @Contract("_ -> new") @Nonnull CQuery from(@Nonnull Triple... triples) {
+        return new CQuery(ImmutableList.copyOf(triples), ImmutableList.of());
+    }
+
+    public static @Contract("-> new") @Nonnull Builder builder() {
+        return new Builder();
+    }
+    public static @Contract("_ -> new") @Nonnull Builder builder(int expectedTriples) {
+        return new Builder(expectedTriples);
     }
 
     public @Contract("_ -> new") @Nonnull CQuery withPrefixDict(@Nullable PrefixDict dict) {
@@ -181,6 +404,7 @@ public class CQuery implements  List<Triple> {
         copy.hash = hash;
         copy.ask = ask;
         copy.varsCache = varsCache;
+        copy.set = set;
         copy.t2triple = t2triple;
         copy.s2triple = s2triple;
         copy.o2triple = o2triple;
@@ -192,8 +416,51 @@ public class CQuery implements  List<Triple> {
     /** Gets the underlying immutable triple {@link List} of this {@link CQuery}. */
     public @Nonnull ImmutableList<Triple> getList() { return list; }
 
+    /** Gets all {@link Triple}s in this query in an {@link ImmutableSet}. */
+    public @Nonnull ImmutableSet<Triple> getSet() {
+        ImmutableSet<Triple> strong = set.get();
+        if (strong == null) {
+            set = new SoftReference<>(strong = ImmutableSet.copyOf(getList()));
+        }
+        return strong;
+    }
+
     /** Gets the modifiers of this query. */
     public @Nonnull ImmutableList<Modifier> getModifiers() { return modifiers; }
+
+    /** Indicates if there is any triple annotation. */
+    public boolean hasTripleAnnotations() { return tripleAnnotations != null; }
+
+    /** Indicates whether there is some term annotation in this query. */
+    public boolean hasTermAnnotations() { return termAnnotations != null;}
+
+    /**
+     * Gets the term annotations for the given term
+     * @param term Term to look for, need not occur in this query
+     * @return Possibly-empty {@link Collection} of {@link TermAnnotation}s.
+     */
+    public @Nonnull Collection<TermAnnotation> getTermAnnotations(@Nonnull Term term) {
+        return termAnnotations == null ? emptySet() : termAnnotations.get(term);
+    }
+
+    /**
+     * Gets the {@link TripleAnnotation} set on the given {@link Triple}.
+     * @param triple {@link Triple} to look for, need not occur in this query.
+     * @return Possibly-empty {@link Collection} of {@link TripleAnnotation}s.
+     */
+    public @Nonnull Collection<TripleAnnotation> getTripleAnnotations(@Nonnull Triple triple) {
+        return tripleAnnotations == null ? emptySet() : tripleAnnotations.get(triple);
+    }
+
+    public void forEachTermAnnotation(@Nonnull BiConsumer<Term, TermAnnotation> consumer) {
+        if (termAnnotations != null)
+            termAnnotations.forEach(consumer);
+    }
+
+    public void forEachTripleAnnotation(@Nonnull BiConsumer<Triple, TripleAnnotation> consumer) {
+        if (tripleAnnotations != null)
+            tripleAnnotations.forEach(consumer);
+    }
 
     /** A {@link CQuery} is a ASK-type query iff all its triples are bound
      * (i.e., no triple has a {@link Var} term). */
@@ -381,17 +648,33 @@ public class CQuery implements  List<Triple> {
 
     /* ~~~ Object-ish methods ~~~ */
 
+    /**
+     * Version of equals() that does not require the triples to be in the same order
+     */
+    public boolean unorderedEquals(@Nullable Collection<? extends Triple> o) {
+        boolean triplesEq = o != null && getSet().containsAll(o) && getSet().size() == o.size();
+        if (!(o instanceof CQuery))
+            return triplesEq;
+        return triplesEq
+                && modifiers.equals(((CQuery) o).modifiers)
+                && Objects.equals(termAnnotations, ((CQuery) o).termAnnotations)
+                && Objects.equals(tripleAnnotations, ((CQuery) o).tripleAnnotations);
+    }
+
     @Override
-    public boolean equals(Object o) {
-        if (o instanceof CQuery)
-            return list.equals(((CQuery) o).list) && modifiers.equals(((CQuery) o).modifiers);
-        return modifiers.isEmpty() && list.equals(o); //fallback only if we have no modifier
+    public boolean equals(@Nullable Object o) {
+        if (!(o instanceof CQuery))
+            return list.equals(o); // fallback to list comparison when comparing with a list
+        return list.equals(((CQuery) o).list)
+                && modifiers.equals(((CQuery) o).modifiers)
+                && Objects.equals(termAnnotations, ((CQuery) o).termAnnotations)
+                && Objects.equals(tripleAnnotations, ((CQuery) o).tripleAnnotations);
     }
 
     @Override
     public int hashCode() {
         if (hash == 0)
-            hash = Objects.hash(list, modifiers);
+            hash = Objects.hash(list, modifiers, termAnnotations, tripleAnnotations);
         return hash;
     }
 

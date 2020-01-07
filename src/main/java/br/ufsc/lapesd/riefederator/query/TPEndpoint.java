@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 
-public interface TPEndpoint {
+public interface TPEndpoint extends AutoCloseable {
     /**
      * Return a {@link Results} over the possible bindings for each variable in query.
      *
@@ -33,4 +33,14 @@ public interface TPEndpoint {
      * Indicates whether this endpoint supports the capability in queries given to query().
      */
     boolean hasCapability(@Nonnull Capability capability);
+
+    /**
+     * Some endpoint implementations may hold resources that should be released once the
+     * endpoint is not needed anymore.
+     *
+     * This method should release those resources, but should not propagate any exceptions.
+     * If something goes wrong, logging it would be preferred.
+     */
+    @Override
+    default void close() { }
 }

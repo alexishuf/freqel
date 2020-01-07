@@ -35,6 +35,14 @@ public class MoleculeMatcher implements SemanticDescription {
         this.reasoner = reasoner;
     }
 
+    public @Nonnull TBoxReasoner getReasoner() {
+        return reasoner;
+    }
+
+    public @Nonnull Molecule getMolecule() {
+        return molecule;
+    }
+
     @Override
     public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
         return new State(query, false).matchExclusive().matchNonExclusive().build();
@@ -47,7 +55,7 @@ public class MoleculeMatcher implements SemanticDescription {
 
     @Override
     public @Nonnull String toString() {
-        return String.format("MoleculeMatcher2(%s)", molecule.getCore().getName());
+        return String.format("MoleculeMatcher(%s)", molecule.getCore().getName());
     }
 
     private @Nonnull Index getIndex() {
@@ -56,9 +64,9 @@ public class MoleculeMatcher implements SemanticDescription {
         return strong;
     }
 
-    private final static class Link {
-        @Nonnull Atom s, o;
-        @Nonnull Term p;
+    protected final static class Link {
+        public @Nonnull Atom s, o;
+        public @Nonnull Term p;
         private int hash = 0;
 
         public Link(@Nonnull Atom s, @Nonnull Term p, @Nonnull Atom o) {
@@ -76,6 +84,11 @@ public class MoleculeMatcher implements SemanticDescription {
         }
 
         @Override
+        public String toString() {
+            return String.format("(%s %s %s)", s, p, o);
+        }
+
+        @Override
         public int hashCode() {
             if (hash == 0)
                 hash = Objects.hash(s, o, p, hash);
@@ -83,17 +96,15 @@ public class MoleculeMatcher implements SemanticDescription {
         }
     }
 
-    private final static class LinkMatch {
-        @Nonnull Link l;
-        @Nonnull ImmutablePair<Term, Atom> from;
-        int tripleIdx;
-        @Nonnull Triple triple;
+    protected final static class LinkMatch {
+        public @Nonnull Link l;
+        public @Nonnull ImmutablePair<Term, Atom> from;
+        public @Nonnull Triple triple;
 
-        public LinkMatch(@Nonnull Link l, @Nonnull ImmutablePair<Term, Atom> from, int tripleIdx,
+        public LinkMatch(@Nonnull Link l, @Nonnull ImmutablePair<Term, Atom> from,
                          @Nonnull Triple triple) {
             this.l = l;
             this.from = from;
-            this.tripleIdx = tripleIdx;
             this.triple = triple;
         }
 
@@ -103,6 +114,11 @@ public class MoleculeMatcher implements SemanticDescription {
                 return ImmutablePair.of(triple.getObject(), l.o);
             else
                 return ImmutablePair.of(triple.getSubject(), l.s);
+        }
+
+        @Override
+        public @Nonnull String toString() {
+            return String.format("LinkMatch(%s, %s, %s)", l, from, triple);
         }
     }
 
@@ -230,14 +246,15 @@ public class MoleculeMatcher implements SemanticDescription {
         }
     }
 
-    private final class State {
-        private @Nonnull final CQuery parentQuery;
-        private boolean reason;
-        private @Nonnull Map<Term, CQuery> subQueries;
-        private @Nonnull Map<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> visited;
-        private @Nonnull Multimap<ImmutablePair<Term, Atom>, LinkMatch>  incoming;
-        private @Nonnull SemanticCQueryMatch.Builder builder;
-        private @Nonnull Index idx;
+    protected class State {
+        protected  @Nonnull final CQuery parentQuery;
+        protected boolean reason;
+        protected  @Nonnull Map<Term, CQuery> subQueries;
+        protected  @Nonnull Map<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> visited;
+        protected  @Nonnull Multimap<ImmutablePair<Term, Atom>, LinkMatch>  incoming;
+        protected  @Nonnull SemanticCQueryMatch.Builder builder;
+        protected  @Nonnull Index idx;
+        protected boolean reuseParentForEG = true;
 
         public State(@Nonnull CQuery query, boolean reason) {
             this.parentQuery = query;
@@ -296,10 +313,8 @@ public class MoleculeMatcher implements SemanticDescription {
             }
             cascadeEliminations();
             // save remaining exclusive groups
-            for (Map.Entry<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> e : visited.entrySet()) {
-                if (e.getValue() == null) continue;
-                saveExclusiveGroup(subQueries.get(e.getKey().left), e.getValue());
-            }
+            for (EGPrototype egPrototype : getEGPrototypes())
+                saveExclusiveGroup(egPrototype.query, egPrototype.matchLists);
             return this;
         }
 
@@ -317,6 +332,38 @@ public class MoleculeMatcher implements SemanticDescription {
             }
         }
 
+        protected class EGPrototype {
+            public CQuery query;
+            public List<List<LinkMatch>> matchLists;
+
+            public EGPrototype(CQuery query, List<List<LinkMatch>> matchLists) {
+                this.query = query;
+                this.matchLists = matchLists;
+            }
+
+            @Override
+            public @Nonnull String toString() {
+                StringBuilder builder = new StringBuilder();
+                builder.append("EGPrototype{\n").append(query).append("\n[\n");
+                for (List<LinkMatch> list : matchLists)
+                    builder.append("  ").append(list).append("\n");
+                return builder.append("]").toString();
+            }
+        }
+
+        /**
+         * This is a extension point where a subclass MAY merge exclusive groups into larger ones.
+         */
+        protected @Nonnull List<EGPrototype> getEGPrototypes() {
+            List<EGPrototype> list = new ArrayList<>(visited.size());
+            for (Map.Entry<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> e : visited.entrySet()) {
+                if (e.getValue() == null) continue;
+                list.add(new EGPrototype(subQueries.get(e.getKey().left), e.getValue()));
+            }
+            return list;
+        }
+
+
         @Nullable List<List<LinkMatch>> findLinks(@Nonnull CQuery query,
                                                   @Nonnull ImmutablePair<Term, Atom> termAtom) {
             Atom atom = termAtom.right;
@@ -324,25 +371,59 @@ public class MoleculeMatcher implements SemanticDescription {
             if (atom.isClosed() && query.size() > linkCount)
                 return null;
             ArrayList<List<LinkMatch>> linkLists = new ArrayList<>(query.size());
-            int tripleIdx = -1;
             for (Triple triple : query) {
-                int fTripleIdx = ++tripleIdx;
                 Triple.Position pos = triple.where(termAtom.left);
                 assert pos != null;
                 ArrayList<LinkMatch> found = new ArrayList<>();
                 idx.stream(triple.getPredicate(), atom, pos, reason)
-                        .forEach(l -> found.add(new LinkMatch(l, termAtom, fTripleIdx, triple)));
+                        .forEach(l -> found.add(new LinkMatch(l, termAtom, triple)));
                 if (atom.isClosed() && found.isEmpty())
                     return null;
                 linkLists.add(found);
             }
+            if (linkLists.size() == 1 && linkLists.get(0).isEmpty())
+                return null;
             return linkLists;
         }
 
-        @SuppressWarnings("UnstableApiUsage")
+        protected class EGQueryBuilder {
+            protected CQuery.Builder builder;
+
+            public EGQueryBuilder(int sizeHint) {
+                builder = CQuery.builder(sizeHint);
+            }
+
+            public void add(@Nonnull Triple triple, @Nonnull Collection<LinkMatch> matches) {
+                builder.add(triple);
+            }
+
+            public void add(@Nonnull Triple triple) {
+                builder.add(triple);
+            }
+
+            public boolean isEmpty() {
+                return builder.isEmpty();
+            }
+
+            public int size() {
+                return builder.size();
+            }
+
+            public CQuery build() {
+                return builder.build();
+            }
+        }
+
+        protected @Nonnull EGQueryBuilder createEGQueryBuilder(int sizeHint) {
+            return new EGQueryBuilder(sizeHint);
+        }
+        protected @Nonnull EGQueryBuilder createEGQueryBuilder(@Nonnull CQuery parent) {
+            return new EGQueryBuilder(parent.size());
+        }
+
         void saveExclusiveGroup(@Nonnull CQuery query, @Nonnull List<List<LinkMatch>> linkLists) {
             ArrayList<List<Term>> predicatesList = new ArrayList<>();
-            ArrayList<Triple> subQuery = new ArrayList<>(query.size());
+            EGQueryBuilder subQuery = createEGQueryBuilder(query.size());
             HashSet<Term> temp = new HashSet<>();
             Iterator<Triple> queryIt = query.iterator();
             for (List<LinkMatch> list : linkLists) {
@@ -352,20 +433,21 @@ public class MoleculeMatcher implements SemanticDescription {
                 temp.clear();
                 for (LinkMatch linkMatch : list) temp.add(linkMatch.l.p);
                 predicatesList.add(new ArrayList<>(temp));
-                subQuery.add(triple);
+                subQuery.add(triple, list);
             }
             if (subQuery.isEmpty())
                 return; //nothing to do
-            if (subQuery.size() != query.size()) //avoid new instance creation
-                query = CQuery.from(subQuery);
+            if (!reuseParentForEG || subQuery.size() != query.size()) //avoid new instance creation
+                query = subQuery.build();
+            if (query.isEmpty())
+                return; // builder rejected the exclusive group during build
             builder.addExclusiveGroup(query);
             for (List<Term> ps : Lists.cartesianProduct(predicatesList)) {
-                ImmutableList.Builder<Triple> b =
-                        ImmutableList.builderWithExpectedSize(ps.size());
+                EGQueryBuilder b = createEGQueryBuilder(query);
                 assert ps.size() == query.size();
                 Iterator<Term> it = ps.iterator();
                 for (Triple triple : query) b.add(triple.withPredicate(it.next()));
-                builder.addAlternative(query, CQuery.from(b.build()));
+                builder.addAlternative(query, b.build());
             }
         }
 

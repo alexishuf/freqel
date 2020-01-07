@@ -1,9 +1,8 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
-import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.*;
 import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 
 import javax.annotation.Nonnull;
 import java.util.HashSet;
@@ -17,6 +16,12 @@ public class HashDistinctResults implements Results {
 
     public HashDistinctResults(@Nonnull Results input) {
         this.input = input;
+    }
+
+    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
+        if (ModifierUtils.getFirst(Capability.DISTINCT, query.getModifiers()) != null)
+            return new HashDistinctResults(in);
+        return in;
     }
 
     @Override

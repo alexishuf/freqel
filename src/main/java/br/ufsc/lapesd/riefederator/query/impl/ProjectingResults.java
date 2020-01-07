@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.*;
 import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -19,6 +19,14 @@ public class ProjectingResults implements Results {
                 "Some variables of the projection are not present in the delegate");
         this.delegate = delegate;
         this.varNames = varNames;
+    }
+
+    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
+        Projection projection = (Projection) ModifierUtils.getFirst(Capability.PROJECTION,
+                query.getModifiers());
+        if (projection != null)
+            return new ProjectingResults(in, projection.getVarNames());
+        return in;
     }
 
     @Override

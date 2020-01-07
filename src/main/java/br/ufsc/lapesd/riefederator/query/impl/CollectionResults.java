@@ -3,12 +3,14 @@ package br.ufsc.lapesd.riefederator.query.impl;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.Results;
 import br.ufsc.lapesd.riefederator.query.Solution;
+import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -22,9 +24,14 @@ public class CollectionResults implements Results {
     private @Nonnull Set<String> varNames;
 
     public CollectionResults(@Nonnull Collection<Solution> collection,
-                             @Nonnull Set<String> varNames) {
+                             @Nonnull Collection<String> varNames) {
         this.collection = collection;
-        this.varNames = varNames;
+        this.varNames = varNames instanceof Set ? (Set<String>)varNames
+                                                : ImmutableSet.copyOf(varNames);
+    }
+
+    public static @Nonnull CollectionResults empty(@Nonnull Collection<String> varNames) {
+        return new CollectionResults(Collections.emptyList(), varNames);
     }
 
     @Override

@@ -334,6 +334,6 @@ public class MoleculeMatcherWithDisjointness implements Description {
 
     @Override
     public @Nonnull String toString() {
-        return String.format("MoleculeMatcher(%s)", molecule.getCore().getName());
+        return String.format("MoleculeMatcherWithDisjointness(%s)", molecule.getCore().getName());
     }
 }
