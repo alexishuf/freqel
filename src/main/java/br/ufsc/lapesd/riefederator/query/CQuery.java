@@ -457,10 +457,39 @@ public class CQuery implements  List<Triple> {
             termAnnotations.forEach(consumer);
     }
 
+    @CanIgnoreReturnValue
+    public <T extends TermAnnotation>
+    boolean forEachTermAnnotation(@Nonnull Class<T> cls, @Nonnull BiConsumer<Term, T> consumer) {
+        boolean[] has = {false};
+        forEachTermAnnotation((t, a) -> {
+            if (cls.isAssignableFrom(a.getClass())) {
+                has[0] = true;
+                //noinspection unchecked
+                consumer.accept(t, (T) a);
+            }
+        });
+        return has[0];
+    }
+
     public void forEachTripleAnnotation(@Nonnull BiConsumer<Triple, TripleAnnotation> consumer) {
         if (tripleAnnotations != null)
             tripleAnnotations.forEach(consumer);
     }
+
+    @CanIgnoreReturnValue
+    public <T extends TripleAnnotation>
+    boolean forEachTripleAnnotation(@Nonnull Class<T> cls, @Nonnull BiConsumer<Triple, T> consumer) {
+        boolean[] has = {false};
+        forEachTripleAnnotation((t, a) -> {
+            if (cls.isAssignableFrom(a.getClass())) {
+                has[0] = true;
+                //noinspection unchecked
+                consumer.accept(t, (T)a);
+            }
+        });
+        return has[0];
+    }
+
 
     /** A {@link CQuery} is a ASK-type query iff all its triples are bound
      * (i.e., no triple has a {@link Var} term). */

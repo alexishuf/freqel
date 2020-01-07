@@ -48,23 +48,20 @@ public class WebAPICQEndpoint implements CQEndpoint {
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         MapSolution.Builder b = MapSolution.builder();
-        boolean[] hasAtomAnnotations = {false};
-        query.forEachTermAnnotation((t, a) -> {
-            hasAtomAnnotations[0] |= a instanceof AtomAnnotation;
-            if (a instanceof AtomAnnotation && ((AtomAnnotation) a).isInput()) {
-                String atomName = ((AtomAnnotation) a).getAtomName();
-                String input = molecule.getAtom2input().get(atomName);
-                if (input != null) {
-                    if (t.isGround()) {
-                        b.put(input, t);
-                    } else if (molecule.getExecutor().getRequiredInputs().contains(input)) {
-                        logger.error("Required input {} (Atom={}) is not ground!", input, atomName);
-                    }
+        boolean hasAtomAnnotations = query.forEachTermAnnotation(AtomAnnotation.class, (t, a) -> {
+            if (!a.isInput()) return;
+            String atomName = a.getAtomName();
+            String input = molecule.getAtom2input().get(atomName);
+            if (input != null) {
+                if (t.isGround()) {
+                    b.put(input, t);
+                } else if (molecule.getExecutor().getRequiredInputs().contains(input)) {
+                    logger.error("Required input {} (Atom={}) is not ground!", input, atomName);
                 }
             }
         });
-        if (!hasAtomAnnotations[0] && !molecule.getExecutor().getRequiredInputs().isEmpty()) {
-            logger.info("No AtomAnnotations in {}. Will pass it through APIMoleculeMatcher", query);
+        if (!hasAtomAnnotations && !molecule.getExecutor().getRequiredInputs().isEmpty()) {
+            logger.info("No AtomAnnotations in {}. Will call matchAndQuery()", query);
             return matchAndQuery(query, false);
         }
         // from here onwards, this class is responsible for modifiers
