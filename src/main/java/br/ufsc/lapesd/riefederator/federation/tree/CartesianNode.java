@@ -3,22 +3,15 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 import br.ufsc.lapesd.riefederator.query.Solution;
 
 import javax.annotation.Nonnull;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionInputs;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionResults;
 import static java.util.stream.Collectors.toList;
 
 public class CartesianNode extends PlanNode {
     public CartesianNode(@Nonnull List<PlanNode> children) {
-        super(computeVars(children), false, children);
-    }
-
-    private static @Nonnull Set<String> computeVars(@Nonnull List<PlanNode> children) {
-        Set<String> set = new HashSet<>();
-        for (PlanNode child : children)
-            set.addAll(child.getResultVars());
-        return set;
+        super(unionResults(children), false, unionInputs(children), children);
     }
 
     @Override

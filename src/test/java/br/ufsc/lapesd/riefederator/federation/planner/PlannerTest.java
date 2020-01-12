@@ -18,7 +18,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Supplier;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamDepthLeft;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
@@ -78,7 +78,7 @@ public class PlannerTest {
         assertFalse(root.isProjecting());
 
         // no good reason for more than 3 nodes
-        assertTrue(streamDepthLeft(root).count() <= 3);
+        assertTrue(streamPreOrder(root).count() <= 3);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -92,8 +92,8 @@ public class PlannerTest {
         assertEquals(root.getResultVars(), asList("x", "y"));
 
         // a reasonable plan would just add a join node over the query nodes
-        assertTrue(streamDepthLeft(root).count() <= 5);
-        List<JoinNode> joins = streamDepthLeft(root).filter(n -> n instanceof JoinNode)
+        assertTrue(streamPreOrder(root).count() <= 5);
+        List<JoinNode> joins = streamPreOrder(root).filter(n -> n instanceof JoinNode)
                                          .map(n -> (JoinNode)n).collect(toList());
         assertEquals(joins.size(), 1);
         assertEquals(joins.get(0).getJoinVars(), singleton("x"));
@@ -106,11 +106,11 @@ public class PlannerTest {
         CQuery q2 = CQuery.from(new Triple(X, manages, Y));
         PlanNode root = planner.plan(asList(new QueryNode(empty1, q1), new QueryNode(empty2, q2)));
 
-        assertEquals(streamDepthLeft(root).filter(n -> n instanceof JoinNode).count(), 1);
-        assertEquals(streamDepthLeft(root)
+        assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 1);
+        assertEquals(streamPreOrder(root)
                               .filter(n -> n instanceof MultiQueryNode).count(), 0);
         // a sane count is 3: MultiQuery(q1, q2)
-        assertTrue(streamDepthLeft(root).count() <= 4);
+        assertTrue(streamPreOrder(root).count() <= 4);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -122,8 +122,8 @@ public class PlannerTest {
         PlanNode root = planner.plan(asList(node1, node2));
         assertEquals(root.getResultVars(), Sets.newHashSet("x", "y"));
 
-        assertTrue(streamDepthLeft(root).count() <= 5);
-        List<CartesianNode> nodes = streamDepthLeft(root)
+        assertTrue(streamPreOrder(root).count() <= 5);
+        List<CartesianNode> nodes = streamPreOrder(root)
                                              .filter(n -> n instanceof CartesianNode)
                                              .map(n -> (CartesianNode) n).collect(toList());
         assertEquals(nodes.size(), 1);
@@ -149,11 +149,11 @@ public class PlannerTest {
             Collections.shuffle(shuffled, random);
             PlanNode root = planner.plan(shuffled);
 
-            Set<QueryNode> observed = streamDepthLeft(root)
+            Set<QueryNode> observed = streamPreOrder(root)
                                                .filter(n -> n instanceof QueryNode)
                                                .map(n -> (QueryNode) n).collect(toSet());
             assertEquals(observed, new HashSet<>(shuffled));
-            List<JoinNode> joinNodes = streamDepthLeft(root)
+            List<JoinNode> joinNodes = streamPreOrder(root)
                                                 .filter(n -> n instanceof JoinNode)
                                                 .map(n -> (JoinNode) n).collect(toList());
             assertEquals(joinNodes.size(), 2);
@@ -171,7 +171,7 @@ public class PlannerTest {
             exSets.add(singleton("u"));
             assertEquals(actualSets, exSets);
 
-            List<CartesianNode> cartesianNodes = streamDepthLeft(root)
+            List<CartesianNode> cartesianNodes = streamPreOrder(root)
                                                           .filter(n -> n instanceof CartesianNode)
                                                           .map(n -> (CartesianNode) n)
                                                           .collect(toList());
@@ -190,10 +190,10 @@ public class PlannerTest {
         QueryNode q3 = new QueryNode(empty2, CQuery.from(new Triple(Y, genreName, Z)));
         PlanNode root = planner.plan(asList(q1, q2, q3));
 
-        assertEquals(streamDepthLeft(root).filter(n -> n instanceof CartesianNode).count(), 0);
-        assertEquals(streamDepthLeft(root).filter(n -> n instanceof JoinNode).count(), 2);
+        assertEquals(streamPreOrder(root).filter(n -> n instanceof CartesianNode).count(), 0);
+        assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 2);
 
-        Set<CQuery> queries = streamDepthLeft(root).filter(n -> n instanceof QueryNode)
+        Set<CQuery> queries = streamPreOrder(root).filter(n -> n instanceof QueryNode)
                 .map(n -> ((QueryNode) n).getQuery()).collect(toSet());
         HashSet<CQuery> expectedQueries = Sets.newHashSet(
                 CQuery.from(new Triple(X, title, title1)),

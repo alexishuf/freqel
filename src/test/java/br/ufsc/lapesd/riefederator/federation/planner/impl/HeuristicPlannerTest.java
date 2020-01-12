@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
+import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.federation.tree.EmptyNode;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
@@ -8,6 +10,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.Sets;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.BeforeMethod;
@@ -16,6 +19,7 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.List;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
@@ -26,14 +30,21 @@ public class HeuristicPlannerTest {
     public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
     public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
     public static final @Nonnull StdURI knows = new StdURI(FOAF.knows.getURI());
+    public static final @Nonnull StdURI name = new StdURI(FOAF.name.getURI());
+    public static final @Nonnull StdURI likes = new StdURI("http://example.org/likes");
     public static final @Nonnull StdVar X = new StdVar("x");
     public static final @Nonnull StdVar Y = new StdVar("y");
+    public static final @Nonnull StdVar Z = new StdVar("z");
     public static final @Nonnull StdVar U = new StdVar("u");
     public static final @Nonnull StdVar V = new StdVar("v");
 
     public static final @Nonnull EmptyEndpoint empty = new EmptyEndpoint();
     public QueryNode xKnowsY, aliceKnowsX, yKnowsBob;
     public QueryNode uKnowsV, aliceKnowsU, vKnowsBob;
+
+    public static final @Nonnull Atom Person = new Atom("Person");
+    public static final @Nonnull Atom LikedPerson = new Atom("LikedPerson");
+    public static final @Nonnull Atom PersonName = new Atom("PersonName");
 
     @BeforeMethod
     public void setUp() {
@@ -44,6 +55,13 @@ public class HeuristicPlannerTest {
         uKnowsV = new QueryNode(empty, CQuery.from(new Triple(U, knows, V)));
         aliceKnowsU = new QueryNode(empty, CQuery.from(new Triple(ALICE, knows, U)));
         vKnowsBob = new QueryNode(empty, CQuery.from(new Triple(V, knows, BOB)));
+    }
+
+    protected void checkIntersection(@Nonnull HeuristicPlanner.JoinGraph g,
+                                     int[][] expected) {
+        assertEquals(g.getIntersection().length, expected.length);
+        for (int i = 0; i < expected.length; i++)
+            assertEquals(g.getIntersection()[i], expected[i], "i=" + i);
     }
 
     @Test
@@ -57,7 +75,7 @@ public class HeuristicPlannerTest {
         assertTrue(g.tryJoin());
         assertFalse(g.tryJoin());
 
-        PlanNode root = g.getRoot();
+        PlanNode root = g.getLeaves().get(0);
         assertTrue(root instanceof JoinNode);
         assertFalse(root.isProjecting());
         assertEquals(root.getResultVars(), Sets.newHashSet("x", "y"));
@@ -77,7 +95,7 @@ public class HeuristicPlannerTest {
         assertTrue(g.tryJoin());
         assertFalse(g.tryJoin());
 
-        PlanNode root = g.getRoot();
+        PlanNode root = g.getLeaves().get(0);
         assertTrue(root instanceof JoinNode);
         assertFalse(root.isProjecting());
         assertEquals(root.getResultVars(), Sets.newHashSet("x", "y"));
@@ -99,7 +117,7 @@ public class HeuristicPlannerTest {
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
 
         assertFalse(g.tryJoin());
-        assertSame(g.getRoot(), leaves.get(0));
+        assertSame(g.getLeaves().get(0), leaves.get(0));
     }
 
     @Test
@@ -196,17 +214,115 @@ public class HeuristicPlannerTest {
                 new int[] {0, 0, 1},
                 new int[] {0, 0, 0},
         };
-        assertEquals(left.getIntersection().length, 3);
-        for (int i = 0; i < 3; i++)
-            assertEquals(left.getIntersection()[i], exComponent[i], "i="+i);
+        checkIntersection(left, exComponent);
 
         subset.clear();
         subset.set(3, 6);
         HeuristicPlanner.JoinGraph right = g.createComponent(subset);
         assertEquals(right.getLeaves(), asList(aliceKnowsU, uKnowsV, vKnowsBob));
-        assertEquals(right.getIntersection().length, 3);
-        for (int i = 0; i < 3; i++)
-            assertEquals(right.getIntersection()[i], exComponent[i], "i="+i);
+        checkIntersection(right, exComponent);
+    }
+
+    @Test
+    public void testJoinGraphWithServices() {
+        QueryNode xKnowsBob = new QueryNode(empty, CQuery.from(new Triple(X, knows, BOB)));
+        QueryNode xNameY = new QueryNode(empty, CQuery.with(new Triple(X, name, Y))
+                .annotate(X, AtomAnnotation.asRequired(Person))
+                .annotate(Y, AtomAnnotation.of(PersonName))
+                .build());
+        QueryNode xLikesZ = new QueryNode(empty, CQuery.with(new Triple(X, likes, Z))
+                .annotate(X, AtomAnnotation.asRequired(Person))
+                .annotate(Z, AtomAnnotation.of(LikedPerson))
+                .build());
+        List<QueryNode> nodes = asList(xKnowsBob, xNameY, xLikesZ);
+        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(nodes);
+
+        int[][] expected = {
+                new int[] {0, 1, 1},
+                new int[] {0, 0, 0},
+                new int[] {0, 0, 0},
+        };
+        checkIntersection(g, expected);
+    }
+
+    @Test
+    public void testBuildTreeForServiceChain() {
+        QueryNode q1 = new QueryNode(empty, CQuery.with(new Triple(ALICE, knows, X))
+                .annotate(ALICE, AtomAnnotation.asRequired(Person))
+                .annotate(X, AtomAnnotation.of(Person)).build());
+        QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(X, knows, Y))
+                .annotate(X, AtomAnnotation.asRequired(Person))
+                .annotate(Y, AtomAnnotation.of(Person)).build());
+        QueryNode q3 = new QueryNode(empty, CQuery.with(new Triple(Y, knows, Z))
+                .annotate(Y, AtomAnnotation.asRequired(Person))
+                .annotate(Z, AtomAnnotation.of(Person)).build());
+        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
+
+        checkIntersection(g, new int[][]{
+                {0, 1, 0},
+                {0, 0, 1},
+                {0, 0, 0},
+        });
+        PlanNode rootNode = g.buildTree();
+        assertNotNull(rootNode);
+        assertFalse(rootNode.hasInputs());
+        assertTrue(rootNode instanceof JoinNode);
+        assertEquals(rootNode.getResultVars(), Sets.newHashSet("x", "y", "z"));
+
+        assertTrue(rootNode.getChildren().get(0) instanceof JoinNode);
+        JoinNode left = (JoinNode) rootNode.getChildren().get(0);
+        assertSame(left.getLeft(), q1);
+        assertSame(left.getRight(), q2);
+        assertSame(rootNode.getChildren().get(1), q3);
+
+        assertFalse(left.hasInputs());
+    }
+
+    @Test
+    public void testBuildTreeWithInputsAtRoot() {
+        QueryNode q1 = new QueryNode(empty, CQuery.with(new Triple(X, knows, Y))
+                .annotate(X, AtomAnnotation.asRequired(Person))
+                .annotate(Y, AtomAnnotation.of(Person)).build());
+        QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(Y, knows, Z))
+                .annotate(Y, AtomAnnotation.asRequired(Person))
+                .annotate(Z, AtomAnnotation.of(Person)).build());
+
+        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2));
+        PlanNode root = g.buildTree();
+        assertTrue(root instanceof EmptyNode);
+        assertEquals(root.getResultVars(), Sets.newHashSet("x", "y", "z"));
+        assertEquals(root.getChildren().size(), 0);
+    }
+
+    @Test
+    public void testStartFromBoundNotFromBest() {
+        QueryNode q1 = new QueryNode(empty, CQuery.with(new Triple(X, knows, Y),
+                                                        new Triple(Y, likes, U))
+                .annotate(X, AtomAnnotation.asRequired(Person))
+                .annotate(Y, AtomAnnotation.of(Person))
+                .annotate(U, AtomAnnotation.of(Person)).build());
+        QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(U, knows, Y),
+                                                        new Triple(Y, likes, V))
+                .annotate(U, AtomAnnotation.asRequired(Person))
+                .annotate(Y, AtomAnnotation.asRequired(Person))
+                .annotate(V, AtomAnnotation.of(Person)).build());
+        QueryNode q3 = new QueryNode(empty, CQuery.with(new Triple(ALICE, knows, X))
+                .annotate(ALICE, AtomAnnotation.asRequired(Person))
+                .annotate(X, AtomAnnotation.of(Person)).build());
+
+        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
+        PlanNode root = g.buildTree();
+        assertTrue(root instanceof JoinNode);
+
+        PlanNode left = root.getChildren().get(0), right = root.getChildren().get(1);
+        assertTrue(left instanceof JoinNode);
+        assertTrue(Sets.newHashSet(left.getChildren()).contains(q3));
+        assertTrue(right == q1 || right == q2);
+        if (right == q1) assertTrue(left.getChildren().contains(q2));
+        if (right == q2) assertTrue(left.getChildren().contains(q1));
+
+        assertFalse(root.hasInputs());
+        assertFalse(left.hasInputs());
     }
 
 }

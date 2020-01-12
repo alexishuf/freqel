@@ -1,10 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.execution;
 
-import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.MultiQueryNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.QueryNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleCartesianNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleEmptyNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleQueryNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinNodeExecutor;
@@ -70,6 +68,7 @@ public class PlanExecutorTest {
             bind(QueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
             bind(MultiQueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
             bind(CartesianNodeExecutor.class).to(SimpleCartesianNodeExecutor.class);
+            bind(EmptyNodeExecutor.class).toInstance(SimpleEmptyNodeExecutor.INSTANCE);
             bind(PlanExecutor.class).to(InjectedExecutor.class);
         }
     }

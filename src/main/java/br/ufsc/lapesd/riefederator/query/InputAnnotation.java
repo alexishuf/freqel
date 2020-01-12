@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query;
 
 
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import com.google.errorprone.annotations.Immutable;
 
 /**
@@ -11,8 +12,9 @@ import com.google.errorprone.annotations.Immutable;
  */
 @Immutable
 public interface InputAnnotation extends TermAnnotation {
-    /**
-     * Not all inputs are required.
-     */
+    /** Indicates whether the annotated {@link Term} is an input. */
+    boolean isInput();
+
+    /** Not all inputs are required. */
     boolean isRequired();
 }

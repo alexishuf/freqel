@@ -4,15 +4,15 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
-import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Solution;
-import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.*;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toSet;
@@ -20,6 +20,16 @@ import static java.util.stream.Collectors.toSet;
 public class QueryNode extends PlanNode {
     private @Nonnull TPEndpoint endpoint;
     private @Nonnull CQuery query;
+
+    protected static @Nonnull Set<String> getInputVars(@Nonnull CQuery query) {
+        if (!query.hasTermAnnotations())
+            return Collections.emptySet();
+        ImmutableSet.Builder<String> b = ImmutableSet.builder();
+        boolean got = query.forEachTermAnnotation(InputAnnotation.class, (t, a) -> {
+            if (t.isVar() && a.isInput()) b.add(t.asVar().getName());
+        });
+        return got ? b.build() : Collections.emptySet();
+    }
 
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
         this(endpoint, query, query.streamTerms(Var.class).map(Var::getName)
@@ -33,7 +43,7 @@ public class QueryNode extends PlanNode {
 
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
                      @Nonnull Collection<String> varNames, boolean projecting) {
-        super(varNames, projecting, Collections.emptyList());
+        super(varNames, projecting, getInputVars(query), Collections.emptyList());
         if (QueryNode.class.desiredAssertionStatus()) { //expensive checks
             Set<String> all = query.streamTerms(Var.class).map(Var::getName).collect(toSet());
             Preconditions.checkArgument(all.containsAll(varNames), "There are extra varNames");
@@ -101,6 +111,12 @@ public class QueryNode extends PlanNode {
         boolean projecting = projection.size() < all.size();
 
         return new QueryNode(getEndpoint(), q, projection, projecting);
+    }
+
+    @Override
+    public <T extends TermAnnotation>
+    boolean forEachTermAnnotation(@Nonnull Class<T> cls, @Nonnull BiConsumer<Term, T> consumer) {
+        return getQuery().forEachTermAnnotation(cls, consumer);
     }
 
     @Override

@@ -7,7 +7,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static java.util.Collections.emptySet;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -46,6 +46,7 @@ public class MultiQueryNode extends PlanNode {
 
         public @Nonnull Builder allVars() {
             intersect = false;
+            project = false;
             return this;
         }
 
@@ -53,22 +54,13 @@ public class MultiQueryNode extends PlanNode {
         MultiQueryNode build() {
             if (resultVars == null) {
                 if (intersect) {
-                    Iterator<PlanNode> i = list.iterator();
-                    resultVars = new HashSet<>(i.hasNext() ? i.next().getResultVars() : emptySet());
-                    while (i.hasNext()) {
-                        Set<String> set = i.next().getResultVars();
-                        project |= resultVars.retainAll(set);
-                        if (!project && !resultVars.containsAll(set))
-                            project = true;
-                    }
+                    resultVars = intersectResults(list);
                 } else {
                     project = false;
-                    resultVars = list.stream().flatMap(n -> n.getResultVars().stream())
-                                              .collect(toSet());
+                    resultVars = unionResults(list);
                 }
             } else if (MultiQueryNode.class.desiredAssertionStatus()) {
-                Set<String> all = list.stream().flatMap(n -> n.getResultVars().stream())
-                                               .collect(toSet());
+                Set<String> all = unionResults(list);
                 Preconditions.checkArgument(all.containsAll(resultVars),
                         "There are extra result vars");
                 Preconditions.checkArgument(intersect || project == !resultVars.equals(all),
@@ -85,7 +77,7 @@ public class MultiQueryNode extends PlanNode {
     protected MultiQueryNode(@Nonnull List<PlanNode> children,
                              @Nonnull Collection<String> resultVars,
                              boolean projecting) {
-        super(resultVars, projecting, children);
+        super(resultVars, projecting, unionInputs(children), children);
     }
 
     @Override

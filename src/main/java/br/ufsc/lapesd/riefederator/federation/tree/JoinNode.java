@@ -1,20 +1,28 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.query.Solution;
-import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionInputs;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionResults;
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Arrays.asList;
 
 public class JoinNode extends PlanNode {
     private @Nonnull Set<String> joinVars;
 
     public static class Builder {
         private @Nonnull PlanNode left, right;
-        private @Nullable Set<String> joinVars = null, resultVars = null;
+        private @Nullable Set<String> joinVars = null, resultVars = null, inputVars = null;
         private boolean projecting = true;
 
         public Builder(@Nonnull PlanNode left, @Nonnull PlanNode right) {
@@ -29,7 +37,7 @@ public class JoinNode extends PlanNode {
             return this;
         }
         @Contract("_ -> this")  @CanIgnoreReturnValue
-        public @Nonnull Builder addJoinVars(@Nonnull List<String> names) {
+        public @Nonnull Builder addJoinVars(@Nonnull Collection<String> names) {
             if (joinVars == null) joinVars = new HashSet<>();
             joinVars.addAll(names);
             return this;
@@ -49,32 +57,50 @@ public class JoinNode extends PlanNode {
         }
         @Contract("_ -> this") @CanIgnoreReturnValue
         public @Nonnull Builder setResultVarsNoProjection(@Nonnull Collection<String> names) {
-            resultVars = names instanceof Set ? (Set<String>) names : new HashSet<>(names);
+            resultVars = names instanceof Set ? (Set<String>) names : ImmutableSet.copyOf(names);
             projecting = false;
+            return this;
+        }
+
+        @Contract("_ -> this") @CanIgnoreReturnValue
+        public @Nonnull Builder setInputVars(@Nonnull Collection<String> names) {
+            inputVars = names instanceof Set ? (Set<String>)names : ImmutableSet.copyOf(names);
             return this;
         }
 
         public JoinNode build() {
             if (joinVars == null) {
-                joinVars = new HashSet<>(left.getResultVars());
-                joinVars.retainAll(right.getResultVars());
+                if (inputVars == null) {
+                    inputVars = new HashSet<>();
+                    joinVars = TreeUtils.joinVars(left, right, inputVars);
+                } else {
+                    joinVars = TreeUtils.joinVars(left, right, null);
+                    if (getClass().desiredAssertionStatus()) {
+                        Set<String> all = unionInputs(asList(left, right));
+                        checkArgument(all.containsAll(inputVars),
+                                "Every inputVar must be a input from left or right or both");
+                        checkArgument(inputVars.stream().noneMatch(joinVars::contains),
+                                "An inputVar of the join node cannot also be a joinVar");
+                    }
+                }
             } else {
-                Preconditions.checkArgument(joinVars.stream()
-                        .allMatch(n -> left.getResultVars().contains(n)
+                if (getClass().desiredAssertionStatus()) {
+                    checkArgument(joinVars.stream().allMatch(n -> left.getResultVars().contains(n)
                                     && right.getResultVars().contains(n)),
-                        "There are join vars which do not occur in some side");
+                            "There are join vars which do not occur in some side");
+                }
+                if (inputVars == null) {
+                    inputVars = TreeUtils.unionInputs(asList(left, right));
+                    inputVars.removeIf(n -> !joinVars.contains(n));
+                }
             }
-            int capacity = left.getResultVars().size() + right.getResultVars().size();
-            HashSet<String> all;
+            Set<String> all;
             if (JoinNode.class.desiredAssertionStatus() || resultVars == null) {
-                all = new HashSet<>(capacity);
-                all.addAll(left.getResultVars());
-                all.addAll(right.getResultVars());
-                Preconditions.checkArgument(all.containsAll(joinVars), "There are extra joinVars");
+                all = unionResults(asList(left, right));
+                checkArgument(all.containsAll(joinVars), "There are extra joinVars");
                 if (resultVars != null) {
-                    Preconditions.checkArgument(all.containsAll(resultVars),
-                            "There are extra resultVars");
-                    Preconditions.checkArgument(projecting == !resultVars.containsAll(all),
+                    checkArgument(all.containsAll(resultVars), "There are extra resultVars");
+                    checkArgument(projecting == !resultVars.containsAll(all),
                             "Mismatch between projecting and resultVars");
                 }
             } else {
@@ -84,7 +110,9 @@ public class JoinNode extends PlanNode {
                 resultVars = all;
                 projecting = false;
             }
-            return new JoinNode(left, right, joinVars, resultVars, projecting);
+            if (inputVars == null)
+                inputVars = unionInputs(asList(left, right));
+            return new JoinNode(left, right, joinVars, resultVars, projecting, inputVars);
         }
     }
 
@@ -94,8 +122,9 @@ public class JoinNode extends PlanNode {
 
     protected JoinNode(@Nonnull PlanNode left, @Nonnull PlanNode right,
                        @Nonnull Set<String> joinVars,
-                       @Nonnull Set<String> resultVars, boolean projecting) {
-        super(resultVars, projecting, Arrays.asList(left, right));
+                       @Nonnull Set<String> resultVars, boolean projecting,
+                       @Nonnull Set<String> inputVars) {
+        super(resultVars, projecting, inputVars, asList(left, right));
         this.joinVars = joinVars;
     }
 
@@ -115,16 +144,13 @@ public class JoinNode extends PlanNode {
     public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
         PlanNode left = getLeft().createBound(solution);
         PlanNode right = getRight().createBound(solution);
-        HashSet<String> all = new HashSet<>(left.getResultVars());
-        all.addAll(right.getResultVars());
+        Set<String> all = unionResults(asList(left, right));
+        Set<String> joinVars = TreeUtils.intersect(getJoinVars(), all);
+        Set<String> resultVars = TreeUtils.intersect(getResultVars(), all);
+        Set<String> inputVars = TreeUtils.intersect(getInputVars(), all);
 
-        HashSet<String> joinVars = new HashSet<>(getJoinVars());
-        joinVars.retainAll(all);
-
-        HashSet<String> resultVars = new HashSet<>(getResultVars());
-        resultVars.retainAll(all);
         boolean projecting = resultVars.size() < all.size();
-        return new JoinNode(left, right, joinVars, resultVars, projecting);
+        return new JoinNode(left, right, joinVars, resultVars, projecting, inputVars);
     }
 
     @Override

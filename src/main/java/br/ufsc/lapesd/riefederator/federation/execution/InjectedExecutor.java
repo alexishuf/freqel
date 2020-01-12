@@ -1,9 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.execution;
 
-import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.MultiQueryNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.QueryNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.query.Results;
 import com.google.common.base.Preconditions;
@@ -16,16 +13,19 @@ public class InjectedExecutor implements PlanExecutor {
     private @Nonnull MultiQueryNodeExecutor multiQueryNodeExecutor;
     private @Nonnull JoinNodeExecutor joinNodeExecutor;
     private @Nonnull CartesianNodeExecutor cartesianNodeExecutor;
+    private @Nonnull EmptyNodeExecutor emptyNodeExecutor;
 
     @Inject
     public InjectedExecutor(@Nonnull QueryNodeExecutor queryNodeExecutor,
                             @Nonnull MultiQueryNodeExecutor multiQueryNodeExecutor,
                             @Nonnull JoinNodeExecutor joinNodeExecutor,
-                            @Nonnull CartesianNodeExecutor cartesianNodeExecutor) {
+                            @Nonnull CartesianNodeExecutor cartesianNodeExecutor,
+                            @Nonnull EmptyNodeExecutor emptyNodeExecutor) {
         this.queryNodeExecutor = queryNodeExecutor;
         this.multiQueryNodeExecutor = multiQueryNodeExecutor;
         this.joinNodeExecutor = joinNodeExecutor;
         this.cartesianNodeExecutor = cartesianNodeExecutor;
+        this.emptyNodeExecutor = emptyNodeExecutor;
     }
 
     @Override
@@ -45,6 +45,8 @@ public class InjectedExecutor implements PlanExecutor {
             return joinNodeExecutor.execute(node);
         else if (CartesianNode.class.isAssignableFrom(cls))
             return cartesianNodeExecutor.execute(node);
+        else if (EmptyNode.class.isAssignableFrom(cls))
+            return emptyNodeExecutor.execute(node);
         throw new UnsupportedOperationException("No executor for "+cls);
     }
 }
