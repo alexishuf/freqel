@@ -103,7 +103,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
 
     @Override
     public String toString() {
-        return String.format("UriTemplateExecutor(%s)", template.getTemplate());
+        return template.getTemplate();
     }
 
     protected @Nonnull Client createClient() {

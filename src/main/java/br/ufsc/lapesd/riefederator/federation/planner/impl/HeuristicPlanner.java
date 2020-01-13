@@ -37,6 +37,16 @@ public class HeuristicPlanner implements Planner {
         private boolean withInputs;
         private int[][] intersection;
 
+        private static int weight(@Nonnull PlanNode l, @Nonnull PlanNode r) {
+            if (l instanceof QueryNode && r instanceof QueryNode) {
+                QueryNode ln = (QueryNode)l, rn = (QueryNode)r;
+                CQuery lq = ln.getQuery(), rq = rn.getQuery();
+                if (lq.unorderedEquals(rq.getList()) && ln.getEndpoint().equals(rn.getEndpoint()))
+                    return 0;
+            }
+            return joinVars(l, r).size();
+        }
+
         public JoinGraph(@Nonnull Collection<? extends PlanNode> leaves) {
             this.leaves = new ArrayList<>(leaves);
             this.withInputs = leaves.stream().anyMatch(PlanNode::hasInputs);
@@ -45,7 +55,7 @@ public class HeuristicPlanner implements Planner {
             intersection = new int[size][size];
             for (int i = 0; i < size; i++) {
                 for (int j = i+1; j < size; j++)
-                    intersection[i][j] = joinVars(this.leaves.get(i), this.leaves.get(j)).size();
+                    intersection[i][j] = weight(this.leaves.get(i), this.leaves.get(j));
             }
         }
 
@@ -180,14 +190,14 @@ public class HeuristicPlanner implements Planner {
             // adjust intersection to the changes
             for (int i = 0; i < leftIdx; i++) {
                 // re-compute intersection, now with the JoinNode
-                intersection[i][leftIdx] = joinVars(leaves.get(i), joinNode).size();
+                intersection[i][leftIdx] = weight(leaves.get(i), joinNode);
                 // shift down unaffected intersections
                 for (int j = rightIdx; j < size - 1; j++)
                     intersection[i][j] = intersection[i][j + 1];
             }
             // re-compute intersection, now with the JoinNode
             for (int j = leftIdx; j < size - 1; j++)
-                intersection[leftIdx][j] = joinVars(joinNode, leaves.get(j)).size();
+                intersection[leftIdx][j] = weight(joinNode, leaves.get(j));
             for (int i = leftIdx +1; i < size-1; i++) {
                 // shift down unaffected intersections
                 for (int j = i+1; j < size - 1; j++)

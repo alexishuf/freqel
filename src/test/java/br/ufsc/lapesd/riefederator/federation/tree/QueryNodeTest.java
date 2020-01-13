@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.description.Molecule;
+import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
@@ -11,6 +13,7 @@ import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.Sets;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.XSD;
@@ -33,6 +36,10 @@ public class QueryNodeTest {
     public static final @Nonnull StdVar X = new StdVar("x");
     public static final @Nonnull StdVar Y = new StdVar("y");
     private static final EmptyEndpoint empty = new EmptyEndpoint();
+
+    private static final @Nonnull Atom atom1 = Molecule.builder("Atom1").buildAtom();
+    private static final @Nonnull Atom atom2 = Molecule.builder("Atom2").buildAtom();
+    private static final @Nonnull Atom atom3 = Molecule.builder("Atom3").buildAtom();
 
     @Test
     public void testNoVars() {
@@ -77,13 +84,11 @@ public class QueryNodeTest {
         CQuery query = CQuery.with(asList(new Triple(ALICE, knows, X),
                                           new Triple(X, knows, BOB))).distinct(true).build();
         QueryNode node = new QueryNode(empty, query);
-        PlanNode bound = node.createBound(MapSolution.build("y", CHARLIE));
+        QueryNode bound = node.createBound(MapSolution.build("y", CHARLIE));
 
-        assertTrue(bound instanceof QueryNode);
-        QueryNode boundQuery = (QueryNode) bound;
-        assertEquals(boundQuery.getQuery(), query);
+        assertEquals(bound.getQuery(), query);
         Modifier modifier = ModifierUtils.getFirst(Capability.DISTINCT,
-                                                   boundQuery.getQuery().getModifiers());
+                                                   bound.getQuery().getModifiers());
         assertNotNull(modifier);
         assertTrue(modifier.isRequired());
     }
@@ -93,10 +98,7 @@ public class QueryNodeTest {
         CQuery query = CQuery.with(asList(new Triple(X, knows, ALICE),
                                           new Triple(Y, knows, X))).ask(false).build();
         QueryNode node = new QueryNode(empty, query);
-        PlanNode boundNode = node.createBound(MapSolution.build("x", BOB));
-
-        assertTrue(boundNode instanceof QueryNode);
-        QueryNode bound = (QueryNode) boundNode;
+        QueryNode bound = node.createBound(MapSolution.build("x", BOB));
 
         assertEquals(bound.getQuery(),
                      CQuery.with(asList(new Triple(BOB, knows, ALICE),
@@ -112,9 +114,7 @@ public class QueryNodeTest {
         CQuery query = CQuery.from(asList(new Triple(X, knows, ALICE),
                                           new Triple(X, age, i23)));
         QueryNode node = new QueryNode(empty, query);
-        PlanNode boundNode = node.createBound(MapSolution.build("x", BOB));
-        assertTrue(boundNode instanceof QueryNode);
-        QueryNode bound = (QueryNode) boundNode;
+        QueryNode bound = node.createBound(MapSolution.build("x", BOB));
 
         CQuery expected = CQuery.from(asList(new Triple(BOB, knows, ALICE),
                                              new Triple(BOB, age,   i23)));
@@ -126,8 +126,7 @@ public class QueryNodeTest {
     public void testBindingRemovesProjectedVar() {
         CQuery query = CQuery.from(new Triple(X, knows, Y));
         QueryNode node = new QueryNode(empty, query, singleton("x"));
-        PlanNode boundNode = node.createBound(MapSolution.build(X, ALICE));
-        QueryNode bound = (QueryNode) boundNode;
+        QueryNode bound = node.createBound(MapSolution.build(X, ALICE));
 
         CQuery actual = bound.getQuery();
         assertEquals(actual, CQuery.from(new Triple(ALICE, knows, Y)));
@@ -140,11 +139,49 @@ public class QueryNodeTest {
     public void testBindingRemovesResultVar() {
         CQuery query = CQuery.from(new Triple(X, knows, Y));
         QueryNode node = new QueryNode(empty, query);
-        PlanNode boundNode = node.createBound(MapSolution.build(Y, BOB));
-        QueryNode bound = (QueryNode) boundNode;
+        QueryNode bound = node.createBound(MapSolution.build(Y, BOB));
 
         assertEquals(bound.getQuery(), CQuery.from(new Triple(X, knows, BOB)));
         assertEquals(bound.getResultVars(), singleton("x"));
+        assertFalse(bound.hasInputs());
         assertFalse(bound.isProjecting());
+    }
+
+    @Test
+    public void testBindingNoChangePreservesAnnotations() {
+        CQuery query = CQuery.with(new Triple(ALICE, knows, Y))
+                .annotate(ALICE, AtomAnnotation.of(atom1))
+                .annotate(Y, AtomAnnotation.asRequired(atom2)).build();
+        QueryNode node = new QueryNode(empty, query);
+        QueryNode bound = node.createBound(MapSolution.build(X, BOB));
+
+        assertEquals(bound.getResultVars(), singleton("y"));
+        assertTrue(bound.hasInputs());
+        assertEquals(bound.getInputVars(), singleton("y"));
+        assertTrue(bound.getQuery().hasTermAnnotations());
+        assertFalse(bound.getQuery().hasTripleAnnotations());
+        assertEquals(bound.getQuery(), query);
+    }
+
+    @Test
+    public void testBindingPreservesAnnotations() {
+        CQuery query = CQuery.with(new Triple(X, knows, Y), new Triple(ALICE, knows, X))
+                .annotate(X, AtomAnnotation.asRequired(atom1))
+                .annotate(Y, AtomAnnotation.asRequired(atom2))
+                .annotate(ALICE, AtomAnnotation.of(atom3))
+                .build();
+        QueryNode node = new QueryNode(empty, query);
+        QueryNode bound = node.createBound(MapSolution.build(X, BOB));
+
+        assertEquals(bound.getResultVars(), singleton("y"));
+        assertTrue(bound.hasInputs());
+        assertEquals(bound.getInputVars(), singleton("y"));
+
+        CQuery expected = CQuery.with(new Triple(BOB, knows, Y), new Triple(ALICE, knows, BOB))
+                .annotate(BOB, AtomAnnotation.asRequired(atom1))
+                .annotate(Y, AtomAnnotation.asRequired(atom2))
+                .annotate(ALICE, AtomAnnotation.of(atom3))
+                .build();
+        assertEquals(bound.getQuery(), expected);
     }
 }

@@ -85,9 +85,7 @@ public class WebAPICQEndpoint implements CQEndpoint {
     }
 
     private @Nonnull Results matchAndQuery(@Nonnull CQuery query, boolean throwOnFailedMatch) {
-        APIMoleculeMatcher matcher = this.matcher.get();
-        if (matcher == null)
-            this.matcher = new SoftReference<>(matcher = new APIMoleculeMatcher(this.getMolecule()));
+        APIMoleculeMatcher matcher = getMatcher();
         Set<String> varNames = query.streamTerms(Var.class).map(Var::getName).collect(toSet());
         CQueryMatch match = matcher.match(query);
         if (match.getKnownExclusiveGroups().isEmpty()) {
@@ -117,6 +115,13 @@ public class WebAPICQEndpoint implements CQEndpoint {
         }
     }
 
+    public @Nonnull APIMoleculeMatcher getMatcher() {
+        APIMoleculeMatcher matcher = this.matcher.get();
+        if (matcher == null)
+            this.matcher = new SoftReference<>(matcher = new APIMoleculeMatcher(getMolecule()));
+        return matcher;
+    }
+
     private Results reportFailure(@Nonnull CQuery query, boolean mustThrow,
                                   @Nonnull Set<String> varNames) {
         if (mustThrow)
@@ -135,5 +140,11 @@ public class WebAPICQEndpoint implements CQEndpoint {
             default:
                 return false;
         }
+    }
+
+    @Override
+    public @Nonnull String toString() {
+        return String.format("WebAPICQEndpoint(%s, %s, %s)", getMolecule().getMolecule(),
+                getMolecule().getExecutor(), getMolecule().getAtom2input());
     }
 }

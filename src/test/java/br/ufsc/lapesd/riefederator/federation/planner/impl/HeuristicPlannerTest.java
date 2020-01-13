@@ -6,11 +6,13 @@ import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Sets;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.BeforeMethod;
@@ -19,6 +21,7 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashSet;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -32,16 +35,21 @@ public class HeuristicPlannerTest {
     public static final @Nonnull StdURI knows = new StdURI(FOAF.knows.getURI());
     public static final @Nonnull StdURI name = new StdURI(FOAF.name.getURI());
     public static final @Nonnull StdURI likes = new StdURI("http://example.org/likes");
+    public static final @Nonnull StdURI author = new StdURI("http://example.org/author");
+    public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author 1", "en");
     public static final @Nonnull StdVar X = new StdVar("x");
     public static final @Nonnull StdVar Y = new StdVar("y");
     public static final @Nonnull StdVar Z = new StdVar("z");
     public static final @Nonnull StdVar U = new StdVar("u");
     public static final @Nonnull StdVar V = new StdVar("v");
 
+
     public static final @Nonnull EmptyEndpoint empty = new EmptyEndpoint();
+    public static final @Nonnull EmptyEndpoint empty2 = new EmptyEndpoint();
     public QueryNode xKnowsY, aliceKnowsX, yKnowsBob;
     public QueryNode uKnowsV, aliceKnowsU, vKnowsBob;
 
+    public static final @Nonnull Atom Book = new Atom("Book");
     public static final @Nonnull Atom Person = new Atom("Person");
     public static final @Nonnull Atom LikedPerson = new Atom("LikedPerson");
     public static final @Nonnull Atom PersonName = new Atom("PersonName");
@@ -323,6 +331,45 @@ public class HeuristicPlannerTest {
 
         assertFalse(root.hasInputs());
         assertFalse(left.hasInputs());
+    }
+
+    @Test
+    public void testAlternativeInterfacesNotJoinable() {
+        QueryNode q1 = new QueryNode(empty, CQuery.from(new Triple(Y, name, author1)));
+        QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(X, author, Y))
+                .annotate(X, AtomAnnotation.asRequired(Book))
+                .annotate(Y, AtomAnnotation.of(Person)).build());
+        QueryNode q3 = new QueryNode(empty, CQuery.with(new Triple(X, author, Y))
+                .annotate(X, AtomAnnotation.of(Book))
+                .annotate(Y, AtomAnnotation.asRequired(Person)).build());
+
+        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
+        checkIntersection(g, new int[][]{
+                {0, 0, 1},
+                {0, 0, 0},
+                {0, 0, 0}
+        });
+    }
+
+    @Test
+    @SuppressWarnings("UnstableApiUsage")
+    public void testUselessService() {
+        QueryNode q1 = new QueryNode(empty, CQuery.from(new Triple(Y, name, author1)));
+        QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(X, author, Y))
+                .annotate(X, AtomAnnotation.asRequired(Book))
+                .annotate(Y, AtomAnnotation.of(Person)).build());
+        QueryNode q3 = new QueryNode(empty, CQuery.with(new Triple(X, author, Y))
+                .annotate(X, AtomAnnotation.of(Book))
+                .annotate(Y, AtomAnnotation.asRequired(Person)).build());
+
+        List<QueryNode> leaves = asList(q1, q2, q3);
+
+        for (List<QueryNode> ordering : Collections2.permutations(leaves)) {
+            HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(ordering);
+            PlanNode root = g.buildTree();
+            assertTrue(root instanceof JoinNode);
+            assertEquals(new HashSet<>(root.getChildren()), Sets.newHashSet(q1, q2));
+        }
     }
 
 }

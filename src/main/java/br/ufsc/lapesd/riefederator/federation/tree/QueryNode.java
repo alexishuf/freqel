@@ -3,15 +3,17 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.*;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
+import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -62,29 +64,41 @@ public class QueryNode extends PlanNode {
         return query;
     }
 
-    @Override
-    public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
-        Map<Term, Term> map = new HashMap<>();
-        solution.forEach((n, t) -> map.put(new StdVar(n), t));
+    @Contract("_, _, !null -> !null")
+    private Term bind(@Nonnull Term term, @Nonnull Solution solution, Term fallback) {
+        return term.isVar() ? solution.get(term.asVar().getName(), fallback) : fallback;
+    }
 
+    private @Nonnull Triple bind(@Nonnull Triple t, @Nonnull Solution solution,
+                                 @Nullable AtomicBoolean changed) {
+        Term s = bind(t.getSubject(), solution, null);
+        Term p = bind(t.getPredicate(), solution, null);
+        Term o = bind(t.getObject(), solution, null);
+        if (s == null && p == null && o == null)
+            return t;
+        if (changed != null)
+            changed.set(true);
+        return new Triple(s == null ? t.getSubject()   : s,
+                          p == null ? t.getPredicate() : p,
+                          o == null ? t.getObject()    : o);
+    }
+
+    private @Nonnull Triple bind(@Nonnull Triple t, @Nonnull Solution solution) {
+        return bind(t, solution, null);
+    }
+
+    @Override
+    public @Nonnull QueryNode createBound(@Nonnull Solution solution) {
         CQuery q = getQuery();
-        boolean change = false;
         ArrayList<Triple> bound = new ArrayList<>(q.size());
-        for (Triple t : q) {
-            Term s = map.get(t.getSubject());
-            Term p = map.get(t.getPredicate());
-            Term o = map.get(t.getObject());
-            if (s == null && p == null && o == null) {
-                bound.add(t);
-            } else {
-                change = true;
-                bound.add(new Triple(s == null ? t.getSubject()   : s,
-                                     p == null ? t.getPredicate() : p,
-                                     o == null ? t.getObject()    : o));
-            }
-        }
-        if (change) {
+        AtomicBoolean changed = new AtomicBoolean(false);
+        for (Triple t : q)
+            bound.add(bind(t, solution, changed));
+
+        if (changed.get()) {
             CQuery.WithBuilder builder = CQuery.with(bound);
+            q.forEachTermAnnotation((t, a) -> builder.annotate(bind(t, solution, t), a));
+            q.forEachTripleAnnotation((t, a) -> builder.annotate(bind(t, solution), a));
             for (Modifier m : q.getModifiers()) {
                 switch (m.getCapability()) {
                     case PROJECTION:

@@ -3,14 +3,9 @@ package br.ufsc.lapesd.riefederator.jena;
 import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import br.ufsc.lapesd.riefederator.jena.model.term.*;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
-import br.ufsc.lapesd.riefederator.model.term.Blank;
-import br.ufsc.lapesd.riefederator.model.term.Lit;
-import br.ufsc.lapesd.riefederator.model.term.Res;
-import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.term.*;
 import org.apache.jena.datatypes.RDFDatatype;
-import org.apache.jena.rdf.model.Literal;
-import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.*;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.shared.impl.PrefixMappingImpl;
 import org.jetbrains.annotations.Contract;
@@ -107,6 +102,23 @@ public class JenaWrappers {
             return createPlainLiteral(l.getLexicalForm());
         }
         return createTypedLiteral(l.getLexicalForm(), dt);
+    }
+
+    @Contract(value = "null -> null; !null -> new", pure = true)
+    public static RDFNode toJena(Term t) {
+        if (t == null) return null;
+        else if (t instanceof Lit) return toJena((Lit)t);
+        else if (t instanceof Res) return toJena((Res)t);
+        else
+            throw new UnsupportedOperationException("Cannot convert "+t.getClass()+" to RDFNode");
+    }
+
+    @Contract(value = "null -> null; !null -> new", pure = true)
+    public static Property toJenaProperty(Term t) {
+        if (t == null) return null;
+        else if (!(t instanceof URI))
+            throw new UnsupportedOperationException("Cannot convert non-URI to jena Property");
+        return ResourceFactory.createProperty(((URI)t).getURI());
     }
 
     /* ~~~~~~~~~ fromJena(PrefixMapping) ~~~~~~~~~ */
