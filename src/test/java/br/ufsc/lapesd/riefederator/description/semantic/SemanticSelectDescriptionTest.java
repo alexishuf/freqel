@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.description.semantic;
 
+import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.jena.TBoxLoader;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
@@ -113,10 +114,14 @@ public class SemanticSelectDescriptionTest {
         assertEquals(m.getKnownExclusiveGroups(), emptyList());
         assertEquals(m.getAllRelevant(), singletonList(qry));
 
+        Triple qAdvises = new Triple(ALICE, advises, O);
+        Triple qMentors = new Triple(ALICE, mentors, O);
+        Triple qManages = new Triple(ALICE, manages, O);
+        MatchAnnotation annotation = new MatchAnnotation(qry);
         assertEquals(m.getAlternatives(qry),
-                Sets.newHashSet(CQuery.from(new Triple(ALICE, advises, O)),
-                                CQuery.from(new Triple(ALICE, mentors, O)),
-                                CQuery.from(new Triple(ALICE, manages, O))));
+                Sets.newHashSet(CQuery.with(qAdvises).annotate(qAdvises, annotation).build(),
+                                CQuery.with(qMentors).annotate(qMentors, annotation).build(),
+                                CQuery.with(qManages).annotate(qManages, annotation).build()));
         assertEquals(m.getAlternatives(CQuery.from(qry)), emptySet());
     }
 
@@ -132,10 +137,11 @@ public class SemanticSelectDescriptionTest {
         assertEquals(m.getAllRelevant(), singletonList(qry));
         assertEquals(m.getNonExclusiveRelevant(), singletonList(qry));
 
+        Triple qMentors = new Triple(S, mentors, CHARLIE);
+        MatchAnnotation annotation = new MatchAnnotation(qry);
         assertEquals(m.getAlternatives(qry),
                 Sets.newHashSet(CQuery.from(qry),
-                                CQuery.from(new Triple(S, advises, CHARLIE)),
-                                CQuery.from(new Triple(S, mentors, CHARLIE))));
+                                CQuery.with(qMentors).annotate(qMentors, annotation).build()));
     }
 
 
@@ -166,9 +172,12 @@ public class SemanticSelectDescriptionTest {
         assertEquals(m.getAllRelevant(), singletonList(qry));
         assertEquals(m.getNonExclusiveRelevant(), singletonList(qry));
 
+        Triple qEmployee = new Triple(S, type, Employee);
+        Triple qManager = new Triple(S, type, Manager);
+        MatchAnnotation ann = new MatchAnnotation(qry);
         assertEquals(m.getAlternatives(qry),
-                     Sets.newHashSet(CQuery.from(new Triple(S, type, Employee)),
-                                     CQuery.from(new Triple(S, type, Manager))));
+                     Sets.newHashSet(CQuery.with(qEmployee).annotate(qEmployee, ann).build(),
+                                     CQuery.with(qManager ).annotate(qManager,  ann).build()));
     }
 
 
@@ -184,8 +193,10 @@ public class SemanticSelectDescriptionTest {
         assertEquals(m.getAllRelevant(), singletonList(qry));
         assertEquals(m.getNonExclusiveRelevant(), singletonList(qry));
 
-        assertEquals(m.getAlternatives(qry),
-                     Sets.newHashSet(CQuery.from(qry), CQuery.from(new Triple(S, type, Manager))));
+        Triple qManager = new Triple(S, type, Manager);
+        assertEquals(m.getAlternatives(qry), Sets.newHashSet(
+                CQuery.from(qry),
+                CQuery.with(qManager).annotate(qManager, new MatchAnnotation(qry)).build()));
     }
 
 }

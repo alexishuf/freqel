@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.description.molecules;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.description.Molecule;
+import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
@@ -495,7 +496,7 @@ public class MoleculeMatcherTest {
                                            @Nonnull Collection<Collection<Triple>> exclusiveGroups,
                                            @Nonnull Collection<Triple> nonExclusive) {
         CQuery query = CQuery.from(queryAsList);
-        CQueryMatch match = description.semanticMatch(query);
+        SemanticCQueryMatch match = description.semanticMatch(query);
         assertEquals(match.getQuery(), query);
 
         // compare relevant & irrelevant triple patterns
@@ -509,5 +510,12 @@ public class MoleculeMatcherTest {
         Set<Set<Triple>> actualGroups = match.getKnownExclusiveGroups().stream()
                 .map(Sets::newHashSet).collect(toSet());
         assertEquals(actualGroups, exclusiveGroups.stream().map(Sets::newHashSet).collect(toSet()));
+
+        // all alternative must match its EG
+        for (CQuery eg : match.getKnownExclusiveGroups()) {
+            for (CQuery alternative : match.getAlternatives(eg)) {
+                assertEquals(alternative.getMatchedTriples(), eg.getSet());
+            }
+        }
     }
 }

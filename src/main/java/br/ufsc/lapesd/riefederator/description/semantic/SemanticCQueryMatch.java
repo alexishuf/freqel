@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.description.semantic;
 
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
+import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import com.google.common.base.Preconditions;
@@ -8,6 +9,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSetMultimap;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.Immutable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.WillClose;
@@ -16,6 +19,7 @@ import java.util.Set;
 
 @Immutable
 public class SemanticCQueryMatch extends CQueryMatch {
+    private static final Logger logger = LoggerFactory.getLogger(SemanticCQueryMatch.class);
     private final @Nonnull ImmutableSetMultimap<Triple, CQuery> alternatives;
     private final @Nonnull ImmutableSetMultimap<CQuery, CQuery> exgAlternatives;
 
@@ -68,14 +72,24 @@ public class SemanticCQueryMatch extends CQueryMatch {
 
         @CanIgnoreReturnValue
         public @Nonnull Builder addAlternative(@Nonnull Triple query, @Nonnull Triple alternative) {
-            return addAlternative(query, CQuery.from(alternative));
+            if (alternative.equals(query))
+                return addAlternative(query, CQuery.from(alternative));
+            return addAlternative(query, CQuery.with(alternative)
+                    .annotate(alternative, new MatchAnnotation(query))
+                    .build());
         }
 
         @CanIgnoreReturnValue
         public @Nonnull Builder addAlternative(@Nonnull CQuery exGroup,
                                                @Nonnull CQuery alternative) {
-            if (getClass().desiredAssertionStatus())
+            if (getClass().desiredAssertionStatus()) {
                 Preconditions.checkArgument(query.containsAll(exGroup), "exGroup not in query");
+                boolean hasAnnotation = alternative.hasAnnotation(MatchAnnotation.class);
+                if (!hasAnnotation && !exGroup.containsAll(alternative)) {
+                    logger.info("addAlternative({}, {}) has new triples without MatchAnnotations",
+                                exGroup, alternative);
+                }
+            }
             exgAlternatives.put(exGroup, alternative);
             return this;
         }

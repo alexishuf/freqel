@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query;
 
+import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.Triple.Position;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
@@ -71,6 +72,9 @@ public class CQuery implements  List<Triple> {
             = new SoftReference<>(null);
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<ImmutableSet<Triple>> set
+            = new SoftReference<>(null);
+    @SuppressWarnings("Immutable")
+    private @LazyInit @Nonnull SoftReference<Set<Triple>> matchedTriples
             = new SoftReference<>(null);
     private @LazyInit int hash = 0;
     private @LazyInit @Nullable Boolean ask = null;
@@ -413,6 +417,7 @@ public class CQuery implements  List<Triple> {
         copy.ask = ask;
         copy.varsCache = varsCache;
         copy.set = set;
+        copy.matchedTriples = matchedTriples;
         copy.t2triple = t2triple;
         copy.s2triple = s2triple;
         copy.o2triple = o2triple;
@@ -442,6 +447,16 @@ public class CQuery implements  List<Triple> {
     /** Indicates whether there is some term annotation in this query. */
     public boolean hasTermAnnotations() { return termAnnotations != null;}
 
+    @SuppressWarnings("unchecked")
+    public boolean hasAnnotation(@Nonnull Class<?> cls) {
+        boolean has = false;
+        if (TermAnnotation.class.isAssignableFrom(cls))
+            has = forEachTermAnnotation((Class<? extends TermAnnotation>)cls, (t, a) -> {});
+        if (!has && TripleAnnotation.class.isAssignableFrom(cls))
+            has = forEachTripleAnnotation((Class<? extends TripleAnnotation>)cls, (t, a) -> {});
+        return has;
+    }
+
     /**
      * Gets the term annotations for the given term
      * @param term Term to look for, need not occur in this query
@@ -458,6 +473,24 @@ public class CQuery implements  List<Triple> {
      */
     public @Nonnull Collection<TripleAnnotation> getTripleAnnotations(@Nonnull Triple triple) {
         return tripleAnnotations == null ? emptySet() : tripleAnnotations.get(triple);
+    }
+
+    public @Nonnull Set<Triple> getMatchedTriples() {
+        Set<Triple> strong = matchedTriples.get();
+        if (strong == null) {
+            strong = new HashSet<>(size());
+            for (Triple triple : getList()) {
+                boolean has = false;
+                for (TripleAnnotation ann : getTripleAnnotations(triple)) {
+                    if ((has = ann instanceof MatchAnnotation))
+                        strong.add(((MatchAnnotation) ann).getMatched());
+                }
+                if (!has)
+                    strong.add(triple);
+            }
+            matchedTriples = new SoftReference<>(strong);
+        }
+        return strong;
     }
 
     public void forEachTermAnnotation(@Nonnull BiConsumer<Term, TermAnnotation> consumer) {

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query;
 
+import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
@@ -34,6 +35,7 @@ public class CQueryTest {
     public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
     public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
     public static final @Nonnull StdURI AGE = new StdURI(FOAF.age.getURI());
+    public static final @Nonnull StdURI AGE_EX = new StdURI("http://example.org/age");
     public static final @Nonnull StdURI SUBP = new StdURI(RDFS.subPropertyOf.getURI());
     public static final @Nonnull StdLit AGE_1 =
             StdLit.fromUnescaped("23", new StdURI(XSDDatatype.XSDint.getURI()));
@@ -379,6 +381,26 @@ public class CQueryTest {
 
         assertEquals(plain, singletonList(triple));
         assertEquals(q1, singletonList(triple));
+    }
+
+    @Test
+    public void testGetSelfMatchedSet() {
+        CQuery query = CQuery.from(new Triple(X, KNOWS, Y), new Triple(X, KNOWS, BOB));
+        assertEquals(query.getMatchedTriples(), Sets.newHashSet(
+                new Triple(X, KNOWS, Y), new Triple(X, KNOWS, BOB)
+        ));
+    }
+
+    @Test
+    public void testGetSelfAndAnnotatedMatchedSet() {
+        List<Triple> triples = asList(new Triple(X, KNOWS, Y), new Triple(X, AGE_EX, AGE_1));
+        CQuery query = CQuery.with(triples)
+                .annotate(triples.get(1), new MatchAnnotation(new Triple(X, AGE, AGE_1)))
+                .build();
+        assertEquals(query.getMatchedTriples(), Sets.newHashSet(
+                new Triple(X, KNOWS, Y),
+                new Triple(X, AGE, AGE_1)
+        ));
     }
 
     @Test

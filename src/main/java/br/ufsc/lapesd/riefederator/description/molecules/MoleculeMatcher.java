@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
+import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
@@ -397,8 +398,11 @@ public class MoleculeMatcher implements SemanticDescription {
                 builder.add(triple);
             }
 
-            public void add(@Nonnull Triple triple) {
-                builder.add(triple);
+            public void addAlternative(@Nonnull Triple triple,
+                                       @Nonnull Triple alternative) {
+                builder.add(alternative);
+                if (!alternative.equals(triple))
+                    builder.annotate(alternative, new MatchAnnotation(triple));
             }
 
             public boolean isEmpty() {
@@ -446,7 +450,8 @@ public class MoleculeMatcher implements SemanticDescription {
                 EGQueryBuilder b = createEGQueryBuilder(query);
                 assert ps.size() == query.size();
                 Iterator<Term> it = ps.iterator();
-                for (Triple triple : query) b.add(triple.withPredicate(it.next()));
+                for (Triple triple : query)
+                    b.addAlternative(triple, triple.withPredicate(it.next()));
                 builder.addAlternative(query, b.build());
             }
         }

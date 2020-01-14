@@ -371,5 +371,4 @@ public class HeuristicPlannerTest {
             assertEquals(new HashSet<>(root.getChildren()), Sets.newHashSet(q1, q2));
         }
     }
-
 }

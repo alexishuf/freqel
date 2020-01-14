@@ -1,8 +1,10 @@
 package br.ufsc.lapesd.riefederator.webapis.description;
 
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
+import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
@@ -19,17 +21,13 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.reason.tbox.OWLAPITBoxReasoner.structural;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -205,11 +203,11 @@ public class APIMoleculeMatcherTest {
                           Collection<CQuery> egs) {
         APIMoleculeMatcher matcher = new APIMoleculeMatcher(apiMolecule, structural());
         CQueryMatch match = matcher.match(CQuery.from(query));
-        assertCompatibleKnownExclusiveGroups(match.getKnownExclusiveGroups(), egs);
+        assertCompatible(match.getKnownExclusiveGroups(), egs);
     }
 
-    private void assertCompatibleKnownExclusiveGroups(Collection<CQuery> actual,
-                                                      Collection<CQuery> expected) {
+    private void assertCompatible(Collection<CQuery> actual,
+                                  Collection<CQuery> expected) {
         if (actual == expected)
             return; //same
         assertEquals(actual.size(), expected.size());
@@ -221,6 +219,10 @@ public class APIMoleculeMatcherTest {
                     if (!a.getTermAnnotations(term).contains(ann))
                         annOk[0] = false;
                 });
+                eg.forEachTripleAnnotation((triple, ann) -> {
+                    if (!a.getTripleAnnotations(triple).contains(ann))
+                        annOk[0] = false;
+                });
                 return annOk[0];
             });
             assertTrue(ok, "Expected EG "+eg+" missing in actual");
@@ -229,64 +231,123 @@ public class APIMoleculeMatcherTest {
 
     @DataProvider
     public static @Nonnull Object[][] semanticMatchData() {
-        List<Object[]> plain = asList(matchData());
+        List<Object[]> plain = new ArrayList<>();
+        for (Object[] row : matchData()) {
+            ArrayList<Object> filled = new ArrayList<>(asList(row));
+            assertEquals(row.length, 3);
+            List<Set<CQuery>> alternativeSets = new ArrayList<>();
+            for (int i = 0; i < ((Collection<?>) row[2]).size(); i++)
+                alternativeSets.add(null);
+            filled.add(alternativeSets);
+            plain.add(filled.toArray());
+        }
         List<Object[]> semantic= Stream.of(
             asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, mainAuthor, Y),
                                                 new Triple(Y, authorName, authorName1)),
-                   singleton(CQuery.with(new Triple(X, mainAuthor, Y),
+                    singletonList(CQuery.with(new Triple(X, mainAuthor, Y),
                                          new Triple(Y, authorName, authorName1))
                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
-                           .build())),
+                           .build()),
+                    singletonList(null)),
             asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, author, Y),
                                                 new Triple(Y, authorName, authorName1)),
-                    singleton(CQuery.with(new Triple(X, author, Y),
-                                          new Triple(Y, authorName, authorName1))
+                    singletonList(CQuery.with(new Triple(X, author, Y),
+                                              new Triple(Y, authorName, authorName1))
                             .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
-                            .build())),
+                            .build()),
+                    singletonList(singleton(CQuery.with(new Triple(X, mainAuthor, Y),
+                                                        new Triple(Y, authorName, authorName1))
+                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                            .annotate(new Triple(X, mainAuthor, Y),
+                                      new MatchAnnotation(new Triple(X, author, Y)))
+                            .build()))),
             asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, title,  Z),
                                                 new Triple(X, author, Y),
                                                 new Triple(Y, authorName, authorName1)),
-                    singleton(CQuery.with(new Triple(X, title,  Z),
-                                          new Triple(X, author, Y),
-                                          new Triple(Y, authorName, authorName1))
+                    singletonList(CQuery.with(new Triple(X, title,  Z),
+                                              new Triple(X, author, Y),
+                                              new Triple(Y, authorName, authorName1))
                             .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(Z, AtomAnnotation.of(BOOK_TITLE))
                             .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
-                            .build())),
+                            .build()),
+                    singletonList(singleton(CQuery.with(new Triple(X, title,  Z),
+                                                        new Triple(X, mainAuthor, Y),
+                                                        new Triple(Y, authorName, authorName1))
+                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(Z, AtomAnnotation.of(BOOK_TITLE))
+                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                            .annotate(new Triple(X, mainAuthor, Y),
+                                      new MatchAnnotation(new Triple(X, author, Y)))
+                            .build()))),
             asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, title,  title1),
                                                 new Triple(X, author, Y),
                                                 new Triple(Y, authorName, authorName1)),
-                    singleton(CQuery.with(new Triple(X, title,  title1),
+                    singletonList(CQuery.with(new Triple(X, title,  title1),
                                           new Triple(X, author, Y),
                                           new Triple(Y, authorName, authorName1))
                             .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(title1, AtomAnnotation.of(BOOK_TITLE))
                             .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
-                            .build())),
+                            .build()),
+                    singletonList(singleton(CQuery.with(new Triple(X, title,  title1),
+                                                        new Triple(X, mainAuthor, Y),
+                                                        new Triple(Y, authorName, authorName1))
+                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(title1, AtomAnnotation.of(BOOK_TITLE))
+                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                            .annotate(new Triple(X, mainAuthor, Y),
+                                      new MatchAnnotation(new Triple(X, author, Y)))
+                            .build()))),
             asList(BOOKS_BY_MAIN_AUTHOR, singleton(new Triple(X, author, author1)),
-                   emptyList()),
+                   emptyList(), emptyList()),
             asList(BOOKS_BY_MAIN_AUTHOR, singleton(new Triple(X, author, Y)),
-                   emptyList())
+                   emptyList(), emptyList())
         ).map(List::toArray).collect(Collectors.toList());
         return Stream.concat(plain.stream(), semantic.stream()).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "semanticMatchData")
     public void testSemanticMatch(APIMolecule apiMolecule, Collection<Triple> query,
-                                  Collection<CQuery> egs) {
+                                  Collection<CQuery> egs,
+                                  List<? extends Set<CQuery>> alternatives) {
         TransitiveClosureTBoxReasoner reasoner = new TransitiveClosureTBoxReasoner();
         TBoxSpec tboxSpec = new TBoxSpec()
                 .addResource(getClass(), "../../api-molecule-matcher-tests.ttl");
         reasoner.load(tboxSpec);
 
         APIMoleculeMatcher matcher = new APIMoleculeMatcher(apiMolecule, reasoner);
-        CQueryMatch match = matcher.semanticMatch(CQuery.from(query));
-        assertCompatibleKnownExclusiveGroups(match.getKnownExclusiveGroups(), egs);
+        SemanticCQueryMatch match = matcher.semanticMatch(CQuery.from(query));
+        assertCompatible(match.getKnownExclusiveGroups(), egs);
+
+        for (CQuery group : match.getKnownExclusiveGroups()) {
+            for (CQuery alternative : match.getAlternatives(group)) {
+                assertEquals(alternative.getMatchedTriples(), group.getSet());
+            }
+        }
+
+        assertEquals(egs.size(), alternatives.size());
+        Iterator<CQuery> egIt = egs.iterator();
+        for (Collection<CQuery> expectedAlternatives : alternatives) {
+            CQuery exclusiveGroup = egIt.next();
+            for (CQuery candidate : match.getKnownExclusiveGroups()) {
+                if (candidate.getSet().equals(exclusiveGroup.getSet()))
+                    exclusiveGroup = candidate;
+            }
+            if (expectedAlternatives == null)
+                expectedAlternatives = singleton(exclusiveGroup);
+            Set<CQuery> actualAlternatives = match.getAlternatives(exclusiveGroup);
+            assertCompatible(actualAlternatives, expectedAlternatives);
+        }
     }
 }
