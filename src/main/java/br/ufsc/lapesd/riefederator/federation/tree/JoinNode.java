@@ -1,19 +1,16 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.query.Solution;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionInputs;
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionResults;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
@@ -151,6 +148,25 @@ public class JoinNode extends PlanNode {
 
         boolean projecting = resultVars.size() < all.size();
         return new JoinNode(left, right, joinVars, resultVars, projecting, inputVars);
+    }
+
+    @Override
+    public@Nonnull JoinNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
+            throws IllegalArgumentException {
+        Preconditions.checkArgument(getChildren().containsAll(map.keySet()));
+        if (map.isEmpty()) return this;
+
+        PlanNode l = map.getOrDefault(getLeft(), getLeft());
+        PlanNode r = map.getOrDefault(getRight(), getRight());
+
+        List<PlanNode> list = asList(l, r);
+        Set<String> joinVars = intersect(this.joinVars, intersectResults(list));
+        Set<String> allResults = unionResults(list);
+        Set<String> results = intersect(getResultVars(), allResults);
+        boolean projecting = results.size() != allResults.size();
+        Set<String> inputs = intersect(getInputVars(), unionInputs(list));
+
+        return new JoinNode(l, r, joinVars, results, projecting, inputs);
     }
 
     @Override

@@ -1,9 +1,11 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.query.Solution;
+import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
@@ -24,6 +26,13 @@ public class EmptyNode extends PlanNode {
     public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
         Collection<String> names = solution.getVarNames();
         return new EmptyNode(setMinus(getResultVars(), names), setMinus(getInputVars(), names));
+    }
+
+    @Override
+    public @Nonnull EmptyNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
+            throws IllegalArgumentException {
+        Preconditions.checkArgument(map.isEmpty());
+        return this;
     }
 
     @Override

@@ -1,10 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.federation.tree.EmptyNode;
-import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
+import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
@@ -12,7 +9,6 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
-import com.google.common.collect.Collections2;
 import com.google.common.collect.Sets;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.BeforeMethod;
@@ -66,7 +62,7 @@ public class HeuristicPlannerTest {
     }
 
     protected void checkIntersection(@Nonnull HeuristicPlanner.JoinGraph g,
-                                     int[][] expected) {
+                                     float[][] expected) {
         assertEquals(g.getIntersection().length, expected.length);
         for (int i = 0; i < expected.length; i++)
             assertEquals(g.getIntersection()[i], expected[i], "i=" + i);
@@ -75,9 +71,9 @@ public class HeuristicPlannerTest {
     @Test
     public void testTryJoinSimple() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY));
-        int[][] intersection = new int[][] {
-                new int[] {0, 1},
-                new int[] {0, 0},
+        float[][] intersection = new float[][] {
+                new float[] {0, 1},
+                new float[] {0, 0},
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
         assertTrue(g.tryJoin());
@@ -93,10 +89,10 @@ public class HeuristicPlannerTest {
     @Test
     public void testJoinThreeHopPath() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY, yKnowsBob));
-        int[][] intersection = new int[][] {
-                new int[] {0, 1, 0},
-                new int[] {0, 0, 1},
-                new int[] {0, 0, 0},
+        float[][] intersection = new float[][] {
+                new float[] {0, 1, 0},
+                new float[] {0, 0, 1},
+                new float[] {0, 0, 0},
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
         assertTrue(g.tryJoin());
@@ -119,8 +115,8 @@ public class HeuristicPlannerTest {
     @Test
     public void testJoinSingle() {
         ArrayList<PlanNode> leaves = new ArrayList<>(singletonList(aliceKnowsX));
-        int[][] intersection = new int[][]{
-                new int[]{0}
+        float[][] intersection = new float[][]{
+                new float[]{0}
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
 
@@ -131,9 +127,9 @@ public class HeuristicPlannerTest {
     @Test
     public void testCreateTotalComponent() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY));
-        int[][] intersection = new int[][] {
-                new int[]{0, 1},
-                new int[]{0, 0}
+        float[][] intersection = new float[][] {
+                new float[]{0, 1},
+                new float[]{0, 0}
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
         BitSet subset = new BitSet();
@@ -149,10 +145,10 @@ public class HeuristicPlannerTest {
     @Test
     public void testCreateUnitComponents() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY, yKnowsBob));
-        int[][] intersection = new int[][] {
-                new int[]{0, 1, 0},
-                new int[]{0, 0, 1},
-                new int[]{0, 0, 0},
+        float[][] intersection = new float[][] {
+                new float[]{0, 1, 0},
+                new float[]{0, 0, 1},
+                new float[]{0, 0, 0},
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
         for (int i = 0; i < leaves.size(); i++) {
@@ -162,17 +158,17 @@ public class HeuristicPlannerTest {
             assertEquals(component.getLeaves(), singletonList(leaves.get(i)));
             assertEquals(component.getIntersection().length, 1);
             assertEquals(component.getIntersection()[0].length, 1);
-            assertEquals(component.getIntersection()[0][0], 0);
+            assertEquals(component.getIntersection()[0][0], 0.0f);
         }
     }
 
     @Test
     public void testCreatePairComponents() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY, yKnowsBob));
-        int[][] intersection = {
-                new int[] {0, 1, 0},
-                new int[] {0, 0, 1},
-                new int[] {0, 0, 0},
+        float[][] intersection = {
+                new float[] {0, 1, 0},
+                new float[] {0, 0, 1},
+                new float[] {0, 0, 0},
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
 
@@ -192,10 +188,10 @@ public class HeuristicPlannerTest {
                 assertEquals(component.getIntersection()[j].length, 2, "j=" + j);
 
             if (i < leaves.size()-1)
-                assertEquals(component.getIntersection()[0], new int[]{0, 1}, "i="+i);
+                assertEquals(component.getIntersection()[0], new float[]{0, 1}, "i="+i);
             else
-                assertEquals(component.getIntersection()[0], new int[]{0, 0}, "i="+i);
-            assertEquals(component.getIntersection()[1], new int[]{0, 0}, "i="+i);
+                assertEquals(component.getIntersection()[0], new float[]{0, 0}, "i="+i);
+            assertEquals(component.getIntersection()[1], new float[]{0, 0}, "i="+i);
         }
     }
 
@@ -203,13 +199,13 @@ public class HeuristicPlannerTest {
     public void testCreateDisjointComponents() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY, yKnowsBob,
                                                              aliceKnowsU, uKnowsV, vKnowsBob));
-        int[][] intersection = {
-                new int[] {0, 1, 0, 0, 0, 0},
-                new int[] {0, 0, 1, 0, 0, 0},
-                new int[] {0, 0, 0, 0, 0, 0},
-                new int[] {0, 0, 0, 0, 1, 0},
-                new int[] {0, 0, 0, 0, 0, 1},
-                new int[] {0, 0, 0, 0, 0, 0},
+        float[][] intersection = {
+                new float[] {0, 1, 0, 0, 0, 0},
+                new float[] {0, 0, 1, 0, 0, 0},
+                new float[] {0, 0, 0, 0, 0, 0},
+                new float[] {0, 0, 0, 0, 1, 0},
+                new float[] {0, 0, 0, 0, 0, 1},
+                new float[] {0, 0, 0, 0, 0, 0},
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
 
@@ -217,10 +213,10 @@ public class HeuristicPlannerTest {
         subset.set(0, 3);
         HeuristicPlanner.JoinGraph left = g.createComponent(subset);
         assertEquals(left.getLeaves(), asList(aliceKnowsX, xKnowsY, yKnowsBob));
-        int[][] exComponent = {
-                new int[] {0, 1, 0},
-                new int[] {0, 0, 1},
-                new int[] {0, 0, 0},
+        float[][] exComponent = {
+                new float[] {0, 1, 0},
+                new float[] {0, 0, 1},
+                new float[] {0, 0, 0},
         };
         checkIntersection(left, exComponent);
 
@@ -245,10 +241,10 @@ public class HeuristicPlannerTest {
         List<QueryNode> nodes = asList(xKnowsBob, xNameY, xLikesZ);
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(nodes);
 
-        int[][] expected = {
-                new int[] {0, 1, 1},
-                new int[] {0, 0, 0},
-                new int[] {0, 0, 0},
+        float[][] expected = {
+                new float[] {0, 1, 1},
+                new float[] {0, 0, 0},
+                new float[] {0, 0, 0},
         };
         checkIntersection(g, expected);
     }
@@ -266,7 +262,7 @@ public class HeuristicPlannerTest {
                 .annotate(Z, AtomAnnotation.of(Person)).build());
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
 
-        checkIntersection(g, new int[][]{
+        checkIntersection(g, new float[][]{
                 {0, 1, 0},
                 {0, 0, 1},
                 {0, 0, 0},
@@ -344,7 +340,7 @@ public class HeuristicPlannerTest {
                 .annotate(Y, AtomAnnotation.asRequired(Person)).build());
 
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
-        checkIntersection(g, new int[][]{
+        checkIntersection(g, new float[][]{
                 {0, 0, 1},
                 {0, 0, 0},
                 {0, 0, 0}
@@ -352,7 +348,6 @@ public class HeuristicPlannerTest {
     }
 
     @Test
-    @SuppressWarnings("UnstableApiUsage")
     public void testUselessService() {
         QueryNode q1 = new QueryNode(empty, CQuery.from(new Triple(Y, name, author1)));
         QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(X, author, Y))
@@ -361,14 +356,13 @@ public class HeuristicPlannerTest {
         QueryNode q3 = new QueryNode(empty, CQuery.with(new Triple(X, author, Y))
                 .annotate(X, AtomAnnotation.of(Book))
                 .annotate(Y, AtomAnnotation.asRequired(Person)).build());
+        MultiQueryNode mq = MultiQueryNode.builder().add(q2).add(q3).intersectInputs().build();
 
-        List<QueryNode> leaves = asList(q1, q2, q3);
-
-        for (List<QueryNode> ordering : Collections2.permutations(leaves)) {
+        for (List<PlanNode> ordering : asList(asList(q1, mq), asList(mq, q1))) {
             HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(ordering);
             PlanNode root = g.buildTree();
             assertTrue(root instanceof JoinNode);
-            assertEquals(new HashSet<>(root.getChildren()), Sets.newHashSet(q1, q2));
+            assertEquals(new HashSet<>(root.getChildren()), Sets.newHashSet(q1, q3));
         }
     }
 }

@@ -5,9 +5,9 @@ import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -21,6 +21,7 @@ public class MultiQueryNode extends PlanNode {
         private Set<String> resultVars = null;
         private boolean project = false;
         private boolean intersect = false;
+        private boolean intersectInputs = false;
 
         public @Nonnull Builder add(@Nonnull PlanNode node) {
             list.add(node);
@@ -43,10 +44,18 @@ public class MultiQueryNode extends PlanNode {
             project = true;
             return this;
         }
-
         public @Nonnull Builder allVars() {
             intersect = false;
             project = false;
+            return this;
+        }
+
+        public @Nonnull Builder intersectInputs() {
+            intersectInputs = true;
+            return this;
+        }
+        public @Nonnull Builder allInputs() {
+            intersectInputs = false;
             return this;
         }
 
@@ -66,7 +75,9 @@ public class MultiQueryNode extends PlanNode {
                 Preconditions.checkArgument(intersect || project == !resultVars.equals(all),
                         "Mismatch between project and resultVars");
             }
-            return new MultiQueryNode(list, resultVars, project);
+            Set<String> inputs = intersectInputs ? TreeUtils.intersectInputs(list)
+                                                 : TreeUtils.unionInputs(list);
+            return new MultiQueryNode(list, resultVars, project, inputs);
         }
     }
 
@@ -76,19 +87,39 @@ public class MultiQueryNode extends PlanNode {
 
     protected MultiQueryNode(@Nonnull List<PlanNode> children,
                              @Nonnull Collection<String> resultVars,
-                             boolean projecting) {
-        super(resultVars, projecting, unionInputs(children), children);
+                             boolean projecting,
+                             @Nonnull Collection<String> inputVars) {
+        super(resultVars, projecting, inputVars, children);
     }
 
     @Override
     public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
         List<PlanNode> children = getChildren().stream().map(n -> n.createBound(solution))
-                                                        .collect(Collectors.toList());
+                                                        .collect(toList());
         Set<String> all = children.stream().flatMap(n -> getResultVars().stream()).collect(toSet());
         HashSet<String> names = new HashSet<>(getResultVars());
         names.retainAll(all);
         boolean projecting = names.size() < all.size();
-        return new MultiQueryNode(children, names, projecting);
+        HashSet<String> inputs = new HashSet<>(getInputVars());
+        inputs.removeAll(solution.getVarNames());
+        return new MultiQueryNode(children, names, projecting, inputs);
+    }
+
+    @Override
+    public @Nonnull MultiQueryNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
+            throws IllegalArgumentException {
+        Preconditions.checkArgument(getChildren().containsAll(map.keySet()));
+        if (map.isEmpty()) return this;
+
+        List<PlanNode> list = new ArrayList<>();
+        for (PlanNode child : getChildren())
+            list.add(map.getOrDefault(child, child));
+
+        Set<String> allResults = unionResults(list);
+        Set<String> results = intersect(getResultVars(), allResults);
+        Set<String> inputs  = intersect(getInputVars(),  unionInputs(list));
+        boolean projecting = results.size() != allResults.size();
+        return new MultiQueryNode(list, results, projecting, inputs);
     }
 
     @Override

@@ -128,6 +128,18 @@ public class QueryNode extends PlanNode {
     }
 
     @Override
+    public @Nonnull QueryNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
+            throws IllegalArgumentException {
+        Preconditions.checkArgument(map.isEmpty());
+        return this;
+    }
+
+    @Override
+    public @Nonnull Set<Triple> getMatchedTriples() {
+        return getQuery().getMatchedTriples();
+    }
+
+    @Override
     public <T extends TermAnnotation>
     boolean forEachTermAnnotation(@Nonnull Class<T> cls, @Nonnull BiConsumer<Term, T> consumer) {
         return getQuery().forEachTermAnnotation(cls, consumer);

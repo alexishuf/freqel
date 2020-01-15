@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.TermAnnotation;
@@ -8,15 +9,15 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.lang.ref.SoftReference;
+import java.util.*;
 import java.util.function.BiConsumer;
 
 public abstract class PlanNode {
     private @Nonnull Set<String> resultVars, inputVars;
     private boolean projecting;
     private @Nonnull List<PlanNode> children;
+    private @Nonnull SoftReference<Set<Triple>> matchedTriples = new SoftReference<>(null);
 
     protected PlanNode(@Nonnull Collection<String> resultVars, boolean projecting,
                        @Nonnull Collection<String> inputVars,
@@ -35,6 +36,17 @@ public abstract class PlanNode {
 
     public @Nonnull Set<String> getInputVars() {
         return inputVars;
+    }
+
+    public @Nonnull Set<Triple> getMatchedTriples() {
+        Set<Triple> strong = matchedTriples.get();
+        if (strong == null) {
+            strong = new HashSet<>();
+            for (PlanNode child : getChildren())
+                strong.addAll(child.getMatchedTriples());
+            matchedTriples = new SoftReference<>(strong);
+        }
+        return strong;
     }
 
     public boolean hasInputs() {
@@ -68,6 +80,16 @@ public abstract class PlanNode {
      * @return new plan tree
      */
     public abstract @Nonnull PlanNode createBound(@Nonnull Solution solution);
+
+    /**
+     * Creates a new instance replacing the children which are keys in map with
+     * the corresponding value.
+     *
+     * @throws IllegalArgumentException if <code>!getChildren().contains(child)</code>
+     * @return a new {@link PlanNode}
+     */
+    public abstract @Nonnull PlanNode
+    replacingChildren(@Nonnull Map<PlanNode, PlanNode> map) throws IllegalArgumentException;
 
     @Override
     public @Nonnull String toString() {

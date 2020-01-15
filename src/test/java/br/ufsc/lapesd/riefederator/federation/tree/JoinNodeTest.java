@@ -1,15 +1,20 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.description.Molecule;
+import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptySet;
@@ -25,12 +30,18 @@ public class JoinNodeTest {
     public static final @Nonnull StdVar Y = new StdVar("y");
     private static final EmptyEndpoint empty = new EmptyEndpoint();
 
-    public QueryNode aliceKnowsX, xKnowsY, yKnown;
+    public QueryNode aliceKnowsX, xKnowsY, yKnown, xKnowsYInput;
+    private static final Atom Person = Molecule.builder("Person").buildAtom();
+    private static final Atom KnownPerson = Molecule.builder("KnownPerson").buildAtom();
 
     @BeforeMethod
     public void setUp() {
         aliceKnowsX = new QueryNode(empty, CQuery.from(new Triple(ALICE, knows, X)));
         xKnowsY = new QueryNode(empty, CQuery.from(new Triple(X, knows, Y)));
+        xKnowsYInput = new QueryNode(empty, CQuery.with(new Triple(X, knows, Y))
+                .annotate(X, AtomAnnotation.of(Person))
+                .annotate(Y, AtomAnnotation.asRequired(KnownPerson))
+                .build());
         yKnown = new QueryNode(empty, CQuery.from(new Triple(X, knows, Y)), singleton("y"));
     }
 
@@ -101,5 +112,20 @@ public class JoinNodeTest {
                 () -> JoinNode.builder(aliceKnowsX, yKnown).addJoinVar("x").build());
         expectThrows(IllegalArgumentException.class,
                 () -> JoinNode.builder(yKnown, aliceKnowsX).addJoinVar("x").build());
+    }
+
+    @SuppressWarnings("SuspiciousNameCombination")
+    @Test
+    public void testReplaceChildWithInput() {
+        JoinNode join = JoinNode.builder(yKnown, xKnowsYInput).build();
+
+        Map<PlanNode, PlanNode> replacement = new HashMap<>();
+        replacement.put(xKnowsYInput, xKnowsY);
+        JoinNode replaced = join.replacingChildren(replacement);
+
+        assertEquals(replaced.getResultVars(), join.getResultVars());
+        assertEquals(replaced.getInputVars(), emptySet());
+        assertFalse(replaced.hasInputs());
+        assertEquals(replaced.getJoinVars(), join.getJoinVars());
     }
 }

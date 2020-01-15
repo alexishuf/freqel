@@ -1,9 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.query.Solution;
+import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionInputs;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionResults;
@@ -18,6 +21,16 @@ public class CartesianNode extends PlanNode {
     public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
         return new CartesianNode(getChildren().stream()
                 .map(n -> n.createBound(solution)).collect(toList()));
+    }
+
+    @Override
+    public @Nonnull CartesianNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
+            throws IllegalArgumentException {
+        if (map.isEmpty()) return this;
+        Preconditions.checkArgument(getChildren().containsAll(map.keySet()));
+        List<PlanNode> list = new ArrayList<>(getChildren().size());
+        for (PlanNode child : getChildren()) list.add(map.getOrDefault(child, child));
+        return new CartesianNode(list);
     }
 
     @Override
