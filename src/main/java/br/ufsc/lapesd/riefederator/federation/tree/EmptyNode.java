@@ -4,9 +4,9 @@ import br.ufsc.lapesd.riefederator.query.Solution;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
 
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
@@ -22,13 +22,8 @@ public class EmptyNode extends PlanNode {
 
     @Override
     public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
-        HashSet<String> results = new HashSet<>(getResultVars());
-        HashSet<String> inputs = new HashSet<>(getInputVars());
-        solution.forEach((n, t) -> {
-            results.remove(n);
-            inputs.remove(n);
-        });
-        return new EmptyNode(results, inputs);
+        Collection<String> names = solution.getVarNames();
+        return new EmptyNode(setMinus(getResultVars(), names), setMinus(getInputVars(), names));
     }
 
     @Override

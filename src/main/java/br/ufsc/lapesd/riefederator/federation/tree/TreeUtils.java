@@ -113,6 +113,13 @@ public class TreeUtils {
         return result;
     }
 
+    public static @Nonnull <T> Set<T> setMinus(@Nonnull Collection<T> left,
+                                               @Nonnull Collection<T> right) {
+        HashSet<T> set = new HashSet<>(left);
+        set.removeAll(right);
+        return set;
+    }
+
     public static @Nonnull Set<String> joinVars(@Nonnull PlanNode l, @Nonnull PlanNode r) {
         return joinVars(l, r, null);
     }

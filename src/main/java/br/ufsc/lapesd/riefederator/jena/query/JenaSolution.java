@@ -8,7 +8,9 @@ import org.apache.jena.query.QuerySolutionMap;
 import org.apache.jena.rdf.model.RDFNode;
 
 import javax.annotation.Nonnull;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 public class JenaSolution extends AbstractSolution {
@@ -30,6 +32,13 @@ public class JenaSolution extends AbstractSolution {
 
     public @Nonnull Iterator<String> varNames() {
         return querySolution.varNames();
+    }
+
+    @Override
+    public @Nonnull Set<String> getVarNames() {
+        Set<String> set = new HashSet<>();
+        varNames().forEachRemaining(set::add);
+        return set;
     }
 
     @Override

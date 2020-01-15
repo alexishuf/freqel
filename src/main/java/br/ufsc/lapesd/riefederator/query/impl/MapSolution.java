@@ -12,6 +12,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 public class MapSolution extends AbstractSolution {
@@ -89,6 +90,11 @@ public class MapSolution extends AbstractSolution {
     @Override
     public void forEach(@Nonnull BiConsumer<String, Term> consumer) {
         map.forEach(consumer);
+    }
+
+    @Override
+    public @Nonnull Set<String> getVarNames() {
+        return map.keySet();
     }
 
     @Override
