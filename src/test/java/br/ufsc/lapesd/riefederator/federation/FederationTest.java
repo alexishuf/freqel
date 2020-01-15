@@ -124,7 +124,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest {
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException(e);
         }
-        UriTemplate uriTemplate = new UriTemplate(base+"describe/"+file+"{?uri}&pred="+predEnc);
+        UriTemplate uriTemplate = new UriTemplate(base+"describeSubjects/"+file+"{?uri}&pred="+predEnc);
         UriTemplateExecutor executor = new UriTemplateExecutor(uriTemplate);
         Map<String, String> atom2input = new HashMap<>();
         assertTrue(molecule.getAtomMap().containsKey(inAtomName));
