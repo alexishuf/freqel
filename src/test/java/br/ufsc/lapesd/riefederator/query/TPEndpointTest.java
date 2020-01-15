@@ -3,12 +3,14 @@ package br.ufsc.lapesd.riefederator.query;
 import br.ufsc.lapesd.riefederator.NamedFunction;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import org.apache.jena.fuseki.main.FusekiServer;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
@@ -24,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 import static br.ufsc.lapesd.riefederator.query.Capability.DISTINCT;
@@ -216,6 +219,46 @@ public class TPEndpointTest extends EndpointTestBase {
             try (Results results = fix.endpoint.query(cQuery)) {
                 assertFalse(results.hasNext());
             }
+        }
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testAlternatives(Function<InputStream, Fixture<TPEndpoint>> f) {
+        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
+            EmptyEndpoint a1 = new EmptyEndpoint(), a2 = new EmptyEndpoint();
+            fix.endpoint.addAlternative(a1);
+            assertEquals(fix.endpoint.getAlternatives(), singleton(a1));
+            fix.endpoint.addAlternatives(Arrays.asList(a1, a2));
+            assertEquals(fix.endpoint.getAlternatives(), Sets.newHashSet(a1, a2));
+        }
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testConcurrentAddAlternative(Function<InputStream, Fixture<TPEndpoint>> f)
+    throws InterruptedException, ExecutionException {
+        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
+            Map<TPEndpoint, Integer> observations = new HashMap<>();
+            ExecutorService service = Executors.newCachedThreadPool();
+            List<Future<?>> list = new ArrayList<>();
+            list.add(service.submit(() -> {
+                for (int i = 0; i < 8192; i++) {
+                    for (TPEndpoint a : fix.endpoint.getAlternatives())
+                        observations.put(a, observations.getOrDefault(a, 0) + 1);
+                }
+            }));
+            for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
+                list.add(service.submit(() -> {
+                    for (int j = 0; j < 4096; j++) {
+                        fix.endpoint.addAlternative(new EmptyEndpoint());
+                    }
+                }));
+            }
+
+            for (Future<?> future : list) future.get();
+            service.shutdown();
+            service.awaitTermination(1, TimeUnit.SECONDS);
         }
     }
 }

@@ -3,16 +3,12 @@ package br.ufsc.lapesd.riefederator.jena.query;
 import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
-import br.ufsc.lapesd.riefederator.query.CQEndpoint;
-import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Capability;
-import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.*;
 import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.impl.IteratorResults;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
-import com.google.errorprone.annotations.Immutable;
 import org.apache.commons.collections4.iterators.TransformIterator;
 import org.apache.http.client.HttpClient;
 import org.apache.http.protocol.HttpContext;
@@ -23,7 +19,6 @@ import org.apache.jena.rdf.model.Model;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.annotation.concurrent.ThreadSafe;
 import java.util.function.Function;
 
 import static java.util.Collections.emptySet;
@@ -31,9 +26,7 @@ import static java.util.Collections.singleton;
 import static org.apache.jena.query.QueryExecutionFactory.create;
 import static org.apache.jena.query.QueryExecutionFactory.sparqlService;
 
-@ThreadSafe
-@Immutable
-public class ARQEndpoint implements CQEndpoint {
+public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     @SuppressWarnings("Immutable")
     private final @Nonnull Function<String, QueryExecution> executionFactory;
     @SuppressWarnings("Immutable")

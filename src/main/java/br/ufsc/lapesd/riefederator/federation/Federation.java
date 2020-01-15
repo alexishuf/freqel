@@ -3,10 +3,7 @@ package br.ufsc.lapesd.riefederator.federation;
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.query.CQEndpoint;
-import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Capability;
-import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.*;
 import br.ufsc.lapesd.riefederator.query.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.impl.ProjectingResults;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
@@ -20,7 +17,7 @@ import javax.inject.Inject;
 /**
  * A {@link CQEndpoint} that decomposes queries into the registered {@link Source}s.
  */
-public class Federation implements CQEndpoint {
+public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private final @Nonnull DecompositionStrategy strategy;
     private final @Nonnull PlanExecutor executor;
 

@@ -1,9 +1,13 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
 
 public interface TPEndpoint extends AutoCloseable {
     /**
@@ -28,6 +32,33 @@ public interface TPEndpoint extends AutoCloseable {
      */
     @Contract("_ -> new")
     @Nonnull Results query(@Nonnull CQuery query);
+
+    /**
+     * Get a set of {@link TPEndpoint}s which contain the same data as this one.
+     *
+     * This is useful to avoid querying the same actual source through
+     * multiple different interfaces (e.g., two {@link WebAPICQEndpoint} interfaces to the
+     * same data).
+     *
+     * <b>Implementations MUST be thread safe</b>. One thread is allowed to iterate the
+     * {@link Set} returned by this method while another executes
+     * {@link TPEndpoint#addAlternatives(Collection)} or
+     * {@link TPEndpoint#addAlternative(TPEndpoint)}.
+     */
+    @Nonnull Set<TPEndpoint> getAlternatives();
+
+    /**
+     * Adds the given endpoints as alternatives to this one.
+     * See {@link TPEndpoint#getAlternatives()}
+     *
+     * <b>Implementations MUST be thread safe</b>. One thread is allowed to execute this method
+     * while another iterates the {@link Set} returned by {@link TPEndpoint#getAlternatives()}.
+     */
+    void addAlternatives(Collection<? extends TPEndpoint> alternatives);
+
+    default void addAlternative(@Nonnull TPEndpoint alternative) {
+        addAlternatives(Collections.singletonList(alternative));
+    }
 
     /**
      * Indicates whether this endpoint supports the capability in queries given to query().

@@ -10,10 +10,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.HeuristicPlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.query.CQEndpoint;
-import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Capability;
-import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.*;
 import br.ufsc.lapesd.riefederator.query.impl.*;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
@@ -32,7 +29,7 @@ import java.util.Set;
 
 import static java.util.stream.Collectors.toSet;
 
-public class WebAPICQEndpoint implements CQEndpoint {
+public class WebAPICQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(WebAPICQEndpoint.class);
     private final @Nonnull APIMolecule molecule;
     private @Nonnull SoftReference<APIMoleculeMatcher> matcher = new SoftReference<>(null);
