@@ -20,8 +20,8 @@ import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toSet;
 
 public class QueryNode extends PlanNode {
-    private @Nonnull TPEndpoint endpoint;
-    private @Nonnull CQuery query;
+    private final @Nonnull TPEndpoint endpoint;
+    private final @Nonnull CQuery query;
 
     protected static @Nonnull Set<String> getInputVars(@Nonnull CQuery query) {
         if (!query.hasTermAnnotations())

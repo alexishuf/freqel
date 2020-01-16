@@ -3,6 +3,8 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.TPEndpoint;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Multimap;
@@ -14,9 +16,10 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Consumer;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.joinVars;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Lists.cartesianProduct;
+import static java.lang.System.arraycopy;
 import static java.util.Collections.singletonList;
 
 public class HeuristicPlanner implements Planner {
@@ -31,6 +34,8 @@ public class HeuristicPlanner implements Planner {
         firstGraph.forEachConnectedComponent(component -> roots.add(component.buildTree()));
         assert !roots.isEmpty();
         assert roots.stream().noneMatch(Objects::isNull);
+        if (roots.stream().anyMatch(EmptyNode.class::isInstance))
+            return new EmptyNode(unionResults(leaves));
         return roots.size() == 1 ? roots.get(0) : new CartesianNode(roots);
     }
 
@@ -38,6 +43,7 @@ public class HeuristicPlanner implements Planner {
         private ArrayList<PlanNode> leaves;
         private boolean withInputs;
         private float[][] intersection;
+        private @Nonnull Multimap<Set<Triple>, QueryNode> triples2qn;
 
         private static boolean hasOrHidesInputs(@Nonnull PlanNode node) {
             return node.hasInputs() || (node instanceof MultiQueryNode
@@ -64,8 +70,25 @@ public class HeuristicPlanner implements Planner {
             }
         }
 
+        private Multimap<Set<Triple>, QueryNode> computeTriples2qn() {
+            Multimap<Set<Triple>, QueryNode> map;
+            map = MultimapBuilder.hashKeys().arrayListValues().build();
+            for (PlanNode leaf : leaves) {
+                if (leaf instanceof MultiQueryNode) {
+                    for (PlanNode member : leaf.getChildren()) {
+                        if (member instanceof QueryNode)
+                            map.put(((QueryNode)member).getQuery().getSet(), (QueryNode)member);
+                    }
+                } else if (leaf instanceof QueryNode) {
+                    map.put(((QueryNode)leaf).getQuery().getSet(), (QueryNode)leaf);
+                }
+            }
+            return map;
+        }
+
         public JoinGraph(@Nonnull Collection<? extends PlanNode> leaves) {
             this.leaves = new ArrayList<>(leaves);
+            this.triples2qn = computeTriples2qn();
             this.withInputs = leaves.stream().anyMatch(JoinGraph::hasOrHidesInputs);
             int size = this.leaves.size();
 
@@ -78,14 +101,21 @@ public class HeuristicPlanner implements Planner {
 
         public JoinGraph(@Nonnull ArrayList<PlanNode> leaves,
                          @Nonnull float[][] intersection,
+                         @Nullable Multimap<Set<Triple>, QueryNode> triples2qn,
                          boolean withInputs) {
             this.leaves = leaves;
-            this.withInputs = withInputs;
             this.intersection = intersection;
+            this.triples2qn = triples2qn == null ? computeTriples2qn() : triples2qn;
+            this.withInputs = withInputs;
         }
         public JoinGraph(@Nonnull ArrayList<PlanNode> leaves,
                          @Nonnull float[][] intersection) {
-            this(leaves, intersection, leaves.stream().anyMatch(JoinGraph::hasOrHidesInputs));
+            this(leaves, intersection, null,
+                    leaves.stream().anyMatch(JoinGraph::hasOrHidesInputs));
+        }
+
+        private void updateWithInputs() {
+            withInputs = leaves.stream().anyMatch(JoinGraph::hasOrHidesInputs);
         }
 
         private @Nonnull List<ImmutablePair<Integer, Integer>> sortByIntersection() {
@@ -115,8 +145,9 @@ public class HeuristicPlanner implements Planner {
             } else {
                 root = buildTreeNoInputs();
             }
-            return root == null ? new EmptyNode(TreeUtils.unionResults(leaves))
-                                : cleanMultiQuery(root);
+            if (root == null || streamPreOrder(root).anyMatch(EmptyNode.class::isInstance))
+                return new EmptyNode(TreeUtils.unionResults(leaves));
+            return cleanMultiQuery(root);
         }
 
         private static @Nonnull PlanNode cleanMultiQuery(@Nonnull PlanNode node,
@@ -171,6 +202,8 @@ public class HeuristicPlanner implements Planner {
                     return null;
                 return this; //ready
             }
+            if (!withInputs)
+                return buildTreeNoInputs() == null ? null : this;
 
             List<ImmutablePair<Integer, Integer>> pairs = sortByIntersection();
             for (ImmutablePair<Integer, Integer> pair : pairs) {
@@ -186,31 +219,17 @@ public class HeuristicPlanner implements Planner {
             return null; // no join is possible
         }
 
-        @SuppressWarnings("ManualArrayCopy")
         public @Nullable JoinGraph
         buildTreeWithInputs(@Nonnull ImmutablePair<Integer, Integer> pair) {
-            PlanNode left = leaves.get(pair.left), right = leaves.get(pair.right);
-            JoinNode joinNode = JoinNode.builder(left, right).build();
-
-            boolean stillWithInputs = false;
-            int idx = -1;
-            for (PlanNode leaf : leaves) {
-                ++idx;
-                if (idx != pair.left && idx != pair.right && hasOrHidesInputs(leaf)) {
-                    stillWithInputs = true;
-                    break;
-                }
-            }
-
             ArrayList<PlanNode> leavesCp = new ArrayList<>(leaves);
             int size = leaves.size();
             float[][] intersectionCp = new float[size][size];
-            for (int i = 0; i < size; i++) {
-                for (int j = i+1; j < size; j++)
-                    intersectionCp[i][j] = intersection[i][j];
-            }
-            JoinGraph other = new JoinGraph(leavesCp, intersectionCp, stillWithInputs);
-            other.replaceWithJoin(pair.left, pair.right, joinNode);
+            for (int i = 0; i < size; i++)
+                arraycopy(intersection[i], 0, intersectionCp[i], 0, size);
+
+            JoinGraph other = new JoinGraph(leavesCp, intersectionCp, triples2qn, withInputs);
+            other.replaceWithJoin(pair.left, pair.right);
+            other.updateWithInputs();
 
             return other.buildTreeWithInputs(false);
         }
@@ -239,16 +258,15 @@ public class HeuristicPlanner implements Planner {
             if (maxI < 0) // disjoint graph
                 return false;
             assert maxI != maxJ;
-
-            JoinNode joinNode = JoinNode.builder(leaves.get(maxI), leaves.get(maxJ)).build();
-            replaceWithJoin(maxI, maxJ, joinNode);
+            replaceWithJoin(maxI, maxJ);
             return true;
         }
 
         @SuppressWarnings("ManualArrayCopy") // System.arraycopy() is almost unreadable here
-        protected void replaceWithJoin(int leftIdx, int rightIdx, @Nonnull JoinNode joinNode) {
+        protected void replaceWithJoin(int leftIdx, int rightIdx) {
             assert leftIdx < rightIdx;
             int size = leaves.size();
+            JoinNode joinNode = createJoinNode(leftIdx, rightIdx);
             leaves.set(leftIdx, joinNode);
             leaves.remove(rightIdx);
 
@@ -267,6 +285,135 @@ public class HeuristicPlanner implements Planner {
                 // shift down unaffected intersections
                 for (int j = i+1; j < size - 1; j++)
                     intersection[i][j] = intersection[i][j + 1];
+            }
+
+            for (PlanNode child : joinNode.getChildren()) removeAlternatives(child);
+        }
+
+        @VisibleForTesting
+        @Nonnull JoinNode createJoinNode(int leftIdx, int rightIdx) {
+            PlanNode l = leaves.get(leftIdx), r = leaves.get(rightIdx);
+            //noinspection AssertWithSideEffects /* there are no side effects */
+            assert !(l instanceof QueryNode && r instanceof QueryNode &&
+                    ((QueryNode)l).getEndpoint().isAlternative(((QueryNode)r).getEndpoint()) &&
+                    ((QueryNode)l).getQuery().getSet().equals(((QueryNode)r).getQuery().getSet()))
+                    : "left and right have the same query and alternative endpoints. " +
+                      "They should never be joined";
+
+            if (l instanceof MultiQueryNode || r instanceof MultiQueryNode) {
+                List<PlanNode> lList, rList;
+                lList = l instanceof MultiQueryNode ? l.getChildren() : singletonList(l);
+                rList = r instanceof MultiQueryNode ? r.getChildren() : singletonList(r);
+                List<PlanNode> lOk = new ArrayList<>(lList.size());
+                List<PlanNode> rOk = new ArrayList<>(rList.size());
+                for (PlanNode lMember : lList) {
+                    for (PlanNode rMember : rList) {
+                        if (!joinVars(lMember, rMember).isEmpty()) {
+                            lOk.add(lMember);
+                            rOk.add(rMember);
+                            break;
+                        }
+                    }
+                }
+                for (PlanNode rMember : rList) {
+                    if (rOk.contains(rMember)) continue;
+                    for (PlanNode lMember : lList) {
+                        if (!joinVars(lMember, rMember).isEmpty()) {
+                            rOk.add(rMember);
+                            break;
+                        }
+                    }
+                }
+                removeAlternativesFromList(lOk);
+                removeAlternativesFromList(rOk);
+                assert !lOk.isEmpty() && !rOk.isEmpty();
+
+                l = MultiQueryNode.builder().addAll(lOk).intersectInputs().buildIfMulti();
+                r = MultiQueryNode.builder().addAll(rOk).intersectInputs().buildIfMulti();
+                replaceNodeAt(l, leftIdx);
+                replaceNodeAt(r, rightIdx);
+                lOk.forEach(this::removeAlternatives);
+                rOk.forEach(this::removeAlternatives);
+            } else {
+                removeAlternatives(l);
+                removeAlternatives(r);
+            }
+
+            return JoinNode.builder(l, r).build();
+        }
+
+        void removeAlternativesFromList(@Nonnull List<PlanNode> list) {
+            for (int i = 0; i < list.size()-1; i++) {
+                PlanNode node = list.get(i);
+                if (!(node instanceof QueryNode))
+                    continue;
+                TPEndpoint ep = ((QueryNode) node).getEndpoint();
+                Set<Triple> triples = ((QueryNode) node).getQuery().getSet();
+                ListIterator<PlanNode> it = list.listIterator(i + 1);
+                while (it.hasNext()) {
+                    PlanNode candidate = it.next();
+                    if (!(candidate instanceof QueryNode))
+                        continue;
+                    QueryNode qn = (QueryNode)candidate;
+                    Set<Triple> set = qn.getQuery().getSet();
+                    if (set.equals(triples) && ep.isAlternative(qn.getEndpoint()))
+                        it.remove();
+                }
+            }
+        }
+
+        void removeAlternatives(@Nonnull PlanNode node) {
+            if (node instanceof MultiQueryNode) {
+                node.getChildren().forEach(this::removeAlternatives);
+            } else if (node instanceof QueryNode) {
+                QueryNode qn = (QueryNode) node;
+                for (QueryNode candidate : triples2qn.get(qn.getQuery().getSet())) {
+                    if (qn.getEndpoint().isAlternative(candidate.getEndpoint())) {
+                        int idx = 0;
+                        for (PlanNode leaf : leaves) {
+                            if (leaf == candidate || leaf.getChildren().contains(candidate))
+                                break;
+                            ++idx;
+                        }
+                        if (idx < leaves.size())
+                            removeLeafAt(candidate, idx);
+                    }
+                }
+            }
+        }
+
+        void replaceNodeAt(@Nonnull PlanNode replacement, int idx) {
+            if (leaves.get(idx).equals(replacement)) return;
+            leaves.set(idx, replacement);
+            for (int i = 0; i < idx; i++)
+                intersection[i][idx] = weight(leaves.get(i), replacement);
+            for (int j = idx + 1; j < leaves.size(); j++)
+                intersection[idx][j] = weight(replacement, leaves.get(j));
+        }
+
+        @SuppressWarnings("ManualArrayCopy") //uglier than for
+        @VisibleForTesting
+        void removeLeafAt(@Nonnull QueryNode node, int idx) {
+            PlanNode leaf = leaves.get(idx);
+            assert leaf == node || leaf.getChildren().contains(node);
+
+            int size = leaves.size();
+            if (leaf instanceof MultiQueryNode) {
+                assert leaf.getChildren().contains(node);
+                PlanNode rep = ((MultiQueryNode) leaf).without(node);
+                if (rep != null) {
+                    replaceNodeAt(rep, idx);
+                    return;
+                } // else: rep would be empty, we need to remove leaf!
+            }
+
+            for (int i = 0; i < idx; i++) {
+                for (int j = idx; j < size-1; j++)
+                    intersection[i][j] = intersection[i][j+1];
+            }
+            for (int i = idx; i < size - 1; i++) {
+                for (int j = i+1; j < size-1; j++)
+                    intersection[i][j] = intersection[i+1][j+1];
             }
         }
 
@@ -337,10 +484,10 @@ public class HeuristicPlanner implements Planner {
         Multimap<Set<Triple>, QueryNode> q2qn = MultimapBuilder.hashKeys(leafs.size())
                                                           .arrayListValues().build();
         for (QueryNode qn : leafs)
-            q2qn.put(qn.getQuery().getSet(), qn);
+            q2qn.put(qn.getMatchedTriples(), qn);
         List<PlanNode> grouped = new ArrayList<>(q2qn.keySet().size());
         for (Set<Triple> tripleSet : q2qn.keySet()) {
-            Collection<QueryNode> values = q2qn.get(tripleSet);
+            Collection<QueryNode> values = withoutEquivalents(q2qn.get(tripleSet));
             assert !values.isEmpty();
             if (values.size() > 1)
                 grouped.add(MultiQueryNode.builder().addAll(values).intersectInputs().build());
@@ -348,5 +495,30 @@ public class HeuristicPlanner implements Planner {
                 grouped.add(values.iterator().next());
         }
         return grouped;
+    }
+
+    @VisibleForTesting
+    static @Nonnull List<QueryNode> withoutEquivalents(@Nonnull Collection<QueryNode> nodes) {
+        Multimap<CQuery, QueryNode> mm = MultimapBuilder.hashKeys().arrayListValues().build();
+        for (QueryNode node : nodes)
+            mm.put(node.getQuery(), node);
+        List<TPEndpoint> endpoints = new ArrayList<>(nodes.size());
+        List<QueryNode> filtered = new ArrayList<>(nodes.size());
+        for (CQuery query : mm.keySet()) {
+            for (QueryNode queryNode : mm.get(query)) {
+                TPEndpoint ep = queryNode.getEndpoint();
+                if (endpoints.stream().noneMatch(ep::isAlternative)) {
+                    endpoints.add(ep);
+                    filtered.add(queryNode);
+                }
+            }
+            endpoints.clear();
+        }
+        return filtered;
+    }
+
+    @Override
+    public @Nonnull String toString() {
+        return String.format("HeuristicPlanner@%x", System.identityHashCode(this));
     }
 }

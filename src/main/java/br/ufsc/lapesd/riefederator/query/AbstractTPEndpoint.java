@@ -2,18 +2,42 @@ package br.ufsc.lapesd.riefederator.query;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collection;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.lang.ref.SoftReference;
+import java.util.*;
 
 import static java.util.Collections.emptySet;
 
 public abstract class AbstractTPEndpoint implements TPEndpoint {
     private @Nullable WeakHashMap<TPEndpoint, Object> alternatives = null;
+    private @Nonnull SoftReference<Set<TPEndpoint>> alternativesClosure
+            = new SoftReference<>(null);
 
     @Override
     public @Nonnull synchronized Set<TPEndpoint> getAlternatives() {
         return alternatives == null ? emptySet() : alternatives.keySet();
+    }
+
+    @Override
+    public @Nonnull Set<TPEndpoint> getAlternativesClosure() {
+        Set<TPEndpoint> visited = alternativesClosure.get();
+        if (visited == null) {
+            visited = new HashSet<>();
+            ArrayDeque<TPEndpoint> stack = new ArrayDeque<>();
+            stack.push(this);
+            while (!stack.isEmpty()) {
+                TPEndpoint ep = stack.pop();
+                if (!visited.add(ep)) continue;
+                ep.getAlternatives().forEach(stack::push);
+            }
+            alternativesClosure = new SoftReference<>(visited);
+        }
+        return visited;
+    }
+
+    @Override
+    public boolean isAlternative(@Nonnull TPEndpoint other) {
+        return getAlternativesClosure().contains(other)
+                || other.getAlternativesClosure().contains(this);
     }
 
     @Override
@@ -28,6 +52,7 @@ public abstract class AbstractTPEndpoint implements TPEndpoint {
                 if (alternative != null) copy.put(alternative, null);
             }
             this.alternatives = copy;
+            this.alternativesClosure = new SoftReference<>(null);
         }
     }
 }

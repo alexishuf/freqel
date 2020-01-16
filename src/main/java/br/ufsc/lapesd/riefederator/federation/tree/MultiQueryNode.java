@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
@@ -59,8 +60,12 @@ public class MultiQueryNode extends PlanNode {
             return this;
         }
 
-        public @Nonnull
-        MultiQueryNode build() {
+        public @Nonnull PlanNode buildIfMulti() {
+            if (list.size() > 1) return build();
+            else return list.get(0);
+        }
+
+        public @Nonnull MultiQueryNode build() {
             if (resultVars == null) {
                 if (intersect) {
                     resultVars = intersectResults(list);
@@ -114,12 +119,27 @@ public class MultiQueryNode extends PlanNode {
         List<PlanNode> list = new ArrayList<>();
         for (PlanNode child : getChildren())
             list.add(map.getOrDefault(child, child));
+        return (MultiQueryNode) with(list);
+    }
 
+    private @Nonnull PlanNode  with(@Nonnull List<PlanNode> list) {
+        if (list.size() == 1)
+            return list.get(0);
         Set<String> allResults = unionResults(list);
         Set<String> results = intersect(getResultVars(), allResults);
         Set<String> inputs  = intersect(getInputVars(),  unionInputs(list));
         boolean projecting = results.size() != allResults.size();
         return new MultiQueryNode(list, results, projecting, inputs);
+    }
+
+    public @Nullable PlanNode without(@Nonnull PlanNode node) {
+        if (!getChildren().contains(node))
+            return this;
+        List<PlanNode> left = new ArrayList<>(getChildren().size());
+        for (PlanNode child : getChildren()) {
+            if (!node.equals(child)) left.add(child);
+        }
+        return left.isEmpty() ? null : with(left);
     }
 
     @Override

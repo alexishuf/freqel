@@ -33,8 +33,7 @@ import static br.ufsc.lapesd.riefederator.query.Capability.DISTINCT;
 import static br.ufsc.lapesd.riefederator.query.Capability.PROJECTION;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.net.InetAddress.getLocalHost;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
@@ -235,6 +234,51 @@ public class TPEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories")
+    public void testTransitiveAlternative(Function<InputStream, Fixture<TPEndpoint>> f) {
+        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
+            EmptyEndpoint e1 = new EmptyEndpoint(), e2 = new EmptyEndpoint();
+            fix.endpoint.addAlternative(e1);
+            e1.addAlternative(e2);
+            assertTrue(fix.endpoint.isAlternative(e1));
+            assertTrue(fix.endpoint.isAlternative(e2));
+            assertTrue(e1.isAlternative(fix.endpoint));
+            assertTrue(e2.isAlternative(fix.endpoint));
+        }
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testReflexiveAlternatives(Function<InputStream, Fixture<TPEndpoint>> f) {
+        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
+            EmptyEndpoint e = new EmptyEndpoint();
+            fix.endpoint.addAlternative(e);
+            e.addAlternative(fix.endpoint);
+
+            assertTrue(fix.endpoint.isAlternative(e));
+            assertTrue(e.isAlternative(fix.endpoint));
+            assertTrue(fix.endpoint.getAlternatives().contains(e));
+            assertTrue(e.getAlternatives().contains(fix.endpoint));
+        }
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testNotAlternative(Function<InputStream, Fixture<TPEndpoint>> f) {
+        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
+            EmptyEndpoint e1 = new EmptyEndpoint(), e2 = new EmptyEndpoint();
+            assertFalse(fix.endpoint.isAlternative(e1));
+            assertFalse(fix.endpoint.isAlternative(e2));
+            assertEquals(fix.endpoint.getAlternatives(), emptySet());
+
+            fix.endpoint.addAlternative(e1);
+            assertTrue(fix.endpoint.isAlternative(e1));
+            assertFalse(fix.endpoint.isAlternative(e2));
+            assertEquals(fix.endpoint.getAlternatives(), singleton(e1));
+        }
+    }
+
+    @Test(dataProvider = "fixtureFactories")
     public void testConcurrentAddAlternative(Function<InputStream, Fixture<TPEndpoint>> f)
     throws InterruptedException, ExecutionException {
         InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
@@ -243,14 +287,16 @@ public class TPEndpointTest extends EndpointTestBase {
             ExecutorService service = Executors.newCachedThreadPool();
             List<Future<?>> list = new ArrayList<>();
             list.add(service.submit(() -> {
-                for (int i = 0; i < 8192; i++) {
+                for (int i = 0; i < 4096; i++) {
                     for (TPEndpoint a : fix.endpoint.getAlternatives())
                         observations.put(a, observations.getOrDefault(a, 0) + 1);
+                    assertTrue(fix.endpoint.getAlternatives().stream()
+                            .allMatch(fix.endpoint::isAlternative));
                 }
             }));
             for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
                 list.add(service.submit(() -> {
-                    for (int j = 0; j < 4096; j++) {
+                    for (int j = 0; j < 2048; j++) {
                         fix.endpoint.addAlternative(new EmptyEndpoint());
                     }
                 }));
@@ -259,6 +305,9 @@ public class TPEndpointTest extends EndpointTestBase {
             for (Future<?> future : list) future.get();
             service.shutdown();
             service.awaitTermination(1, TimeUnit.SECONDS);
+
+            assertTrue(fix.endpoint.getAlternatives().stream()
+                    .allMatch(fix.endpoint::isAlternative));
         }
     }
 }

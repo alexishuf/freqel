@@ -1,14 +1,17 @@
 package br.ufsc.lapesd.riefederator.federation.planner;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.HeuristicPlanner;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.Sets;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.DataProvider;
@@ -19,9 +22,9 @@ import java.util.*;
 import java.util.function.Supplier;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
+import static com.google.common.collect.Collections2.permutations;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singleton;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
@@ -30,11 +33,14 @@ public class PlannerTest {
     public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
     public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
     public static final @Nonnull StdURI knows = new StdURI(FOAF.knows.getURI());
+    public static final @Nonnull StdURI name = new StdURI(FOAF.name.getURI());
     public static final @Nonnull StdURI manages = new StdURI("http://example.org/manages");
     public static final @Nonnull StdURI title = new StdURI("http://example.org/title");
     public static final @Nonnull StdURI genre = new StdURI("http://example.org/genre");
+    public static final @Nonnull StdURI author = new StdURI("http://example.org/author");
     public static final @Nonnull StdURI genreName = new StdURI("http://example.org/genreName");
     public static final @Nonnull StdLit title1 = StdLit.fromEscaped("title 1", "en");
+    public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author 1", "en");
     public static final @Nonnull StdVar X = new StdVar("x");
     public static final @Nonnull StdVar Y = new StdVar("y");
     public static final @Nonnull StdVar Z = new StdVar("z");
@@ -44,8 +50,22 @@ public class PlannerTest {
     public static @Nonnull List<NamedSupplier<Planner>> suppliers = singletonList(
             new NamedSupplier<>(HeuristicPlanner.class));
 
-    private static final @Nonnull EmptyEndpoint empty1 = new EmptyEndpoint(),
-                                                empty2 = new EmptyEndpoint();
+    private static final @Nonnull
+    EmptyEndpoint empty1  = new EmptyEndpoint(),  empty2 = new EmptyEndpoint(),
+                  empty3a = new EmptyEndpoint(), empty3b = new EmptyEndpoint(),
+                  empty4  = new EmptyEndpoint();
+
+
+    public static final @Nonnull Atom Book = new Atom("Book");
+    public static final @Nonnull Atom Person = new Atom("Person");
+    public static final @Nonnull Atom KnownPerson = new Atom("KnownPerson");
+    public static final @Nonnull Atom LikedPerson = new Atom("LikedPerson");
+    public static final @Nonnull Atom PersonName = new Atom("PersonName");
+
+    static {
+        empty3a.addAlternative(empty3b);
+        empty3b.addAlternative(empty3a);
+    }
 
     @DataProvider
     public static Object[][] suppliersData() {
@@ -201,6 +221,127 @@ public class PlannerTest {
                 CQuery.from(new Triple(Y, genreName, Z))
         );
         assertEquals(queries, expectedQueries);
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testSameQuerySameEp(@Nonnull Supplier<Planner> supplier) {
+        Planner planner = supplier.get();
+        QueryNode q1 = new QueryNode(empty1, CQuery.from(new Triple(X, knows, Y)));
+        QueryNode q2 = new QueryNode(empty1, CQuery.from(new Triple(X, knows, Y)));
+
+        PlanNode plan = planner.plan(asList(q1, q2));
+        assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 1);
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testSameQueryEquivalentEp(@Nonnull Supplier<Planner> supplier) {
+        Planner planner = supplier.get();
+        QueryNode q1 = new QueryNode(empty3a, CQuery.from(new Triple(X, knows, Y)));
+        QueryNode q2 = new QueryNode(empty3b, CQuery.from(new Triple(X, knows, Y)));
+
+        PlanNode plan = planner.plan(asList(q1, q2));
+        assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 1);
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void booksByAuthorWithIncompatibleService(Supplier<Planner> supplier) {
+        Planner planner = supplier.get();
+        QueryNode q1 = new QueryNode(empty1, CQuery.from(new Triple(Y, name, author1)));
+        QueryNode q2 = new QueryNode(empty2, CQuery.with(new Triple(X, author, Y))
+                .annotate(X, AtomAnnotation.asRequired(Book))
+                .annotate(Y, AtomAnnotation.of(Person)).build());
+
+        for (List<QueryNode> nodes : asList(asList(q1, q2), asList(q2, q1))) {
+            PlanNode plan = planner.plan(nodes);
+            assertTrue(plan instanceof EmptyNode);
+            assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
+            assertEquals(plan.getInputVars(), emptySet());
+        }
+    }
+
+    public void booksByAuthorWithServiceTest(@Nonnull Planner planner, boolean markAsAlternatives,
+                                             boolean addFromSubject) {
+        CQEndpoint e2 = markAsAlternatives ? empty3a : empty2;
+        CQEndpoint e3 = markAsAlternatives ? empty3b : empty4;
+
+        QueryNode q1 = new QueryNode(empty1, CQuery.from(new Triple(Y, name, author1)));
+        QueryNode q2 = new QueryNode(e2, CQuery.with(new Triple(X, author, Y))
+                .annotate(X, AtomAnnotation.asRequired(Book))
+                .annotate(Y, AtomAnnotation.of(Person)).build());
+        QueryNode q3 = new QueryNode(e3, CQuery.with(new Triple(X, author, Y))
+                .annotate(X, AtomAnnotation.of(Book))
+                .annotate(Y, AtomAnnotation.asRequired(Person)).build());
+        List<QueryNode> nodes = addFromSubject ? asList(q1, q2, q3) : asList(q1, q3);
+
+        //noinspection UnstableApiUsage
+        for (List<QueryNode> permutation : permutations(nodes)) {
+            PlanNode root = planner.plan(permutation);
+            Set<PlanNode> leaves = streamPreOrder(root)
+                    .filter(n -> n instanceof QueryNode).collect(toSet());
+            assertEquals(leaves, Sets.newHashSet(q1, q3));
+            assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 1);
+            assertTrue(streamPreOrder(root).count() <= 4);
+        }
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testBooksByAuthorARQWithService(@Nonnull Supplier<Planner> supplier) {
+        booksByAuthorWithServiceTest(supplier.get(), false, false);
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testBooksByAuthorAlternativeService(@Nonnull Supplier<Planner> supplier) {
+        booksByAuthorWithServiceTest(supplier.get(), true, true);
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testBooksByAuthorLeftoverService(@Nonnull Supplier<Planner> supplier) {
+        booksByAuthorWithServiceTest(supplier.get(), false, true);
+    }
+
+    private void onePathTwoDirectionsWithServicesTest(@Nonnull Planner planner,
+                                                      boolean useAlternative) {
+        EmptyEndpoint ep1 = useAlternative ? empty3a : empty1;
+        EmptyEndpoint ep2 = useAlternative ? empty3b : empty1;
+        QueryNode q1 = new QueryNode(ep1, CQuery.with(new Triple(ALICE, knows, X))
+                .annotate(ALICE, AtomAnnotation.asRequired(Person))
+                .annotate(X, AtomAnnotation.of(KnownPerson)).build());
+        QueryNode q2 = new QueryNode(ep1, CQuery.with(new Triple(X, knows, Y))
+                .annotate(X, AtomAnnotation.asRequired(Person))
+                .annotate(Y, AtomAnnotation.of(KnownPerson)).build());
+        QueryNode q3 = new QueryNode(ep1, CQuery.with(new Triple(Y, knows, BOB))
+                .annotate(Y, AtomAnnotation.asRequired(Person))
+                .annotate(BOB, AtomAnnotation.of(KnownPerson)).build());
+
+        QueryNode p1 = new QueryNode(ep2, CQuery.with(new Triple(ALICE, knows, X))
+                .annotate(ALICE, AtomAnnotation.of(Person))
+                .annotate(X, AtomAnnotation.asRequired(KnownPerson)).build());
+        QueryNode p2 = new QueryNode(ep2, CQuery.with(new Triple(X, knows, Y))
+                .annotate(X, AtomAnnotation.of(Person))
+                .annotate(Y, AtomAnnotation.asRequired(KnownPerson)).build());
+        QueryNode p3 = new QueryNode(ep2, CQuery.with(new Triple(Y, knows, BOB))
+                .annotate(Y, AtomAnnotation.of(Person))
+                .annotate(BOB, AtomAnnotation.asRequired(KnownPerson)).build());
+
+        //noinspection UnstableApiUsage
+        for (List<QueryNode> permutation : permutations(asList(q1, q2, q3, p1, p2, p3))) {
+            PlanNode plan = planner.plan(permutation);
+            Set<QueryNode> qns = streamPreOrder(plan).filter(QueryNode.class::isInstance)
+                    .map(n -> (QueryNode)n).collect(toSet());
+            assertTrue(qns.equals(Sets.newHashSet(q1, q2, q3)) ||
+                       qns.equals(Sets.newHashSet(p1, p2, p3)), "qns="+qns);
+            assertEquals(streamPreOrder(plan).filter(JoinNode.class::isInstance).count(), 2);
+        }
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testOnePathTwoDirectionsWithServicesSameEp(@Nonnull Supplier<Planner> supplier) {
+        onePathTwoDirectionsWithServicesTest(supplier.get(), false);
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testOnePathTwoDirectionsWithServicesAlternativeEp(@Nonnull Supplier<Planner> supplier) {
+        onePathTwoDirectionsWithServicesTest(supplier.get(), true);
     }
 
 }

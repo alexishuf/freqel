@@ -48,6 +48,22 @@ public interface TPEndpoint extends AutoCloseable {
     @Nonnull Set<TPEndpoint> getAlternatives();
 
     /**
+     * Gets the closure of getAlternatives() (recursively calls getAlternatives() on alternatives).
+     *
+     * This may be cached. Nevertheless, it is safe calling this concurrently with
+     * {@link TPEndpoint#addAlternative(TPEndpoint)} or
+     * {@link TPEndpoint#addAlternatives(Collection)}.
+     */
+    @Nonnull Set<TPEndpoint> getAlternativesClosure();
+
+    /**
+     * Indicates whether other is a alternative to this endpoint either directly or indirectly.
+     *
+     * If <code>other==this</code>, returns <code>true</code>.
+     */
+    boolean isAlternative(@Nonnull TPEndpoint other);
+
+    /**
      * Adds the given endpoints as alternatives to this one.
      * See {@link TPEndpoint#getAlternatives()}
      *
