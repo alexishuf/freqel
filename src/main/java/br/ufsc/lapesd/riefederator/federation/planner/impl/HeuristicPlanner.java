@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.UndirectedIrreflexiveArrayGraph;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Multimap;
@@ -19,7 +20,6 @@ import java.util.function.Consumer;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Lists.cartesianProduct;
-import static java.lang.System.arraycopy;
 import static java.util.Collections.singletonList;
 
 public class HeuristicPlanner implements Planner {
@@ -39,10 +39,8 @@ public class HeuristicPlanner implements Planner {
         return roots.size() == 1 ? roots.get(0) : new CartesianNode(roots);
     }
 
-    static class JoinGraph {
-        private ArrayList<PlanNode> leaves;
+    static class JoinGraph extends UndirectedIrreflexiveArrayGraph<PlanNode> {
         private boolean withInputs;
-        private float[][] intersection;
         private @Nonnull Multimap<Set<Triple>, QueryNode> triples2qn;
 
         private static boolean hasOrHidesInputs(@Nonnull PlanNode node) {
@@ -50,7 +48,8 @@ public class HeuristicPlanner implements Planner {
                     && node.getChildren().stream().anyMatch(PlanNode::hasInputs));
         }
 
-        private static float weight(@Nonnull PlanNode l, @Nonnull PlanNode r) {
+        @Override
+        protected float weigh(@Nonnull PlanNode l, @Nonnull PlanNode r) {
             Set<Triple> lm = l.getMatchedTriples(), rm = r.getMatchedTriples();
             if (lm.containsAll(rm) || rm.containsAll(lm))
                 return 0;
@@ -61,7 +60,7 @@ public class HeuristicPlanner implements Planner {
                 lNodes = l instanceof MultiQueryNode ? l.getChildren() : singletonList(l);
                 rNodes = r instanceof MultiQueryNode ? r.getChildren() : singletonList(r);
                 for (List<PlanNode> pair : cartesianProduct(lNodes, rNodes)) {
-                    sum += weight(pair.get(0), pair.get(1));
+                    sum += weigh(pair.get(0), pair.get(1));
                     ++count;
                 }
                 return sum/count;
@@ -73,7 +72,7 @@ public class HeuristicPlanner implements Planner {
         private Multimap<Set<Triple>, QueryNode> computeTriples2qn() {
             Multimap<Set<Triple>, QueryNode> map;
             map = MultimapBuilder.hashKeys().arrayListValues().build();
-            for (PlanNode leaf : leaves) {
+            for (PlanNode leaf : getNodes()) {
                 if (leaf instanceof MultiQueryNode) {
                     for (PlanNode member : leaf.getChildren()) {
                         if (member instanceof QueryNode)
@@ -87,46 +86,38 @@ public class HeuristicPlanner implements Planner {
         }
 
         public JoinGraph(@Nonnull Collection<? extends PlanNode> leaves) {
-            this.leaves = new ArrayList<>(leaves);
+            super(new ArrayList<>(leaves));
             this.triples2qn = computeTriples2qn();
             this.withInputs = leaves.stream().anyMatch(JoinGraph::hasOrHidesInputs);
-            int size = this.leaves.size();
-
-            intersection = new float[size][size];
-            for (int i = 0; i < size; i++) {
-                for (int j = i+1; j < size; j++)
-                    intersection[i][j] = weight(this.leaves.get(i), this.leaves.get(j));
-            }
         }
 
         public JoinGraph(@Nonnull ArrayList<PlanNode> leaves,
-                         @Nonnull float[][] intersection,
+                         @Nonnull float[] intersection,
                          @Nullable Multimap<Set<Triple>, QueryNode> triples2qn,
                          boolean withInputs) {
-            this.leaves = leaves;
-            this.intersection = intersection;
+            super(leaves, intersection);
             this.triples2qn = triples2qn == null ? computeTriples2qn() : triples2qn;
             this.withInputs = withInputs;
         }
         public JoinGraph(@Nonnull ArrayList<PlanNode> leaves,
-                         @Nonnull float[][] intersection) {
+                         @Nonnull float[] intersection) {
             this(leaves, intersection, null,
                     leaves.stream().anyMatch(JoinGraph::hasOrHidesInputs));
         }
 
         private void updateWithInputs() {
-            withInputs = leaves.stream().anyMatch(JoinGraph::hasOrHidesInputs);
+            withInputs = getNodes().stream().anyMatch(JoinGraph::hasOrHidesInputs);
         }
 
         private @Nonnull List<ImmutablePair<Integer, Integer>> sortByIntersection() {
-            int size = leaves.size();
+            int size = size();
             int pairsCapacity = size * (size + 1) / 2;
             List<ImmutablePair<Integer, Integer>> pairs = new ArrayList<>(pairsCapacity);
             for (int i = 0; i < size; i++) {
                 for (int j = i+1; j < size; j++) pairs.add(ImmutablePair.of(i, j));
             }
             Comparator<ImmutablePair<Integer, Integer>> comparator
-                    = Comparator.comparing(p -> intersection[p.left][p.right]);
+                    = Comparator.comparing(p -> getWeight(p.left, p.right));
             pairs.sort(comparator.reversed());
             return pairs;
         }
@@ -136,17 +127,16 @@ public class HeuristicPlanner implements Planner {
             if (withInputs) {
                 JoinGraph other = buildTreeWithInputs(true);
                 if (other == null)
-                    return new EmptyNode(TreeUtils.unionResults(leaves));
-                leaves = other.leaves;
-                intersection = other.intersection;
+                    return new EmptyNode(TreeUtils.unionResults(getNodes()));
+                stealFrom(other);
                 withInputs = other.withInputs;
-                assert !leaves.isEmpty();
-                root = leaves.get(0);
+                assert !isEmpty();
+                root = get(0);
             } else {
                 root = buildTreeNoInputs();
             }
             if (root == null || streamPreOrder(root).anyMatch(EmptyNode.class::isInstance))
-                return new EmptyNode(TreeUtils.unionResults(leaves));
+                return new EmptyNode(TreeUtils.unionResults(getNodes()));
             return cleanMultiQuery(root);
         }
 
@@ -195,9 +185,9 @@ public class HeuristicPlanner implements Planner {
         }
 
         public @Nullable JoinGraph buildTreeWithInputs(boolean first) {
-            Preconditions.checkState(!leaves.isEmpty(), "Can't build a tree without leaves!");
-            if (leaves.size() == 1) {
-                PlanNode root = leaves.get(0);
+            Preconditions.checkState(!isEmpty(), "Can't build a tree without leaves!");
+            if (size() == 1) {
+                PlanNode root = get(0);
                 if (root.hasInputs())
                     return null;
                 return this; //ready
@@ -207,9 +197,9 @@ public class HeuristicPlanner implements Planner {
 
             List<ImmutablePair<Integer, Integer>> pairs = sortByIntersection();
             for (ImmutablePair<Integer, Integer> pair : pairs) {
-                if (intersection[pair.left][pair.right] == 0)
+                if (getWeight(pair.left, pair.right) == 0)
                     return null; //pairs are ordered, no more valid alternatives
-                PlanNode l = leaves.get(pair.left), r = leaves.get(pair.right);
+                PlanNode l = get(pair.left), r = get(pair.right);
                 if (first && l.hasInputs() && r.hasInputs())
                     continue; //left-most join must not have inputs
                 JoinGraph root = buildTreeWithInputs(pair);
@@ -221,13 +211,8 @@ public class HeuristicPlanner implements Planner {
 
         public @Nullable JoinGraph
         buildTreeWithInputs(@Nonnull ImmutablePair<Integer, Integer> pair) {
-            ArrayList<PlanNode> leavesCp = new ArrayList<>(leaves);
-            int size = leaves.size();
-            float[][] intersectionCp = new float[size][size];
-            for (int i = 0; i < size; i++)
-                arraycopy(intersection[i], 0, intersectionCp[i], 0, size);
-
-            JoinGraph other = new JoinGraph(leavesCp, intersectionCp, triples2qn, withInputs);
+            JoinGraph other = new JoinGraph(new ArrayList<>(getNodes()),
+                                            getWeights(), triples2qn, withInputs);
             other.replaceWithJoin(pair.left, pair.right);
             other.updateWithInputs();
 
@@ -238,21 +223,25 @@ public class HeuristicPlanner implements Planner {
             while (true) {
                 if (!tryJoin()) break;
             }
-            Preconditions.checkState(leaves.size() == 1);
-            return leaves.get(0);
+            Preconditions.checkState(size() == 1);
+            return get(0);
         }
 
         public boolean tryJoin() {
-            if (leaves.size() < 2)
+            if (size() < 2)
                 return false; //nothing to join
-            int size = leaves.size();
+            int size = size();
             // find maximal intersection
             int maxI = -1, maxJ = -1;
             float max = 0;
             for (int i = 0; i < size; i++) {
                 for (int j = i+1; j < size; j++) {
-                    if (intersection[i][j] > max)
-                        max = intersection[maxI = i][maxJ = j];
+                    float weight = getWeight(i, j);
+                    if (weight > max) {
+                        max = weight;
+                        maxI = i;
+                        maxJ = j;
+                    }
                 }
             }
             if (maxI < 0) // disjoint graph
@@ -262,37 +251,15 @@ public class HeuristicPlanner implements Planner {
             return true;
         }
 
-        @SuppressWarnings("ManualArrayCopy") // System.arraycopy() is almost unreadable here
         protected void replaceWithJoin(int leftIdx, int rightIdx) {
-            assert leftIdx < rightIdx;
-            int size = leaves.size();
             JoinNode joinNode = createJoinNode(leftIdx, rightIdx);
-            leaves.set(leftIdx, joinNode);
-            leaves.remove(rightIdx);
-
-            // adjust intersection to the changes
-            for (int i = 0; i < leftIdx; i++) {
-                // re-compute intersection, now with the JoinNode
-                intersection[i][leftIdx] = weight(leaves.get(i), joinNode);
-                // shift down unaffected intersections
-                for (int j = rightIdx; j < size - 1; j++)
-                    intersection[i][j] = intersection[i][j + 1];
-            }
-            // re-compute intersection, now with the JoinNode
-            for (int j = leftIdx; j < size - 1; j++)
-                intersection[leftIdx][j] = weight(joinNode, leaves.get(j));
-            for (int i = leftIdx +1; i < size-1; i++) {
-                // shift down unaffected intersections
-                for (int j = i+1; j < size - 1; j++)
-                    intersection[i][j] = intersection[i][j + 1];
-            }
-
-            for (PlanNode child : joinNode.getChildren()) removeAlternatives(child);
+            removeAt(rightIdx);
+            replaceAt(leftIdx, joinNode);
         }
 
         @VisibleForTesting
         @Nonnull JoinNode createJoinNode(int leftIdx, int rightIdx) {
-            PlanNode l = leaves.get(leftIdx), r = leaves.get(rightIdx);
+            PlanNode l = get(leftIdx), r = get(rightIdx);
             //noinspection AssertWithSideEffects /* there are no side effects */
             assert !(l instanceof QueryNode && r instanceof QueryNode &&
                     ((QueryNode)l).getEndpoint().isAlternative(((QueryNode)r).getEndpoint()) &&
@@ -330,8 +297,8 @@ public class HeuristicPlanner implements Planner {
 
                 l = MultiQueryNode.builder().addAll(lOk).intersectInputs().buildIfMulti();
                 r = MultiQueryNode.builder().addAll(rOk).intersectInputs().buildIfMulti();
-                replaceNodeAt(l, leftIdx);
-                replaceNodeAt(r, rightIdx);
+                replaceAt(leftIdx, l);
+                replaceAt(rightIdx, r);
                 lOk.forEach(this::removeAlternatives);
                 rOk.forEach(this::removeAlternatives);
             } else {
@@ -367,58 +334,39 @@ public class HeuristicPlanner implements Planner {
                 node.getChildren().forEach(this::removeAlternatives);
             } else if (node instanceof QueryNode) {
                 QueryNode qn = (QueryNode) node;
-                for (QueryNode candidate : triples2qn.get(qn.getQuery().getSet())) {
-                    if (qn.getEndpoint().isAlternative(candidate.getEndpoint())) {
+                for (QueryNode cand : triples2qn.get(qn.getQuery().getSet())) {
+                    if (qn != cand && qn.getEndpoint().isAlternative(cand.getEndpoint())) {
                         int idx = 0;
-                        for (PlanNode leaf : leaves) {
-                            if (leaf == candidate || leaf.getChildren().contains(candidate))
+                        for (PlanNode leaf : getNodes()) {
+                            if (leaf == cand || leaf.getChildren().contains(cand))
                                 break;
                             ++idx;
                         }
-                        if (idx < leaves.size())
-                            removeLeafAt(candidate, idx);
+                        if (idx < size())
+                            removeLeafAt(cand, idx);
                     }
                 }
             }
         }
 
-        void replaceNodeAt(@Nonnull PlanNode replacement, int idx) {
-            if (leaves.get(idx).equals(replacement)) return;
-            leaves.set(idx, replacement);
-            for (int i = 0; i < idx; i++)
-                intersection[i][idx] = weight(leaves.get(i), replacement);
-            for (int j = idx + 1; j < leaves.size(); j++)
-                intersection[idx][j] = weight(replacement, leaves.get(j));
-        }
-
-        @SuppressWarnings("ManualArrayCopy") //uglier than for
         @VisibleForTesting
         void removeLeafAt(@Nonnull QueryNode node, int idx) {
-            PlanNode leaf = leaves.get(idx);
+            PlanNode leaf = get(idx);
             assert leaf == node || leaf.getChildren().contains(node);
 
-            int size = leaves.size();
             if (leaf instanceof MultiQueryNode) {
                 assert leaf.getChildren().contains(node);
                 PlanNode rep = ((MultiQueryNode) leaf).without(node);
                 if (rep != null) {
-                    replaceNodeAt(rep, idx);
+                    replaceAt(idx, rep);
                     return;
                 } // else: rep would be empty, we need to remove leaf!
             }
-
-            for (int i = 0; i < idx; i++) {
-                for (int j = idx; j < size-1; j++)
-                    intersection[i][j] = intersection[i][j+1];
-            }
-            for (int i = idx; i < size - 1; i++) {
-                for (int j = i+1; j < size-1; j++)
-                    intersection[i][j] = intersection[i+1][j+1];
-            }
+            removeAt(idx);
         }
 
         public void forEachConnectedComponent(@Nonnull Consumer<JoinGraph> consumer) {
-            int size = leaves.size();
+            int size = size();
             BitSet visited = new BitSet(size);
             BitSet component = new BitSet(size);
             Queue<Integer> queue = new ArrayDeque<>();
@@ -429,11 +377,8 @@ public class HeuristicPlanner implements Planner {
                     if (visited.get(idx)) continue;
                     visited.set(idx);
                     component.set(idx);
-                    for (int i = 0; i < idx; i++) {
-                        if ( intersection[i][idx] > 0) queue.add(i);
-                    }
-                    for (int i = idx+1; i < size; i++) {
-                        if ( intersection[idx][i] > 0) queue.add(i);
+                    for (int i = 0; i < size; i++) {
+                        if (i != idx && getWeight(idx, i) > 0) queue.add(i);
                     }
                 }
                 consumer.accept(createComponent(component));
@@ -448,34 +393,10 @@ public class HeuristicPlanner implements Planner {
         }
 
         @VisibleForTesting
-        @Nonnull ArrayList<PlanNode> getLeaves() {
-            return leaves;
-        }
-
-        @VisibleForTesting
-        @Nonnull float[][] getIntersection() {
-            return intersection;
-        }
-
-        @VisibleForTesting
         @Nonnull JoinGraph createComponent(BitSet members) {
-            int memberCount = members.cardinality();
-            ArrayList<PlanNode> subset = new ArrayList<>(memberCount);
-            float[][] intersection = new float[memberCount][memberCount];
-            int totalSize = this.leaves.size();
-            int outI = 0;
-            for (int i = 0; i < totalSize; i++) {
-                if (!members.get(i))
-                    continue;
-                subset.add(this.leaves.get(i));
-                int outJ = outI+1;
-                for (int j = i+1; j < totalSize; j++) {
-                    if (members.get(j))
-                        intersection[outI][outJ++] = this.intersection[i][j];
-                }
-                ++outI;
-            }
-            return new JoinGraph(subset, intersection);
+            ArrayList<PlanNode> nodeSubset = new ArrayList<>(members.cardinality());
+            float[] weightsSubset = getWeightsForSubset(members, nodeSubset);
+            return new JoinGraph(nodeSubset, weightsSubset);
         }
     }
 

@@ -4,15 +4,13 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
-import java.util.ConcurrentModificationException;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Objects;
+import javax.annotation.Nullable;
+import java.util.*;
 
 import static java.lang.System.arraycopy;
 
 public abstract class UndirectedIrreflexiveArrayGraph<N> {
-    private final @Nonnull List<N> nodes;
+    private @Nonnull List<N> nodes;
     private float[] weights;
     private int age = 0;
 
@@ -39,6 +37,26 @@ public abstract class UndirectedIrreflexiveArrayGraph<N> {
             for (int j = i+1; j < size; j++)
                 weights[idx++] = weigh(nodes.get(i), nodes.get(j));
         }
+    }
+
+    public UndirectedIrreflexiveArrayGraph() {
+        nodes = Collections.emptyList();
+        weights = new float[1];
+    }
+
+    protected UndirectedIrreflexiveArrayGraph(@Nonnull List<N> nodes, @Nonnull float[] weights) {
+        Preconditions.checkArgument(weights.length >= totalCells(nodes.size()));
+        if (UndirectedIrreflexiveArrayGraph.class.desiredAssertionStatus())
+            Preconditions.checkArgument(nodes.stream().noneMatch(Objects::isNull));
+        this.nodes = nodes;
+        this.weights = weights;
+    }
+
+    public void stealFrom(@Nonnull UndirectedIrreflexiveArrayGraph<N> other) {
+        this.weights = other.weights;
+        this.nodes = other.nodes;
+        other.weights = new float[0];
+        other.nodes = Collections.emptyList();
     }
 
     protected abstract float weigh(@Nonnull N l, @Nonnull N r);
@@ -143,6 +161,37 @@ public abstract class UndirectedIrreflexiveArrayGraph<N> {
         float[] copy = new float[cells];
         arraycopy(weights, 0, copy, 0, cells);
         return copy;
+    }
+
+    /**
+     * Gets a copy of the float[] weights array for constructing a subset Graph with
+     * the given nodes subset.
+     *
+     * @param subset {@link BitSet} with 1 at the position of the nodes to include
+     * @param outNodes If non-null will receive (though add() calls) the nodes specified by subset
+     */
+    protected @Nonnull float[]
+    getWeightsForSubset(@Nonnull BitSet subset, @Nullable List<N> outNodes) {
+        Preconditions.checkArgument(subset.length() <= size(), "subset has a bit  set >= size()");
+        Preconditions.checkArgument(outNodes == null || outNodes.isEmpty(),
+                "Non-empty outNodes. It will not correspond to the returned weights array!");
+        int[] idxs = new int[size()];
+        int subsetSize = 0;
+        for (int i = subset.nextSetBit(0); i >= 0; i = subset.nextSetBit(i+1)) {
+            if (outNodes != null)
+                outNodes.add(nodes.get(i));
+            idxs[subsetSize++] = i;
+        }
+
+        float[] subWeights = new float[totalCells(subsetSize)];
+        int out = 0;
+        for (int i = 0; i < subsetSize; i++) {
+            for (int j = i+1; j < subsetSize; j++)
+                subWeights[out++] = getWeight(idxs[i], idxs[j]);
+        }
+        assert out == subWeights.length;
+
+        return subWeights;
     }
 
     @Override

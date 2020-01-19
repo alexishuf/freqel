@@ -17,10 +17,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
@@ -39,6 +36,7 @@ public class HeuristicPlannerTest {
     public static final @Nonnull StdVar X = new StdVar("x");
     public static final @Nonnull StdVar Y = new StdVar("y");
     public static final @Nonnull StdVar Z = new StdVar("z");
+    public static final @Nonnull StdVar W = new StdVar("w");
     public static final @Nonnull StdVar U = new StdVar("u");
     public static final @Nonnull StdVar V = new StdVar("v");
 
@@ -64,25 +62,14 @@ public class HeuristicPlannerTest {
         vKnowsBob = new QueryNode(empty, CQuery.from(new Triple(V, knows, BOB)));
     }
 
-    protected void checkIntersection(@Nonnull HeuristicPlanner.JoinGraph g,
-                                     float[][] expected) {
-        assertEquals(g.getIntersection().length, expected.length);
-        for (int i = 0; i < expected.length; i++)
-            assertEquals(g.getIntersection()[i], expected[i], "i=" + i);
-    }
-
     @Test
     public void testTryJoinSimple() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY));
-        float[][] intersection = new float[][] {
-                new float[] {0, 1},
-                new float[] {0, 0},
-        };
-        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
+        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, new float[]{1});
         assertTrue(g.tryJoin());
         assertFalse(g.tryJoin());
 
-        PlanNode root = g.getLeaves().get(0);
+        PlanNode root = g.get(0);
         assertTrue(root instanceof JoinNode);
         assertFalse(root.isProjecting());
         assertEquals(root.getResultVars(), Sets.newHashSet("x", "y"));
@@ -92,17 +79,16 @@ public class HeuristicPlannerTest {
     @Test
     public void testJoinThreeHopPath() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY, yKnowsBob));
-        float[][] intersection = new float[][] {
-                new float[] {0, 1, 0},
-                new float[] {0, 0, 1},
-                new float[] {0, 0, 0},
-        };
-        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
+        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, new float[]{
+                //xKnowsY yKnowsBob
+                  1,      0, //aliceKnowsX
+                          1  // xKnowsY
+        });
         assertTrue(g.tryJoin());
         assertTrue(g.tryJoin());
         assertFalse(g.tryJoin());
 
-        PlanNode root = g.getLeaves().get(0);
+        PlanNode root = g.get(0);
         assertTrue(root instanceof JoinNode);
         assertFalse(root.isProjecting());
         assertEquals(root.getResultVars(), Sets.newHashSet("x", "y"));
@@ -118,60 +104,49 @@ public class HeuristicPlannerTest {
     @Test
     public void testJoinSingle() {
         ArrayList<PlanNode> leaves = new ArrayList<>(singletonList(aliceKnowsX));
-        float[][] intersection = new float[][]{
-                new float[]{0}
-        };
-        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
+        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, new float[0]);
 
         assertFalse(g.tryJoin());
-        assertSame(g.getLeaves().get(0), leaves.get(0));
+        assertSame(g.get(0), leaves.get(0));
     }
 
     @Test
     public void testCreateTotalComponent() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY));
-        float[][] intersection = new float[][] {
-                new float[]{0, 1},
-                new float[]{0, 0}
-        };
-        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
+        HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, new float[]{1});
         BitSet subset = new BitSet();
         subset.set(0, 2);
         HeuristicPlanner.JoinGraph component = g.createComponent(subset);
 
-        assertEquals(component.getLeaves(), leaves);
-        assertEquals(component.getIntersection().length, intersection.length);
-        for (int i = 0; i < intersection.length; i++)
-            assertEquals(component.getIntersection()[i], intersection[i]);
+        assertEquals(component.getNodes(), leaves);
+        assertEquals(component.getWeights(), new float[]{1});
     }
 
     @Test
     public void testCreateUnitComponents() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY, yKnowsBob));
-        float[][] intersection = new float[][] {
-                new float[]{0, 1, 0},
-                new float[]{0, 0, 1},
-                new float[]{0, 0, 0},
+        float[] intersection = new float[] {
+                //xKnowsY, yKnowsBob
+                  1,       0,        //aliceKnowsX
+                           1         //xKnowsY
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
         for (int i = 0; i < leaves.size(); i++) {
             BitSet subset = new BitSet();
             subset.set(i);
             HeuristicPlanner.JoinGraph component = g.createComponent(subset);
-            assertEquals(component.getLeaves(), singletonList(leaves.get(i)));
-            assertEquals(component.getIntersection().length, 1);
-            assertEquals(component.getIntersection()[0].length, 1);
-            assertEquals(component.getIntersection()[0][0], 0.0f);
+            assertEquals(component.getNodes(), singletonList(leaves.get(i)));
+            assertEquals(component.getWeights().length, 0);
         }
     }
 
     @Test
     public void testCreatePairComponents() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY, yKnowsBob));
-        float[][] intersection = {
-                new float[] {0, 1, 0},
-                new float[] {0, 0, 1},
-                new float[] {0, 0, 0},
+        float[] intersection = {
+                //xKnowsY, yKnowsBob
+                  1,       0,        //aliceKnowsX
+                           1,        //xKnowsY
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
 
@@ -182,19 +157,10 @@ public class HeuristicPlannerTest {
             HeuristicPlanner.JoinGraph component = g.createComponent(subset);
 
             if (i < leaves.size()-1)
-                assertEquals(component.getLeaves(), asList(leaves.get(i), leaves.get(i+1)));
+                assertEquals(component.getNodes(), asList(leaves.get(i), leaves.get(i+1)));
             else
-                assertEquals(component.getLeaves(), asList(leaves.get(0), leaves.get(i)));
-
-            assertEquals(component.getIntersection().length, 2);
-            for (int j = 0; j < 2; j++)
-                assertEquals(component.getIntersection()[j].length, 2, "j=" + j);
-
-            if (i < leaves.size()-1)
-                assertEquals(component.getIntersection()[0], new float[]{0, 1}, "i="+i);
-            else
-                assertEquals(component.getIntersection()[0], new float[]{0, 0}, "i="+i);
-            assertEquals(component.getIntersection()[1], new float[]{0, 0}, "i="+i);
+                assertEquals(component.getNodes(), asList(leaves.get(0), leaves.get(i)));
+            assertEquals(component.getWeights(), new float[]{i < leaves.size()-1 ? 1 : 0});
         }
     }
 
@@ -202,32 +168,36 @@ public class HeuristicPlannerTest {
     public void testCreateDisjointComponents() {
         ArrayList<PlanNode> leaves = new ArrayList<>(asList(aliceKnowsX, xKnowsY, yKnowsBob,
                                                              aliceKnowsU, uKnowsV, vKnowsBob));
-        float[][] intersection = {
-                new float[] {0, 1, 0, 0, 0, 0},
-                new float[] {0, 0, 1, 0, 0, 0},
-                new float[] {0, 0, 0, 0, 0, 0},
-                new float[] {0, 0, 0, 0, 1, 0},
-                new float[] {0, 0, 0, 0, 0, 1},
-                new float[] {0, 0, 0, 0, 0, 0},
+        float[] intersection = {
+                //xKnowsY, yKnowsBob, aliceKnowsU, uKnowsV, vKnowsBob
+                  1,       0,         0,           0,       0,       //aliceKnowsX
+                           1,         0,           0,       0,       //xKnowsY
+                                      0,           0,       0,       //yKnowsBob
+                                                   1,       0,       //aliceKnowsU
+                                                            1        //uKnowsV
         };
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(leaves, intersection);
 
         BitSet subset = new BitSet();
         subset.set(0, 3);
         HeuristicPlanner.JoinGraph left = g.createComponent(subset);
-        assertEquals(left.getLeaves(), asList(aliceKnowsX, xKnowsY, yKnowsBob));
-        float[][] exComponent = {
-                new float[] {0, 1, 0},
-                new float[] {0, 0, 1},
-                new float[] {0, 0, 0},
-        };
-        checkIntersection(left, exComponent);
+        assertEquals(left.getNodes(), asList(aliceKnowsX, xKnowsY, yKnowsBob));
+        assertEquals(left.getWeights(), new float[]{
+                //xKnowsY, yKnowsBob
+                  1,       0,      //aliceKnowsX
+                           1       //xKnowsY
+
+        });
 
         subset.clear();
         subset.set(3, 6);
         HeuristicPlanner.JoinGraph right = g.createComponent(subset);
-        assertEquals(right.getLeaves(), asList(aliceKnowsU, uKnowsV, vKnowsBob));
-        checkIntersection(right, exComponent);
+        assertEquals(right.getNodes(), asList(aliceKnowsU, uKnowsV, vKnowsBob));
+        assertEquals(right.getWeights(), new float[]{
+                //uKnowsV, vKnowsBob
+                  1,       0,       //aliceKnowsU
+                           1        //uKnowsV
+        });
     }
 
     @Test
@@ -244,12 +214,11 @@ public class HeuristicPlannerTest {
         List<QueryNode> nodes = asList(xKnowsBob, xNameY, xLikesZ);
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(nodes);
 
-        float[][] expected = {
-                new float[] {0, 1, 1},
-                new float[] {0, 0, 0},
-                new float[] {0, 0, 0},
-        };
-        checkIntersection(g, expected);
+        assertEquals(g.getWeights(), new float[] {
+                //xNameY, xLikesZ
+                  1,      1,     //xKnowsBob
+                          0      //xNameY
+        });
     }
 
     @Test
@@ -265,10 +234,10 @@ public class HeuristicPlannerTest {
                 .annotate(Z, AtomAnnotation.of(Person)).build());
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
 
-        checkIntersection(g, new float[][]{
-                {0, 1, 0},
-                {0, 0, 1},
-                {0, 0, 0},
+        assertEquals(g.getWeights(), new float[] {
+                //q2 q3
+                  1, 0, //q1
+                     1, //q2
         });
         PlanNode rootNode = g.buildTree();
         assertNotNull(rootNode);
@@ -343,10 +312,10 @@ public class HeuristicPlannerTest {
                 .annotate(Y, AtomAnnotation.asRequired(Person)).build());
 
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
-        checkIntersection(g, new float[][]{
-                {0, 0, 1},
-                {0, 0, 0},
-                {0, 0, 0}
+        assertEquals(g.getWeights(), new float[]{
+                //q2, q3
+                  0,  1, //q1
+                      0  //q2
         });
     }
 
@@ -421,38 +390,115 @@ public class HeuristicPlannerTest {
 
     @Test
     void testRemoveLeafAt() {
-        float[][] intersection = new float[][] {
-                {0,  1,  2,  3,  4,  5},
-                {0,  0,  6,  7,  8,  9},
-                {0,  0,  0, 10, 11, 12},
-                {0,  0,  0,  0, 13, 14},
-                {0,  0,  0,  0,  0, 15},
-                {0,  0,  0,  0,  0,  0},
+        float[] weights = new float[] {
+                1,  2,  3,  4,  5,
+                    6,  7,  8,  9,
+                       10, 11, 12,
+                           13, 14,
+                               15
         };
-        int size = 6;
-        assertEquals(size, intersection.length);
+        int nodeCount = 6;
         List<QueryNode> nodes = new ArrayList<>();
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < nodeCount; i++)
             nodes.add(new QueryNode(new EmptyEndpoint(), CQuery.from(new Triple(X, knows, Y))));
+        HeuristicPlanner.JoinGraph original;
+        original = new HeuristicPlanner.JoinGraph(new ArrayList<>(nodes), weights);
 
-        for (int removeIdx = 0; removeIdx < size; removeIdx++) {
-            float[][] copy = new float[size][size];
-            for (int i = 0; i < size; i++)
-                System.arraycopy(intersection[i], 0, copy[i], 0, size);
+        for (int removeIdx = 0; removeIdx < nodeCount; removeIdx++) {
             HeuristicPlanner.JoinGraph g;
-            g = new HeuristicPlanner.JoinGraph(new ArrayList<>(nodes), copy);
+            g = new HeuristicPlanner.JoinGraph(new ArrayList<>(nodes),
+                                               Arrays.copyOf(weights, weights.length));
 
             g.removeLeafAt(nodes.get(removeIdx), removeIdx);
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < nodeCount; i++) {
                 if (i == removeIdx) continue;
-                for (int j = i; j < size; j++) {
-                    if (j == removeIdx) continue;
-                    float expected = intersection[i][j];
+                for (int j = i; j < nodeCount; j++) {
+                    if (j == removeIdx || i == j) continue;
+                    float expected = original.getWeight(i, j);
                     int i2 = i < removeIdx ? i : i-1;
                     int j2 = j < removeIdx ? j : j-1;
-                    assertEquals(g.getIntersection()[i2][j2], expected);
+                    assertEquals(g.getWeight(i2, j2), expected);
                 }
             }
         }
+    }
+
+    @Test
+    void testReplaceWithJoinInPath() {
+        List<QueryNode> nodes = asList(
+                new QueryNode(empty, CQuery.from(new Triple(X, knows, Y))),
+                new QueryNode(empty, CQuery.from(new Triple(Y, knows, Z))),
+                new QueryNode(empty, CQuery.from(new Triple(Z, knows, W))),
+                new QueryNode(empty, CQuery.from(new Triple(W, knows, U))),
+                new QueryNode(empty, CQuery.from(new Triple(U, knows, V))));
+
+        HeuristicPlanner.JoinGraph g0 = new HeuristicPlanner.JoinGraph(new ArrayList<>(nodes));
+        assertEquals(g0.getWeights(), new float[] {
+                1, 0, 0, 0, // X knows Y
+                   1, 0, 0, // Y knows Z
+                      1, 0, // Z knows W
+                         1  // W knows U
+        });
+
+        for (int lefIdx = 0; lefIdx < nodes.size() - 1; lefIdx++) {
+            HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(new ArrayList<>(nodes));
+            g.replaceWithJoin(lefIdx, lefIdx+1);
+            assertEquals(g.size(), nodes.size()-1);
+            List<PlanNode> leaves = g.getNodes();
+            for (int i = 0; i < leaves.size() - 1; i++) {
+                for (int j = 0; j < i-1; j++)
+                    assertEquals(g.getWeight(i, j), 0.0f);
+                assertEquals(g.getWeight(i, i+1), 1.0f);
+                for (int j = i+2; j < leaves.size()-1; j++)
+                    assertEquals(g.getWeight(i, j), 0.0f);
+            }
+        }
+    }
+
+    @Test
+    void testReplaceWithJoinInNonPath() {
+        List<QueryNode> nodes = asList(
+                new QueryNode(empty, CQuery.from(new Triple(X, knows, Y))),
+                new QueryNode(empty, CQuery.from(new Triple(X, likes, Y))),
+                new QueryNode(empty, CQuery.from(new Triple(Y, knows, U))),
+                new QueryNode(empty, CQuery.from(new Triple(U, knows, V))),
+                new QueryNode(empty, CQuery.from(new Triple(U, likes, V))),
+                new QueryNode(empty, CQuery.from(new Triple(V, knows, X))));
+
+        HeuristicPlanner.JoinGraph g0 = new HeuristicPlanner.JoinGraph(new ArrayList<>(nodes));
+        assertEquals(g0.getWeights(), new float[]{
+                2,   1,   0, 0,   1, // X knows Y
+                     1,   0, 0,   1, // X likes Y
+                          1, 1,   0, // Y knows U
+                             2,   1, // U knows V
+                                  1 // U likes V
+        });
+
+        HeuristicPlanner.JoinGraph g1 = new HeuristicPlanner.JoinGraph(new ArrayList<>(nodes));
+        g1.replaceWithJoin(0, 1);
+        assertEquals(g1.getWeights(), new float[] {
+                1,   0, 0,   1, // X knows Y ⋈ X likes Y
+                     1, 1,   0, // Y knows U
+                        2,   1, // U knows V
+                             1 // U likes V
+        });
+
+        HeuristicPlanner.JoinGraph g2 = new HeuristicPlanner.JoinGraph(new ArrayList<>(nodes));
+        g2.replaceWithJoin(2, 3);
+        assertEquals(g2.getWeights(), new float[] {
+                2,   1,   0,   1, // X knows Y
+                     1,   0,   1, // X likes Y
+                          2,   1, // Y knows U ⋈ U knows V
+                               1  // U likes V
+        });
+
+        HeuristicPlanner.JoinGraph g3 = new HeuristicPlanner.JoinGraph(new ArrayList<>(nodes));
+        g3.replaceWithJoin(0, 5);
+        assertEquals(g3.getWeights(), new float[] {
+                2,   1,   1, 1, // X knows Y ⋈ V knows X
+                     1,   0, 0, // X likes Y
+                          1, 1, // Y knows U
+                             2  // U knows V
+        });
     }
 }

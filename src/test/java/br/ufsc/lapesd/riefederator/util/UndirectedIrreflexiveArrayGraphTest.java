@@ -4,10 +4,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Stream;
 
+import static java.util.Arrays.asList;
 import static org.testng.Assert.*;
 
 public class UndirectedIrreflexiveArrayGraphTest {
@@ -15,6 +15,12 @@ public class UndirectedIrreflexiveArrayGraphTest {
 
         public IntegerGraph(@Nonnull List<Integer> nodes) {
             super(nodes);
+        }
+        public IntegerGraph(@Nonnull List<Integer> nodes, @Nonnull float[] weights) {
+            super(nodes, weights);
+        }
+        public IntegerGraph() {
+            super();
         }
         public IntegerGraph(int size) {
             this(createArray(size));
@@ -328,4 +334,70 @@ public class UndirectedIrreflexiveArrayGraphTest {
         }
     }
 
+    @Test
+    public void testCreateEmpty() {
+        IntegerGraph g = new IntegerGraph();
+        assertEquals(g.size(), 0);
+        assertTrue(g.isEmpty());
+        assertEquals(g.getNodes(), Collections.emptyList());
+
+        assertEquals(g.indexOf(0), -1);
+        assertEquals(g.indexOf(23), -1);
+        expectThrows(NoSuchElementException.class, () -> g.remove(0));
+        expectThrows(NoSuchElementException.class, () -> g.replaceFirst(0, 23));
+        expectThrows(IndexOutOfBoundsException.class, () -> g.removeAt(0));
+        expectThrows(IndexOutOfBoundsException.class, () -> g.replaceAt(0, 23));
+        expectThrows(IndexOutOfBoundsException.class, () -> g.get(0));
+    }
+
+    @DataProvider
+    public static @Nonnull Object[][] subsetData() {
+        List<Object[]> rows = new ArrayList<>();
+        for (Integer size : asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 16, 17, 23, 32, 64, 128, 137)) {
+            BitSet bitSet = new BitSet(size);
+            List<Integer> indices = new ArrayList<>();
+
+            int h = size / 2;
+            for (List<Integer> bounds : asList(asList(0, h), asList(h, size), asList(0, size))) {
+                indices.clear();  bitSet.clear();
+                for (int i = bounds.get(0); i < bounds.get(1); i++) indices.add(i);
+                indices.forEach(bitSet::set);
+                rows.add(new Object[]{size, bitSet, indices});
+            }
+            for (Integer start : asList(0, 1)) {
+                indices.clear();  bitSet.clear();
+                for (int i = start; i < size; i += 2) indices.add(i);
+                indices.forEach(bitSet::set);
+                rows.add(new Object[]{size, bitSet, indices});
+            }
+        }
+        return rows.toArray(new Object[0][]);
+    }
+
+    @Test(dataProvider = "subsetData")
+    void testSubset(int size, BitSet subset, List<Integer> indices) {
+        assertTrue(subset.cardinality() < size); //sanity
+        assertEquals(subset.cardinality(), indices.size()); //sanity
+        assertEquals(new HashSet<>(indices).size(), indices.size()); //sanity
+
+        IntegerGraph g = new IntegerGraph(size);
+        List<Integer> nodesSubset = new ArrayList<>();
+        float[] weightsForSubset = g.getWeightsForSubset(subset, nodesSubset);
+
+        IntegerGraph subgraph = new IntegerGraph(nodesSubset, weightsForSubset);
+        assertEquals(subgraph.isEmpty(), indices.isEmpty());
+        assertEquals(subgraph.size(), indices.size());
+        assertEquals(subgraph.getNodes(), indices);
+
+        for (int i = 0; i < indices.size(); i++)
+            assertEquals(subgraph.indexOf(indices.get(i)), i, "i="+i);
+
+        for (int i = 0; i < indices.size(); i++) {
+            for (int j = 0; j < indices.size(); j++) {
+                if (i == j) continue;
+                Integer iValue = subgraph.get(i), jValue = subgraph.get(j);
+                assertEquals(subgraph.getWeight(i, j), (float) Math.abs(iValue-jValue));
+            }
+        }
+    }
 }

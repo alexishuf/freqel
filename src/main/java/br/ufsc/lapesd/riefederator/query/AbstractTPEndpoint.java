@@ -13,12 +13,12 @@ public abstract class AbstractTPEndpoint implements TPEndpoint {
             = new SoftReference<>(null);
 
     @Override
-    public @Nonnull synchronized Set<TPEndpoint> getAlternatives() {
+    public synchronized  @Nonnull Set<TPEndpoint> getAlternatives() {
         return alternatives == null ? emptySet() : alternatives.keySet();
     }
 
     @Override
-    public @Nonnull Set<TPEndpoint> getAlternativesClosure() {
+    public synchronized  @Nonnull Set<TPEndpoint> getAlternativesClosure() {
         Set<TPEndpoint> visited = alternativesClosure.get();
         if (visited == null) {
             visited = new HashSet<>();
@@ -35,7 +35,7 @@ public abstract class AbstractTPEndpoint implements TPEndpoint {
     }
 
     @Override
-    public boolean isAlternative(@Nonnull TPEndpoint other) {
+    public synchronized boolean isAlternative(@Nonnull TPEndpoint other) {
         return getAlternativesClosure().contains(other)
                 || other.getAlternativesClosure().contains(this);
     }
