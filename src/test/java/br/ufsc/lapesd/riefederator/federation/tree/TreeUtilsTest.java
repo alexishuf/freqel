@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
-import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.*;
 
 public class TreeUtilsTest {
     public static final URI ALICE = new StdURI("http://example.org/Alice");
@@ -33,6 +34,7 @@ public class TreeUtilsTest {
     public static final Var Y = new StdVar("y");
     public static final Var Z = new StdVar("z");
     private static EmptyEndpoint ep = new EmptyEndpoint();
+    private final Atom person = Molecule.builder("Person").buildAtom();
 
     @DataProvider
     public static Object[][] iterateDeepLeft() {
@@ -64,6 +66,22 @@ public class TreeUtilsTest {
 
         List<PlanNode> streamed = TreeUtils.streamPreOrder(root).collect(Collectors.toList());
         assertEquals(streamed, expected);
+    }
+
+    @Test
+    public void testIsTreeForgivesQueryNodes() {
+        QueryNode q1  = new QueryNode(ep, CQuery.from(new Triple(X, knows, ALICE)));
+        QueryNode q2  = new QueryNode(ep, CQuery.from(new Triple(X, knows, ALICE)));
+        QueryNode q1a = new QueryNode(ep, CQuery.with(new Triple(X, knows, ALICE))
+                .annotate(X, AtomAnnotation.asRequired(person))
+                .build());
+        JoinNode j1 = JoinNode.builder(q1,  q2).build();
+        JoinNode j2 = JoinNode.builder(q1a, q2).build();
+        MultiQueryNode root = MultiQueryNode.builder().add(j1).add(j2).build();
+
+        assertFalse(TreeUtils.isTree(root, false));
+        assertTrue(TreeUtils.isTree(root, true));
+        assertFalse(TreeUtils.isTree(root));
     }
 
     @DataProvider

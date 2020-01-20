@@ -21,7 +21,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Supplier;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static com.google.common.collect.Collections2.permutations;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -202,6 +202,56 @@ public class PlannerTest {
         }
     }
 
+    protected void assertValidJoins(@Nonnull PlanNode root) {
+        String msg = checkValidJoins(root, emptySet());
+        if (msg != null)
+            fail(msg);
+    }
+
+    protected String checkValidJoins(@Nonnull PlanNode root, @Nonnull Set<String> allowedInputs) {
+        if (root instanceof JoinNode) {
+            JoinNode join = (JoinNode) root;
+            List<PlanNode> left = childrenIfMulti(join.getLeft());
+            List<PlanNode> right = childrenIfMulti(join.getRight());
+            String msg;
+            msg = checkHasCounterpart(allowedInputs, join, left, right, "Left");
+            if (msg != null) return msg;
+            return checkHasCounterpart(allowedInputs, join, right, left, "Right");
+        } else {
+            for (PlanNode child : root.getChildren()) {
+                String msg = checkValidJoins(child, allowedInputs);
+                if (msg != null) return msg;
+            }
+            return null; //no error
+        }
+    }
+
+    private String checkHasCounterpart(@Nonnull Set<String> allowedInputs, JoinNode join,
+                                     List<PlanNode> outerSide, List<PlanNode> innerSide,
+                                     String outerName) {
+        outer:
+        for (PlanNode l : outerSide) {
+            for (PlanNode r : innerSide) {
+                Set<String> pending = new HashSet<>();
+                Set<String> vars = joinVars(l, r, pending);
+                if (!vars.isEmpty() && allowedInputs.containsAll(pending)) {
+                    HashSet<String> lAllowedInputs = new HashSet<>(allowedInputs);
+                    lAllowedInputs.addAll(setMinus(r.getResultVars(), r.getInputVars()));
+                    if (checkValidJoins(l, lAllowedInputs) != null)
+                        continue; //try other r
+
+                    HashSet<String> rAllowedInputs = new HashSet<>(allowedInputs);
+                    rAllowedInputs.addAll(setMinus(l.getResultVars(), l.getInputVars()));
+                    if (checkValidJoins(r, rAllowedInputs) != null)
+                        continue; //try other r
+                    continue outer; //l ⋈ r is OK!
+                }
+            }
+            return outerName+" node "+l+" of join node "+join+" has no compatible counterpart";
+        }
+        return null; //no error
+    }
+
     @Test(dataProvider = "suppliersData")
     public void testBookShop(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
@@ -221,6 +271,7 @@ public class PlannerTest {
                 CQuery.from(new Triple(Y, genreName, Z))
         );
         assertEquals(queries, expectedQueries);
+        assertValidJoins(root);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -231,6 +282,7 @@ public class PlannerTest {
 
         PlanNode plan = planner.plan(asList(q1, q2));
         assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 1);
+        assertValidJoins(plan);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -241,6 +293,7 @@ public class PlannerTest {
 
         PlanNode plan = planner.plan(asList(q1, q2));
         assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 1);
+        assertValidJoins(plan);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -256,6 +309,7 @@ public class PlannerTest {
             assertTrue(plan instanceof EmptyNode);
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertEquals(plan.getInputVars(), emptySet());
+            assertValidJoins(plan);
         }
     }
 
@@ -281,6 +335,7 @@ public class PlannerTest {
             assertEquals(leaves, Sets.newHashSet(q1, q3));
             assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 1);
             assertTrue(streamPreOrder(root).count() <= 4);
+            assertValidJoins(root);
         }
     }
 
@@ -299,38 +354,52 @@ public class PlannerTest {
         booksByAuthorWithServiceTest(supplier.get(), false, true);
     }
 
+    private static class TwoServicePathsNodes {
+        QueryNode q1, q2, q3, p1, p2, p3;
+        List<QueryNode> all, fromAlice, fromBob;
+
+        public TwoServicePathsNodes(@Nonnull CQEndpoint epFromAlice,
+                                    @Nonnull CQEndpoint epFromBob) {
+            q1 = new QueryNode(epFromAlice, CQuery.with(new Triple(ALICE, knows, X))
+                    .annotate(ALICE, AtomAnnotation.asRequired(Person))
+                    .annotate(X, AtomAnnotation.of(KnownPerson)).build());
+            q2 = new QueryNode(epFromAlice, CQuery.with(new Triple(X, knows, Y))
+                    .annotate(X, AtomAnnotation.asRequired(Person))
+                    .annotate(Y, AtomAnnotation.of(KnownPerson)).build());
+            q3 = new QueryNode(epFromAlice, CQuery.with(new Triple(Y, knows, BOB))
+                    .annotate(Y, AtomAnnotation.asRequired(Person))
+                    .annotate(BOB, AtomAnnotation.of(KnownPerson)).build());
+
+            p1 = new QueryNode(epFromBob, CQuery.with(new Triple(ALICE, knows, X))
+                    .annotate(ALICE, AtomAnnotation.of(Person))
+                    .annotate(X, AtomAnnotation.asRequired(KnownPerson)).build());
+            p2 = new QueryNode(epFromBob, CQuery.with(new Triple(X, knows, Y))
+                    .annotate(X, AtomAnnotation.of(Person))
+                    .annotate(Y, AtomAnnotation.asRequired(KnownPerson)).build());
+            p3 = new QueryNode(epFromBob, CQuery.with(new Triple(Y, knows, BOB))
+                    .annotate(Y, AtomAnnotation.of(Person))
+                    .annotate(BOB, AtomAnnotation.asRequired(KnownPerson)).build());
+            all = asList(q1, q2, q3, p1, p2, p3);
+            fromAlice = asList(q1, q2, q3);
+            fromBob = asList(p1, p2, p3);
+        }
+    }
+
     private void onePathTwoDirectionsWithServicesTest(@Nonnull Planner planner,
                                                       boolean useAlternative) {
         EmptyEndpoint ep1 = useAlternative ? empty3a : empty1;
         EmptyEndpoint ep2 = useAlternative ? empty3b : empty1;
-        QueryNode q1 = new QueryNode(ep1, CQuery.with(new Triple(ALICE, knows, X))
-                .annotate(ALICE, AtomAnnotation.asRequired(Person))
-                .annotate(X, AtomAnnotation.of(KnownPerson)).build());
-        QueryNode q2 = new QueryNode(ep1, CQuery.with(new Triple(X, knows, Y))
-                .annotate(X, AtomAnnotation.asRequired(Person))
-                .annotate(Y, AtomAnnotation.of(KnownPerson)).build());
-        QueryNode q3 = new QueryNode(ep1, CQuery.with(new Triple(Y, knows, BOB))
-                .annotate(Y, AtomAnnotation.asRequired(Person))
-                .annotate(BOB, AtomAnnotation.of(KnownPerson)).build());
-
-        QueryNode p1 = new QueryNode(ep2, CQuery.with(new Triple(ALICE, knows, X))
-                .annotate(ALICE, AtomAnnotation.of(Person))
-                .annotate(X, AtomAnnotation.asRequired(KnownPerson)).build());
-        QueryNode p2 = new QueryNode(ep2, CQuery.with(new Triple(X, knows, Y))
-                .annotate(X, AtomAnnotation.of(Person))
-                .annotate(Y, AtomAnnotation.asRequired(KnownPerson)).build());
-        QueryNode p3 = new QueryNode(ep2, CQuery.with(new Triple(Y, knows, BOB))
-                .annotate(Y, AtomAnnotation.of(Person))
-                .annotate(BOB, AtomAnnotation.asRequired(KnownPerson)).build());
+        TwoServicePathsNodes f = new TwoServicePathsNodes(ep1, ep2);
 
         //noinspection UnstableApiUsage
-        for (List<QueryNode> permutation : permutations(asList(q1, q2, q3, p1, p2, p3))) {
+        for (List<QueryNode> permutation : permutations(f.all)) {
             PlanNode plan = planner.plan(permutation);
             Set<QueryNode> qns = streamPreOrder(plan).filter(QueryNode.class::isInstance)
                     .map(n -> (QueryNode)n).collect(toSet());
-            assertTrue(qns.equals(Sets.newHashSet(q1, q2, q3)) ||
-                       qns.equals(Sets.newHashSet(p1, p2, p3)), "qns="+qns);
+            assertTrue(qns.equals(new HashSet<>(f.fromAlice)) ||
+                       qns.equals(new HashSet<>(f.fromBob)), "qns="+qns);
             assertEquals(streamPreOrder(plan).filter(JoinNode.class::isInstance).count(), 2);
+            assertValidJoins(plan);
         }
     }
 
@@ -344,4 +413,48 @@ public class PlannerTest {
         onePathTwoDirectionsWithServicesTest(supplier.get(), true);
     }
 
+    @Test(dataProvider = "suppliersData")
+    public void testOnePathTwoDirectionsUnrelatedEndpoints(@Nonnull Supplier<Planner> supplier) {
+        Planner planner = supplier.get();
+        TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
+        //noinspection UnstableApiUsage
+        for (List<QueryNode> permutation : permutations(f.all)) {
+            PlanNode plan = planner.plan(permutation);
+            assertValidJoins(plan);
+            assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
+                         new HashSet<>(f.all));
+            assertEquals(streamPreOrder(plan).filter(n -> n == f.p1 || n == f.q1).count(), 3);
+            assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 7);
+        }
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testDiscardMiddleNodeInPath(@Nonnull Supplier<Planner> supplier) {
+        Planner planner = supplier.get();
+        TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
+        List<QueryNode> nodes = asList(f.q1, f.q2, f.q3, f.p2);
+        //noinspection UnstableApiUsage
+        for (List<QueryNode> permutation : permutations(nodes)) {
+            PlanNode plan = planner.plan(permutation);
+            assertValidJoins(plan);
+            assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
+                         Sets.newHashSet(f.fromAlice));
+            assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 3);
+        }
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testUnsatisfablePlan(@Nonnull Supplier<Planner> supplier) {
+        Planner planner = supplier.get();
+        TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty1);
+        List<QueryNode> nodes = asList(f.q1, f.p2, f.q3);
+        //noinspection UnstableApiUsage
+        for (List<QueryNode> permutation : permutations(nodes)) {
+            PlanNode plan = planner.plan(permutation);
+            assertTrue(plan instanceof EmptyNode);
+            assertEquals(plan.getInputVars(), emptySet());
+            assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
+            assertValidJoins(plan);
+        }
+    }
 }

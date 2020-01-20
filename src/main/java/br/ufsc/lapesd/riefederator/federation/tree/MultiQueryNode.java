@@ -28,6 +28,12 @@ public class MultiQueryNode extends PlanNode {
             list.add(node);
             return this;
         }
+        public @Nonnull Builder addAll(@Nonnull PlanNode maybeMultiQueryNode) {
+            if (maybeMultiQueryNode instanceof MultiQueryNode)
+                return addAll(maybeMultiQueryNode.getChildren());
+            else
+                return add(maybeMultiQueryNode);
+        }
 
         public @Nonnull Builder addAll(@Nonnull Collection<? extends PlanNode> collection) {
             collection.forEach(this::add);
@@ -60,12 +66,18 @@ public class MultiQueryNode extends PlanNode {
             return this;
         }
 
+        public boolean isEmpty() {
+            return list.isEmpty();
+        }
+
         public @Nonnull PlanNode buildIfMulti() {
+            Preconditions.checkState(!isEmpty(), "Builder is empty");
             if (list.size() > 1) return build();
             else return list.get(0);
         }
 
         public @Nonnull MultiQueryNode build() {
+            Preconditions.checkState(!isEmpty(), "Builder is empty");
             if (resultVars == null) {
                 if (intersect) {
                     resultVars = intersectResults(list);
@@ -117,14 +129,19 @@ public class MultiQueryNode extends PlanNode {
         if (map.isEmpty()) return this;
 
         List<PlanNode> list = new ArrayList<>();
-        for (PlanNode child : getChildren())
-            list.add(map.getOrDefault(child, child));
+        for (PlanNode child : getChildren()) {
+            PlanNode replacement = map.getOrDefault(child, child);
+            if (replacement != null)
+                list.add(replacement);
+        }
         return (MultiQueryNode) with(list);
     }
 
-    private @Nonnull PlanNode  with(@Nonnull List<PlanNode> list) {
+    public @Nonnull PlanNode  with(@Nonnull List<PlanNode> list) {
         if (list.size() == 1)
             return list.get(0);
+        if (list.equals(getChildren()))
+            return this;
         Set<String> allResults = unionResults(list);
         Set<String> results = intersect(getResultVars(), allResults);
         Set<String> inputs  = intersect(getInputVars(),  unionInputs(list));
@@ -140,6 +157,18 @@ public class MultiQueryNode extends PlanNode {
             if (!node.equals(child)) left.add(child);
         }
         return left.isEmpty() ? null : with(left);
+    }
+
+    public @Nullable PlanNode without(@Nonnull Collection<PlanNode> nodes) {
+        if (nodes.isEmpty()) return this;
+        int size = getChildren().size();
+        List<PlanNode> list = new ArrayList<>(size);
+        for (PlanNode child : getChildren()) {
+            if (!nodes.contains(child)) list.add(child);
+        }
+        if (list.isEmpty())      return null;
+        if (list.size() == size) return this;
+        else                     return with(list);
     }
 
     @Override

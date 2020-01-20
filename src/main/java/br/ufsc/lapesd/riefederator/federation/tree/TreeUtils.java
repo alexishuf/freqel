@@ -11,6 +11,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.util.Collections.emptySet;
+import static java.util.Collections.singletonList;
 import static java.util.Spliterator.DISTINCT;
 import static java.util.Spliterator.NONNULL;
 import static java.util.Spliterators.spliteratorUnknownSize;
@@ -18,13 +19,18 @@ import static java.util.stream.Stream.concat;
 
 public class TreeUtils {
     public static boolean isTree(@Nonnull PlanNode node) {
+        return isTree(node, false);
+    }
+    public static boolean isTree(@Nonnull PlanNode node, boolean forgiveQueryNodes) {
         Map<PlanNode, Boolean> visited = new IdentityHashMap<>();
         Queue<PlanNode> queue = new ArrayDeque<>();
         queue.add(node);
         while (!queue.isEmpty()) {
             PlanNode n = queue.remove();
-            if (visited.put(n, true) != null)
-                return false; //cycle found
+            if (!forgiveQueryNodes || !(n instanceof QueryNode)) {
+                if (visited.put(n, true) != null)
+                    return false; //cycle found
+            }
             queue.addAll(n.getChildren());
         }
         return true; // no cycle found
@@ -32,7 +38,7 @@ public class TreeUtils {
 
     public static @Nonnull Iterator<PlanNode> iteratePreOrder(@Nonnull PlanNode root) {
         if (TreeUtils.class.desiredAssertionStatus())
-            Preconditions.checkArgument(isTree(root), "plan is not a tree");
+            Preconditions.checkArgument(isTree(root, true), "Plan is not a tree!");
         ArrayDeque<PlanNode> stack = new ArrayDeque<>();
         stack.push(root);
         return new Iterator<PlanNode>() {
@@ -142,5 +148,10 @@ public class TreeUtils {
         if (pendingIns != null)
             concat(lIn.stream(), rIn.stream()).filter(n -> !s.contains(n)).forEach(pendingIns::add);
         return s;
+    }
+
+    public static @Nonnull List<PlanNode> childrenIfMulti(@Nonnull PlanNode node) {
+        return node instanceof MultiQueryNode ? Collections.unmodifiableList(node.getChildren())
+                                              : singletonList(node);
     }
 }

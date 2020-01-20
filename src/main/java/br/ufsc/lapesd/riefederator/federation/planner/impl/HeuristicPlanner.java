@@ -20,7 +20,9 @@ import java.util.function.Consumer;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Lists.cartesianProduct;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
 
 public class HeuristicPlanner implements Planner {
     @Override
@@ -123,65 +125,248 @@ public class HeuristicPlanner implements Planner {
         }
 
         public @Nonnull PlanNode buildTree() {
+            Set<QueryNode> selected = new HashSet<>();
+            return buildTree(selected);
+        }
+
+        private  @Nonnull PlanNode buildTree(@Nonnull Set<QueryNode> selected) {
             PlanNode root;
             if (withInputs) {
+
                 JoinGraph other = buildTreeWithInputs(true);
                 if (other == null)
-                    return new EmptyNode(TreeUtils.unionResults(getNodes()));
+                    return new EmptyNode(unionResults(getNodes()));
+                Set<Triple> allTriples = allMatchedTriples(getNodes());
                 stealFrom(other);
                 withInputs = other.withInputs;
                 assert !isEmpty();
-                root = get(0);
-            } else {
-                root = buildTreeNoInputs();
-            }
-            if (root == null || streamPreOrder(root).anyMatch(EmptyNode.class::isInstance))
-                return new EmptyNode(TreeUtils.unionResults(getNodes()));
-            return cleanMultiQuery(root);
-        }
-
-        private static @Nonnull PlanNode cleanMultiQuery(@Nonnull PlanNode node,
-                                                         @Nonnull PlanNode other) {
-            assert node instanceof MultiQueryNode;
-            List<PlanNode> otherNodes = other instanceof MultiQueryNode ? other.getChildren()
-                                                                        : singletonList(other);
-            ArrayList<PlanNode> list = new ArrayList<>(node.getChildren());
-            list.removeIf(child -> otherNodes.stream().noneMatch(
-                    o -> o.getResultVars().containsAll(child.getInputVars())
-                            && child.getInputVars().stream().noneMatch(o.getInputVars()::contains)
-                    )
-            );
-            assert !list.isEmpty();
-            if (list.size() == node.getChildren().size())
-                return node;
-            else if (list.size() == 1)
-                return list.get(0);
-            else
-                return MultiQueryNode.builder().addAll(list).intersectInputs().build();
-        }
-
-        private static @Nonnull PlanNode cleanMultiQuery(@Nonnull PlanNode root) {
-            Map<PlanNode, PlanNode> replace = new HashMap<>();
-            for (PlanNode child : root.getChildren()) {
-                PlanNode clean = cleanMultiQuery(child);
-                if (clean != child)
-                    replace.put(child, clean);
-            }
-            if (!replace.isEmpty())
-                root = root.replacingChildren(replace);
-
-            if (root instanceof JoinNode
-                    && root.getChildren().stream().anyMatch(n -> n instanceof MultiQueryNode)) {
-                PlanNode l = ((JoinNode) root).getLeft(), r = ((JoinNode) root).getRight();
-                PlanNode l2 = l instanceof MultiQueryNode ? cleanMultiQuery(l, r) : l;
-                PlanNode r2 = r instanceof MultiQueryNode ? cleanMultiQuery(r, l) : r;
-                if (l2 != l || r2 != r) {
-                    JoinNode replacement = JoinNode.builder(l2, r2).build();
-                    assert replacement.getResultVars().equals(root.getResultVars());
-                    root = replacement;
+                PlanNode dirtyRoot = get(0);
+                if (!dirtyRoot.getMatchedTriples().containsAll(allTriples))
+                    return new EmptyNode(unionResults(getNodes()));
+                List<QueryNode> discarded = new ArrayList<>();
+                if (getNodes().size() > 1) {
+                    getNodes().listIterator(1)
+                            .forEachRemaining(n -> addAllQueryNodes(discarded, n));
                 }
+                root = decayToEmpty(cleanMQ(dirtyRoot, emptySet(), discarded));
+                if (!(root instanceof EmptyNode) && !discarded.isEmpty()) {
+                    addAllQueryNodes(selected, root);
+                    PlanNode alternative = buildTreeWithDiscarded(selected, discarded, allTriples);
+                    if (alternative != null) {
+                        assert streamPreOrder(alternative).noneMatch(EmptyNode.class::isInstance);
+                        root = MultiQueryNode.builder().addAll(root).addAll(alternative).build();
+                    }
+                }
+            } else {
+                root = decayToEmpty(buildTreeNoInputs());
             }
             return root;
+        }
+
+        private static @Nonnull Set<Triple>
+        allMatchedTriples(@Nonnull Collection<? extends PlanNode> nodes) {
+            return nodes.stream().flatMap(n->n.getMatchedTriples().stream()).collect(toSet());
+        }
+
+        private @Nonnull PlanNode decayToEmpty(@Nullable PlanNode root) {
+            if (root instanceof MultiQueryNode) {
+                MultiQueryNode.Builder builder = MultiQueryNode.builder();
+                boolean allIn = true;
+                for (PlanNode child : root.getChildren()) {
+                    if (streamPreOrder(child).noneMatch(EmptyNode.class::isInstance)) {
+                        allIn = false;
+                        builder.add(child);
+                    }
+                }
+                if (allIn)
+                    return root;
+                else if (!builder.isEmpty())
+                    return builder.buildIfMulti();
+            } else if (root != null) {
+                if (streamPreOrder(root).noneMatch(EmptyNode.class::isInstance))
+                    return root;
+            }
+            return new EmptyNode(unionResults(getNodes()));
+        }
+
+        private @Nullable PlanNode buildTreeWithDiscarded(@Nonnull Set<QueryNode> selected,
+                                                          @Nonnull List<QueryNode> discarded,
+                                                          @Nonnull Set<Triple> allTriples) {
+            ArrayList<QueryNode> all = new ArrayList<>(selected.size()+discarded.size());
+            all.addAll(discarded);
+            for (QueryNode sNode : selected) {
+                if (discarded.stream().noneMatch(dNode -> shouldDiscard(dNode, sNode, discarded)))
+                    all.add(sNode);
+            }
+            if (!allMatchedTriples(all).containsAll(allTriples))
+                return null;
+            List<PlanNode> grouped = groupSameQueries(all);
+            JoinGraph g = new JoinGraph(grouped);
+            MultiQueryNode.Builder builder = MultiQueryNode.builder();
+            g.forEachConnectedComponent(c -> builder.add(c.buildTree(selected)));
+            PlanNode root = builder.buildIfMulti();
+            if (childrenIfMulti(root).stream().anyMatch(EmptyNode.class::isInstance))
+                return null;
+            return root;
+        }
+
+        private static boolean shouldDiscard(@Nonnull QueryNode disc, @Nonnull QueryNode sel,
+                                             @Nonnull List<QueryNode> discNodes) {
+            if (!disc.getMatchedTriples().containsAll(sel.getMatchedTriples())) {
+                // disc does not subsume sel. Only discard sel if some other disc has the extra
+                Set<Triple> extra = setMinus(sel.getMatchedTriples(), disc.getMatchedTriples());
+                return discNodes.stream().anyMatch(d -> d.getMatchedTriples().containsAll(extra));
+            }
+            // if sel has a different set of inputs, it may cause elimination of disc later
+            return !disc.getInputVars().equals(sel.getInputVars());
+        }
+
+        private static @Nullable PlanNode cleanMQ(@Nonnull PlanNode root,
+                                                  @Nonnull Set<String> allowedInputs,
+                                                  @Nonnull List<QueryNode> outRemoved) {
+            if (root instanceof JoinNode) {
+                PlanNode l = ((JoinNode) root).getLeft(), r = ((JoinNode) root).getRight();
+                PlanNode l2, r2;
+                boolean lMQ = l instanceof MultiQueryNode, rMQ = r instanceof MultiQueryNode;
+                if (lMQ || rMQ) {
+                    List<PlanNode> left = new ArrayList<>(childrenIfMulti(l));
+                    List<PlanNode> right = new ArrayList<>(childrenIfMulti(r));
+                    removeNotJoinable(left, right, allowedInputs, outRemoved);
+                    if (left.isEmpty() || right.isEmpty())
+                        return null;
+                    l2 = lMQ ? ((MultiQueryNode)l).with(left)  : left.get(0);
+                    r2 = rMQ ? ((MultiQueryNode)r).with(right) : right.get(0);
+                } else {
+                    if (HeuristicPlanner.class.desiredAssertionStatus()) {
+                        Set<String> pending = new HashSet<>();
+                        Set<String> vars = joinVars(l, r, pending);
+                        assert !vars.isEmpty() && allowedInputs.containsAll(pending);
+                    }
+                    HashSet<String> subAllowedInputs = new HashSet<>(allowedInputs);
+                    subAllowedInputs.addAll(setMinus(r.getResultVars(), r.getInputVars()));
+                    l2 = cleanMQ(l, subAllowedInputs, outRemoved);
+
+                    subAllowedInputs = new HashSet<>(allowedInputs);
+                    subAllowedInputs.addAll(setMinus(l.getResultVars(), l.getInputVars()));
+                    r2 = cleanMQ(r, subAllowedInputs, outRemoved);
+                }
+                if (l2 == null || r2 == null)
+                    return null;
+                else if (l2 != l || r2 != r)
+                    return JoinNode.builder(l2, r2).build(); //no need to remove alternatives
+                else
+                    return root;
+            } else if (root instanceof MultiQueryNode) {
+                Map<PlanNode, PlanNode> replacements = new HashMap<>();
+                List<PlanNode> removals = new ArrayList<>();
+                for (PlanNode child : root.getChildren()) {
+                    PlanNode replacement = cleanMQ(child, allowedInputs, outRemoved);
+                    if (replacement == null)
+                        removals.add(child);
+                    else if (replacement != child)
+                        replacements.put(child, replacement);
+                }
+                if (!replacements.isEmpty())
+                    root = root.replacingChildren(replacements);
+                if (!removals.isEmpty()) {
+                    removals.forEach(r -> addAllQueryNodes(outRemoved, r));
+                    root = ((MultiQueryNode) root).without(removals);
+                }
+                return root;
+            } else {
+                assert root instanceof QueryNode;
+                return root;
+            }
+        }
+
+        private static class BestJoinState {
+            PlanNode left, right = null;
+            PlanNode cleanLeft = null, cleanRight = null;
+            List<QueryNode> minRemovals = null;
+            Set<String> allowedInputs, pending = new HashSet<>();
+            List<QueryNode> subRemovals = new ArrayList<>();
+
+            public BestJoinState(@Nonnull Set<String> allowedInputs) {
+                this.allowedInputs = allowedInputs;
+            }
+
+            public void setLeft(@Nonnull PlanNode left) {
+                this.left = left;
+                cleanLeft = cleanRight = null;
+                minRemovals = null;
+
+            }
+
+            public void offerRight(@Nonnull PlanNode right) {
+                if (cannotJoin(left, right)) return;
+
+                subRemovals.clear();
+                PlanNode left2  = cleanForJoin(left, right);
+                if (left2 == null) return;
+                PlanNode right2 = cleanForJoin(right, left);
+                if (right2 == null) return;
+
+                if (cannotJoin(left2, right2)) return;
+
+                if (minRemovals == null || subRemovals.size() < minRemovals.size()) {
+                    cleanLeft = left2;
+                    cleanRight = right2;
+                    this.right = right;
+                    minRemovals = new ArrayList<>(subRemovals);
+                }
+            }
+
+            private boolean cannotJoin(@Nonnull PlanNode l, @Nonnull PlanNode r) {
+                pending.clear();
+                return joinVars(l, r, pending).isEmpty() || !allowedInputs.containsAll(pending);
+            }
+
+            private @Nullable PlanNode cleanForJoin(@Nonnull PlanNode l, @Nonnull PlanNode r) {
+                Set<String> subAllowed = new HashSet<>(allowedInputs);
+                subAllowed.addAll(setMinus(r.getResultVars(), r.getInputVars()));
+                return cleanMQ(l, subAllowed, subRemovals);
+            }
+        }
+
+        private static void addAllQueryNodes(@Nonnull Collection<QueryNode> c, @Nonnull PlanNode r){
+            streamPreOrder(r).filter(QueryNode.class::isInstance)
+                    .map(n -> (QueryNode)n).forEach(c::add);
+        }
+
+        private static void removeNotJoinable(@Nonnull List<PlanNode> outer,
+                                              @Nonnull List<PlanNode> inner,
+                                              @Nonnull Set<String> allowedInputs,
+                                              @Nonnull List<QueryNode> outRemoved) {
+            BestJoinState bestJoinState = new BestJoinState(allowedInputs);
+            Set<PlanNode> closedInner = new HashSet<>();
+            removeNotJoinable(outer, inner, bestJoinState, outRemoved, emptySet(), closedInner);
+            removeNotJoinable(inner, outer, bestJoinState, outRemoved, closedInner, null);
+        }
+
+        private static void removeNotJoinable(@Nonnull List<PlanNode> outer,
+                                              @Nonnull List<PlanNode> inner,
+                                              @Nonnull BestJoinState bestJoinState,
+                                              @Nonnull List<QueryNode> outRemoved,
+                                              @Nonnull Set<PlanNode> inClosed,
+                                              @Nullable Set<PlanNode> outClosed) {
+            for (int i = 0; i < outer.size(); i++) {
+                PlanNode l = outer.get(i);
+                if (inClosed.contains(l)) continue;
+                bestJoinState.setLeft(l);
+                inner.forEach(bestJoinState::offerRight);
+                if (bestJoinState.cleanLeft == null) {
+                    outer.remove(i--);
+                    addAllQueryNodes(outRemoved, l);
+                } else {
+                    outRemoved.addAll(bestJoinState.minRemovals);
+                    outer.set(i, bestJoinState.cleanLeft);
+                    int idx = inner.indexOf(bestJoinState.right);
+                    assert idx >=0;
+                    inner.set(idx, bestJoinState.cleanRight);
+                    if (outClosed != null)
+                        outClosed.add(bestJoinState.cleanRight);
+                }
+            }
         }
 
         public @Nullable JoinGraph buildTreeWithInputs(boolean first) {
@@ -268,9 +453,7 @@ public class HeuristicPlanner implements Planner {
                       "They should never be joined";
 
             if (l instanceof MultiQueryNode || r instanceof MultiQueryNode) {
-                List<PlanNode> lList, rList;
-                lList = l instanceof MultiQueryNode ? l.getChildren() : singletonList(l);
-                rList = r instanceof MultiQueryNode ? r.getChildren() : singletonList(r);
+                List<PlanNode> lList = childrenIfMulti(l), rList = childrenIfMulti(r);
                 List<PlanNode> lOk = new ArrayList<>(lList.size());
                 List<PlanNode> rOk = new ArrayList<>(rList.size());
                 for (PlanNode lMember : lList) {
