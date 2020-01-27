@@ -19,9 +19,7 @@ import java.util.function.Consumer;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Lists.cartesianProduct;
 import static java.util.Collections.emptySet;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 
 public class HeuristicPlanner implements Planner {
@@ -52,23 +50,13 @@ public class HeuristicPlanner implements Planner {
 
         @Override
         protected float weigh(@Nonnull PlanNode l, @Nonnull PlanNode r) {
-            Set<Triple> lm = l.getMatchedTriples(), rm = r.getMatchedTriples();
-            if (lm.containsAll(rm) || rm.containsAll(lm))
-                return 0;
-            if (l instanceof MultiQueryNode || r instanceof MultiQueryNode) {
-                float sum = 0;
-                int count  = 0;
-                List<PlanNode> lNodes, rNodes;
-                lNodes = l instanceof MultiQueryNode ? l.getChildren() : singletonList(l);
-                rNodes = r instanceof MultiQueryNode ? r.getChildren() : singletonList(r);
-                for (List<PlanNode> pair : cartesianProduct(lNodes, rNodes)) {
-                    sum += weigh(pair.get(0), pair.get(1));
-                    ++count;
-                }
-                return sum/count;
-            } else {
-                return joinVars(l, r).size();
-            }
+            Joinability join = Joinability.getMultiJoinability(l, r);
+            if (!join.isValid()) return 0;
+            int count = join.getLeftNodes().size() * join.getRightNodes().size();
+            float sum = 0;
+            for (Joinability value : join.getChildJoins().values())
+                sum += value.getJoinVars().size();
+            return sum / count;
         }
 
         private Multimap<Set<Triple>, QueryNode> computeTriples2qn() {

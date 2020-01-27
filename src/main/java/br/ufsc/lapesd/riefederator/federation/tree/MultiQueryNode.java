@@ -22,7 +22,7 @@ public class MultiQueryNode extends PlanNode {
         private Set<String> resultVars = null;
         private boolean project = false;
         private boolean intersect = false;
-        private boolean intersectInputs = false;
+        private boolean intersectInputs = true;
 
         public @Nonnull Builder add(@Nonnull PlanNode node) {
             list.add(node);
