@@ -2,17 +2,23 @@ package br.ufsc.lapesd.riefederator.util;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.lang.reflect.Array;
 import java.util.*;
+import java.util.function.BiConsumer;
 
 import static java.lang.System.arraycopy;
 
-public abstract class UndirectedIrreflexiveArrayGraph<N> {
+@SuppressWarnings("unchecked")
+public abstract class UndirectedIrreflexiveArrayGraph<N, W> {
     private @Nonnull List<N> nodes;
-    private float[] weights;
+    private W[] weights;
     private int age = 0;
+    private final W zero;
+    protected final @Nonnull Class<W> wClass;
 
     @VisibleForTesting
     static int totalCells(int nodesCount) {
@@ -25,13 +31,20 @@ public abstract class UndirectedIrreflexiveArrayGraph<N> {
         return totalCells(size) - totalCells(size - nodeIdx);
     }
 
-    public UndirectedIrreflexiveArrayGraph(@Nonnull List<N> nodes) {
+    public UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nonnull List<N> nodes) {
+        this(wClass, null, nodes);
+    }
+
+    public UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nullable W zero,
+                                           @Nonnull List<N> nodes) {
         Preconditions.checkArgument(!nodes.isEmpty());
         Preconditions.checkArgument(nodes.stream().noneMatch(Objects::isNull),
                 "There can be no null node");
         this.nodes = nodes;
+        this.wClass = wClass;
+        this.zero = zero;
         int size = nodes.size();
-        weights = new float[totalCells(size)];
+        weights = (W[])Array.newInstance(wClass, totalCells(size));
         int idx = 0;
         for (int i = 0; i < size-1; i++) {
             for (int j = i+1; j < size; j++)
@@ -39,27 +52,37 @@ public abstract class UndirectedIrreflexiveArrayGraph<N> {
         }
     }
 
-    public UndirectedIrreflexiveArrayGraph() {
+    public UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nullable W zero) {
         nodes = Collections.emptyList();
-        weights = new float[1];
+        this.wClass = wClass;
+        this.zero = zero;
+        weights = (W[])Array.newInstance(wClass, 0);
     }
 
-    protected UndirectedIrreflexiveArrayGraph(@Nonnull List<N> nodes, @Nonnull float[] weights) {
+    public UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass) {
+        this(wClass, (W)null);
+    }
+
+    protected UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nullable W zero,
+                                              @Nonnull List<N> nodes, @Nonnull W[] weights) {
         Preconditions.checkArgument(weights.length >= totalCells(nodes.size()));
         if (UndirectedIrreflexiveArrayGraph.class.desiredAssertionStatus())
             Preconditions.checkArgument(nodes.stream().noneMatch(Objects::isNull));
         this.nodes = nodes;
+        this.wClass = wClass;
+        this.zero = zero;
         this.weights = weights;
     }
 
-    public void stealFrom(@Nonnull UndirectedIrreflexiveArrayGraph<N> other) {
+    public void stealFrom(@Nonnull UndirectedIrreflexiveArrayGraph<N, W> other) {
         this.weights = other.weights;
         this.nodes = other.nodes;
-        other.weights = new float[0];
+        assert Objects.equals(zero, other.zero);
+        other.weights = (W[])Array.newInstance(other.wClass, 0);
         other.nodes = Collections.emptyList();
     }
 
-    protected abstract float weigh(@Nonnull N l, @Nonnull N r);
+    protected abstract @Nullable W weigh(@Nonnull N l, @Nonnull N r);
 
     public void remove(@Nonnull N node) {
         int idx = nodes.indexOf(node);
@@ -127,10 +150,37 @@ public abstract class UndirectedIrreflexiveArrayGraph<N> {
             throw new ConcurrentModificationException();
     }
 
-    public float getWeight(int l, int r) {
+    public W getWeight(int l, int r) {
         Preconditions.checkArgument(l != r, "Cannot getWeight("+l+", "+r+") on irreflexive graph");
         if (l > r) return getWeight(r, l);
         return weights[rowOffset(l) + (r-(l+1))];
+    }
+
+    @CanIgnoreReturnValue
+    public boolean forEachNeighbor(int idx, BiConsumer<W, N> consumer) {
+        Preconditions.checkPositionIndex(idx, size());
+        boolean got = false;
+        for (int i = 0; i < idx; i++) {
+            W w = weights[rowOffset(i) + (idx - (i + 1))];
+            if (!Objects.equals(w, zero)) {
+                consumer.accept(w, get(i));
+                got = true;
+            }
+        }
+        int rowOffset = rowOffset(idx);
+        for (int i = idx+1; i < size(); i++) {
+            W w = weights[rowOffset + (i - (idx + 1))];
+            if (!Objects.equals(w, zero)) {
+                consumer.accept(w, get(i));
+                got = true;
+            }
+        }
+        return got;
+    }
+
+    @CanIgnoreReturnValue
+    public boolean forEachNeighbor(@Nonnull N node, @Nonnull BiConsumer<W, N> consumer) {
+        return forEachNeighbor(indexOf(node), consumer);
     }
 
     public @Nonnull List<N> getNodes() {
@@ -156,9 +206,9 @@ public abstract class UndirectedIrreflexiveArrayGraph<N> {
      * @return A <b>copy</b> of the weights array trimmed according to size()
      */
     @VisibleForTesting
-    public float[] getWeights() {
+    public W[] getWeights() {
         int cells = totalCells(size());
-        float[] copy = new float[cells];
+        W[] copy = (W[])Array.newInstance(wClass, cells);
         arraycopy(weights, 0, copy, 0, cells);
         return copy;
     }
@@ -170,7 +220,7 @@ public abstract class UndirectedIrreflexiveArrayGraph<N> {
      * @param subset {@link BitSet} with 1 at the position of the nodes to include
      * @param outNodes If non-null will receive (though add() calls) the nodes specified by subset
      */
-    protected @Nonnull float[]
+    protected @Nonnull W[]
     getWeightsForSubset(@Nonnull BitSet subset, @Nullable List<N> outNodes) {
         Preconditions.checkArgument(subset.length() <= size(), "subset has a bit  set >= size()");
         Preconditions.checkArgument(outNodes == null || outNodes.isEmpty(),
@@ -183,7 +233,7 @@ public abstract class UndirectedIrreflexiveArrayGraph<N> {
             idxs[subsetSize++] = i;
         }
 
-        float[] subWeights = new float[totalCells(subsetSize)];
+        W[] subWeights = (W[])Array.newInstance(wClass, totalCells(subsetSize));
         int out = 0;
         for (int i = 0; i < subsetSize; i++) {
             for (int j = i+1; j < subsetSize; j++)
@@ -194,15 +244,36 @@ public abstract class UndirectedIrreflexiveArrayGraph<N> {
         return subWeights;
     }
 
+    protected @Nonnull String toString(@Nonnull W w) {
+        if (w instanceof Float || w instanceof Double) {
+            double d = (double)w;
+            return String.format("%5.2f", d);
+        } else if (w instanceof Number) {
+            return String.format("%3d", ((Number) w).longValue());
+        }
+        return w.toString();
+    }
+
+    protected @Nonnull String zeroString() {
+        if (wClass.isAssignableFrom(Float.class) || wClass.isAssignableFrom(Double.class))
+            return "     "; //5 spaces
+        else if (Number.class.isAssignableFrom(wClass))
+            return "   "; //3 spaces
+        else
+            return String.valueOf(zero);
+    }
+
     @Override
     public @Nonnull String toString() {
         StringBuilder b = new StringBuilder();
         b.append("UndirectedIrreflexiveArrayGraph{\n");
         int size = nodes.size();
+        String zero = zeroString();
         for (int i = 0; i < size; i++) {
             b.append("  [");
-            for (int j =   0; j <= i  ; j++) b.append(" 0.00, ");
-            for (int j = i+1; j < size; j++) b.append(String.format("%5.2f, ", getWeight(i, j)));
+            for (int j =   0; j <= i  ; j++) b.append(zero).append("  ");
+            for (int j = i+1; j < size; j++)
+                b.append(toString(getWeight(i, j))).append(", ");
             b.setLength(b.length()-2);
             b.append("] ").append(nodes.get(i)).append("\n");
         }

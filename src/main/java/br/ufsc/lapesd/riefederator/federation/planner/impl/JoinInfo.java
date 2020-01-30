@@ -14,15 +14,15 @@ import static com.google.common.collect.Lists.cartesianProduct;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Stream.concat;
 
-public class Joinability {
+public class JoinInfo {
     private final @Nonnull Set<String> joinVars, pendingInputs;
-    private final @Nonnull Map<ImmutablePair<PlanNode, PlanNode>, Joinability> childJoins;
+    private final @Nonnull Map<ImmutablePair<PlanNode, PlanNode>, JoinInfo> childJoins;
     private final @Nonnull List<PlanNode> leftDead, rightDead;
     private final boolean subsumed, expandMultiNodes;
     private final @Nonnull PlanNode left, right;
 
-    protected Joinability(@Nonnull PlanNode left, @Nonnull PlanNode right,
-                          boolean expandMultiNodes) {
+    protected JoinInfo(@Nonnull PlanNode left, @Nonnull PlanNode right,
+                       boolean expandMultiNodes) {
         this.left = left;
         this.right = right;
         this.expandMultiNodes = expandMultiNodes;
@@ -78,20 +78,24 @@ public class Joinability {
 
     private void fillChildJoins(List<PlanNode> lns, List<PlanNode> rns) {
         for (List<PlanNode> pair : cartesianProduct(lns, rns)) {
-            Joinability joinability = getPlainJoinability(pair.get(0), pair.get(1));
-            if (joinability.isValid())
-                childJoins.put(ImmutablePair.of(pair.get(0), pair.get(1)), joinability);
+            JoinInfo joinInfo = getPlainJoinability(pair.get(0), pair.get(1));
+            if (joinInfo.isValid())
+                childJoins.put(ImmutablePair.of(pair.get(0), pair.get(1)), joinInfo);
         }
     }
 
-    public static @Nonnull Joinability
-    getPlainJoinability(@Nonnull PlanNode left, @Nonnull PlanNode right) {
-        return new Joinability(left, right, false);
+    enum Position {
+        LEFT, RIGHT
     }
 
-    public static @Nonnull Joinability
-    getMultiJoinability(@Nonnull PlanNode left, @Nonnull PlanNode right) {
-        return new Joinability(left, right, true);
+    public static @Nonnull
+    JoinInfo getPlainJoinability(@Nonnull PlanNode left, @Nonnull PlanNode right) {
+        return new JoinInfo(left, right, false);
+    }
+
+    public static @Nonnull
+    JoinInfo getMultiJoinability(@Nonnull PlanNode left, @Nonnull PlanNode right) {
+        return new JoinInfo(left, right, true);
     }
 
     public boolean isValid() {
@@ -100,6 +104,18 @@ public class Joinability {
 
     public boolean isSubsumed() {
         return subsumed;
+    }
+
+    public boolean isLinkedTo(JoinInfo other) {
+        return left == other.getRight() || right == other.getLeft();
+    }
+
+    public @Nonnull PlanNode getOppositeToLinked(@Nonnull JoinInfo linked) {
+        if (left == linked.getRight())
+            return right;
+        else if (right == linked.getLeft())
+            return left;
+        throw new IllegalArgumentException("JoinInfo " + linked + " is not linked");
     }
 
     public @Nonnull Set<String> getJoinVars() {
@@ -116,6 +132,15 @@ public class Joinability {
 
     public @Nonnull PlanNode getRight() {
         return right;
+    }
+
+    public @Nonnull PlanNode get(@Nonnull Position position) {
+        switch (position) {
+            case LEFT: return getLeft();
+            case RIGHT: return getRight();
+            default: break;
+        }
+        throw new IllegalArgumentException("Bad Position: "+position);
     }
 
     public @Nonnull List<PlanNode> getLeftDead() {
@@ -136,24 +161,33 @@ public class Joinability {
         return right instanceof MultiQueryNode ? right.getChildren() : singletonList(right);
     }
 
+    public @Nonnull List<PlanNode> getNodes(@Nonnull Position position) {
+        switch (position) {
+            case LEFT: return getLeftNodes();
+            case RIGHT: return getRightNodes();
+            default: break;
+        }
+        throw new IllegalArgumentException("Bad Position: "+position);
+    }
+
     public boolean hasChildJoins() {
         return !childJoins.isEmpty();
     }
 
-    public @Nonnull Map<ImmutablePair<PlanNode, PlanNode>, Joinability> getChildJoins() {
+    public @Nonnull Map<ImmutablePair<PlanNode, PlanNode>, JoinInfo> getChildJoins() {
         return childJoins;
     }
 
     public @Nonnull StringBuilder toString(StringBuilder builder) {
         if (!isValid()) return  builder.append("∅");
         String comma = ", ";
-        if (expandMultiNodes) {
+        if (!expandMultiNodes) {
             builder.append(String.join(comma, joinVars));
         } else {
             assert !getChildJoins().isEmpty();
             builder.append('{');
-            for (Joinability joinability : getChildJoins().values())
-                joinability.toString(builder).append(", ");
+            for (JoinInfo joinInfo : getChildJoins().values())
+                joinInfo.toString(builder).append(", ");
             builder.setLength(builder.length()-2);
             builder.append('}');
         }
@@ -171,8 +205,8 @@ public class Joinability {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Joinability)) return false;
-        Joinability that = (Joinability) o;
+        if (!(o instanceof JoinInfo)) return false;
+        JoinInfo that = (JoinInfo) o;
         return  isSubsumed() == that.isSubsumed() &&
                 getJoinVars().equals(that.getJoinVars()) &&
                 getPendingInputs().equals(that.getPendingInputs()) &&

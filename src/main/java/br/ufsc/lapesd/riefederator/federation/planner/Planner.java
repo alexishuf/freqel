@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.planner;
 import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
@@ -16,10 +17,12 @@ public interface Planner {
      * If the join-graph between the given {@link QueryNode}s  is not fully connected,
      * {@link CartesianNode}s will be introduced into the plan, <b>usually</b> as the root.
      *
-     * @param conjunctiveQueries set of independent queries. Should not contain duplicates
-     *                           Must not be empty
-     * @throws IllegalArgumentException if conjunctiveQueries is empty.
+     * @param query Full query
+     * @param fragments set of independent queries associated to sources. Should not contain
+     *                  duplicates. Must not be empty
+     * @throws IllegalArgumentException if fragments is empty.
      * @return The root of the query plan.
      */
-    @Nonnull PlanNode plan(@Nonnull Collection<QueryNode> conjunctiveQueries);
+    @Nonnull PlanNode plan(@Nonnull CQuery query,
+                           @Nonnull Collection<QueryNode> fragments);
 }

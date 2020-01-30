@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -11,16 +12,16 @@ import static java.util.Arrays.asList;
 import static org.testng.Assert.*;
 
 public class UndirectedIrreflexiveArrayGraphTest {
-    private static class IntegerGraph extends UndirectedIrreflexiveArrayGraph<Integer> {
+    private static class IntegerGraph extends UndirectedIrreflexiveArrayGraph<Integer, Float> {
 
         public IntegerGraph(@Nonnull List<Integer> nodes) {
-            super(nodes);
+            super(Float.class, 0.0f, nodes);
         }
-        public IntegerGraph(@Nonnull List<Integer> nodes, @Nonnull float[] weights) {
-            super(nodes, weights);
+        public IntegerGraph(@Nonnull List<Integer> nodes, @Nonnull Float[] weights) {
+            super(Float.class, 0.0f, nodes, weights);
         }
         public IntegerGraph() {
-            super();
+            super(Float.class, 0.0f);
         }
         public IntegerGraph(int size) {
             this(createArray(size));
@@ -31,8 +32,8 @@ public class UndirectedIrreflexiveArrayGraphTest {
             return list;
         }
         @Override
-        protected float weigh(@Nonnull Integer l, @Nonnull Integer r) {
-            return Math.abs(l-r);
+        protected Float weigh(@Nonnull Integer l, @Nonnull Integer r) {
+            return (float) Math.abs(l-r);
         }
 
 
@@ -334,6 +335,21 @@ public class UndirectedIrreflexiveArrayGraphTest {
         }
     }
 
+    @Test(dataProvider = "sizesData")
+    public void testForEachNeighborByIndex(int size) {
+        IntegerGraph g = new IntegerGraph(size);
+        for (int i = 0; i < size; i++) {
+            List<ImmutablePair<Float, Integer>> actual = new ArrayList<>();
+            List<ImmutablePair<Float, Integer>> expected = new ArrayList<>();
+            g.forEachNeighbor(i, (w, n) -> actual.add(ImmutablePair.of(w, n)));
+            for (int j = 0; j < size; j++) {
+                if (j != i)
+                    expected.add(ImmutablePair.of((float)Math.abs(i - j), j));
+            }
+            assertEquals(actual, expected, "i="+i);
+        }
+    }
+
     @Test
     public void testCreateEmpty() {
         IntegerGraph g = new IntegerGraph();
@@ -382,7 +398,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
 
         IntegerGraph g = new IntegerGraph(size);
         List<Integer> nodesSubset = new ArrayList<>();
-        float[] weightsForSubset = g.getWeightsForSubset(subset, nodesSubset);
+        Float[] weightsForSubset = g.getWeightsForSubset(subset, nodesSubset);
 
         IntegerGraph subgraph = new IntegerGraph(nodesSubset, weightsForSubset);
         assertEquals(subgraph.isEmpty(), indices.isEmpty());

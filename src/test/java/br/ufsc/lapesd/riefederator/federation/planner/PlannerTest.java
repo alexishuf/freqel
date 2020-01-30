@@ -75,7 +75,7 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testEmpty(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        expectThrows(IllegalArgumentException.class, () -> planner.plan(Collections.emptyList()));
+        expectThrows(IllegalArgumentException.class, () -> planner.plan(CQuery.from(), emptyList()));
     }
 
     @Test(dataProvider = "suppliersData")
@@ -83,7 +83,7 @@ public class PlannerTest {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(ALICE, knows, X));
         QueryNode queryNode = new QueryNode(empty1, query);
-        PlanNode node = planner.plan(singleton(queryNode));
+        PlanNode node = planner.plan(query, singleton(queryNode));
         assertSame(node, queryNode);
     }
 
@@ -93,7 +93,7 @@ public class PlannerTest {
         CQuery query = CQuery.from(new Triple(ALICE, knows, X));
         QueryNode node1 = new QueryNode(empty1, query);
         QueryNode node2 = new QueryNode(empty2, query);
-        PlanNode root = planner.plan(asList(node1, node2));
+        PlanNode root = planner.plan(query, asList(node1, node2));
         assertEquals(root.getResultVars(), singleton("x"));
         assertFalse(root.isProjecting());
 
@@ -104,11 +104,13 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testSingleJoin(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery q1 = CQuery.from(new Triple(ALICE, knows, X));
-        CQuery q2 = CQuery.from(new Triple(X, knows, Y));
+        CQuery query = CQuery.from(new Triple(ALICE, knows, X),
+                                   new Triple(X, knows, Y));
+        CQuery q1 = CQuery.from(query.get(0));
+        CQuery q2 = CQuery.from(query.get(1));
         QueryNode node1 = new QueryNode(empty1, q1);
         QueryNode node2 = new QueryNode(empty1, q2);
-        PlanNode root = planner.plan(asList(node1, node2));
+        PlanNode root = planner.plan(query, asList(node1, node2));
         assertEquals(root.getResultVars(), asList("x", "y"));
 
         // a reasonable plan would just add a join node over the query nodes
@@ -122,9 +124,13 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testDoNotJoinSameVarsDifferentQueries(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery q1 = CQuery.from(asList(new Triple(X, knows, ALICE), new Triple(X, knows, Y)));
-        CQuery q2 = CQuery.from(new Triple(X, manages, Y));
-        PlanNode root = planner.plan(asList(new QueryNode(empty1, q1), new QueryNode(empty2, q2)));
+        CQuery query = CQuery.from(
+                new Triple(X, knows, ALICE), new Triple(X, knows, Y), new Triple(X, manages, Y)
+        );
+        CQuery q1 = CQuery.from(query.get(0), query.get(1));
+        CQuery q2 = CQuery.from(query.get(2));
+        PlanNode root = planner.plan(query, asList(new QueryNode(empty1, q1),
+                                                   new QueryNode(empty2, q2)));
 
         assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 1);
         assertEquals(streamPreOrder(root)
@@ -136,10 +142,11 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testCartesianProduct(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery q1 = CQuery.from(new Triple(ALICE, knows, X));
-        CQuery q2 = CQuery.from(new Triple(Y, knows, BOB));
+        CQuery query = CQuery.from(new Triple(ALICE, knows, X), new Triple(Y, knows, BOB));
+        CQuery q1 = CQuery.from(query.get(0));
+        CQuery q2 = CQuery.from(query.get(1));
         QueryNode node1 = new QueryNode(empty1, q1), node2 = new QueryNode(empty1, q2);
-        PlanNode root = planner.plan(asList(node1, node2));
+        PlanNode root = planner.plan(query, asList(node1, node2));
         assertEquals(root.getResultVars(), Sets.newHashSet("x", "y"));
 
         assertTrue(streamPreOrder(root).count() <= 5);
@@ -154,10 +161,16 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testLargeTree(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery q1 = CQuery.from(new Triple(ALICE, knows, X));
-        CQuery q2 = CQuery.from(new Triple(X, knows, Y));
-        CQuery q3 = CQuery.from(new Triple(ALICE, knows, U));
-        CQuery q4 = CQuery.from(new Triple(U, knows, V));
+        CQuery query = CQuery.from(
+                new Triple(ALICE, knows, X),
+                new Triple(X, knows, Y),
+                new Triple(ALICE, knows, U),
+                new Triple(U, knows, V)
+        );
+        CQuery q1 = CQuery.from(query.get(0));
+        CQuery q2 = CQuery.from(query.get(1));
+        CQuery q3 = CQuery.from(query.get(2));
+        CQuery q4 = CQuery.from(query.get(3));
 
         List<QueryNode> leaves = asList(new QueryNode(empty1, q1), new QueryNode(empty2, q1),
                                         new QueryNode(empty1, q2),
@@ -167,7 +180,7 @@ public class PlannerTest {
         for (int i = 0; i < 16; i++) {
             ArrayList<QueryNode> shuffled = new ArrayList<>(leaves);
             Collections.shuffle(shuffled, random);
-            PlanNode root = planner.plan(shuffled);
+            PlanNode root = planner.plan(query, shuffled);
 
             Set<QueryNode> observed = streamPreOrder(root)
                                                .filter(n -> n instanceof QueryNode)
@@ -255,10 +268,14 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testBookShop(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        QueryNode q1 = new QueryNode(empty1, CQuery.from(new Triple(X, title, title1)));
-        QueryNode q2 = new QueryNode(empty1, CQuery.from(new Triple(X, genre, Y)));
-        QueryNode q3 = new QueryNode(empty2, CQuery.from(new Triple(Y, genreName, Z)));
-        PlanNode root = planner.plan(asList(q1, q2, q3));
+
+        CQuery query = CQuery.from(new Triple(X, title, title1),
+                                   new Triple(X, genre, Y),
+                                   new Triple(Y, genreName, Z));
+        QueryNode q1 = new QueryNode(empty1, CQuery.from(query.get(0)));
+        QueryNode q2 = new QueryNode(empty1, CQuery.from(query.get(1)));
+        QueryNode q3 = new QueryNode(empty2, CQuery.from(query.get(2)));
+        PlanNode root = planner.plan(query, asList(q1, q2, q3));
 
         assertEquals(streamPreOrder(root).filter(n -> n instanceof CartesianNode).count(), 0);
         assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 2);
@@ -277,10 +294,11 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testSameQuerySameEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        QueryNode q1 = new QueryNode(empty1, CQuery.from(new Triple(X, knows, Y)));
-        QueryNode q2 = new QueryNode(empty1, CQuery.from(new Triple(X, knows, Y)));
+        CQuery query = CQuery.from(new Triple(X, knows, Y), new Triple(X, knows, Y));
+        QueryNode q1 = new QueryNode(empty1, CQuery.from(query.get(0)));
+        QueryNode q2 = new QueryNode(empty1, CQuery.from(query.get(1)));
 
-        PlanNode plan = planner.plan(asList(q1, q2));
+        PlanNode plan = planner.plan(query, asList(q1, q2));
         assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 1);
         assertValidJoins(plan);
     }
@@ -288,10 +306,11 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testSameQueryEquivalentEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        QueryNode q1 = new QueryNode(empty3a, CQuery.from(new Triple(X, knows, Y)));
-        QueryNode q2 = new QueryNode(empty3b, CQuery.from(new Triple(X, knows, Y)));
+        CQuery query = CQuery.from(new Triple(X, knows, Y), new Triple(X, knows, Y));
+        QueryNode q1 = new QueryNode(empty3a, CQuery.from(query.get(0)));
+        QueryNode q2 = new QueryNode(empty3b, CQuery.from(query.get(1)));
 
-        PlanNode plan = planner.plan(asList(q1, q2));
+        PlanNode plan = planner.plan(query, asList(q1, q2));
         assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 1);
         assertValidJoins(plan);
     }
@@ -303,9 +322,10 @@ public class PlannerTest {
         QueryNode q2 = new QueryNode(empty2, CQuery.with(new Triple(X, author, Y))
                 .annotate(X, AtomAnnotation.asRequired(Book))
                 .annotate(Y, AtomAnnotation.of(Person)).build());
+        CQuery query = CQuery.from(new Triple(Y, name, author1), new Triple(X, author, Y));
 
         for (List<QueryNode> nodes : asList(asList(q1, q2), asList(q2, q1))) {
-            PlanNode plan = planner.plan(nodes);
+            PlanNode plan = planner.plan(query, nodes);
             assertTrue(plan instanceof EmptyNode);
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertEquals(plan.getInputVars(), emptySet());
@@ -326,10 +346,13 @@ public class PlannerTest {
                 .annotate(X, AtomAnnotation.of(Book))
                 .annotate(Y, AtomAnnotation.asRequired(Person)).build());
         List<QueryNode> nodes = addFromSubject ? asList(q1, q2, q3) : asList(q1, q3);
+        CQuery query = CQuery.from(new Triple(Y, name, author1),
+                                   new Triple(X, author, Y),
+                                   new Triple(X, author, Y));
 
         //noinspection UnstableApiUsage
         for (List<QueryNode> permutation : permutations(nodes)) {
-            PlanNode root = planner.plan(permutation);
+            PlanNode root = planner.plan(query, permutation);
             Set<PlanNode> leaves = streamPreOrder(root)
                     .filter(n -> n instanceof QueryNode).collect(toSet());
             assertEquals(leaves, Sets.newHashSet(q1, q3));
@@ -357,9 +380,13 @@ public class PlannerTest {
     private static class TwoServicePathsNodes {
         QueryNode q1, q2, q3, p1, p2, p3;
         List<QueryNode> all, fromAlice, fromBob;
+        CQuery query;
 
         public TwoServicePathsNodes(@Nonnull CQEndpoint epFromAlice,
                                     @Nonnull CQEndpoint epFromBob) {
+            query = CQuery.from(new Triple(ALICE, knows, Y),
+                                new Triple(X, knows, Y),
+                                new Triple(Y, knows, BOB));
             q1 = new QueryNode(epFromAlice, CQuery.with(new Triple(ALICE, knows, X))
                     .annotate(ALICE, AtomAnnotation.asRequired(Person))
                     .annotate(X, AtomAnnotation.of(KnownPerson)).build());
@@ -393,7 +420,7 @@ public class PlannerTest {
 
         //noinspection UnstableApiUsage
         for (List<QueryNode> permutation : permutations(f.all)) {
-            PlanNode plan = planner.plan(permutation);
+            PlanNode plan = planner.plan(f.query, permutation);
             Set<QueryNode> qns = streamPreOrder(plan).filter(QueryNode.class::isInstance)
                     .map(n -> (QueryNode)n).collect(toSet());
             assertTrue(qns.equals(new HashSet<>(f.fromAlice)) ||
@@ -419,7 +446,7 @@ public class PlannerTest {
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
         //noinspection UnstableApiUsage
         for (List<QueryNode> permutation : permutations(f.all)) {
-            PlanNode plan = planner.plan(permutation);
+            PlanNode plan = planner.plan(f.query, permutation);
             assertValidJoins(plan);
             assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
                          new HashSet<>(f.all));
@@ -435,7 +462,7 @@ public class PlannerTest {
         List<QueryNode> nodes = asList(f.q1, f.q2, f.q3, f.p2);
         //noinspection UnstableApiUsage
         for (List<QueryNode> permutation : permutations(nodes)) {
-            PlanNode plan = planner.plan(permutation);
+            PlanNode plan = planner.plan(f.query, permutation);
             assertValidJoins(plan);
             assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
                          Sets.newHashSet(f.fromAlice));
@@ -450,7 +477,7 @@ public class PlannerTest {
         List<QueryNode> nodes = asList(f.q1, f.p2, f.q3);
         //noinspection UnstableApiUsage
         for (List<QueryNode> permutation : permutations(nodes)) {
-            PlanNode plan = planner.plan(permutation);
+            PlanNode plan = planner.plan(f.query, permutation);
             assertTrue(plan instanceof EmptyNode);
             assertEquals(plan.getInputVars(), emptySet());
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));

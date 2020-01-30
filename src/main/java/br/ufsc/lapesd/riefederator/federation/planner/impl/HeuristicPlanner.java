@@ -24,7 +24,8 @@ import static java.util.stream.Collectors.toSet;
 
 public class HeuristicPlanner implements Planner {
     @Override
-    public @Nonnull PlanNode plan(@Nonnull Collection<QueryNode> conjunctiveNodes) {
+    public @Nonnull PlanNode plan(@Nonnull CQuery ignored,
+                                  @Nonnull Collection<QueryNode> conjunctiveNodes) {
         checkArgument(!conjunctiveNodes.isEmpty(), "Cannot plan empty queries");
         if (conjunctiveNodes.size() == 1)
             return conjunctiveNodes.iterator().next();
@@ -39,7 +40,7 @@ public class HeuristicPlanner implements Planner {
         return roots.size() == 1 ? roots.get(0) : new CartesianNode(roots);
     }
 
-    static class JoinGraph extends UndirectedIrreflexiveArrayGraph<PlanNode> {
+    static class JoinGraph extends UndirectedIrreflexiveArrayGraph<PlanNode, Float> {
         private boolean withInputs;
         private @Nonnull Multimap<Set<Triple>, QueryNode> triples2qn;
 
@@ -49,12 +50,12 @@ public class HeuristicPlanner implements Planner {
         }
 
         @Override
-        protected float weigh(@Nonnull PlanNode l, @Nonnull PlanNode r) {
-            Joinability join = Joinability.getMultiJoinability(l, r);
-            if (!join.isValid()) return 0;
+        protected Float weigh(@Nonnull PlanNode l, @Nonnull PlanNode r) {
+            JoinInfo join = JoinInfo.getMultiJoinability(l, r);
+            if (!join.isValid()) return 0.0f;
             int count = join.getLeftNodes().size() * join.getRightNodes().size();
             float sum = 0;
-            for (Joinability value : join.getChildJoins().values())
+            for (JoinInfo value : join.getChildJoins().values())
                 sum += value.getJoinVars().size();
             return sum / count;
         }
@@ -76,21 +77,21 @@ public class HeuristicPlanner implements Planner {
         }
 
         public JoinGraph(@Nonnull Collection<? extends PlanNode> leaves) {
-            super(new ArrayList<>(leaves));
+            super(Float.class, 0.0f, new ArrayList<>(leaves));
             this.triples2qn = computeTriples2qn();
             this.withInputs = leaves.stream().anyMatch(JoinGraph::hasOrHidesInputs);
         }
 
         public JoinGraph(@Nonnull ArrayList<PlanNode> leaves,
-                         @Nonnull float[] intersection,
+                         @Nonnull Float[] intersection,
                          @Nullable Multimap<Set<Triple>, QueryNode> triples2qn,
                          boolean withInputs) {
-            super(leaves, intersection);
+            super(Float.class, 0.0f, leaves, intersection);
             this.triples2qn = triples2qn == null ? computeTriples2qn() : triples2qn;
             this.withInputs = withInputs;
         }
         public JoinGraph(@Nonnull ArrayList<PlanNode> leaves,
-                         @Nonnull float[] intersection) {
+                         @Nonnull Float[] intersection) {
             this(leaves, intersection, null,
                     leaves.stream().anyMatch(JoinGraph::hasOrHidesInputs));
         }
@@ -566,7 +567,7 @@ public class HeuristicPlanner implements Planner {
         @VisibleForTesting
         @Nonnull JoinGraph createComponent(BitSet members) {
             ArrayList<PlanNode> nodeSubset = new ArrayList<>(members.cardinality());
-            float[] weightsSubset = getWeightsForSubset(members, nodeSubset);
+            Float[] weightsSubset = getWeightsForSubset(members, nodeSubset);
             return new JoinGraph(nodeSubset, weightsSubset);
         }
     }
