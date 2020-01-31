@@ -89,6 +89,13 @@ public class TreeUtils {
         return set;
     }
 
+    public static @Nonnull <T> Set<T> union(@Nonnull Collection<T> a, @Nonnull Collection<T> b) {
+        HashSet<T> set = new HashSet<>(a.size() + b.size());
+        set.addAll(a);
+        set.addAll(b);
+        return set;
+    }
+
     public static @Nonnull Set<String> intersectInputs(@Nonnull Collection<PlanNode> collection) {
         return intersect(collection, PlanNode::getInputVars, null);
     }

@@ -244,8 +244,10 @@ public abstract class UndirectedIrreflexiveArrayGraph<N, W> {
         return subWeights;
     }
 
-    protected @Nonnull String toString(@Nonnull W w) {
-        if (w instanceof Float || w instanceof Double) {
+    protected @Nonnull String toString(@Nullable W w) {
+        if (w == null) {
+            return zeroString();
+        } else if (w instanceof Float || w instanceof Double) {
             double d = (double)w;
             return String.format("%5.2f", d);
         } else if (w instanceof Number) {
