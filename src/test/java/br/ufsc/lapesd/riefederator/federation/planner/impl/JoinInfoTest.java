@@ -317,6 +317,12 @@ public class JoinInfoTest {
                 asList(getPlainJoinability(nypz, nxpy), getPlainJoinability(nzpw, nypz), nxpy),
                 asList(getPlainJoinability(nzpw, nypz), getPlainJoinability(nypz, nxpy), nzpw),
 
+                asList(getPlainJoinability(nypz, nxpy), getPlainJoinability(nypz, nzpw), nxpy),
+                asList(getPlainJoinability(nypz, nzpw), getPlainJoinability(nypz, nxpy), nzpw),
+
+                asList(getPlainJoinability(nxpy, nypz), getPlainJoinability(nzpw, nypz), nxpy),
+                asList(getPlainJoinability(nzpw, nypz), getPlainJoinability(nxpy, nypz), nzpw),
+
                 asList(getPlainJoinability(nxpy, mypz), getPlainJoinability(mypz, nzpw), nxpy),
                 asList(getPlainJoinability(mypz, nzpw), getPlainJoinability(nxpy, mypz), nzpw),
                 asList(getPlainJoinability(mypz, nxpy), getPlainJoinability(nzpw, mypz), nxpy),
@@ -331,6 +337,8 @@ public class JoinInfoTest {
 
     @Test(dataProvider = "oppositeToLinkedData")
     public void testOppositeToLinked(JoinInfo info, JoinInfo other, PlanNode expected) {
+        assertTrue(info.isLinkedTo(other));
+        assertTrue(other.isLinkedTo(info));
         assertSame(info.getOppositeToLinked(other), expected);
     }
 }

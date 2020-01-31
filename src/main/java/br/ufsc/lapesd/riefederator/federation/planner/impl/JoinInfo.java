@@ -107,13 +107,14 @@ public class JoinInfo {
     }
 
     public boolean isLinkedTo(JoinInfo other) {
-        return left == other.getRight() || right == other.getLeft();
+        return left == other.getLeft() || left == other.getRight()
+                || right == other.getLeft() || right == other.getRight();
     }
 
     public @Nonnull PlanNode getOppositeToLinked(@Nonnull JoinInfo linked) {
-        if (left == linked.getRight())
+        if (left == linked.getLeft() || left == linked.getRight())
             return right;
-        else if (right == linked.getLeft())
+        else if (right == linked.getLeft() || right == linked.getRight())
             return left;
         throw new IllegalArgumentException("JoinInfo " + linked + " is not linked");
     }
