@@ -4,21 +4,31 @@ import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.errorprone.annotations.Immutable;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import static com.google.common.collect.Lists.cartesianProduct;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Stream.concat;
 
+@Immutable
 public class JoinInfo {
-    private final @Nonnull Set<String> joinVars, pendingInputs;
-    private final @Nonnull Map<ImmutablePair<PlanNode, PlanNode>, JoinInfo> childJoins;
-    private final @Nonnull List<PlanNode> leftDead, rightDead;
+    private final @Nonnull ImmutableSet<String> joinVars, pendingInputs;
+    @SuppressWarnings("Immutable")
+    private final @Nonnull ImmutableMap<ImmutablePair<PlanNode, PlanNode>, JoinInfo> childJoins;
+    @SuppressWarnings("Immutable")
+    private final @Nonnull ImmutableList<PlanNode> leftDead, rightDead;
     private final boolean subsumed, expandMultiNodes;
+    @SuppressWarnings("Immutable")
     private final @Nonnull PlanNode left, right;
 
     protected JoinInfo(@Nonnull PlanNode left, @Nonnull PlanNode right,
@@ -28,60 +38,65 @@ public class JoinInfo {
         this.expandMultiNodes = expandMultiNodes;
         Set<Triple> lm = left.getMatchedTriples(), rm = right.getMatchedTriples();
         if (lm.containsAll(rm) || rm.containsAll(lm)) {
-            joinVars = pendingInputs = Collections.emptySet();
-            childJoins = Collections.emptyMap();
-            leftDead = rightDead = Collections.emptyList();
+            joinVars = pendingInputs = ImmutableSet.of();
+            childJoins = ImmutableMap.of();
+            leftDead = rightDead = ImmutableList.of();
             subsumed = true;
         } else if (!expandMultiNodes) {
-            pendingInputs = new HashSet<>();
-            joinVars = joinVars(left, right, pendingInputs);
-            childJoins = Collections.emptyMap();
-            leftDead = rightDead = Collections.emptyList();
+            ImmutableSet.Builder<String> pendingInputsBuilder = ImmutableSet.builder();
+            joinVars = joinVars(left, right, pendingInputsBuilder);
+            pendingInputs = pendingInputsBuilder.build();
+            childJoins = ImmutableMap.of();
+            leftDead = rightDead = ImmutableList.of();
             subsumed = false;
         } else {
             List<PlanNode> lns, rns;
             lns = (left instanceof MultiQueryNode) ? left.getChildren() : singletonList(left);
             rns = (right instanceof MultiQueryNode) ? right.getChildren() : singletonList(right);
-            childJoins = new HashMap<>(lns.size()*rns.size());
-            fillChildJoins(lns, rns);
+            childJoins = fillChildJoins(lns, rns);
 
             Set<PlanNode> ld = new HashSet<>(lns), rd = new HashSet<>(rns);
             for (ImmutablePair<PlanNode, PlanNode> pair : childJoins.keySet()) {
                 ld.remove(pair.left);
                 rd.remove(pair.right);
             }
-            leftDead = new ArrayList<>(ld);
-            rightDead = new ArrayList<>(rd);
+            leftDead = ImmutableList.copyOf(ld);
+            rightDead = ImmutableList.copyOf(rd);
             subsumed = false;
             if (!childJoins.isEmpty()) {
-                pendingInputs = new HashSet<>();
-                joinVars = joinVars(left, right, pendingInputs);
+                ImmutableSet.Builder<String> pendingInputsBuilder = ImmutableSet.builder();
+                joinVars = joinVars(left, right, pendingInputsBuilder);
+                pendingInputs = pendingInputsBuilder.build();
             } else {
-                joinVars = pendingInputs = Collections.emptySet();
+                joinVars = pendingInputs = ImmutableSet.of();
             }
         }
     }
 
-    private static @Nonnull Set<String> joinVars(@Nonnull PlanNode l, @Nonnull PlanNode r,
-                                                @Nullable Set<String> pendingIns) {
+    private static @Nonnull ImmutableSet<String>
+    joinVars(@Nonnull PlanNode l, @Nonnull PlanNode r,
+             @Nonnull ImmutableSet.Builder<String> pendingIns){
         Set<String> s = TreeUtils.intersect(l.getResultVars(), r.getResultVars());
         Set<String> lIn = l.getInputVars();
         Set<String> rIn = r.getInputVars();
-        if (pendingIns != null)
-            pendingIns.clear();
         if (l.hasInputs() && r.hasInputs())
             s.removeIf(n -> lIn.contains(n) && rIn.contains(n));
-        if (pendingIns != null)
-            concat(lIn.stream(), rIn.stream()).filter(n -> !s.contains(n)).forEach(pendingIns::add);
-        return s;
+        concat(lIn.stream(), rIn.stream()).filter(n -> !s.contains(n)).forEach(pendingIns::add);
+        return ImmutableSet.copyOf(s);
     }
 
-    private void fillChildJoins(List<PlanNode> lns, List<PlanNode> rns) {
+    private ImmutableMap<ImmutablePair<PlanNode, PlanNode>, JoinInfo>
+    fillChildJoins(List<PlanNode> lns, List<PlanNode> rns) {
+        ImmutableMap.Builder<ImmutablePair<PlanNode, PlanNode>, JoinInfo> builder;
+        //noinspection UnstableApiUsage
+        builder = ImmutableMap.builderWithExpectedSize(lns.size() * rns.size());
+
         for (List<PlanNode> pair : cartesianProduct(lns, rns)) {
             JoinInfo joinInfo = getPlainJoinability(pair.get(0), pair.get(1));
             if (joinInfo.isValid())
-                childJoins.put(ImmutablePair.of(pair.get(0), pair.get(1)), joinInfo);
+                builder.put(ImmutablePair.of(pair.get(0), pair.get(1)), joinInfo);
         }
+        return builder.build();
     }
 
     enum Position {
@@ -144,22 +159,22 @@ public class JoinInfo {
         throw new IllegalArgumentException("Bad Position: "+position);
     }
 
-    public @Nonnull List<PlanNode> getLeftDead() {
+    public @Nonnull ImmutableList<PlanNode> getLeftDead() {
         return leftDead;
     }
 
-    public @Nonnull List<PlanNode> getRightDead() {
+    public @Nonnull ImmutableList<PlanNode> getRightDead() {
         return rightDead;
     }
 
     public @Nonnull List<PlanNode> getLeftNodes() {
-        if (!expandMultiNodes) return singletonList(left);
-        return left instanceof MultiQueryNode ? left.getChildren() : singletonList(left);
+        if (!expandMultiNodes) return ImmutableList.of(left);
+        return left instanceof MultiQueryNode ? left.getChildren() : ImmutableList.of(left);
     }
 
     public @Nonnull List<PlanNode> getRightNodes() {
-        if (!expandMultiNodes) return singletonList(right);
-        return right instanceof MultiQueryNode ? right.getChildren() : singletonList(right);
+        if (!expandMultiNodes) return ImmutableList.of(right);
+        return right instanceof MultiQueryNode ? right.getChildren() : ImmutableList.of(right);
     }
 
     public @Nonnull List<PlanNode> getNodes(@Nonnull Position position) {
@@ -175,7 +190,7 @@ public class JoinInfo {
         return !childJoins.isEmpty();
     }
 
-    public @Nonnull Map<ImmutablePair<PlanNode, PlanNode>, JoinInfo> getChildJoins() {
+    public @Nonnull ImmutableMap<ImmutablePair<PlanNode, PlanNode>, JoinInfo> getChildJoins() {
         return childJoins;
     }
 

@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
 
@@ -11,6 +13,7 @@ import java.util.Set;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toSet;
 
 public class EmptyNode extends PlanNode {
     public EmptyNode(@Nonnull Collection<String> resultVars) {
@@ -20,6 +23,10 @@ public class EmptyNode extends PlanNode {
     public EmptyNode(@Nonnull Collection<String> resultVars,
                      @Nonnull Collection<String> inputVars) {
         super(resultVars, false, inputVars, emptyList());
+    }
+
+    public static @Nonnull EmptyNode createFor(@Nonnull CQuery query) {
+        return new EmptyNode(query.streamTerms(Var.class).map(Var::getName).collect(toSet()));
     }
 
     @Override
