@@ -94,24 +94,17 @@ public class JoinNodeTest {
     @SuppressWarnings("SuspiciousNameCombination")
     @Test
     public void testUseVarProjectedOut() {
-        JoinNode node = JoinNode.builder(yKnown, aliceKnowsX).addResultVar("x").build();
-        assertEquals(node.getResultVars(), singleton("x"));
-        assertEquals(node.getJoinVars(), emptySet());
-        assertTrue(node.isProjecting());
-        assertTrue(node.toString().startsWith("π[x]("));
+        // Since x is projected ou on yKnown, it can't be used to join
+        expectThrows(IllegalArgumentException.class,
+                () -> JoinNode.builder(yKnown, aliceKnowsX).build());
+        expectThrows(IllegalArgumentException.class,
+                () -> JoinNode.builder(yKnown, aliceKnowsX).addResultVar("x").build());
 
         //order does not change result
-        node = JoinNode.builder(aliceKnowsX, yKnown).addResultVar("x").build();
-        assertEquals(node.getResultVars(), singleton("x"));
-        assertEquals(node.getJoinVars(), emptySet());
-        assertTrue(node.isProjecting());
-        assertTrue(node.toString().startsWith("π[x]("));
-
-        //this fails bcs "x" is not present on the left side
         expectThrows(IllegalArgumentException.class,
-                () -> JoinNode.builder(aliceKnowsX, yKnown).addJoinVar("x").build());
+                () -> JoinNode.builder(aliceKnowsX, yKnown).build());
         expectThrows(IllegalArgumentException.class,
-                () -> JoinNode.builder(yKnown, aliceKnowsX).addJoinVar("x").build());
+                () -> JoinNode.builder(aliceKnowsX, yKnown).addResultVar("x").build());
     }
 
     @SuppressWarnings("SuspiciousNameCombination")

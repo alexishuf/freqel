@@ -98,9 +98,8 @@ public class JoinPathsPlanner implements Planner {
     @VisibleForTesting
     void getPaths(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g,
                   @Nonnull Set<JoinPath> paths) {
-        checkArgument(g.getNodes() instanceof IndexedSet, "JoinGraph must use IndexedSet");
         int totalTriples = full.size();
-        IndexedSet<PlanNode> nodes = (IndexedSet<PlanNode>) g.getNodes();
+        IndexedSet<PlanNode> nodes = g.getNodes();
         ArrayDeque<State> stack = new ArrayDeque<>(nodes.size()*2);
         nodes.forEach(n -> stack.push(State.start(full, n)));
         while (!stack.isEmpty()) {

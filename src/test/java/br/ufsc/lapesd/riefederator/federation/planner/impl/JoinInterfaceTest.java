@@ -62,13 +62,13 @@ public class JoinInterfaceTest {
                                               .annotate(y, AtomAnnotation.of(Atom1)),
             x, p1, y);
     private static QueryNode n4i = node(b -> b.annotate(x, AtomAnnotation.asRequired(Atom1))
-                                              .annotate(y, AtomAnnotation.asRequired(Atom1)),
+                                              .annotate(y, AtomAnnotation.of(Atom1)),
             Alice, p1, x, x, p2, y);
     private static JoinNode n4j = JoinNode.builder(
-            node(b -> b.annotate(Alice, AtomAnnotation.asRequired(Person))
+            node(b -> b.annotate(Alice, AtomAnnotation.of(Person))
                        .annotate(x,     AtomAnnotation.asRequired(Atom1)),
                  Alice, p1, x),
-            node(b -> b.annotate(x, AtomAnnotation.asRequired(Atom1))
+            node(b -> b.annotate(x, AtomAnnotation.of(Atom1))
                        .annotate(y, AtomAnnotation.asRequired(Atom1)),
                  x, p2, y)).build();
     private static JoinNode n12j = JoinNode.builder(n1, n2).build();
@@ -85,7 +85,7 @@ public class JoinInterfaceTest {
                         asList(new Triple(Alice, p1, x), new Triple(x, p2, y))),
                 asList(n1i, singleton("x"), emptySet(), singleton(new Triple(Alice, p1, x))),
                 asList(n2i, asList("x", "y"), singleton("x"), singleton(new Triple(x, p1, y))),
-                asList(n4i, asList("x", "y"), asList("x", "y"),
+                asList(n4i, asList("x", "y"), singleton("x"),
                         asList(new Triple(Alice, p1, x), new Triple(x, p2, y)))
         ).map(List::toArray).toArray(Object[][]::new);
     }

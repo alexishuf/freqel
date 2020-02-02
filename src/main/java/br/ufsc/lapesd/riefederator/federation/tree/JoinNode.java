@@ -91,6 +91,9 @@ public class JoinNode extends PlanNode {
                     inputVars.removeIf(n -> !joinVars.contains(n));
                 }
             }
+            checkArgument(!joinVars.isEmpty(),
+                    "Cannot build a JoinNode with no Join vars. Use CartesianNode or EmptyNode");
+
             Set<String> all;
             if (JoinNode.class.desiredAssertionStatus() || resultVars == null) {
                 all = unionResults(asList(left, right));
