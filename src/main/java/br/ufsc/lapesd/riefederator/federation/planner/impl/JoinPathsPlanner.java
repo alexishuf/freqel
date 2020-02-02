@@ -52,7 +52,7 @@ public class JoinPathsPlanner implements Planner {
             return EmptyNode.createFor(query);
         }
 
-        List<PlanNode> leaves = groupNodes(qns);
+        IndexedSet<PlanNode> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
         Set<JoinPath> paths = new HashSet<>(leaves.size());
         getPaths(full, g, paths);
@@ -76,7 +76,7 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @VisibleForTesting
-    @Nonnull List<PlanNode> groupNodes(@Nonnull Collection<QueryNode> queryNodes) {
+    @Nonnull IndexedSet<PlanNode> groupNodes(@Nonnull Collection<QueryNode> queryNodes) {
         ListMultimap<JoinInterface, QueryNode> mm;
         mm = MultimapBuilder.hashKeys(queryNodes.size()).arrayListValues().build();
 
@@ -92,23 +92,24 @@ public class JoinPathsPlanner implements Planner {
             else
                 list.add(nodes.iterator().next());
         }
-        return list;
+        return IndexedSet.fromDistinct(list);
     }
 
     @VisibleForTesting
     void getPaths(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g,
                   @Nonnull Set<JoinPath> paths) {
+        checkArgument(g.getNodes() instanceof IndexedSet, "JoinGraph must use IndexedSet");
         int totalTriples = full.size();
-        List<PlanNode> nodes = g.getNodes();
+        IndexedSet<PlanNode> nodes = (IndexedSet<PlanNode>) g.getNodes();
         ArrayDeque<State> stack = new ArrayDeque<>(nodes.size()*2);
         nodes.forEach(n -> stack.push(State.start(full, n)));
         while (!stack.isEmpty()) {
             State state = stack.pop();
             if (state.matched.size() == totalTriples) {
                 if (!state.hasInputs()) //ignore join paths that leave pending inputs
-                    paths.add(state.toPath());
+                    paths.add(state.toPath(nodes));
                 else
-                    logger.debug("Discarding path with pending inputs {}", state.toPath());
+                    logger.debug("Discarding path with pending inputs {}", state.toPath(nodes));
             } else {
                 g.forEachNeighbor(state.node, (info, node) -> {
                     State next = state.advance(info, node);
@@ -155,16 +156,16 @@ public class JoinPathsPlanner implements Planner {
             return joinInfo == null ? node.hasInputs() : !joinInfo.getPendingInputs().isEmpty();
         }
 
-        @Nonnull JoinPath toPath() {
+        @Nonnull JoinPath toPath(IndexedSet<PlanNode> allNodes) {
             if (depth == 0)
-                return new JoinPath(node);
+                return new JoinPath(allNodes, node);
             //noinspection UnstableApiUsage
             ImmutableList.Builder<JoinInfo> builder = ImmutableList.builderWithExpectedSize(depth);
             for (State s = this; s != null; s = s.ancestor) {
                 if (s.joinInfo != null) builder.add(s.joinInfo);
                 else                    assert s.ancestor == null;
             }
-            return new JoinPath(builder.build());
+            return new JoinPath(allNodes, builder.build());
         }
     }
 

@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.util;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -18,8 +19,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     private final @Nonnull List<T> data;
     @SuppressWarnings("Immutable")
     private final @Nonnull ImmutableMap<T, Integer> indexMap;
-    @LazyInit
-    private int hash = 0;
+    private @LazyInit int hash = 0;
 
     protected static @Nonnull <U> ImmutableMap<U, Integer>
     createIndexMap(@Nonnull Collection<U> list) {
@@ -41,6 +41,12 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
         this.indexMap = indexMap;
     }
 
+    @CheckReturnValue
+    public static @Nonnull <U> IndexedSet<U> empty() {
+        return fromDistinct(Collections.emptySet());
+    }
+
+    @CheckReturnValue
     public static @Nonnull <U> IndexedSet<U> fromDistinct(@Nonnull Collection<U> collection) {
         if (IndexedSet.class.desiredAssertionStatus())
             Preconditions.checkArgument(new HashSet<>(collection).size() == collection.size());
@@ -51,26 +57,31 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
             return new IndexedSet<>(new ArrayList<>(collection), indexMap);
     }
 
+    @CheckReturnValue
     public static @Nonnull <U> IndexedSet<U> fromDistinctCopy(@Nonnull Collection<U> collection) {
         if (IndexedSet.class.desiredAssertionStatus())
             Preconditions.checkArgument(new HashSet<>(collection).size() == collection.size());
         return new IndexedSet<>(new ArrayList<>(collection), createIndexMap(collection));
     }
 
+    @CheckReturnValue
     public static @Nonnull <U> IndexedSet<U> from(@Nonnull Collection<U> collection) {
         return fromDistinct(new LinkedHashSet<>(collection));
     }
 
+    @CheckReturnValue
     public @Nonnull IndexedSubset<T> fullSubset() {
         BitSet bitSet = new BitSet(size());
         bitSet.set(0, size());
         return new IndexedSubset<>(this, bitSet);
     }
 
+    @CheckReturnValue
     public @Nonnull IndexedSubset<T> emptySubset() {
         return new IndexedSubset<>(this, new BitSet(size()));
     }
 
+    @CheckReturnValue
     public @Nonnull IndexedSubset<T> subset(@Nonnull Collection<? extends T> collection) {
         BitSet bitSet = new BitSet(size());
         for (T o : collection) {
@@ -79,6 +90,40 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
                 bitSet.set(idx);
         }
         return new IndexedSubset<>(this, bitSet);
+    }
+
+    @CheckReturnValue
+    public @Nonnull final IndexedSubset<T> subset(@Nonnull T value) {
+        return subset(Collections.singletonList(value));
+    }
+
+    @CheckReturnValue
+    public @Nonnull ImmutableIndexedSubset<T> fullImmutableSubset() {
+        BitSet bitSet = new BitSet(size());
+        bitSet.set(0, size());
+        return new ImmutableIndexedSubset<>(this, bitSet);
+    }
+
+    @CheckReturnValue
+    public @Nonnull ImmutableIndexedSubset<T> immutableEmptySubset() {
+        return new ImmutableIndexedSubset<>(this, new BitSet(size()));
+    }
+
+    @CheckReturnValue
+    public @Nonnull ImmutableIndexedSubset<T>
+    immutableSubset(@Nonnull Collection<? extends T> collection) {
+        BitSet bitSet = new BitSet(size());
+        for (T o : collection) {
+            int idx = indexOf(o);
+            if (idx >= 0)
+                bitSet.set(idx);
+        }
+        return new ImmutableIndexedSubset<>(this, bitSet);
+    }
+
+    @CheckReturnValue
+    public @Nonnull final ImmutableIndexedSubset<T> immutableSubset(@Nonnull T value) {
+        return immutableSubset(Collections.singletonList(value));
     }
 
     /* --- implement object methods --- */

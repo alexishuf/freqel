@@ -79,17 +79,18 @@ public class JoinPathsPlannerTest {
         QueryNode n1 = node(e1, Alice, p1, x);
         QueryNode n2 = node(e1, x, p1, y);
         QueryNode n3 = node(e2, y, p1, Bob);
+        IndexedSet<PlanNode> all = IndexedSet.fromDistinct(asList(n1, n2, n3));
         return Stream.of(
-                asList(new JoinPath(n1), new JoinPath(n1), true),
-                asList(new JoinPath(n1), new JoinPath(n2), false),
-                asList(new JoinPath(getPlainJoinability(n1, n2)),
-                       new JoinPath(getPlainJoinability(n1, n2)), true),
-                asList(new JoinPath(getPlainJoinability(n2, n1)),
-                       new JoinPath(getPlainJoinability(n1, n2)), true),
-                asList(new JoinPath(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3)),
-                       new JoinPath(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3)), true),
-                asList(new JoinPath(getPlainJoinability(n3, n2), getPlainJoinability(n2, n1)),
-                       new JoinPath(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3)), true)
+                asList(new JoinPath(all, n1), new JoinPath(all, n1), true),
+                asList(new JoinPath(all, n1), new JoinPath(all, n2), false),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2)),
+                       new JoinPath(all, getPlainJoinability(n1, n2)), true),
+                asList(new JoinPath(all, getPlainJoinability(n2, n1)),
+                       new JoinPath(all, getPlainJoinability(n1, n2)), true),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3)),
+                       new JoinPath(all, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3)), true),
+                asList(new JoinPath(all, getPlainJoinability(n3, n2), getPlainJoinability(n2, n1)),
+                       new JoinPath(all, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3)), true)
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
@@ -115,15 +116,16 @@ public class JoinPathsPlannerTest {
         IndexedSet<Triple> allTriples = IndexedSet.fromDistinct(
                 asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
                        new Triple(y, p3, z), new Triple(z, p4, Bob)));
+        IndexedSet<PlanNode> allNodes = IndexedSet.fromDistinct(asList(n1, n2, n3, n4));
 
         JoinPathsPlanner.State s0 = JoinPathsPlanner.State.start(allTriples, n1);
-        assertEquals(s0.toPath(), new JoinPath(n1));
+        assertEquals(s0.toPath(allNodes), new JoinPath(allNodes, n1));
         assertEquals(s0.depth, 0);
         assertFalse(s0.hasInputs());
 
         JoinPathsPlanner.State s1 = s0.advance(getPlainJoinability(n1, n2), n2);
         assertNotNull(s1);
-        assertEquals(s1.toPath(), new JoinPath(getPlainJoinability(n1, n2)));
+        assertEquals(s1.toPath(allNodes), new JoinPath(allNodes, getPlainJoinability(n1, n2)));
         assertEquals(s1.depth, 1);
         assertFalse(s0.hasInputs());
 
@@ -131,8 +133,8 @@ public class JoinPathsPlannerTest {
 
         JoinPathsPlanner.State s2 = s1.advance(getPlainJoinability(n2, n3), n3);
         assertNotNull(s2);
-        assertEquals(s2.toPath(), new JoinPath(getPlainJoinability(n2, n3),
-                                               getPlainJoinability(n1, n2)));
+        assertEquals(s2.toPath(allNodes), new JoinPath(allNodes, getPlainJoinability(n2, n3),
+                                                                 getPlainJoinability(n1, n2)));
         assertEquals(s2.depth, 2);
         assertFalse(s0.hasInputs());
 
@@ -140,9 +142,9 @@ public class JoinPathsPlannerTest {
 
         JoinPathsPlanner.State s3 = s2.advance(getPlainJoinability(n3, n4), n4);
         assertNotNull(s3);
-        assertEquals(s3.toPath(), new JoinPath(getPlainJoinability(n3, n4),
-                                               getPlainJoinability(n2, n3),
-                                               getPlainJoinability(n1, n2)));
+        assertEquals(s3.toPath(allNodes), new JoinPath(allNodes, getPlainJoinability(n3, n4),
+                                                                 getPlainJoinability(n2, n3),
+                                                                 getPlainJoinability(n1, n2)));
         assertEquals(s3.depth, 3);
         assertFalse(s0.hasInputs());
     }
@@ -154,10 +156,12 @@ public class JoinPathsPlannerTest {
         QueryNode n3 = new QueryNode(e2, CQuery.with(new Triple(y, p3, Bob))
                 .annotate(y, AtomAnnotation.asRequired(Atom1))
                 .annotate(Bob, AtomAnnotation.of(Person)).build());
+        IndexedSet<PlanNode> nodes = IndexedSet.fromDistinct(asList(n1, n2, n3));
 
-        JoinPath path1 = new JoinPath(getPlainJoinability(n3, n2), getPlainJoinability(n2, n1));
-        JoinPath path2 = new JoinPath(getPlainJoinability(n2, n1), getPlainJoinability(n3, n2));
-        JoinPath path3 = new JoinPath(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3));
+        JoinPath path1, path2, path3;
+        path1 = new JoinPath(nodes, getPlainJoinability(n3, n2), getPlainJoinability(n2, n1));
+        path2 = new JoinPath(nodes, getPlainJoinability(n2, n1), getPlainJoinability(n3, n2));
+        path3 = new JoinPath(nodes, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3));
 
         assertEquals(path1.getNodes(), Sets.newHashSet(n1, n2, n3));
         assertEquals(path2.getNodes(), Sets.newHashSet(n1, n2, n3));
@@ -178,24 +182,25 @@ public class JoinPathsPlannerTest {
 
         IndexedSet<Triple> allTriples = IndexedSet.fromDistinct(
                 asList(new Triple(Alice, p1, x), new Triple(x, p2, y), new Triple(y, p3, Bob)));
+        IndexedSet<PlanNode> nodes = IndexedSet.fromDistinct(asList(n1, n2, n3));
 
         JoinPathsPlanner.State s0 = JoinPathsPlanner.State.start(allTriples, n3);
         assertEquals(s0.depth, 0);
         assertTrue(s0.hasInputs());
-        assertEquals(s0.toPath(), new JoinPath(n3));
+        assertEquals(s0.toPath(nodes), new JoinPath(nodes, n3));
 
         JoinPathsPlanner.State s1 = s0.advance(getPlainJoinability(n3, n2), n2);
         assertNotNull(s1);
         assertEquals(s1.depth, 1);
         assertFalse(s1.hasInputs());
-        assertEquals(s1.toPath(), new JoinPath(getPlainJoinability(n3, n2)));
+        assertEquals(s1.toPath(nodes), new JoinPath(nodes, getPlainJoinability(n3, n2)));
 
         JoinPathsPlanner.State s2 = s1.advance(getPlainJoinability(n2, n1), n1);
         assertNotNull(s2);
         assertEquals(s2.depth, 2);
         assertFalse(s2.hasInputs());
-        assertEquals(s2.toPath(), new JoinPath(getPlainJoinability(n3, n2),
-                                               getPlainJoinability(n2, n1)));
+        assertEquals(s2.toPath(nodes), new JoinPath(nodes, getPlainJoinability(n3, n2),
+                                                           getPlainJoinability(n2, n1)));
 
     }
 
@@ -280,26 +285,30 @@ public class JoinPathsPlannerTest {
         // mXi == M(nX, nXi)
         MultiQueryNode m1i = m(n1, n1i);
 
+        IndexedSet<PlanNode> nodes = IndexedSet.fromDistinct(
+                asList(n1, n2, n3, n4, n5, n6, n1i, n2i, n4i, n5i, n1j, n2j, n5j, m1i));
+
         return Stream.of(
                 asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y)),
                         asList(n1, n2),
-                        singleton(new JoinPath(getPlainJoinability(n1, n2)))),
+                        singleton(new JoinPath(nodes, getPlainJoinability(n1, n2)))),
                 asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y)),
                         singletonList(n3),
-                        singleton(new JoinPath(n3))),
+                        singleton(new JoinPath(nodes, n3))),
                 asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y)),
                         asList(n1, n2, n3),
-                        asList(new JoinPath(getPlainJoinability(n1, n2)), new JoinPath(n3))),
+                        asList(new JoinPath(nodes, getPlainJoinability(n1, n2)),
+                               new JoinPath(nodes, n3))),
 
                 // n1 -> n2 --> n4
                 //          +-> n4i
                 asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
                                    new Triple(y, p1, Bob)),
                         asList(n1, n2, n4, n4i),
-                        asList(new JoinPath(getPlainJoinability(n1, n2),
-                                            getPlainJoinability(n2, n4)),
-                               new JoinPath(getPlainJoinability(n1, n2),
-                                            getPlainJoinability(n2, n4i)))),
+                        asList(new JoinPath(nodes, getPlainJoinability(n1, n2),
+                                                   getPlainJoinability(n2, n4)),
+                               new JoinPath(nodes, getPlainJoinability(n1, n2),
+                                                   getPlainJoinability(n2, n4i)))),
 
                 // m1i +-> n2  --+         +--> n5
                 //     |         +--> n4 --+
@@ -308,18 +317,18 @@ public class JoinPathsPlannerTest {
                 asList(CQuery.from(new Triple(Alice, p1, x  ), new Triple(x, p1, y  ),
                                    new Triple(y,     p1, Bob), new Triple(y, p2, Bob)),
                         asList(m1i, n2, n4, n5, n2i, n5i),
-                        asList(new JoinPath(getMultiJoinability(m1i, n2),
-                                            getMultiJoinability(n2, n4),
-                                            getMultiJoinability(n4, n5)),
-                               new JoinPath(getMultiJoinability(m1i, n2),
-                                            getMultiJoinability(n2, n4),
-                                            getMultiJoinability(n4, n5i)),
-                               new JoinPath(getMultiJoinability(m1i, n2i),
-                                            getMultiJoinability(n2i, n4),
-                                            getMultiJoinability(n4, n5)),
-                               new JoinPath(getMultiJoinability(m1i, n2i),
-                                            getMultiJoinability(n2i, n4),
-                                            getMultiJoinability(n4, n5i))
+                        asList(new JoinPath(nodes, getMultiJoinability(m1i, n2),
+                                                   getMultiJoinability(n2, n4),
+                                                   getMultiJoinability(n4, n5)),
+                               new JoinPath(nodes, getMultiJoinability(m1i, n2),
+                                                   getMultiJoinability(n2, n4),
+                                                   getMultiJoinability(n4, n5i)),
+                               new JoinPath(nodes, getMultiJoinability(m1i, n2i),
+                                                   getMultiJoinability(n2i, n4),
+                                                   getMultiJoinability(n4, n5)),
+                               new JoinPath(nodes, getMultiJoinability(m1i, n2i),
+                                                   getMultiJoinability(n2i, n4),
+                                                   getMultiJoinability(n4, n5i))
                         )),
 
                 // n1j <- n2j <--+          +--  n5j
@@ -330,26 +339,26 @@ public class JoinPathsPlannerTest {
                 asList(CQuery.from(new Triple(Alice, p1, x  ), new Triple(x, p1, y  ),
                                    new Triple(y,     p1, Bob), new Triple(y, p2, Bob)),
                         asList(n1j, n2j, n4, n5j, n1i, n2i, n5i),
-                        asList(new JoinPath(getPlainJoinability(n1i, n2i),
-                                            getPlainJoinability(n2i, n4),
-                                            getPlainJoinability(n4, n5i)),
-                               new JoinPath(getPlainJoinability(n1i, n2i),
-                                            getPlainJoinability(n2i, n4),
-                                            getPlainJoinability(n5j, n4)),
+                        asList(new JoinPath(nodes, getPlainJoinability(n1i, n2i),
+                                                   getPlainJoinability(n2i, n4),
+                                                   getPlainJoinability(n4, n5i)),
+                               new JoinPath(nodes, getPlainJoinability(n1i, n2i),
+                                                   getPlainJoinability(n2i, n4),
+                                                   getPlainJoinability(n5j, n4)),
 
-                               new JoinPath(getPlainJoinability(n5j, n4),
-                                            getPlainJoinability(n4, n2j),
-                                            getPlainJoinability(n2j, n1j)),
-                               new JoinPath(getPlainJoinability(n5j, n4),
-                                            getPlainJoinability(n4, n2j),
-                                            getPlainJoinability(n2j, n1i)),
+                               new JoinPath(nodes, getPlainJoinability(n5j, n4),
+                                                   getPlainJoinability(n4, n2j),
+                                                   getPlainJoinability(n2j, n1j)),
+                               new JoinPath(nodes, getPlainJoinability(n5j, n4),
+                                                   getPlainJoinability(n4, n2j),
+                                                   getPlainJoinability(n2j, n1i)),
 
-                               new JoinPath(getPlainJoinability(n4, n5i),
-                                            getPlainJoinability(n4, n2j),
-                                            getPlainJoinability(n2j, n1j)),
-                               new JoinPath(getPlainJoinability(n4, n5i),
-                                            getPlainJoinability(n4, n2j),
-                                            getPlainJoinability(n2j, n1i))
+                               new JoinPath(nodes, getPlainJoinability(n4, n5i),
+                                                   getPlainJoinability(n4, n2j),
+                                                   getPlainJoinability(n2j, n1j)),
+                               new JoinPath(nodes, getPlainJoinability(n4, n5i),
+                                                   getPlainJoinability(n4, n2j),
+                                                   getPlainJoinability(n2j, n1i))
                         )),
 
                 //  +------+------+
@@ -359,8 +368,8 @@ public class JoinPathsPlannerTest {
                 asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
                                    new Triple(y, p2, x)),
                        asList(n1, n2, n6),
-                       singletonList(new JoinPath(getPlainJoinability(n1, n2),
-                                                  getPlainJoinability(n2, n6)))),
+                       singletonList(new JoinPath(nodes, getPlainJoinability(n1, n2),
+                                                         getPlainJoinability(n2, n6)))),
 
                 //  +------+------+
                 //  |      |      |
@@ -369,8 +378,8 @@ public class JoinPathsPlannerTest {
                 asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
                         new Triple(y, p2, x)),
                         asList(n1j, n2j, n6),
-                        singletonList(new JoinPath(getPlainJoinability(n1j, n2j),
-                                                   getPlainJoinability(n2j, n6)))),
+                        singletonList(new JoinPath(nodes, getPlainJoinability(n1j, n2j),
+                                                          getPlainJoinability(n2j, n6)))),
 
                 //         +-------+
                 //  +------|------+|
@@ -380,8 +389,8 @@ public class JoinPathsPlannerTest {
                 asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
                         new Triple(y, p2, x)),
                         asList(n1i, n2i, n6),
-                        singletonList(new JoinPath(getPlainJoinability(n1i, n2i),
-                                                   getPlainJoinability(n2i, n6)))),
+                        singletonList(new JoinPath(nodes, getPlainJoinability(n1i, n2i),
+                                                          getPlainJoinability(n2i, n6)))),
 
                 //          +----n5j
                 //          v
@@ -389,10 +398,10 @@ public class JoinPathsPlannerTest {
                 asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
                                    new Triple(y, p2, Bob)),
                        asList(n1j, n2, n5i, n5j),
-                       asList(new JoinPath(getPlainJoinability(n2, n1j),
-                                           getPlainJoinability(n2, n5i)),
-                              new JoinPath(getPlainJoinability(n5j, n2),
-                                           getPlainJoinability(n2, n1j))))
+                       asList(new JoinPath(nodes, getPlainJoinability(n2, n1j),
+                                                  getPlainJoinability(n2, n5i)),
+                              new JoinPath(nodes, getPlainJoinability(n5j, n2),
+                                                  getPlainJoinability(n2, n1j))))
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
@@ -401,7 +410,7 @@ public class JoinPathsPlannerTest {
     public void testPaths(CQuery query, List<PlanNode> nodes, Collection<JoinPath> expectedPaths) {
         for (List<PlanNode> permutation : permutations(nodes)) {
             Set<JoinPath> paths = new HashSet<>();
-            JoinGraph g = new JoinGraph(permutation);
+            JoinGraph g = new JoinGraph(IndexedSet.fromDistinct(permutation));
             JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
             planner.getPaths(IndexedSet.fromDistinctCopy(query.getMatchedTriples()), g, paths);
 

@@ -11,10 +11,7 @@ import com.google.errorprone.annotations.Immutable;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import javax.annotation.Nonnull;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 import static com.google.common.collect.Lists.cartesianProduct;
 import static java.util.Collections.singletonList;
@@ -175,6 +172,10 @@ public class JoinInfo {
     public @Nonnull List<PlanNode> getRightNodes() {
         if (!expandMultiNodes) return ImmutableList.of(right);
         return right instanceof MultiQueryNode ? right.getChildren() : ImmutableList.of(right);
+    }
+
+    public @Nonnull List<PlanNode> getNodes() {
+        return Arrays.asList(left, right);
     }
 
     public @Nonnull List<PlanNode> getNodes(@Nonnull Position position) {

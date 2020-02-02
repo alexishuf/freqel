@@ -10,9 +10,17 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     private final @Nonnull IndexedSet<T> parent;
     private final @Nonnull BitSet bitSet;
 
+    protected static final @Nonnull BitSet emptyBitSet = new BitSet(0);
+
     public IndexedSubset(@Nonnull IndexedSet<T> parent, @Nonnull BitSet bitSet) {
         this.parent = parent;
         this.bitSet = bitSet;
+    }
+
+    public static @Nonnull <U> IndexedSubset<U> empty() {
+        assert emptyBitSet.cardinality() == 0;
+        assert emptyBitSet.size() == 0;
+        return new IndexedSubset<>(IndexedSet.empty(), emptyBitSet);
     }
 
     public @Nonnull IndexedSet<T> getParent() {
@@ -67,10 +75,11 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
+        if (o instanceof IndexedSet && o == parent)
+            return size() == parent.size();
         if (o instanceof IndexedSubset) {
             IndexedSubset<?> that = (IndexedSubset<?>) o;
-            return getParent().equals(that.getParent()) &&
-                    getBitSet().equals(that.getBitSet());
+            return size() == that.size() && containsAll(that);
         } else if (o instanceof Set) {
             Set<?> that = (Set<?>) o;
             return that.size() == size() && ((Set<?>) o).containsAll(this);
@@ -87,6 +96,34 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     }
 
     /* --- implement List & Set methods --- */
+
+    @Override
+    public boolean contains(Object o) {
+        //noinspection SuspiciousMethodCalls
+        int idx = parent.indexOf(o);
+        return idx >= 0 && bitSet.get(idx);
+    }
+
+    @Override
+    @SuppressWarnings("ReferenceEquality")
+    public boolean containsAll(@Nonnull Collection<?> c) {
+        if (c instanceof IndexedSubset) {
+            IndexedSubset<?> that = (IndexedSubset<?>) c;
+            if (that.getParent() == parent) {
+                BitSet copy = new BitSet(parent.size());
+                copy.or(bitSet);
+                copy.or(that.getBitSet());
+                return copy.equals(bitSet);
+            }
+        } else if (c instanceof IndexedSet && c == parent) {
+            return size() == parent.size();
+        }
+        if (size() < c.size()) return false;
+        for (Object o : c) {
+            if (!contains(o)) return false;
+        }
+        return true;
+    }
 
     @Override
     public @Nonnull Iterator<T> iterator() {
@@ -133,6 +170,14 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
         if (old)
             bitSet.set(idx, false);
         return old;
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        boolean change = false;
+        for (Object object : c)
+            change |= remove(object);
+        return change;
     }
 
     @Override

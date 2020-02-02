@@ -2,8 +2,10 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl.paths;
 
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
+import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -12,38 +14,53 @@ import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableSet.builderWithExpectedSize;
+import static java.util.stream.Collectors.toSet;
 
 @Immutable
 public class JoinPath {
     private final @Nonnull ImmutableList<JoinInfo> joinInfos;
     @SuppressWarnings("Immutable")
-    private final @Nonnull ImmutableSet<PlanNode> nodes;
+    private final @Nonnull ImmutableIndexedSubset<PlanNode> nodes;
     private @LazyInit int hash = 0;
 
-    public JoinPath(@Nonnull ImmutableList<JoinInfo> joinInfos) {
+    public JoinPath(@Nonnull IndexedSet<PlanNode> allNodes,
+                    @Nonnull ImmutableList<JoinInfo> joinInfos) {
         checkArgument(!joinInfos.isEmpty());
+        if (JoinPath.class.desiredAssertionStatus()) {
+            checkArgument(joinInfos.stream().allMatch(j -> allNodes.containsAll(j.getNodes())),
+                          "There are operands of JoinInfos ∉ allNodes");
+        }
+
         this.joinInfos = joinInfos;
-        //noinspection UnstableApiUsage
-        ImmutableSet.Builder<PlanNode> nodesBuilder = builderWithExpectedSize(joinInfos.size());
+        IndexedSubset<PlanNode> nodes = allNodes.emptySubset();
         Iterator<JoinInfo> it = joinInfos.iterator();
         JoinInfo current = it.next();
-        nodesBuilder.add(current.getLeft());
-        nodesBuilder.add(current.getRight());
+        nodes.add(current.getLeft());
+        nodes.add(current.getRight());
         for (JoinInfo last = current; it.hasNext(); last = current)
-            nodesBuilder.add((current = it.next()).getOppositeToLinked(last));
-        nodes = nodesBuilder.build();
+            nodes.add((current = it.next()).getOppositeToLinked(last));
+        this.nodes = ImmutableIndexedSubset.copyOf(nodes);
+
+        if (JoinPath.class.desiredAssertionStatus()) {
+            Set<PlanNode> all;
+            all = joinInfos.stream().flatMap(i -> i.getNodes().stream()).collect(toSet());
+            checkArgument(nodes.equals(all), "There are extraneous nodes in the join path");
+        }
+
     }
 
-    public JoinPath(@Nonnull JoinInfo... infos) {
-        this(ImmutableList.copyOf(infos));
+    public JoinPath(@Nonnull IndexedSet<PlanNode> allNodes, @Nonnull JoinInfo... infos) {
+        this(allNodes, ImmutableList.copyOf(infos));
     }
 
-    public JoinPath(@Nonnull PlanNode node) {
+    public JoinPath(@Nonnull IndexedSet<PlanNode> allNodes,
+                    @Nonnull PlanNode node) {
+        checkArgument(allNodes.contains(node), "node ∉ allNodes");
         joinInfos = ImmutableList.of();
-        nodes = ImmutableSet.of(node);
+        nodes = allNodes.immutableSubset(node);
         hash = node.hashCode();
     }
 
@@ -63,7 +80,7 @@ public class JoinPath {
         return nodes.iterator().next();
     }
 
-    public @Nonnull ImmutableSet<PlanNode> getNodes() {
+    public @Nonnull ImmutableIndexedSubset<PlanNode> getNodes() {
         return nodes;
     }
 

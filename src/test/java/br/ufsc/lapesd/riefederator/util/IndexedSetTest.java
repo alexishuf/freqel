@@ -302,6 +302,69 @@ public class IndexedSetTest {
     }
 
     @Test
+    public void testFullSubsetContainsAll() {
+        IndexedSet<Integer> set = set(10, 11, 12);
+        IndexedSubset<Integer> full = set.fullSubset();
+        assertTrue(full.containsAll(set));
+        assertTrue(set.containsAll(set.fullSubset()));
+
+        assertTrue(full.containsAll(emptyList()));
+        assertTrue(full.containsAll(emptySet()));
+        assertTrue(full.containsAll(set.emptySubset()));
+
+        assertTrue(full.containsAll(asList(10, 11)));
+        assertTrue(full.containsAll(asList(10, 11, 12)));
+        assertFalse(full.containsAll(asList(10, 11, 12, 13)));
+
+        assertTrue(full.containsAll(Sets.newHashSet(10, 11)));
+        assertTrue(full.containsAll(Sets.newHashSet(10, 11, 12)));
+        assertFalse(full.containsAll(Sets.newHashSet(10, 11, 12, 13)));
+
+        IndexedSet<Integer> set2 = set(11, 12, 13);
+        assertTrue(full.containsAll(set2.subset(asList(11, 12))));
+        assertTrue(full.containsAll(set2.subset(12)));
+        assertTrue(full.containsAll(set2.emptySubset()));
+        assertFalse(full.containsAll(set2.subset(13)));
+        assertFalse(full.containsAll(set2.fullSubset()));
+        assertFalse(full.containsAll(set2));
+    }
+
+    @Test
+    @SuppressWarnings("EqualsIncompatibleType")
+    public void testSubsetContainsAll() {
+        IndexedSet<Integer> set = set(10, 11, 12, 13), set2 = set(20, 21, 22, 11, 12, 14);
+        IndexedSubset<Integer> sub = set.subset(asList(11, 12));
+        //noinspection EqualsBetweenInconvertibleTypes,SimplifiedTestNGAssertion
+        assertTrue(sub.equals(asList(12, 11)));
+        assertEquals(sub, Sets.newHashSet(11, 12));
+
+        assertTrue(sub.containsAll(asList(11, 12)));
+        assertTrue(sub.containsAll(Sets.newHashSet(11, 12)));
+
+        assertFalse(sub.containsAll(asList(10, 13)));
+        assertFalse(sub.containsAll(asList(10, 12)));
+        assertFalse(sub.containsAll(Sets.newHashSet(11, 13)));
+
+        assertFalse(sub.containsAll(set2.fullSubset()));
+        assertTrue(sub.containsAll(set2.emptySubset()));
+        assertTrue(sub.containsAll(set2.subset(asList(12, 11))));
+        assertTrue(sub.containsAll(set2.subset(12)));
+        assertFalse(sub.containsAll(set2.subset(asList(12, 14))));
+    }
+
+    @Test
+    public void testSubsetEquality() {
+        IndexedSet<Integer> a = set(10, 11, 12), b = set(11, 12, 13);
+        assertEquals(a.subset(10), a.subset(singletonList(10)));
+        assertNotEquals(a.subset(asList(10, 11)), a.subset(10));
+        assertNotEquals(a.subset(asList(10, 11)), a.subset(11));
+
+        assertNotEquals(a.subset(asList(10, 11)), b.subset(asList(11, 12)));
+        assertEquals(a.subset(11), b.subset(11));
+        assertEquals(a.subset(asList(12, 11)), b.subset(asList(11, 12)));
+    }
+
+    @Test
     public void testSetOperations() {
         IndexedSet<Integer> set = set(10, 11, 12, 13, 14, 15);
         IndexedSubset<Integer> full = set.fullSubset();
@@ -343,4 +406,59 @@ public class IndexedSetTest {
         assertEquals(new ArrayList<>(s35.createUnion(s013)), asList(10, 11, 13, 15));
     }
 
+
+    @Test
+    public void testUniversalEmpty() {
+        IndexedSubset<Integer> e1 = IndexedSubset.empty();
+        ImmutableIndexedSubset<Integer> e2 = ImmutableIndexedSubset.empty();
+        IndexedSet<Integer> set = set(10, 11);
+        IndexedSubset<Integer> e3 = set.emptySubset();
+        ImmutableIndexedSubset<Integer> e4 = set.immutableEmptySubset();
+
+        assertEquals(e1, e2);
+        assertEquals(e1, e3);
+        assertEquals(e1, e4);
+        assertEquals(e2, e3);
+        assertEquals(e2, e4);
+        assertEquals(e3, e4);
+    }
+
+    @Test
+    public void testImmutableSubset() {
+        IndexedSet<Integer> set = set(10, 11, 12);
+        ImmutableIndexedSubset<Integer> e = set.immutableEmptySubset();
+        ImmutableIndexedSubset<Integer> s1 = set.immutableSubset(11);
+        ImmutableIndexedSubset<Integer> s02 = set.immutableSubset(asList(10, 12));
+
+        assertEquals(new ArrayList<>(e), emptyList());
+        assertEquals(new ArrayList<>(s1), singletonList(11));
+        assertEquals(new ArrayList<>(s02), asList(10, 12));
+
+        // compare with lists
+        assertEquals(e, emptyList());
+        assertEquals(s1, singletonList(11));
+        assertEquals(s02, asList(10, 12));
+
+        // compare with sets
+        assertEquals(e, emptySet());
+        assertEquals(s1, singleton(11));
+        assertEquals(s02, Sets.newHashSet(10, 12));
+
+        //throw on modifiers
+        for (ImmutableIndexedSubset<Integer> s : asList(e, s02, s1)) {
+            expectThrows(UnsupportedOperationException.class, () -> s.add(10));
+            expectThrows(UnsupportedOperationException.class, () -> s.addAll(asList(10, 11)));
+            expectThrows(UnsupportedOperationException.class, () -> s.remove(10));
+            expectThrows(UnsupportedOperationException.class, () -> s.removeAll(asList(10, 11)));
+        }
+
+        //copy from mutable is unaffected
+        IndexedSubset<Integer> subset = set.subset(11);
+        ImmutableIndexedSubset<Integer> copy = ImmutableIndexedSubset.copyOf(subset);
+        assertEquals(copy, singleton(11));
+        subset.add(12);
+        assertEquals(copy, singleton(11));
+        subset.remove(11);
+        assertEquals(copy, singleton(11));
+    }
 }
