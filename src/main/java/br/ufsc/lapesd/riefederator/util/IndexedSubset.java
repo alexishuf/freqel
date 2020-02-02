@@ -138,7 +138,7 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
 
             @Override
             public T next() {
-                if (idx < 0) throw new NoSuchElementException("Iterator past the end");
+                if (!hasNext()) throw new NoSuchElementException("Iterator past the end");
                 int old = this.idx;
                 ++this.idx;
                 return parent.get(old);
@@ -178,6 +178,11 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
         for (Object object : c)
             change |= remove(object);
         return change;
+    }
+
+    @Override
+    public void clear() {
+        bitSet.clear();
     }
 
     @Override

@@ -19,7 +19,7 @@ public class IndexedSetTest {
     private static final int VALUES_BASE = 1000;
 
     private static @Nonnull IndexedSet<Integer> set(int... values) {
-        return new IndexedSet<>(Arrays.stream(values).boxed().collect(toList()));
+        return IndexedSet.fromDistinct(Arrays.stream(values).boxed().collect(toList()));
     }
 
     private static @Nonnull List<Integer> randomValues(int size) {
@@ -221,6 +221,63 @@ public class IndexedSetTest {
         assertEquals(empty.size(), 0);
         assertEquals(new ArrayList<>(sub), singletonList(10));
         assertEquals(new ArrayList<>(empty), emptyList());
+    }
+
+    @Test
+    public void testIterateSubset() {
+        IndexedSet<Integer> set = set(10, 11, 12, 13, 14);
+        IndexedSubset<Integer> subset = set.subset(asList(13, 11));
+        assertEquals(subset.size(), 2);
+
+        Iterator<Integer> it = subset.iterator();
+        assertTrue(it.hasNext());
+        assertEquals(it.next(), Integer.valueOf(11));
+        assertTrue(it.hasNext());
+        assertEquals(it.next(), Integer.valueOf(13));
+        assertFalse(it.hasNext());
+
+        Iterator<Integer> it2 = subset.iterator();
+        assertEquals(it2.next(), Integer.valueOf(11));
+        assertEquals(it2.next(), Integer.valueOf(13));
+        assertFalse(it2.hasNext());
+
+        assertEquals(new ArrayList<>(subset), asList(11, 13));
+        assertEquals(subset, Sets.newHashSet(11, 13));
+    }
+
+
+    @Test
+    public void testIteratePairSubset() {
+        IndexedSet<Integer> set = set(10, 11, 12, 13, 14, 15, 16, 17, 18, 19);
+        for (int i = 0; i < set.size(); i++) {
+            for (int j = 0; j < set.size(); j++) {
+                IndexedSubset<Integer> subset = set.subset(asList(10 + i, 10 + j));
+                assertEquals(subset.size(), i==j ? 1 : 2);
+
+                assertEquals(subset, Sets.newHashSet(10+i, 10+j));
+
+                assertTrue(subset.contains(10+i));
+                assertTrue(subset.contains(10+j));
+                for (int k = 0; k < subset.size(); k++)
+                    assertEquals(subset.contains(10+k), k == i || k == j);
+
+                Integer lower = 10 + Math.min(i, j), upper = 10 + Math.max(i, j);
+                Iterator<Integer> it = subset.iterator();
+                assertTrue(it.hasNext());
+                assertEquals(it.next(), lower);
+                assertEquals(it.hasNext(), i != j);
+                if (i != j) {
+                    assertEquals(it.next(), upper);
+                    assertFalse(it.hasNext());
+                }
+
+                Iterator<Integer> it2 = subset.iterator();
+                assertEquals(it2.next(), lower);
+                if (i != j)
+                    assertEquals(it2.next(), upper);
+                assertFalse(it2.hasNext());
+            }
+        }
     }
 
     @Test
