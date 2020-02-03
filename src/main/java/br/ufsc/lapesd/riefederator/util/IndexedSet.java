@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
@@ -147,9 +146,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
             for (int i = 0; i < data.size(); i++)
                 codes[i] = Objects.hashCode(data.get(i));
             Arrays.sort(codes);
-            HashCodeBuilder b = new HashCodeBuilder();
-            for (int code : codes) b.append(code);
-            hash = b.toHashCode();
+            hash = Arrays.hashCode(codes);
         }
         return hash;
     }

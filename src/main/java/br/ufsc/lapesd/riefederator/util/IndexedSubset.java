@@ -52,6 +52,21 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
         return size() - old;
     }
 
+    @SuppressWarnings("ReferenceEquality")
+    public int difference(@Nonnull Collection<?> o) {
+        if (o instanceof IndexedSubset && ((IndexedSubset<?>) o).getParent() == parent) {
+            int old = size();
+            this.bitSet.andNot(((IndexedSubset<?>) o).getBitSet());
+            assert size() <= old;
+            return old - size();
+        } else {
+            int count = 0;
+            for (Object element : o)
+                count += remove(element) ? 1 : 0;
+            return count;
+        }
+    }
+
     public @Nonnull IndexedSubset<T> copy() {
         BitSet bitSet = new BitSet(parent.size());
         bitSet.or(this.bitSet);
@@ -67,6 +82,12 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     public @Nonnull IndexedSubset<T> createUnion(@Nonnull Collection<? extends T> collection) {
         IndexedSubset<T> copy = copy();
         copy.union(collection);
+        return copy;
+    }
+
+    public @Nonnull IndexedSubset<T> createDifference(@Nonnull Collection<? extends T> coll) {
+        IndexedSubset<T> copy = copy();
+        copy.difference(coll);
         return copy;
     }
 
@@ -92,7 +113,12 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     @Override
     public int hashCode() {
         // do not cache, since getBitSet() can be modified
-        return Objects.hash(getParent(), getBitSet());
+        int size = size(), out = 0;
+        int[] codes = new int[size];
+        for (int i = bitSet.nextSetBit(0); i >= 0; i = bitSet.nextSetBit(i+1))
+            codes[out++] = parent.get(i).hashCode();
+        Arrays.sort(codes);
+        return Arrays.hashCode(codes);
     }
 
     /* --- implement List & Set methods --- */
@@ -173,11 +199,8 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     }
 
     @Override
-    public boolean removeAll(Collection<?> c) {
-        boolean change = false;
-        for (Object object : c)
-            change |= remove(object);
-        return change;
+    public boolean removeAll(@Nonnull Collection<?> c) {
+        return difference(c) > 0;
     }
 
     @Override

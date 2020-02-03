@@ -413,12 +413,38 @@ public class IndexedSetTest {
     public void testSubsetEquality() {
         IndexedSet<Integer> a = set(10, 11, 12), b = set(11, 12, 13);
         assertEquals(a.subset(10), a.subset(singletonList(10)));
+        assertEquals(a.subset(10).hashCode(), a.subset(singletonList(10)).hashCode());
+
         assertNotEquals(a.subset(asList(10, 11)), a.subset(10));
         assertNotEquals(a.subset(asList(10, 11)), a.subset(11));
 
         assertNotEquals(a.subset(asList(10, 11)), b.subset(asList(11, 12)));
         assertEquals(a.subset(11), b.subset(11));
+        assertEquals(a.subset(11).hashCode(), b.subset(11).hashCode());
         assertEquals(a.subset(asList(12, 11)), b.subset(asList(11, 12)));
+    }
+
+    @Test
+    public void testSubsetHashCode() {
+        IndexedSet<Integer> a = set(11, 12, 13, 14, 15), b = set(15, 14, 13, 12, 11);
+        IndexedSet<Integer> c = set(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20);
+        for (int i = 0; i < a.size(); i++) {
+            for (int j = 0; j < a.size(); j++) {
+                for (int k = 0; k < a.size(); k++) {
+                    IndexedSubset<Integer> aSubset = a.subset(asList(i, j, k));
+                    IndexedSubset<Integer> aSubset2 = a.subset(asList(j, i, k));
+                    IndexedSubset<Integer> bSubset = b.subset(asList(i, j, k));
+                    IndexedSubset<Integer> cSubset = c.subset(asList(i, j, k));
+
+                    assertEquals(aSubset, aSubset2);
+                    assertEquals(aSubset.hashCode(), aSubset2.hashCode());
+                    assertEquals(aSubset, bSubset);
+                    assertEquals(aSubset.hashCode(), bSubset.hashCode());
+                    assertEquals(aSubset, cSubset);
+                    assertEquals(aSubset.hashCode(), cSubset.hashCode());
+                }
+            }
+        }
     }
 
     @Test
@@ -461,6 +487,44 @@ public class IndexedSetTest {
         assertEquals(new ArrayList<>(s35), asList(13, 15));
         assertEquals(new ArrayList<>(s35.createIntersection(s013)), singletonList(13));
         assertEquals(new ArrayList<>(s35.createUnion(s013)), asList(10, 11, 13, 15));
+    }
+
+    @Test
+    public void testSetDifference() {
+        IndexedSet<Integer> set = set(10, 11, 12, 13, 14, 15);
+
+        assertEquals(set.emptySubset().createDifference(set.fullSubset()), set.emptySubset());
+        assertEquals(set.emptySubset().createDifference(set.subset(10)), set.emptySubset());
+        assertEquals(set.fullSubset().createDifference(set.subset(11)),
+                     set.subset(asList(10, 12, 13, 14, 15)));
+        assertEquals(set.fullSubset().createDifference(set.subset(asList(11, 12, 13))),
+                     set.subset(asList(10, 14, 15)));
+        assertEquals(set.fullSubset().createDifference(set.subset(asList(11, 13, 15))),
+                     set.subset(asList(10, 12, 14)));
+
+        IndexedSubset<Integer> subset = set.fullSubset();
+        assertEquals(subset.difference(set.subset(asList(10, 12, 14))), 3);
+        assertEquals(subset, set.subset(asList(11, 13, 15)));
+
+        subset = set.fullSubset();
+        assertEquals(subset.difference(set.subset(asList(11, 13, 15))), 3);
+        assertEquals(subset, set.subset(asList(10, 12, 14)));
+
+        subset = set.subset(asList(10, 11, 12));
+        assertEquals(subset.difference(set.subset(asList(11, 14, 15))), 1);
+        assertEquals(subset, set.subset(asList(10, 12)));
+
+        subset = set.subset(asList(11, 13, 15));
+        assertEquals(subset.difference(asList(10, 11, 13)), 2);
+        assertEquals(subset, set.subset(15));
+
+        subset = set.subset(asList(10, 12, 14));
+        assertEquals(subset.difference(set.fullSubset()), 3);
+        assertEquals(subset, set.emptySubset());
+
+        subset = set.subset(asList(11, 13, 15));
+        assertEquals(subset.difference(set.subset(asList(15, 13, 11))), 3);
+        assertEquals(subset, set.emptySubset());
     }
 
 

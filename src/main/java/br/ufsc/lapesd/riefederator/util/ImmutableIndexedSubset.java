@@ -11,6 +11,8 @@ import java.util.function.Predicate;
 @Immutable
 @SuppressWarnings("Immutable")
 public class ImmutableIndexedSubset<T> extends IndexedSubset<T> {
+    private int hash = 0;
+
     public ImmutableIndexedSubset(@Nonnull IndexedSet<T> parent, @Nonnull BitSet bitSet) {
         super(parent, bitSet);
     }
@@ -25,6 +27,13 @@ public class ImmutableIndexedSubset<T> extends IndexedSubset<T> {
         assert emptyBitSet.cardinality() == 0;
         assert emptyBitSet.size() == 0;
         return new ImmutableIndexedSubset<>(IndexedSet.empty(), emptyBitSet);
+    }
+
+    @Override
+    public int hashCode() {
+        if (hash == 0)
+            hash = super.hashCode();
+        return hash;
     }
 
     @Override
@@ -53,7 +62,7 @@ public class ImmutableIndexedSubset<T> extends IndexedSubset<T> {
     }
 
     @Override
-    public boolean removeAll(Collection<?> c) {
+    public boolean removeAll(@Nonnull Collection<?> c) {
         throw new UnsupportedOperationException("ImmutableIndexedSubset");
     }
 
