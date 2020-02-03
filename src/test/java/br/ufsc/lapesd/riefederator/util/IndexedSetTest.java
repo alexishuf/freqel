@@ -159,6 +159,47 @@ public class IndexedSetTest {
         assertEquals(set.get(2), initial.get(0));
     }
 
+    @Test(dataProvider = "sizesData")
+    public void testContainsAny(int size) {
+        List<Integer> values = randomValues(size);
+        IndexedSet<Integer> set = IndexedSet.fromDistinct(values);
+
+        int step = size > 128 ? 4 : 1;
+        for (int i = 0; i < size; i += step) {
+            for (int j = 0; j < size; j += step) {
+                assertTrue(set.containsAny(asList(values.get(i), values.get(j))));
+                assertTrue(set.containsAny(asList(0, values.get(i), values.get(j))));
+                assertTrue(set.containsAny(asList(values.get(i), values.get(j), 9)));
+                assertTrue(set.containsAny(asList(0, values.get(i), values.get(j), 9)));
+                assertTrue(set.containsAny(asList(0, 1, values.get(i), values.get(j))));
+                assertTrue(set.containsAny(asList(0, 1, values.get(i), values.get(j))));
+
+                assertTrue(set.containsAny(Sets.newHashSet(values.get(i), values.get(j))));
+                assertTrue(set.containsAny(Sets.newHashSet(0, values.get(i), values.get(j))));
+                assertTrue(set.containsAny(Sets.newHashSet(values.get(i), values.get(j), 9)));
+                assertTrue(set.containsAny(Sets.newHashSet(0, values.get(i), values.get(j), 9)));
+                assertTrue(set.containsAny(Sets.newHashSet(0, 1, values.get(i), values.get(j))));
+                assertTrue(set.containsAny(Sets.newHashSet(0, 1, values.get(i), values.get(j))));
+            }
+        }
+
+        Set<Integer> otherSet = new HashSet<>();
+        List<Integer> otherList = new ArrayList<>(VALUES_BASE+2);
+        for (int k = 0; k < VALUES_BASE; k++) {
+            otherSet.add(k);
+            otherList.add(k);
+        }
+        assertFalse(set.containsAny(otherSet));
+        assertFalse(set.containsAny(otherList));
+
+        if (size > 0) {
+            otherSet.add(values.get(0));
+            otherList.add(values.get(0));
+            assertTrue(set.containsAny(otherSet));
+            assertTrue(set.containsAny(otherList));
+        }
+    }
+
     @SuppressWarnings("SimplifyStreamApiCallChains")
     @Test(dataProvider = "sizesData")
     public void testSpecialSubsets(int size) {

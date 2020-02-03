@@ -125,6 +125,19 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
         return immutableSubset(Collections.singletonList(value));
     }
 
+    public boolean containsAny(@Nonnull Collection<?> c) {
+        if (c instanceof Set && c.size() > size()) {
+            for (T element : data) {
+                if (c.contains(element)) return true;
+            }
+        } else {
+            for (Object element : c) {
+                if (contains(element)) return true;
+            }
+        }
+        return false;
+    }
+
     /* --- implement object methods --- */
 
     @Override
