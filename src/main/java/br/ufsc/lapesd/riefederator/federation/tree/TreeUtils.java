@@ -36,6 +36,50 @@ public class TreeUtils {
         return true; // no cycle found
     }
 
+    private static class AcyclicOp {
+        @Nonnull PlanNode node;
+        boolean entering;
+
+        public AcyclicOp(@Nonnull PlanNode node, boolean entering) {
+            this.node = node;
+            this.entering = entering;
+        }
+        public static @Nonnull
+        AcyclicOp entering(@Nonnull PlanNode node) {
+            return new AcyclicOp(node, true);
+        }
+        public static @Nonnull
+        AcyclicOp leaving(@Nonnull PlanNode node) {
+            return new AcyclicOp(node, false);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s %s", entering ? "ENTER" : "LEAVE", node);
+        }
+    }
+
+    public static boolean isAcyclic(@Nonnull PlanNode root) {
+        Set<PlanNode> open = new HashSet<>();
+        ArrayDeque<AcyclicOp> stack = new ArrayDeque<>();
+        stack.push(AcyclicOp.entering(root));
+        while (!stack.isEmpty()) {
+            AcyclicOp operation = stack.pop();
+            if (operation.entering) {
+                if (!open.add(operation.node)) {
+                    return false; //cycle detected!
+                } else {
+                    stack.push(AcyclicOp.leaving(operation.node));
+                    operation.node.getChildren().forEach(c -> stack.push(AcyclicOp.entering(c)));
+                }
+            } else {
+                assert open.contains(operation.node);
+                open.remove(operation.node);
+            }
+        }
+        return true;
+    }
+
     public static @Nonnull Iterator<PlanNode> iteratePreOrder(@Nonnull PlanNode root) {
         if (TreeUtils.class.desiredAssertionStatus())
             Preconditions.checkArgument(isTree(root, true), "Plan is not a tree!");

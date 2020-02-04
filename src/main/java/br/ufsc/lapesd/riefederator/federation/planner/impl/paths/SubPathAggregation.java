@@ -20,20 +20,25 @@ public class SubPathAggregation {
     }
 
     public static @Nonnull
-    SubPathAggregation aggregate(@Nonnull JoinGraph g, @Nonnull List<JoinPath> paths,
+    SubPathAggregation aggregate(@Nonnull JoinGraph g, @Nonnull Collection<JoinPath> paths,
                                  @Nonnull JoinOrderPlanner joinOrderPlanner) {
+        if (paths.isEmpty()) {
+            return new SubPathAggregation(new JoinGraph(), Collections.emptyList());
+        }
+        List<JoinPath> pathsList = paths instanceof List ? (List<JoinPath>)paths
+                                                         : new ArrayList<>(paths);
         State state = new State(g);
-        int i = -1, size = paths.size();
-        for (JoinPath path : paths) {
+        int i = -1, size = pathsList.size();
+        for (JoinPath path : pathsList) {
             ++i;
             for (int j = i+1; j < size; j++)
-                state.processPair(path, paths.get(j));
+                state.processPair(path, pathsList.get(j));
         }
 
         state.planComponents(joinOrderPlanner);
-        JoinGraph reducedGraph = state.createReducedJoinGraph(paths);
-        List<JoinPath> reducedPaths = new ArrayList<>(paths.size());
-        for (JoinPath path : paths) {
+        JoinGraph reducedGraph = state.createReducedJoinGraph(pathsList);
+        List<JoinPath> reducedPaths = new ArrayList<>(pathsList.size());
+        for (JoinPath path : pathsList) {
             reducedPaths.add(state.reducePath(path));
         }
         return new SubPathAggregation(reducedGraph, reducedPaths);

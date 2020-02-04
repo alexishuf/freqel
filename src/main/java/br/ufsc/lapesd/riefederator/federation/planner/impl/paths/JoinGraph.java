@@ -14,6 +14,10 @@ public class JoinGraph extends UndirectedIrreflexiveArrayGraph<PlanNode, JoinInf
         super(JoinInfo.class, null, nodes);
     }
 
+    public JoinGraph() {
+        super(JoinInfo.class);
+    }
+
     @Override
     public @Nonnull IndexedSet<PlanNode> getNodes() {
         return (IndexedSet<PlanNode>) super.getNodes();

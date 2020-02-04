@@ -314,6 +314,15 @@ public class SubPathAggregationTest {
                 .toArray(Object[][]::new);
     }
 
+    @Test
+    public void testAggregateEmpty() {
+        SubPathAggregation aggregation = SubPathAggregation.aggregate(new JoinGraph(allNodes),
+                emptyList(), new ArbitraryJoinOrderPlanner());
+        assertEquals(aggregation.getGraph().size(), 0);
+        assertEquals(aggregation.getJoinPaths(), emptyList());
+    }
+
+
     @Test(dataProvider = "joinOrderPlannerData")
     public void testAggregateSinglePath(Supplier<JoinOrderPlanner> supplier) {
         List<JoinPath> paths = singletonList(new JoinPath(allNodes, getPlainJoinability(n1, n2),
@@ -325,7 +334,6 @@ public class SubPathAggregationTest {
         assertSame(aggregation.getJoinPaths().get(0), paths.get(0));
         assertEquals(aggregation.getGraph().getNodes(), allNodes.subset(asList(n1, n2, n3, n4)));
     }
-
 
     @Test(dataProvider = "joinOrderPlannerData")
     public void testAggregateCommonPrefix(Supplier<JoinOrderPlanner> supplier) {

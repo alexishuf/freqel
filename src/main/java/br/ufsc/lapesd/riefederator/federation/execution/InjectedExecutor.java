@@ -35,7 +35,7 @@ public class InjectedExecutor implements PlanExecutor {
 
     @Override
     public @Nonnull Results executeNode(@Nonnull PlanNode node) {
-        Preconditions.checkArgument(TreeUtils.isTree(node), "Node "+node+"is not a tree");
+        Preconditions.checkArgument(TreeUtils.isAcyclic(node), "Node "+node+"is not a tree");
         Preconditions.checkArgument(!node.hasInputs(), "Node "+node+" needs inputs");
         Class<? extends PlanNode> cls = node.getClass();
         if (QueryNode.class.isAssignableFrom(cls))

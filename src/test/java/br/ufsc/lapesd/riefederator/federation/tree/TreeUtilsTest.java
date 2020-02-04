@@ -18,10 +18,12 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.isAcyclic;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
 public class TreeUtilsTest {
@@ -64,7 +66,7 @@ public class TreeUtilsTest {
             iterated.add(it.next());
         assertEquals(iterated, expected);
 
-        List<PlanNode> streamed = TreeUtils.streamPreOrder(root).collect(Collectors.toList());
+        List<PlanNode> streamed = TreeUtils.streamPreOrder(root).collect(toList());
         assertEquals(streamed, expected);
     }
 
@@ -82,6 +84,44 @@ public class TreeUtilsTest {
         assertFalse(TreeUtils.isTree(root, false));
         assertTrue(TreeUtils.isTree(root, true));
         assertFalse(TreeUtils.isTree(root));
+        assertTrue(isAcyclic(root));
+    }
+
+    @Test
+    public void testIsAcyclicSimple() {
+        QueryNode n1 = new QueryNode(ep, CQuery.from(new Triple(ALICE, knows, X)));
+        QueryNode n2 = new QueryNode(ep, CQuery.from(new Triple(X, knows, BOB)));
+        JoinNode root = JoinNode.builder(n1, n2).build();
+
+        assertTrue(isAcyclic(n1));
+        assertTrue(isAcyclic(root));
+    }
+
+    @Test
+    public void testIsAcyclicWithQueryNodeReuse() {
+        QueryNode n1 = new QueryNode(ep, CQuery.from(new Triple(ALICE, knows, X)));
+        QueryNode n2 = new QueryNode(ep, CQuery.from(new Triple(X, knows, BOB)));
+        JoinNode j1 = JoinNode.builder(n1, n2).build();
+        JoinNode j2 = JoinNode.builder(n1, n2).build();
+        MultiQueryNode r = MultiQueryNode.builder().add(j1).add(j2).build();
+
+        assertEquals(Stream.of(j1,j2,r).filter(n -> !isAcyclic(n)).collect(toList()), emptyList());
+    }
+
+    @Test
+    public void testIsAcyclicWithJoinNodeReuse() {
+        EmptyEndpoint ep2 = new EmptyEndpoint();
+        QueryNode n1 = new QueryNode(ep, CQuery.from(new Triple(ALICE, knows, X)));
+        QueryNode n2 = new QueryNode(ep, CQuery.from(new Triple(X, knows, Y)));
+        QueryNode n3a = new QueryNode(ep , CQuery.from(new Triple(Y, knows, BOB)));
+        QueryNode n3b = new QueryNode(ep2, CQuery.from(new Triple(Y, knows, BOB)));
+        JoinNode j1 = JoinNode.builder(n1, n2).build();
+        JoinNode j2 = JoinNode.builder(j1, n3a).build();
+        JoinNode j3 = JoinNode.builder(j1, n3b).build();
+        MultiQueryNode root = MultiQueryNode.builder().add(j2).add(j3).build();
+
+        assertEquals(Stream.of(j1,j2,j3,root).filter(n -> !isAcyclic(n)).collect(toList()),
+                     emptyList());
     }
 
     @DataProvider

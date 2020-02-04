@@ -3,10 +3,8 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinPath;
-import br.ufsc.lapesd.riefederator.federation.tree.EmptyNode;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
+import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.SubPathAggregation;
+import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -29,7 +27,7 @@ import static java.util.stream.Collectors.toList;
 
 public class JoinPathsPlanner implements Planner {
     private static final Logger logger = LoggerFactory.getLogger(JoinPathsPlanner.class);
-    private static final int PATHS_PAR_THRESHOLD = 6;
+    private static final int PATHS_PAR_THRESHOLD = 10;
     private @Nonnull JoinOrderPlanner joinOrderPlanner;
 
     @Inject
@@ -45,26 +43,92 @@ public class JoinPathsPlanner implements Planner {
         IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.getMatchedTriples());
         if (JoinPathsPlanner.class.desiredAssertionStatus()) {
             checkArgument(qns.stream().allMatch(n -> full.containsAll(n.getMatchedTriples())),
-                          "Some QueryNodes match triples not in query");
+                    "Some QueryNodes match triples not in query");
         }
         if (!satisfiesAll(full, qns)) {
             logger.info("QueryNodes miss some triples in query {}, returning EmptyNode", query);
             return EmptyNode.createFor(query);
         }
 
+        List<IndexedSet<Triple>> cartesianComponents = getCartesianComponents(full);
+        assert !cartesianComponents.isEmpty();
+        if (cartesianComponents.size() > 1) {
+            List<PlanNode> list = new ArrayList<>(cartesianComponents.size());
+            for (IndexedSet<Triple> component : cartesianComponents) {
+                List<QueryNode> selected = qns.stream()
+                        .filter(qn -> component.containsAny(qn.getMatchedTriples()))
+                        .collect(toList());
+                PlanNode root = plan(selected, component);
+                if (root == null) {
+                    logger.debug("Query {} is unsatisfiable because one component {} of a " +
+                                 "cartesian product is unsatisfiable", query, component);
+                    return EmptyNode.createFor(query);
+                }
+                list.add(root);
+            }
+            return new CartesianNode(list);
+        } else {
+            PlanNode root = plan(qns, full);
+            if (root == null) {
+                logger.debug("No join path across endpoints for join-connected query {}. " +
+                             "Returning EmptyNode", query);
+                return EmptyNode.createFor(query);
+            }
+            return root;
+        }
+    }
+
+    private boolean hasJoin(@Nonnull Triple a, @Nonnull Triple b) {
+        return  (a.getSubject().isVar()   && b.contains(a.getSubject()  )) ||
+                (a.getPredicate().isVar() && b.contains(a.getPredicate())) ||
+                (a.getObject().isVar()    && b.contains(a.getObject()   ));
+    }
+
+    @VisibleForTesting
+    @Nonnull List<IndexedSet<Triple>>
+    getCartesianComponents(@Nonnull IndexedSet<Triple> triples) {
+        List<IndexedSet<Triple>> components = new ArrayList<>();
+
+        IndexedSubset<Triple> visited = triples.emptySubset(), component = triples.emptySubset();
+        ArrayDeque<Triple> stack = new ArrayDeque<>(triples.size());
+        for (Triple start : triples) {
+            if (visited.contains(start))
+                continue;
+            component.clear();
+            stack.push(start);
+            while (!stack.isEmpty()) {
+                Triple triple = stack.pop();
+                if (visited.add(triple)) {
+                    component.add(triple);
+                    for (Triple next : triples) {
+                        if (!visited.contains(next) && hasJoin(triple, next))
+                            stack.push(next);
+                    }
+                }
+            }
+            components.add(IndexedSet.fromDistinct(component));
+        }
+        return components;
+    }
+
+    private @Nullable PlanNode plan(@Nonnull Collection<QueryNode> qns,
+                                    @Nonnull IndexedSet<Triple> triples) {
         IndexedSet<PlanNode> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
         Set<JoinPath> paths = new HashSet<>(leaves.size());
-        getPaths(full, g, paths);
-        boolean parallel = paths.size() > PATHS_PAR_THRESHOLD;
-        List<PlanNode> plans = (parallel ? paths.parallelStream() : paths.stream())
-                .map(p -> p.isWhole() ? p.getWhole() : joinOrderPlanner.plan(p.getJoinInfos()))
-                .collect(toList());
+        getPaths(triples, g, paths);
+        if (paths.isEmpty())
+            return null;
 
+        SubPathAggregation aggregation = SubPathAggregation.aggregate(g, paths, joinOrderPlanner);
+        JoinGraph g2 = aggregation.getGraph();
+        List<JoinPath> aggregatedPaths = aggregation.getJoinPaths();
+        boolean parallel = paths.size() > PATHS_PAR_THRESHOLD;
         MultiQueryNode.Builder builder = MultiQueryNode.builder();
-        builder.addAll(plans);
-        paths.stream().filter(JoinPath::isWhole).map(JoinPath::getWhole).forEach(builder::add);
-        return builder.build();
+        builder.addAll((parallel ? aggregatedPaths.parallelStream() : aggregatedPaths.stream())
+                .map(p -> p.isWhole() ? p.getWhole() : joinOrderPlanner.plan(p.getJoinInfos(), g2))
+                .collect(toList()));
+        return builder.buildIfMulti();
     }
 
     private boolean satisfiesAll(@Nonnull IndexedSet<Triple> all,

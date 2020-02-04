@@ -33,6 +33,7 @@ import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -43,6 +44,7 @@ public class JoinPathsPlannerTest {
     private static final URI p2 = new StdURI("http://example.org/p2");
     private static final URI p3 = new StdURI("http://example.org/p3");
     private static final URI p4 = new StdURI("http://example.org/p4");
+    private static final URI knows = new StdURI("http://example.org/knows");
     private static final Var x = new StdVar("x");
     private static final Var y = new StdVar("y");
     private static final Var z = new StdVar("z");
@@ -221,6 +223,7 @@ public class JoinPathsPlannerTest {
         QueryNode i2 = new QueryNode(e2, CQuery.with(new Triple(x, p2, y))
                 .annotate(x, AtomAnnotation.asRequired(Atom1))
                 .annotate(y, AtomAnnotation.of(Atom1)).build());
+        QueryNode aliceKnowsX = node(e1, Alice, knows, x), yKnowsBob = node(e1, y, knows, Bob);
 
         return Stream.of(
                 asList(singleton(n1), singleton(n1)),
@@ -231,7 +234,9 @@ public class JoinPathsPlannerTest {
                 asList(asList(n2, o2, i2), asList(m(n2, o2), i2)),
                 asList(asList(n2, o2, i2, n3), asList(m(n2, o2), i2, n3)),
                 asList(asList(n1, o1, n2, o2, i2, n3), asList(m(n1, o1), m(n2, o2), i2, n3)),
-                asList(asList(n1, o1, n2, o2, i2, n3, o3), asList(m(n1,o1), m(n2,o2), i2, m(n3,o3)))
+                asList(asList(n1, o1, n2, o2, i2, n3, o3),
+                       asList(m(n1,o1), m(n2,o2), i2, m(n3,o3))),
+                asList(asList(aliceKnowsX, yKnowsBob), asList(aliceKnowsX, yKnowsBob))
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
@@ -424,6 +429,49 @@ public class JoinPathsPlannerTest {
             assertEquals(exSet.stream().filter(p -> !paths.contains(p)).collect(toList()), e);
             assertEquals(paths, exSet);
         }
+    }
+
+    @DataProvider
+    public static Object[][] cartesianComponentsData() {
+        return Stream.of(
+                asList(singleton(new Triple(Alice, p1, x)),
+                       singleton(singleton(new Triple(Alice, p1, x)))),
+                asList(asList(new Triple(Alice, p1, x), new Triple(y, p2, Bob)),
+                       asList(singleton(new Triple(Alice, p1, x)),
+                              singleton(new Triple(y, p2, Bob)))),
+                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
+                              new Triple(z, p3, Alice)),
+                       asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y)),
+                              singleton(new Triple(z, p3, Alice)))),
+                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
+                              new Triple(z, p3, Bob)),
+                       asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y)),
+                              singleton(new Triple(z, p3, Bob)))),
+                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
+                              new Triple(z, p3, Bob), new Triple(z, p4, Bob)),
+                       asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y)),
+                              asList(new Triple(z, p3, Bob), new Triple(z, p4, Bob)))),
+                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
+                              new Triple(z, p3, Bob), new Triple(z, p4, y)),
+                       singleton(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
+                                        new Triple(z, p3, Bob), new Triple(z, p4, y)))),
+                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
+                              new Triple(z, p3, Bob), new Triple(z, p4, x)),
+                       singleton(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
+                                        new Triple(z, p3, Bob), new Triple(z, p4, x)))),
+                asList(asList(new Triple(Alice, p1, x), new Triple(Alice, p2, y)),
+                       asList(singleton(new Triple(Alice, p1, x)),
+                              singleton(new Triple(Alice, p2, y))))
+        ).map(List::toArray).toArray(Object[][]::new);
+    }
+
+
+    @Test(dataProvider = "cartesianComponentsData")
+    public void testCartesianComponents(Collection<Triple> triples,
+                                        Collection<Collection<Triple>> expected) {
+        JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
+        List<IndexedSet<Triple>> list = planner.getCartesianComponents(IndexedSet.from(triples));
+        assertEquals(new HashSet<>(list), expected.stream().map(IndexedSet::from).collect(toSet()));
     }
 
 }
