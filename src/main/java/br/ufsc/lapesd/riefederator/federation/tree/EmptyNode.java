@@ -1,11 +1,14 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.lang.ref.SoftReference;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +19,8 @@ import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 public class EmptyNode extends PlanNode {
+    private @Nullable CQuery query;
+
     public EmptyNode(@Nonnull Collection<String> resultVars) {
         this(resultVars, emptySet());
     }
@@ -25,8 +30,19 @@ public class EmptyNode extends PlanNode {
         super(resultVars, false, inputVars, emptyList());
     }
 
-    public static @Nonnull EmptyNode createFor(@Nonnull CQuery query) {
-        return new EmptyNode(query.streamTerms(Var.class).map(Var::getName).collect(toSet()));
+    public EmptyNode(@Nonnull CQuery query) {
+        this(query.streamTerms(Var.class).map(Var::getName).collect(toSet()));
+        this.query = query;
+    }
+
+    @Override
+    public @Nonnull Set<Triple> getMatchedTriples() {
+        Set<Triple> strong = matchedTriples.get();
+        if (strong == null) {
+            strong = query != null ? query.getMatchedTriples() : emptySet();
+            matchedTriples = new SoftReference<>(strong);
+        }
+        return strong;
     }
 
     @Override

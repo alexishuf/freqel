@@ -17,7 +17,8 @@ public abstract class PlanNode {
     private @Nonnull Set<String> resultVars, inputVars;
     private boolean projecting;
     private @Nonnull List<PlanNode> children;
-    private @Nonnull SoftReference<Set<Triple>> matchedTriples = new SoftReference<>(null);
+    protected @Nonnull SoftReference<Set<Triple>> matchedTriples
+            = new SoftReference<>(null);
 
     protected PlanNode(@Nonnull Collection<String> resultVars, boolean projecting,
                        @Nonnull Collection<String> inputVars,

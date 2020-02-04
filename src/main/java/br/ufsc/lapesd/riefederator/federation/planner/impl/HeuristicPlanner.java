@@ -24,7 +24,7 @@ import static java.util.stream.Collectors.toSet;
 
 public class HeuristicPlanner implements Planner {
     @Override
-    public @Nonnull PlanNode plan(@Nonnull CQuery ignored,
+    public @Nonnull PlanNode plan(@Nonnull CQuery query,
                                   @Nonnull Collection<QueryNode> conjunctiveNodes) {
         checkArgument(!conjunctiveNodes.isEmpty(), "Cannot plan empty queries");
         if (conjunctiveNodes.size() == 1)
@@ -36,7 +36,7 @@ public class HeuristicPlanner implements Planner {
         assert !roots.isEmpty();
         assert roots.stream().noneMatch(Objects::isNull);
         if (roots.stream().anyMatch(EmptyNode.class::isInstance))
-            return new EmptyNode(unionResults(leaves));
+            return new EmptyNode(query);
         return roots.size() == 1 ? roots.get(0) : new CartesianNode(roots);
     }
 

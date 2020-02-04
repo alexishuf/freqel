@@ -6,7 +6,6 @@ import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinPath;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.SubPathAggregation;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
@@ -39,7 +38,7 @@ public class JoinPathsPlanner implements Planner {
     public @Nonnull PlanNode plan(@Nonnull CQuery query, @Nonnull Collection<QueryNode> qns){
         checkArgument(!qns.isEmpty(), "Cannot plan without QueryNodes!");
         if (query.isEmpty())
-            return new EmptyNode(query.streamTerms(Var.class).map(Var::getName).collect(toList()));
+            return new EmptyNode(query);
         IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.getMatchedTriples());
         if (JoinPathsPlanner.class.desiredAssertionStatus()) {
             checkArgument(qns.stream().allMatch(n -> full.containsAll(n.getMatchedTriples())),
@@ -47,7 +46,7 @@ public class JoinPathsPlanner implements Planner {
         }
         if (!satisfiesAll(full, qns)) {
             logger.info("QueryNodes miss some triples in query {}, returning EmptyNode", query);
-            return EmptyNode.createFor(query);
+            return new EmptyNode(query);
         }
 
         List<IndexedSet<Triple>> cartesianComponents = getCartesianComponents(full);
@@ -62,7 +61,7 @@ public class JoinPathsPlanner implements Planner {
                 if (root == null) {
                     logger.debug("Query {} is unsatisfiable because one component {} of a " +
                                  "cartesian product is unsatisfiable", query, component);
-                    return EmptyNode.createFor(query);
+                    return new EmptyNode(query);
                 }
                 list.add(root);
             }
@@ -72,7 +71,7 @@ public class JoinPathsPlanner implements Planner {
             if (root == null) {
                 logger.debug("No join path across endpoints for join-connected query {}. " +
                              "Returning EmptyNode", query);
-                return EmptyNode.createFor(query);
+                return new EmptyNode(query);
             }
             return root;
         }
