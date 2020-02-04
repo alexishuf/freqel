@@ -139,6 +139,61 @@ public class IndexedSetTest {
         }
     }
 
+    @Test(dataProvider = "sizesData")
+    public void testFromMap(int size) {
+        Map<Integer, Integer> map = new HashMap<>(size);
+        List<Integer> list = new ArrayList<>(size);
+        List<Integer> list2 = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            map.put(VALUES_BASE+i, i);
+            list.add(VALUES_BASE+i);
+            list2.add(VALUES_BASE+i);
+        }
+        IndexedSet<Integer> set = IndexedSet.fromMap(map, list);
+
+        assertEquals(set.size(), size);
+        assertEquals(new ArrayList<>(set), list2);
+        assertEquals(set, new HashSet<>(list2));
+
+        for (int i = 0; i < size; i++)
+            assertEquals(set.get(i), list2.get(i));
+        for (Iterator<Integer> it = set.iterator(), it2 = list2.iterator(); it.hasNext(); ) {
+            assertTrue(it2.hasNext());
+            assertEquals(it.next(), it2.next());
+        }
+    }
+
+    @Test
+    public void testMapTwoToOne() {
+        Map<Integer, Integer> map = new HashMap<>();
+        List<Integer> list = asList(10, 11, 12, 13, 14, 15);
+        for (int i = 0; i < 6; i++) {
+            map.put(10+i, i);
+            map.put(20+i, i);
+        }
+        IndexedSet<Integer> set = IndexedSet.fromMap(map, list);
+
+        assertEquals(set.size(), list.size());
+        assertEquals(new ArrayList<>(set), list);
+        assertEquals(set, new HashSet<>(list));
+
+        for (int i = 0; i < set.size(); i++) {
+            assertEquals(set.get(i), list.get(i));
+            assertTrue(set.contains(list.get(i)));
+            assertEquals(set.indexOf(list.get(i)), i);
+        }
+        for (int i = 0; i < set.size(); i++) {
+            assertTrue(set.contains(20+i));
+            assertEquals(set.indexOf(20+i), i);
+            assertFalse(set.contains(30+i));
+            assertEquals(set.indexOf(20+i), i);
+        }
+
+        assertFalse(set.contains(16));
+        assertFalse(set.contains(19));
+        assertFalse(set.containsAny(asList(16, 17, 18, 19)));
+    }
+
     @Test
     public void testNoCopy() {
         List<Integer> values = randomValues(3);

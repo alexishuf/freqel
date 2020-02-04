@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.util;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.Immutable;
@@ -10,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nonnull;
 import java.util.*;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Spliterator.*;
 
 @Immutable
@@ -46,9 +46,27 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     }
 
     @CheckReturnValue
+    public static @Nonnull <U> IndexedSet<U> fromMap(@Nonnull Map<U, Integer> map,
+                                                     @Nonnull List<U> list) {
+        if (IndexedSet.class.desiredAssertionStatus()) {
+            checkArgument(map.isEmpty() || map.values().stream().max(Integer::compareTo).orElse(0)
+                          < list.size(), "Indices past the end of list");
+            checkArgument(map.values().stream().noneMatch(i -> i < 0),
+                          "Negative indices not allowed");
+            checkArgument(list.stream().allMatch(map::containsKey),
+                          "There are elements in list that are not keys in the map");
+            for (int i = 0; i < list.size(); i++) {
+                checkArgument(map.get(list.get(i)) == i, "List item at position "+i
+                        +" does not match its index in map");
+            }
+        }
+        return new IndexedSet<>(list, ImmutableMap.copyOf(map));
+    }
+
+    @CheckReturnValue
     public static @Nonnull <U> IndexedSet<U> fromDistinct(@Nonnull Collection<U> collection) {
         if (IndexedSet.class.desiredAssertionStatus())
-            Preconditions.checkArgument(new HashSet<>(collection).size() == collection.size());
+            checkArgument(new HashSet<>(collection).size() == collection.size());
         ImmutableMap<U, Integer> indexMap = createIndexMap(collection);
         if (collection instanceof List)
             return new IndexedSet<>((List<U>)collection, indexMap);
@@ -59,7 +77,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     @CheckReturnValue
     public static @Nonnull <U> IndexedSet<U> fromDistinctCopy(@Nonnull Collection<U> collection) {
         if (IndexedSet.class.desiredAssertionStatus())
-            Preconditions.checkArgument(new HashSet<>(collection).size() == collection.size());
+            checkArgument(new HashSet<>(collection).size() == collection.size());
         return new IndexedSet<>(new ArrayList<>(collection), createIndexMap(collection));
     }
 
@@ -123,6 +141,11 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     @CheckReturnValue
     public @Nonnull final ImmutableIndexedSubset<T> immutableSubset(@Nonnull T value) {
         return immutableSubset(Collections.singletonList(value));
+    }
+
+    @Override
+    public boolean contains(Object o) {
+        return indexOf(o) >= 0;
     }
 
     public boolean containsAny(@Nonnull Collection<?> c) {
