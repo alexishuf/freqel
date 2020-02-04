@@ -314,7 +314,7 @@ public class HeuristicPlannerTest {
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
         assertEquals(g.getWeights(), new Float[]{
                 //q2,   q3
-                  0.0f, 1.0f, //q1
+                  1.0f, 1.0f, //q1
                         0.0f  //q2
         });
     }

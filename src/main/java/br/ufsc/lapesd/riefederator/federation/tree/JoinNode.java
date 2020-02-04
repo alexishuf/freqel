@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
@@ -67,11 +68,12 @@ public class JoinNode extends PlanNode {
 
         public JoinNode build() {
             if (joinVars == null) {
+                JoinInfo info = JoinInfo.getPlainJoinability(left, right);
                 if (inputVars == null) {
-                    inputVars = new HashSet<>();
-                    joinVars = TreeUtils.joinVars(left, right, inputVars);
+                    inputVars = info.getPendingInputs();
+                    joinVars = info.getJoinVars();
                 } else {
-                    joinVars = TreeUtils.joinVars(left, right, null);
+                    joinVars = info.getJoinVars();
                     if (getClass().desiredAssertionStatus()) {
                         Set<String> all = unionInputs(asList(left, right));
                         checkArgument(all.containsAll(inputVars),

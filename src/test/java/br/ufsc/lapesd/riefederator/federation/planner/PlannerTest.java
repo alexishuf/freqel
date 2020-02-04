@@ -2,7 +2,9 @@ package br.ufsc.lapesd.riefederator.federation.planner;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.federation.planner.impl.ArbitraryJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.HeuristicPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinPathsPlanner;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
@@ -11,6 +13,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.Sets;
 import org.apache.jena.sparql.vocabulary.FOAF;
@@ -21,6 +24,8 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Supplier;
 
+import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMultiJoinability;
+import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static com.google.common.collect.Collections2.permutations;
 import static java.util.Arrays.asList;
@@ -47,8 +52,11 @@ public class PlannerTest {
     public static final @Nonnull StdVar U = new StdVar("u");
     public static final @Nonnull StdVar V = new StdVar("v");
 
-    public static @Nonnull List<NamedSupplier<Planner>> suppliers = singletonList(
-            new NamedSupplier<>(HeuristicPlanner.class));
+    public static @Nonnull List<NamedSupplier<Planner>> suppliers = asList(
+            new NamedSupplier<>(HeuristicPlanner.class),
+            new NamedSupplier<>("JoinPathsPlanner+ArbitraryJoinOrderPlanner",
+                    () -> new JoinPathsPlanner(new ArbitraryJoinOrderPlanner()))
+    );
 
     private static final @Nonnull
     EmptyEndpoint empty1  = new EmptyEndpoint(),  empty2 = new EmptyEndpoint(),
@@ -65,6 +73,93 @@ public class PlannerTest {
     static {
         empty3a.addAlternative(empty3b);
         empty3b.addAlternative(empty3a);
+    }
+
+    public void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query) {
+        IndexedSet<Triple> triples = IndexedSet.from(query.getMatchedTriples());
+
+        // the plan is acyclic
+        assertTrue(isAcyclic(root));
+
+        // any query node should only match triples in the query
+        List<PlanNode> bad = streamPreOrder(root)
+                .filter(n -> n instanceof QueryNode
+                        && !triples.containsAll(n.getMatchedTriples()))
+                .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // any  node should only match triples in the query
+        bad = streamPreOrder(root)
+                .filter(n -> !triples.containsAll(n.getMatchedTriples()))
+                .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // the set of matched triples in the plan must be the same as the query
+        assertEquals(root.getMatchedTriples(), triples);
+
+        // all nodes in a MQNode must match the exact same triples in query
+        // this allows us to consider the MQNode as a unit in the plan
+        bad = streamPreOrder(root).filter(n -> n instanceof MultiQueryNode)
+                .map(n -> (MultiQueryNode) n)
+                .filter(n -> n.getChildren().stream().map(PlanNode::getMatchedTriples)
+                        .distinct().count() != 1)
+                .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // no single-child MQ nodes
+        bad = streamPreOrder(root)
+                .filter(n -> n instanceof MultiQueryNode && n.getChildren().size() < 2)
+                .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // MQ nodes should not be directly nested (that is not elegant)
+        bad = streamPreOrder(root)
+                .filter(n -> n instanceof MultiQueryNode
+                          && n.getChildren().stream().anyMatch(n2 -> n2 instanceof MultiQueryNode))
+                .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // all join nodes are valid joins
+        bad = streamPreOrder(root).filter(n -> n instanceof JoinNode).map(n -> (JoinNode) n)
+                .filter(n -> !getPlainJoinability(n.getLeft(), n.getRight()).isValid())
+                .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // all join nodes with MQ operands are valid
+        bad = streamPreOrder(root).filter(n -> n instanceof JoinNode).map(n -> (JoinNode) n)
+                .filter(n -> !getMultiJoinability(n.getLeft(), n.getRight()).isValid())
+                .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // no single-child cartesian nodes
+        bad = streamPreOrder(root)
+                .filter(n -> n instanceof CartesianNode && n.getChildren().size() < 2)
+                .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // cartesian nodes should not be directly nested (that is not elegant)
+        bad = streamPreOrder(root)
+                .filter(n -> n instanceof CartesianNode
+                        && n.getChildren().stream().anyMatch(n2 -> n2 instanceof CartesianNode))
+                .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // no cartesian nodes where a join is applicable between two of its operands
+        bad = streamPreOrder(root).filter(n -> n instanceof CartesianNode)
+                .filter(n -> {
+                    HashSet<PlanNode> children = new HashSet<>(n.getChildren());
+                    //noinspection UnstableApiUsage
+                    for (Set<PlanNode> pair : Sets.combinations(children, 2)) {
+                        Iterator<PlanNode> it = pair.iterator();
+                        PlanNode l = it.next();
+                        assert it.hasNext();
+                        PlanNode r = it.next();
+                        if (getMultiJoinability(l, r).isValid())
+                            return true; // found a violation
+                    }
+                    return false;
+                }).collect(toList());
+        assertEquals(bad, emptyList());
     }
 
     @DataProvider
@@ -85,6 +180,7 @@ public class PlannerTest {
         QueryNode queryNode = new QueryNode(empty1, query);
         PlanNode node = planner.plan(query, singleton(queryNode));
         assertSame(node, queryNode);
+        assertPlanAnswers(node, query);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -99,6 +195,7 @@ public class PlannerTest {
 
         // no good reason for more than 3 nodes
         assertTrue(streamPreOrder(root).count() <= 3);
+        assertPlanAnswers(root, query);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -119,6 +216,8 @@ public class PlannerTest {
                                          .map(n -> (JoinNode)n).collect(toList());
         assertEquals(joins.size(), 1);
         assertEquals(joins.get(0).getJoinVars(), singleton("x"));
+
+        assertPlanAnswers(root, query);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -137,6 +236,7 @@ public class PlannerTest {
                               .filter(n -> n instanceof MultiQueryNode).count(), 0);
         // a sane count is 3: MultiQuery(q1, q2)
         assertTrue(streamPreOrder(root).count() <= 4);
+        assertPlanAnswers(root, query);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -156,6 +256,8 @@ public class PlannerTest {
         assertEquals(nodes.size(), 1);
         assertEquals(nodes.get(0).getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(nodes.get(0).getChildren().size(), 2);
+
+        assertPlanAnswers(root, query);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -212,6 +314,8 @@ public class PlannerTest {
             assertEquals(cartesianNodes.get(0).getResultVars(),
                          Sets.newHashSet("x", "y", "u", "v"));
             assertEquals(cartesianNodes.get(0).getChildren().size(), 2);
+
+            assertPlanAnswers(root, query);
         }
     }
 
@@ -289,6 +393,7 @@ public class PlannerTest {
         );
         assertEquals(queries, expectedQueries);
         assertValidJoins(root);
+        assertPlanAnswers(root, query);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -301,6 +406,7 @@ public class PlannerTest {
         PlanNode plan = planner.plan(query, asList(q1, q2));
         assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 1);
         assertValidJoins(plan);
+        assertPlanAnswers(plan, query);
     }
 
     @Test(dataProvider = "suppliersData")
@@ -330,6 +436,7 @@ public class PlannerTest {
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertEquals(plan.getInputVars(), emptySet());
             assertValidJoins(plan);
+            assertPlanAnswers(plan, query);
         }
     }
 
@@ -359,6 +466,7 @@ public class PlannerTest {
             assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 1);
             assertTrue(streamPreOrder(root).count() <= 4);
             assertValidJoins(root);
+            assertPlanAnswers(root, query);
         }
     }
 
@@ -384,7 +492,7 @@ public class PlannerTest {
 
         public TwoServicePathsNodes(@Nonnull CQEndpoint epFromAlice,
                                     @Nonnull CQEndpoint epFromBob) {
-            query = CQuery.from(new Triple(ALICE, knows, Y),
+            query = CQuery.from(new Triple(ALICE, knows, X),
                                 new Triple(X, knows, Y),
                                 new Triple(Y, knows, BOB));
             q1 = new QueryNode(epFromAlice, CQuery.with(new Triple(ALICE, knows, X))
@@ -427,6 +535,7 @@ public class PlannerTest {
                        qns.equals(new HashSet<>(f.fromBob)), "qns="+qns);
             assertEquals(streamPreOrder(plan).filter(JoinNode.class::isInstance).count(), 2);
             assertValidJoins(plan);
+            assertPlanAnswers(plan, f.query);
         }
     }
 
@@ -450,8 +559,11 @@ public class PlannerTest {
             assertValidJoins(plan);
             assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
                          new HashSet<>(f.all));
-            assertEquals(streamPreOrder(plan).filter(n -> n == f.p1 || n == f.q1).count(), 3);
-            assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 7);
+            assertTrue(streamPreOrder(plan).filter(n -> n == f.q1).count() <= 3);
+            assertTrue(streamPreOrder(plan).filter(n -> n == f.p1).count() <= 1);
+            assertTrue(streamPreOrder(plan).filter(n -> n == f.p3).count() <= 3);
+            assertTrue(streamPreOrder(plan).filter(n -> n == f.q3).count() <= 1);
+            assertPlanAnswers(plan, f.query);
         }
     }
 
@@ -467,11 +579,12 @@ public class PlannerTest {
             assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
                          Sets.newHashSet(f.fromAlice));
             assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 3);
+            assertPlanAnswers(plan, f.query);
         }
     }
 
     @Test(dataProvider = "suppliersData")
-    public void testUnsatisfablePlan(@Nonnull Supplier<Planner> supplier) {
+    public void testUnsatisfiablePlan(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty1);
         List<QueryNode> nodes = asList(f.q1, f.p2, f.q3);
@@ -482,6 +595,7 @@ public class PlannerTest {
             assertEquals(plan.getInputVars(), emptySet());
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertValidJoins(plan);
+            assertPlanAnswers(plan, f.query);
         }
     }
 }

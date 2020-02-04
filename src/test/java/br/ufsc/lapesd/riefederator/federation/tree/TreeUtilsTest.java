@@ -73,7 +73,7 @@ public class TreeUtilsTest {
     @Test
     public void testIsTreeForgivesQueryNodes() {
         QueryNode q1  = new QueryNode(ep, CQuery.from(new Triple(X, knows, ALICE)));
-        QueryNode q2  = new QueryNode(ep, CQuery.from(new Triple(X, knows, ALICE)));
+        QueryNode q2  = new QueryNode(ep, CQuery.from(new Triple(X, knows, BOB)));
         QueryNode q1a = new QueryNode(ep, CQuery.with(new Triple(X, knows, ALICE))
                 .annotate(X, AtomAnnotation.asRequired(person))
                 .build());

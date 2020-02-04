@@ -107,10 +107,9 @@ public class JoinNodeTest {
                 () -> JoinNode.builder(aliceKnowsX, yKnown).addResultVar("x").build());
     }
 
-    @SuppressWarnings("SuspiciousNameCombination")
     @Test
     public void testReplaceChildWithInput() {
-        JoinNode join = JoinNode.builder(yKnown, xKnowsYInput).build();
+        JoinNode join = JoinNode.builder(aliceKnowsX, xKnowsYInput).build();
 
         Map<PlanNode, PlanNode> replacement = new HashMap<>();
         replacement.put(xKnowsYInput, xKnowsY);
