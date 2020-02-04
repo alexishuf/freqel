@@ -67,7 +67,8 @@ public class JoinPath {
     public static @Nullable JoinPath findPath(@Nonnull JoinGraph joinGraph,
                                               @Nonnull Collection<PlanNode> nodes) {
         checkArgument(!nodes.isEmpty(), "Cannot build a plan without any nodes");
-        checkArgument(nodes.size() > 1, "Needs at least two nodes to have a join");
+        if (nodes.size() == 1)
+            return new JoinPath(joinGraph.getNodes(), nodes.iterator().next());
         checkArgument(joinGraph.getNodes().containsAll(nodes), "JoinGraph misses some nodes");
         checkArgument(nodes.stream().noneMatch(Objects::isNull), "Null nodes not allowed");
 

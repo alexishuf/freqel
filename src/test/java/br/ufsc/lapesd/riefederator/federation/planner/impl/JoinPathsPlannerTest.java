@@ -16,6 +16,7 @@ import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
@@ -24,10 +25,14 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.function.Consumer;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMultiJoinability;
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
+import static br.ufsc.lapesd.riefederator.util.IndexedSet.fromDistinctCopy;
+import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static com.google.common.collect.Collections2.permutations;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
@@ -51,14 +56,23 @@ public class JoinPathsPlannerTest {
 
     private static final Atom Person = new Atom("Person"), Atom1 = new Atom("Atom1");
 
-    private static final EmptyEndpoint e1 = new EmptyEndpoint(),
-                                       e2 = new EmptyEndpoint(), e3 = new EmptyEndpoint();
+    private static final EmptyEndpoint e1 = new EmptyEndpoint(), e1a = new EmptyEndpoint(),
+                                       e2 = new EmptyEndpoint(), e3  = new EmptyEndpoint();
 
-    private static  @Nonnull QueryNode node(CQEndpoint ep, @Nonnull Term... terms) {
+    static {
+        e1.addAlternative(e1a);
+    }
+
+    private static  @Nonnull QueryNode node(CQEndpoint ep, @Nonnull Consumer<CQuery.Builder> setup,
+                                            @Nonnull Term... terms) {
         CQuery.Builder builder = CQuery.builder();
         for (int i = 0; i < terms.length; i += 3)
             builder.add(new Triple(terms[i], terms[i+1], terms[i+2]));
+        setup.accept(builder);
         return new QueryNode(ep, builder.build());
+    }
+    private static  @Nonnull QueryNode node(CQEndpoint ep, @Nonnull Term... terms) {
+        return node(ep, b -> {}, terms);
     }
     private static @Nonnull MultiQueryNode m(@Nonnull QueryNode... nodes) {
         Preconditions.checkArgument(nodes.length > 1);
@@ -112,7 +126,7 @@ public class JoinPathsPlannerTest {
         QueryNode n2 = node(e1, x, p2, y), n2Alt = node(e2, x, p2, y);
         QueryNode n3 = node(e1, y, p3, z);
         QueryNode n4 = new QueryNode(e2, CQuery.with(new Triple(z, p4, Bob))
-                .annotate(z, AtomAnnotation.asRequired(Atom1))
+                .annotate(z, asRequired(Atom1))
                 .annotate(Bob, AtomAnnotation.of(Person)).build());
 
         IndexedSet<Triple> allTriples = IndexedSet.fromDistinct(
@@ -156,7 +170,7 @@ public class JoinPathsPlannerTest {
         QueryNode n1 = node(e1, Alice, p1, x);
         QueryNode n2 = node(e1, x, p2, y);
         QueryNode n3 = new QueryNode(e2, CQuery.with(new Triple(y, p3, Bob))
-                .annotate(y, AtomAnnotation.asRequired(Atom1))
+                .annotate(y, asRequired(Atom1))
                 .annotate(Bob, AtomAnnotation.of(Person)).build());
         IndexedSet<PlanNode> nodes = IndexedSet.fromDistinct(asList(n1, n2, n3));
 
@@ -179,7 +193,7 @@ public class JoinPathsPlannerTest {
         QueryNode n1 = node(e1, Alice, p1, x);
         QueryNode n2 = node(e1, x, p2, y);
         QueryNode n3 = new QueryNode(e2, CQuery.with(new Triple(y, p3, Bob))
-                .annotate(y, AtomAnnotation.asRequired(Atom1))
+                .annotate(y, asRequired(Atom1))
                 .annotate(Bob, AtomAnnotation.of(Person)).build());
 
         IndexedSet<Triple> allTriples = IndexedSet.fromDistinct(
@@ -221,7 +235,7 @@ public class JoinPathsPlannerTest {
         QueryNode n1 = node(e1, Alice, p1, x), n2 = node(e1, x, p2, y), n3 = node(e1, y, p3, Bob);
         QueryNode o1 = node(e2, Alice, p1, x), o2 = node(e2, x, p2, y), o3 = node(e2, y, p3, Bob);
         QueryNode i2 = new QueryNode(e2, CQuery.with(new Triple(x, p2, y))
-                .annotate(x, AtomAnnotation.asRequired(Atom1))
+                .annotate(x, asRequired(Atom1))
                 .annotate(y, AtomAnnotation.of(Atom1)).build());
         QueryNode aliceKnowsX = node(e1, Alice, knows, x), yKnowsBob = node(e1, y, knows, Bob);
 
@@ -264,28 +278,28 @@ public class JoinPathsPlannerTest {
 
         // n*i :: SUBJ is input
         QueryNode n1i = new QueryNode(e2, CQuery.with(new Triple(Alice, p1, x))
-                .annotate(Alice, AtomAnnotation.asRequired(Person))
+                .annotate(Alice, asRequired(Person))
                 .annotate(x, AtomAnnotation.of(Atom1)).build());
         QueryNode n2i = new QueryNode(e2, CQuery.with(new Triple(x, p1, y))
-                .annotate(x, AtomAnnotation.asRequired(Atom1))
+                .annotate(x, asRequired(Atom1))
                 .annotate(y, AtomAnnotation.of(Atom1)).build());
         QueryNode n4i = new QueryNode(e2, CQuery.with(new Triple(y, p1, Bob))
-                .annotate(y, AtomAnnotation.asRequired(Atom1))
+                .annotate(y, asRequired(Atom1))
                 .annotate(Bob, AtomAnnotation.of(Person)).build());
         QueryNode n5i = new QueryNode(e2, CQuery.with(new Triple(y, p2, Bob))
-                .annotate(y, AtomAnnotation.asRequired(Atom1))
+                .annotate(y, asRequired(Atom1))
                 .annotate(Bob, AtomAnnotation.of(Person)).build());
 
         // n*j :: OBJ is input
         QueryNode n1j = new QueryNode(e3, CQuery.with(new Triple(Alice, p1, x))
                 .annotate(Alice, AtomAnnotation.of(Person))
-                .annotate(x, AtomAnnotation.asRequired(Atom1)).build());
+                .annotate(x, asRequired(Atom1)).build());
         QueryNode n2j = new QueryNode(e3, CQuery.with(new Triple(x, p1, y))
                 .annotate(x, AtomAnnotation.of(Atom1))
-                .annotate(y, AtomAnnotation.asRequired(Atom1)).build());
+                .annotate(y, asRequired(Atom1)).build());
         QueryNode n5j = new QueryNode(e3, CQuery.with(new Triple(y, p2, Bob))
                 .annotate(y, AtomAnnotation.of(Atom1))
-                .annotate(Bob, AtomAnnotation.asRequired(Person)).build());
+                .annotate(Bob, asRequired(Person)).build());
 
         // mXi == M(nX, nXi)
         MultiQueryNode m1i = m(n1, n1i);
@@ -414,10 +428,9 @@ public class JoinPathsPlannerTest {
     @Test(dataProvider = "pathsData")
     public void testPaths(CQuery query, List<PlanNode> nodes, Collection<JoinPath> expectedPaths) {
         for (List<PlanNode> permutation : permutations(nodes)) {
-            Set<JoinPath> paths = new HashSet<>();
             JoinGraph g = new JoinGraph(IndexedSet.fromDistinct(permutation));
             JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
-            planner.getPaths(IndexedSet.fromDistinctCopy(query.getMatchedTriples()), g, paths);
+            List<JoinPath> paths = planner.getPaths(fromDistinctCopy(query.getMatchedTriples()), g);
 
             List<JoinPath> e = emptyList();
             assertEquals(paths.stream().filter(JoinPath::hasJoins)
@@ -427,7 +440,7 @@ public class JoinPathsPlannerTest {
             HashSet<JoinPath> exSet = new HashSet<>(expectedPaths);
             assertEquals(paths.stream().filter(p -> !exSet.contains(p)).collect(toList()), e);
             assertEquals(exSet.stream().filter(p -> !paths.contains(p)).collect(toList()), e);
-            assertEquals(paths, exSet);
+            assertEquals(new HashSet<>(paths), exSet);
         }
     }
 
@@ -472,6 +485,195 @@ public class JoinPathsPlannerTest {
         JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
         List<IndexedSet<Triple>> list = planner.getCartesianComponents(IndexedSet.from(triples));
         assertEquals(new HashSet<>(list), expected.stream().map(IndexedSet::from).collect(toSet()));
+    }
+
+    @DataProvider
+    public static @Nonnull Object[][] indexedSetForDuplicatesData() {
+        QueryNode n1 = node(e1, Alice, p1, x  ), n1a = node(e1a, Alice, p1, x  );
+        QueryNode n2 = node(e1, x,     p2, y  ), n2a = node(e1a, x,     p2, y  );
+        QueryNode n3 = node(e1, y,     p3, z  ), n3a = node(e1a, y,     p3, z  );
+        QueryNode n4 = node(e1, z,     p4, Bob), n4a = node(e1a, z,     p4, Bob);
+
+        QueryNode n1i = node(e1, b -> b.annotate(Alice, asRequired(Person)), Alice, p1, x);
+        QueryNode n2i = node(e1, b -> b.annotate(x, asRequired(Person)), x, p2, y);
+        QueryNode n3i = node(e1, b -> b.annotate(y, asRequired(Person)), y, p3, z);
+        QueryNode n4i = node(e1, b -> b.annotate(z, asRequired(Person)), z, p4, Bob);
+
+        IndexedSet<PlanNode> all = IndexedSet.from(asList(n1 , n2 , n3 , n4 ,
+                                                          n1a, n2a, n3a, n4a,
+                                                          n1i, n2i, n3i, n4i));
+
+        return Stream.of(
+                emptyList(),
+                singletonList(new JoinPath(all, getPlainJoinability(n1, n2),
+                                                getPlainJoinability(n2, n3),
+                                                getPlainJoinability(n3, n4))),
+                singletonList(new JoinPath(all, getPlainJoinability(n1a, n2a),
+                                                getPlainJoinability(n2a, n3),
+                                                getPlainJoinability(n3, n4))),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2)),
+                       new JoinPath(all, getPlainJoinability(n1a, n2a))),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2),
+                                         getPlainJoinability(n2, n3)),
+                       new JoinPath(all, getPlainJoinability(n1a, n2a),
+                                         getPlainJoinability(n2a, n3a))),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2),
+                                         getPlainJoinability(n2, n3),
+                                         getPlainJoinability(n3, n4)),
+                       new JoinPath(all, getPlainJoinability(n1a, n2a),
+                                         getPlainJoinability(n2a, n3a),
+                                         getPlainJoinability(n3a, n4a))),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2),
+                                         getPlainJoinability(n2, n3),
+                                         getPlainJoinability(n3, n4)),
+                       new JoinPath(all, getPlainJoinability(n1a, n2a),
+                                         getPlainJoinability(n2a, n3a),
+                                         getPlainJoinability(n3a, n4a)),
+                       new JoinPath(all, getPlainJoinability(n1i, n2i),
+                                         getPlainJoinability(n2i, n3i),
+                                         getPlainJoinability(n3i, n4i))),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2), getPlainJoinability(n2,n3)),
+                       new JoinPath(all, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3a))),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2), getPlainJoinability(n2,n3)),
+                       new JoinPath(all, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3i))),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2), getPlainJoinability(n2,n3)),
+                       new JoinPath(all, getPlainJoinability(n1, n2a), getPlainJoinability(n2a, n3))),
+                asList(new JoinPath(all, getPlainJoinability(n1, n2), getPlainJoinability(n2,n3)),
+                       new JoinPath(all, getPlainJoinability(n1, n2i), getPlainJoinability(n2i, n3)))
+        ).map(l -> new Object[] {l}).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "indexedSetForDuplicatesData")
+    public void testIndexedSetForDuplicates(List<JoinPath> paths) {
+        assertTrue(paths.stream().noneMatch(Objects::isNull));
+        List<JoinPath> oldPaths = new ArrayList<>(paths);
+
+        JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
+        IndexedSet<PlanNode> set = planner.getNodesIndexedSetFromPaths(paths);
+
+        //all nodes are in set
+        List<PlanNode> missingNonQueryNodes = paths.stream().flatMap(p -> p.getNodes().stream())
+                .filter(n -> !(n instanceof QueryNode) && !set.contains(n)).collect(toList());
+        assertEquals(missingNonQueryNodes, emptyList());
+
+        //no changes to the paths themselves
+        assertEquals(paths.stream().filter(p -> !oldPaths.contains(p)).collect(toList()),
+                     emptyList());
+
+        // no equivalent endpoints for the same query
+        for (int i = 0; i < set.size(); i++) {
+            if (!(set.get(i) instanceof QueryNode)) continue;
+            QueryNode outer = (QueryNode) set.get(i);
+            for (int j = i+1; j < set.size(); j++) {
+                if (!(set.get(j) instanceof QueryNode)) continue;
+                QueryNode inner = (QueryNode) set.get(j);
+                if (outer.getQuery().getSet().equals(inner.getQuery().getSet())) {
+                    assertFalse(outer.getEndpoint().isAlternative(inner.getEndpoint()));
+                    assertFalse(inner.getEndpoint().isAlternative(outer.getEndpoint()));
+                }
+            }
+        }
+
+        // can subset any QueryNode
+        List<IndexedSubset<PlanNode>> singletons = paths.stream()
+                .flatMap(p -> p.getNodes().stream())
+                .filter(n -> n instanceof QueryNode)
+                .map(set::subset).collect(toList());
+        assertTrue(singletons.stream().noneMatch(IndexedSubset::isEmpty));
+        assertTrue(singletons.stream().allMatch(s -> s.size() == 1));
+    }
+
+    @DataProvider
+    public static @Nonnull Object[][] removeAlternativePathsData() {
+        QueryNode n1   = node(e1,  Alice, knows, x);
+        QueryNode n1a  = node(e1a, Alice, knows, x);
+        QueryNode n1b  = node(e2,  Alice, knows, x);
+        QueryNode n1i  = node(e1,  b -> b.annotate(x, asRequired(Person)),
+                                   Alice, knows, x);
+        QueryNode n1ai = node(e1a, b -> b.annotate(x, asRequired(Person)),
+                                   Alice, knows, x);
+
+        QueryNode n2   = node(e1,  x, knows, y);
+        QueryNode n2a  = node(e1a, x, knows, y);
+        QueryNode n2i  = node(e1a, b -> b.annotate(x, asRequired(Person)),
+                                   x, knows, y);
+        QueryNode n2ai = node(e1a, b -> b.annotate(x, asRequired(Person)),
+                                   x, knows, y);
+
+
+        return Stream.of(
+                asList(singletonList(singleton(n1 )), emptyList()),
+                asList(singletonList(singleton(n1a)), emptyList()),
+                asList(singletonList(asList(n1, n2)), emptyList()),
+                asList(asList(asList(n1, n2), asList(n1a, n2)), singletonList(asList(0, 1))),
+                asList(asList(asList(n1, n2), asList(n1i, n2)), singletonList(asList(0, 1))),
+                asList(asList(asList(n1, n2), asList(n1a, n2), asList(n1i, n2)),
+                       singletonList(asList(0, 1, 2))),
+                asList(asList(asList(n1, n2), asList(n1a, n2), asList(n1i, n2), asList(n1ai, n2)),
+                       singletonList(asList(0, 1, 2, 3))),
+                asList(asList(asList(n1, n2), asList(n1b, n2)), emptyList()),
+                asList(asList(asList(n1i, n2), asList(n1b, n2)), emptyList()),
+                asList(asList(asList(n1a, n2), asList(n1b, n2)), emptyList()),
+                asList(asList(asList(n1, n2), asList(n1b, n2), asList(n1ai, n2)),
+                       singletonList(asList(0, 2))),
+                asList(asList(asList(n1b, n2 ), asList(n1b, n2a ),
+                              asList(n1b, n2i), asList(n1b, n2ai)),
+                       singletonList(asList(0, 1, 2, 3))),
+                asList(asList(asList(n1,  n2i), asList(n1a, n2ai),
+                              asList(n1b, n2 ), asList(n1b, n2a )),
+                       asList(asList(0, 1), asList(2, 3)))
+        ).map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "removeAlternativePathsData")
+    public void testRemoveAlternativePaths(List<Collection<PlanNode>> nodesList,
+                                           List<List<Integer>> equivIndices) {
+        JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
+        //setup
+        IndexedSet<PlanNode> nodes = IndexedSet.fromDistinct(
+                nodesList.stream().flatMap(Collection::stream).collect(toSet()));
+        JoinGraph graph = new JoinGraph(nodes);
+        List<JoinPath> pathsList;
+        pathsList = nodesList.stream().map(n -> JoinPath.findPath(graph, n)).collect(toList());
+        List<JoinPath> origPaths = new ArrayList<>(pathsList);
+
+        //sanity
+        assertEquals(new HashSet<>(pathsList).size(), nodesList.size());
+        for (int i = 0; i < pathsList.size(); i++) {
+            // all nodes in path
+            assertEquals(pathsList.get(i).getNodes(), new HashSet<>(nodesList.get(i)));
+
+            // alternatives cannot be in the same JoinPath
+            List<PlanNode> pathNodes = new ArrayList<>(pathsList.get(i).getNodes());
+            for (int j = 0; j < pathNodes.size(); j++) {
+                if (!(pathNodes.get(j) instanceof QueryNode)) continue;
+                QueryNode outer = (QueryNode) pathNodes.get(j);
+                for (int k = j+1; k < pathNodes.size(); k++) {
+                    if (!(pathNodes.get(k) instanceof QueryNode)) continue;
+                    QueryNode inner = (QueryNode) pathNodes.get(k);
+                    if (outer.getQuery().getSet().equals(inner.getQuery().getSet())) {
+                        assertFalse(inner.getEndpoint().isAlternative(outer.getEndpoint()));
+                        assertFalse(outer.getEndpoint().isAlternative(inner.getEndpoint()));
+                    }
+                }
+            }
+        }
+        assertTrue(pathsList.stream().noneMatch(Objects::isNull));
+
+
+        //operation & checks
+        planner.removeAlternativePaths(pathsList);
+        for (List<Integer> list : equivIndices) {
+            Set<JoinPath> set = list.stream().map(origPaths::get).collect(toSet());
+            set.retainAll(pathsList);
+            assertEquals(set.size(), 1); // exactly one path must remain
+        }
+
+        List<Integer> missing = IntStream.range(0, origPaths.size()).boxed()
+                .filter(i -> equivIndices.stream().noneMatch(l -> l.contains(i)))
+                .filter(i -> !pathsList.contains(origPaths.get(i)))
+                .collect(toList());
+        assertEquals(missing, emptyList());
     }
 
 }

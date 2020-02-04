@@ -7,11 +7,13 @@ import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.SubPathAggregat
 import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.TPEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,20 +116,80 @@ public class JoinPathsPlanner implements Planner {
                                     @Nonnull IndexedSet<Triple> triples) {
         IndexedSet<PlanNode> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
-        Set<JoinPath> paths = new HashSet<>(leaves.size());
-        getPaths(triples, g, paths);
-        if (paths.isEmpty())
+        List<JoinPath> pathsSet = getPaths(triples, g);
+        removeAlternativePaths(pathsSet);
+        if (pathsSet.isEmpty())
             return null;
 
-        SubPathAggregation aggregation = SubPathAggregation.aggregate(g, paths, joinOrderPlanner);
+        SubPathAggregation aggregation = SubPathAggregation.aggregate(g, pathsSet, joinOrderPlanner);
         JoinGraph g2 = aggregation.getGraph();
         List<JoinPath> aggregatedPaths = aggregation.getJoinPaths();
-        boolean parallel = paths.size() > PATHS_PAR_THRESHOLD;
+        boolean parallel = pathsSet.size() > PATHS_PAR_THRESHOLD;
         MultiQueryNode.Builder builder = MultiQueryNode.builder();
         builder.addAll((parallel ? aggregatedPaths.parallelStream() : aggregatedPaths.stream())
                 .map(p -> p.isWhole() ? p.getWhole() : joinOrderPlanner.plan(p.getJoinInfos(), g2))
                 .collect(toList()));
         return builder.buildIfMulti();
+    }
+
+    @VisibleForTesting
+    void removeAlternativePaths(@Nonnull List<JoinPath> paths) {
+        IndexedSet<PlanNode> set = getNodesIndexedSetFromPaths(paths);
+        BitSet marked = new BitSet(paths.size());
+        for (int i = 0; i < paths.size(); i++) {
+            IndexedSubset<PlanNode> outer = set.subset(paths.get(i).getNodes());
+            assert outer.size() == paths.get(i).getNodes().size();
+            for (int j = i+1; j < paths.size(); j++) {
+                if (marked.get(j))
+                    continue;
+                IndexedSubset<PlanNode> inner = set.subset(paths.get(j).getNodes());
+                assert inner.size() == paths.get(j).getNodes().size();
+                if (outer.equals(inner))
+                    marked.set(j);
+            }
+        }
+
+        for (int i = marked.length(); (i = marked.previousSetBit(i-1)) >= 0; )
+            paths.remove(i);
+    }
+
+    @VisibleForTesting
+    @Nonnull IndexedSet<PlanNode> getNodesIndexedSetFromPaths(@Nonnull List<JoinPath> paths) {
+        List<PlanNode> list = new ArrayList<>();
+        Map<PlanNode, Integer> n2idx = new HashMap<>();
+        Multimap<Set<Triple>, QueryNode> mm = MultimapBuilder.hashKeys().arrayListValues().build();
+        for (JoinPath path : paths) {
+            for (PlanNode node : path.getNodes()) {
+                if (node instanceof QueryNode && !n2idx.containsKey(node)) {
+                    QueryNode qn = (QueryNode) node;
+                    TPEndpoint endpoint = qn.getEndpoint();
+                    int canonIdx = -1;
+                    for (QueryNode candidate : mm.get(qn.getQuery().getSet())) {
+                        if (candidate.getEndpoint().isAlternative(endpoint)) {
+                            canonIdx = n2idx.get(candidate);
+                            assert canonIdx >= 0 && canonIdx < list.size();
+                            break;
+                        }
+                    }
+                    if (canonIdx == -1) {
+                        n2idx.put(qn, list.size());
+                        list.add(qn);
+                        mm.put(qn.getQuery().getSet(), qn);
+                    } else {
+                        n2idx.put(qn, canonIdx);
+                    }
+                }
+            }
+        }
+        for (JoinPath path : paths) {
+            for (PlanNode node : path.getNodes()) {
+                if (node instanceof QueryNode) continue;
+                assert list.size() == n2idx.size();
+                list.add(node);
+                n2idx.put(node, n2idx.size());
+            }
+        }
+        return IndexedSet.fromMap(n2idx, list);
     }
 
     private boolean satisfiesAll(@Nonnull IndexedSet<Triple> all,
@@ -159,8 +221,8 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @VisibleForTesting
-    void getPaths(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g,
-                  @Nonnull Set<JoinPath> paths) {
+    List<JoinPath> getPaths(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g) {
+        Set<JoinPath> paths = new HashSet<>(g.size());
         int totalTriples = full.size();
         IndexedSet<PlanNode> nodes = g.getNodes();
         ArrayDeque<State> stack = new ArrayDeque<>(nodes.size()*2);
@@ -180,6 +242,7 @@ public class JoinPathsPlanner implements Planner {
                 });
             }
         }
+        return new ArrayList<>(paths);
     }
 
     @VisibleForTesting
