@@ -1,6 +1,10 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.query.TPEndpoint;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.MultimapBuilder;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -204,5 +208,64 @@ public class TreeUtils {
     public static @Nonnull List<PlanNode> childrenIfMulti(@Nonnull PlanNode node) {
         return node instanceof MultiQueryNode ? Collections.unmodifiableList(node.getChildren())
                                               : singletonList(node);
+    }
+
+    public static  @Nonnull PlanNode cleanEquivalents(@Nonnull PlanNode node) {
+        node = flattenMultiQuery(node);
+        if (!(node instanceof MultiQueryNode)) return node;
+
+        ListMultimap<Set<Triple>, QueryNode> mm;
+        mm = MultimapBuilder.hashKeys().arrayListValues().build();
+        List<PlanNode> children = node.getChildren();
+        for (PlanNode child : children) {
+            if (child instanceof QueryNode)
+                mm.put(((QueryNode) child).getQuery().getSet(), (QueryNode) child);
+        }
+
+        BitSet marked = new BitSet(children.size());
+        for (Set<Triple> key : mm.keySet()) {
+            List<QueryNode> list = mm.get(key);
+            for (int i = 0; i < list.size(); i++) {
+                if (marked.get(i)) continue;
+                TPEndpoint outer = list.get(i).getEndpoint();
+                for (int j = i+1; j < list.size(); j++) {
+                    if (marked.get(j)) continue;
+                    TPEndpoint inner = list.get(j).getEndpoint();
+                    if (outer.isAlternative(inner) || inner.isAlternative(outer))
+                        marked.set(j);
+                }
+            }
+        }
+
+        if (marked.cardinality() > 0) {
+            MultiQueryNode.Builder builder = MultiQueryNode.builder();
+            for (int i = marked.nextSetBit(0); i >= 0; i = marked.nextSetBit(i+1))
+                builder.add(children.get(i));
+            return builder.buildIfMulti();
+        } else {
+            return node;
+        }
+    }
+
+    public static  @Nonnull PlanNode flattenMultiQuery(@Nonnull PlanNode node) {
+        if (!(node instanceof MultiQueryNode)) return node;
+
+        if (node.getChildren().size() == 1) {
+            return node.getChildren().get(0);
+        } else if (node.getChildren().stream().anyMatch(MultiQueryNode.class::isInstance)) {
+            MultiQueryNode.Builder builder = MultiQueryNode.builder();
+            node.getChildren().forEach(c -> flattenMultiQuery(c, builder));
+            return builder.buildIfMulti();
+        } else {
+            return node;
+        }
+    }
+
+    private static void flattenMultiQuery(@Nonnull PlanNode node,
+                                   @Nonnull MultiQueryNode.Builder builder) {
+        if (node instanceof MultiQueryNode)
+            node.getChildren().forEach(c -> flattenMultiQuery(c, builder));
+        else
+            builder.add(node);
     }
 }

@@ -1,11 +1,12 @@
 package br.ufsc.lapesd.riefederator;
 
 import javax.annotation.Nonnull;
+import javax.inject.Provider;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.function.Supplier;
 
-public class NamedSupplier<T> implements Supplier<T> {
+public class NamedSupplier<T> implements Supplier<T>, Provider<T>, com.google.inject.Provider<T> {
     private final @Nonnull String name;
     private final @Nonnull Supplier<T> wrapped;
 

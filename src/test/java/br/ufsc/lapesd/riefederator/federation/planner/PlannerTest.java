@@ -15,6 +15,8 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.DataProvider;
@@ -75,7 +77,7 @@ public class PlannerTest {
         empty3b.addAlternative(empty3a);
     }
 
-    public void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query) {
+    public static void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query) {
         IndexedSet<Triple> triples = IndexedSet.from(query.getMatchedTriples());
 
         // the plan is acyclic
@@ -105,6 +107,36 @@ public class PlannerTest {
                         .distinct().count() != 1)
                 .collect(toList());
         assertEquals(bad, emptyList());
+
+        // children of MQ nodes may match the same triples with different triples
+        // However, if two children have the same triples as query, then their endpoints
+        // must not be equivalent as this would be wasteful
+        List<Set<QueryNode>> equivSets = streamPreOrder(root)
+                .filter(n -> n instanceof MultiQueryNode)
+                .map(n -> {
+                    Set<QueryNode> equiv = new HashSet<>();
+                    ListMultimap<Set<Triple>, QueryNode> mm;
+                    mm = MultimapBuilder.hashKeys().arrayListValues().build();
+                    for (PlanNode child : n.getChildren()) {
+                        if (child instanceof QueryNode)
+                            mm.put(((QueryNode) child).getQuery().getSet(), (QueryNode) child);
+                    }
+                    for (Set<Triple> key : mm.keySet()) {
+                        for (int i = 0; i < mm.get(key).size(); i++) {
+                            QueryNode outer = mm.get(key).get(i);
+                            for (int j = i + 1; j < mm.get(key).size(); j++) {
+                                QueryNode inner = mm.get(key).get(j);
+                                if (outer.getEndpoint().isAlternative(inner.getEndpoint()) ||
+                                        inner.getEndpoint().isAlternative(outer.getEndpoint())) {
+                                    equiv.add(outer);
+                                    equiv.add(inner);
+                                }
+                            }
+                        }
+                    }
+                    return equiv;
+                }).filter(s -> !s.isEmpty()).collect(toList());
+        assertEquals(equivSets, emptySet());
 
         // no single-child MQ nodes
         bad = streamPreOrder(root)
@@ -399,26 +431,39 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testSameQuerySameEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery query = CQuery.from(new Triple(X, knows, Y), new Triple(X, knows, Y));
+        CQuery query = CQuery.from(new Triple(X, knows, Y), new Triple(Y, knows, Z));
         QueryNode q1 = new QueryNode(empty1, CQuery.from(query.get(0)));
-        QueryNode q2 = new QueryNode(empty1, CQuery.from(query.get(1)));
+        QueryNode q2 = new QueryNode(empty1, CQuery.from(query.get(0)));
+        QueryNode q3 = new QueryNode(empty1, CQuery.from(query.get(1)));
 
-        PlanNode plan = planner.plan(query, asList(q1, q2));
-        assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 1);
-        assertValidJoins(plan);
-        assertPlanAnswers(plan, query);
+        //noinspection UnstableApiUsage
+        for (List<QueryNode> permutation : permutations(asList(q1, q2, q3))) {
+            PlanNode plan = planner.plan(query, permutation);
+            Set<PlanNode> qns = streamPreOrder(plan)
+                    .filter(QueryNode.class::isInstance).collect(toSet());
+            assertTrue(qns.contains(q3));
+            assertEquals(qns.size(), 2);
+            assertValidJoins(plan);
+            assertPlanAnswers(plan, query);
+        }
     }
 
     @Test(dataProvider = "suppliersData")
     public void testSameQueryEquivalentEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery query = CQuery.from(new Triple(X, knows, Y), new Triple(X, knows, Y));
+        CQuery query = CQuery.from(new Triple(X, knows, Y), new Triple(Y, knows, Z));
         QueryNode q1 = new QueryNode(empty3a, CQuery.from(query.get(0)));
-        QueryNode q2 = new QueryNode(empty3b, CQuery.from(query.get(1)));
+        QueryNode q2 = new QueryNode(empty3b, CQuery.from(query.get(0)));
+        QueryNode q3 = new QueryNode(empty1 , CQuery.from(query.get(1)));
 
-        PlanNode plan = planner.plan(query, asList(q1, q2));
-        assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 1);
-        assertValidJoins(plan);
+        //noinspection UnstableApiUsage
+        for (List<QueryNode> permutation : permutations(asList(q1, q2, q3))) {
+            PlanNode plan = planner.plan(query, permutation);
+            Set<PlanNode> qns = streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet());
+            assertTrue(qns.contains(q3));
+            assertEquals(qns.size(), 2);
+            assertValidJoins(plan);
+        }
     }
 
     @Test(dataProvider = "suppliersData")

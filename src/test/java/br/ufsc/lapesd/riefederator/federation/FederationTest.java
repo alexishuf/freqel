@@ -16,7 +16,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.Has
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.HeuristicPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Res;
@@ -31,10 +31,8 @@ import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.Module;
+import com.google.inject.*;
 import com.google.inject.util.Modules;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -62,10 +60,12 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.*;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
 import static org.apache.jena.rdf.model.ResourceFactory.createLangLiteral;
 import static org.apache.jena.rdf.model.ResourceFactory.createResource;
 import static org.testng.Assert.assertEquals;
@@ -301,65 +301,70 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest {
 
     private static abstract class TestModule extends AbstractModule {
         private boolean canBindJoin;
-        public TestModule(boolean canBindJoin) { this.canBindJoin = canBindJoin; }
+        public TestModule(boolean canBindJoin) {this.canBindJoin = canBindJoin;}
         public boolean canBindJoin() { return canBindJoin; }
     }
 
-    private static final @Nonnull List<TestModule> moduleList = asList(
-            new TestModule(true) {
+    private static final @Nonnull
+    List<Function<Provider<Planner>, TestModule>> moduleProtoList = asList(
+            planner -> new TestModule(true) {
                 @Override
                 protected void configure() {
-                    bind(Planner.class).to(HeuristicPlanner.class);
+                    bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(EvenDecomposer.class);
                 }
                 @Override
-                public String toString() { return "HeuristicPlanner+even"; }
+                public String toString() { return planner+"+even"; }
             },
-            new TestModule(false) {
+            planner -> new TestModule(false) {
                 @Override
                 protected void configure() {
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
-                    bind(Planner.class).to(HeuristicPlanner.class);
+                    bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(EvenDecomposer.class);
                 }
                 @Override
-                public String toString() { return "HeuristicPlanner+even+InMemoryHashJoinResults"; }
+                public String toString() { return planner+"+even+InMemoryHashJoinResults"; }
             },
-            new TestModule(false) {
+            planner -> new TestModule(false) {
                 @Override
                 protected void configure() {
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults::new);
-                    bind(Planner.class).to(HeuristicPlanner.class);
+                    bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(EvenDecomposer.class);
                 }
                 @Override
-                public String toString() { return "HeuristicPlanner+even+ParallelInMemoryHashJoinResults"; }
+                public String toString() { return planner+"+even+ParallelInMemoryHashJoinResults"; }
             },
-            new TestModule(true) {
+            planner -> new TestModule(true) {
                 @Override
                 protected void configure() {
                     bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
-                    bind(Planner.class).to(HeuristicPlanner.class);
+                    bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(EvenDecomposer.class);
                 }
                 @Override
-                public String toString() { return "HeuristicPlanner+even+SimpleBindJoinResults"; }
+                public String toString() { return planner+"+even+SimpleBindJoinResults"; }
             },
-            new TestModule(true) {
+            planner -> new TestModule(true) {
                 @Override
                 protected void configure() {
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                     bind(JoinNodeExecutor.class).to(SimpleJoinNodeExecutor.class);
-                    bind(Planner.class).to(HeuristicPlanner.class);
+                    bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(EvenDecomposer.class);
                 }
                 @Override
-                public String toString() { return "HeuristicPlanner+even+SimpleJoinNodeExecutor"; }
+                public String toString() { return planner+"+even+SimpleJoinNodeExecutor"; }
             }
     );
+
+    private static final @Nonnull List<TestModule> moduleList = PlannerTest.suppliers.stream()
+            .flatMap(ns -> moduleProtoList.stream().map(p -> p.apply(ns)))
+            .collect(toList());
 
     private static @Nonnull Object[][] prependModules(List<List<Object>> in) {
         List<List<Object>> rows = new ArrayList<>();

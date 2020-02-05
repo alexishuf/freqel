@@ -8,6 +8,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.cleanEquivalents;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class ArbitraryJoinOrderPlanner extends AbstractJoinOrderPlanner {
@@ -18,12 +19,16 @@ public class ArbitraryJoinOrderPlanner extends AbstractJoinOrderPlanner {
         JoinInfo last = null;
         for (JoinInfo info : joins) {
             if (root == null) {
-                root = JoinNode.builder(info.getLeft(), info.getRight()).build();
+                PlanNode l = cleanEquivalents(info.getLeft()), r = cleanEquivalents(info.getRight());
+                root = JoinNode.builder(l, r).build();
             } else {
-                root = JoinNode.builder(root, info.getOppositeToLinked(last)).build();
+                PlanNode clean = cleanEquivalents(info.getOppositeToLinked(last));
+                root = JoinNode.builder(root, clean).build();
             }
             last = info;
         }
         return root;
     }
+
+
 }
