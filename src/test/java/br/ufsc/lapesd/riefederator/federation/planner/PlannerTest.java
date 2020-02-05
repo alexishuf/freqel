@@ -532,7 +532,8 @@ public class PlannerTest {
 
     private static class TwoServicePathsNodes {
         QueryNode q1, q2, q3, p1, p2, p3;
-        List<QueryNode> all, fromAlice, fromBob;
+        List<QueryNode> all, fromAlice, fromBob, fromAlice2, fromBob2;
+        Set<Set<QueryNode>> allowedAnswers;
         CQuery query;
 
         public TwoServicePathsNodes(@Nonnull CQEndpoint epFromAlice,
@@ -560,8 +561,15 @@ public class PlannerTest {
                     .annotate(Y, AtomAnnotation.of(Person))
                     .annotate(BOB, AtomAnnotation.asRequired(KnownPerson)).build());
             all = asList(q1, q2, q3, p1, p2, p3);
-            fromAlice = asList(q1, q2, q3);
-            fromBob = asList(p1, p2, p3);
+            fromAlice  = asList(q1, q2, q3);
+            fromAlice2 = asList(q1, q2, p3);
+            fromBob  = asList(p1, p2, p3);
+            fromBob2 = asList(q1, p2, p3);
+            allowedAnswers = new HashSet<>();
+            allowedAnswers.add(new HashSet<>(fromAlice));
+            allowedAnswers.add(new HashSet<>(fromAlice2));
+            allowedAnswers.add(new HashSet<>(fromBob));
+            allowedAnswers.add(new HashSet<>(fromBob2));
         }
     }
 
@@ -576,25 +584,24 @@ public class PlannerTest {
             PlanNode plan = planner.plan(f.query, permutation);
             Set<QueryNode> qns = streamPreOrder(plan).filter(QueryNode.class::isInstance)
                     .map(n -> (QueryNode)n).collect(toSet());
-            assertTrue(qns.equals(new HashSet<>(f.fromAlice)) ||
-                       qns.equals(new HashSet<>(f.fromBob)), "qns="+qns);
+            assertTrue(f.allowedAnswers.contains(qns), "qns="+qns);
             assertEquals(streamPreOrder(plan).filter(JoinNode.class::isInstance).count(), 2);
             assertValidJoins(plan);
             assertPlanAnswers(plan, f.query);
         }
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", invocationCount = 4)
     public void testOnePathTwoDirectionsWithServicesSameEp(@Nonnull Supplier<Planner> supplier) {
         onePathTwoDirectionsWithServicesTest(supplier.get(), false);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", invocationCount = 4)
     public void testOnePathTwoDirectionsWithServicesAlternativeEp(@Nonnull Supplier<Planner> supplier) {
         onePathTwoDirectionsWithServicesTest(supplier.get(), true);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", invocationCount = 4)
     public void testOnePathTwoDirectionsUnrelatedEndpoints(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
