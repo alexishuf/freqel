@@ -18,6 +18,8 @@ import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.requests.MismatchingQueryException;
 import br.ufsc.lapesd.riefederator.webapis.requests.MissingAPIInputsException;
+import br.ufsc.lapesd.riefederator.webapis.requests.NoTermSerializationException;
+import br.ufsc.lapesd.riefederator.webapis.requests.impl.APIRequestExecutorException;
 import com.google.inject.Guice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,8 +68,8 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         Iterator<? extends CQEndpoint> it;
         try {
             it = molecule.getExecutor().execute(b.build());
-        } catch (MissingAPIInputsException e) {
-            logger.error("Missing inputs for query {}. Will return empty results", query, e);
+        } catch (APIRequestExecutorException e) {
+            logger.error("Exception on execution of query {}. Will return empty results", query, e);
             Set<String> names = query.streamTerms(Var.class).map(Var::getName).collect(toSet());
             return CollectionResults.empty(names);
         }

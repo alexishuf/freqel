@@ -1,9 +1,11 @@
 package br.ufsc.lapesd.riefederator.webapis.requests;
 
+import br.ufsc.lapesd.riefederator.webapis.requests.impl.APIRequestExecutorException;
+
 import javax.annotation.Nonnull;
 import java.util.Collection;
 
-public class MissingAPIInputsException extends IllegalArgumentException {
+public class MissingAPIInputsException extends APIRequestExecutorException {
     private final @Nonnull Collection<String> missing;
     private final @Nonnull APIRequestExecutor executor;
 

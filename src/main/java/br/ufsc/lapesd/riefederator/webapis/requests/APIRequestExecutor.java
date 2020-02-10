@@ -43,10 +43,8 @@ public interface APIRequestExecutor {
      * @param input binds to use in the request
      * @return An iterator over {@link CQEndpoint} endpoints relevant to the given bindings
      * @throws MissingAPIInputsException if some required input is missing from given input bindings
-     * @throws IllegalArgumentException if some of the given mappings is invalid.
-     *                                  Most implementation will throw this if given {@link Var}
-     *                                  or {@link Blank} as binding values.
+     * @throws NoTermSerializationException if some terms cannot be serialized for use as inputs
      */
     @Nonnull Iterator<? extends CQEndpoint>
-    execute(@Nonnull Solution input) throws MissingAPIInputsException;
+    execute(@Nonnull Solution input) throws MissingAPIInputsException, NoTermSerializationException;
 }
