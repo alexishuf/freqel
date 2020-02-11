@@ -27,6 +27,10 @@ public interface APIRequestExecutor {
      */
     @Nonnull Set<String> getOptionalInputs();
 
+    default boolean hasInputs() {
+        return !getRequiredInputs().isEmpty() || !getOptionalInputs().isEmpty();
+    }
+
     /**
      * Executes an WebAPI skeleton request using the provided bindings.
      *

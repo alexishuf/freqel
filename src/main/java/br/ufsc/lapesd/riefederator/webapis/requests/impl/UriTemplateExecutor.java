@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.webapis.requests.*;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.paging.NoPagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.parsers.JenaResponseParser;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -12,6 +13,8 @@ import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.Immutable;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.uri.UriTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -19,10 +22,16 @@ import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Immutable
 public class UriTemplateExecutor implements APIRequestExecutor {
+    private static final Logger logger = LoggerFactory.getLogger(UriTemplateExecutor.class);
+
     protected final @SuppressWarnings("Immutable") @Nonnull UriTemplate template;
     protected final @Nonnull ImmutableSet<String> required, optional;
     private final @SuppressWarnings("Immutable") @Nonnull ImmutableMap<String, TermSerializer> input2serializer;
@@ -66,18 +75,26 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         }
 
         @CanIgnoreReturnValue
-        public @Nonnull Builder withRequired(@Nonnull String... names) {
+        public @Nonnull Builder withRequired(@Nonnull Collection<String> names) {
             if (required == null)
                 required = new HashSet<>();
-            required.addAll(Arrays.asList(names));
+            required.addAll(names);
+            return this;
+        }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder withRequired(@Nonnull String... names) {
+            return withRequired(Arrays.asList(names));
+        }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder withOptional(@Nonnull Collection<String> names) {
+            if (optional == null)
+                optional = new HashSet<>();
+            optional.addAll(names);
             return this;
         }
         @CanIgnoreReturnValue
         public @Nonnull Builder withOptional(@Nonnull String... names) {
-            if (optional == null)
-                optional = new HashSet<>();
-            optional.addAll(Arrays.asList(names));
-            return this;
+            return withOptional(Arrays.asList(names));
         }
         @CanIgnoreReturnValue
         public @Nonnull Builder withClientConfig(@Nonnull ClientConfig clientConfig) {
@@ -93,6 +110,11 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         public @Nonnull Builder withSerializer(@Nonnull String input,
                                                @Nonnull TermSerializer serializer) {
             input2serializer.put(input, serializer);
+            return this;
+        }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder withSerializers(@Nonnull Map<String, TermSerializer> map) {
+            map.forEach(this::withSerializer);
             return this;
         }
         @CanIgnoreReturnValue
@@ -150,15 +172,32 @@ public class UriTemplateExecutor implements APIRequestExecutor {
             @Override
             public @Nullable CQEndpoint next() {
                 if (!hasNext()) throw new NoSuchElementException();
+                double createMs, setupMs, requestMs, parseMs;
+
+                Stopwatch sw = Stopwatch.createStarted();
                 String uri = getUri(pager.apply(input));
+                createMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+
+                sw.reset().start();
                 Client client = createClient();
                 parser.setupClient(client);
                 WebTarget target = client.target(uri);
+                setupMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+
+                sw.reset().start();
                 Response response = target.request(parser.getAcceptable()).get();
                 pager.notifyResponse(response);
                 Object obj = response.readEntity(parser.getDesiredClass());
+                requestMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+
+                sw.reset().start();
                 CQEndpoint endpoint = parser.parse(obj, uri);
+                parseMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
                 pager.notifyResponseEndpoint(endpoint);
+
+                logger.info("GET {} :: status={}, uriGeneration={}ms, jaxSetup={}ms, " +
+                            "request={}ms, parse2Endpoint={}ms", uri, response.getStatus(),
+                            createMs, setupMs, requestMs, parseMs);
                 return endpoint;
             }
         };
@@ -178,7 +217,12 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         input.forEach((name, term) -> {
             TermSerializer serializer;
             serializer = input2serializer.getOrDefault(name, SimpleTermSerializer.INSTANCE);
-            bindings.put(name, serializer.toString(term, name, this));
+            String serialized = serializer.toString(term, name, this);
+            try {
+                bindings.put(name, URLEncoder.encode(serialized, "UTF-8"));
+            } catch (UnsupportedEncodingException e) {
+                throw new RuntimeException("UTF-8 is not a valid encoding!?");
+            }
         });
         if (!bindings.keySet().containsAll(getRequiredInputs())) {
             Set<String> missing = new HashSet<>(getRequiredInputs());

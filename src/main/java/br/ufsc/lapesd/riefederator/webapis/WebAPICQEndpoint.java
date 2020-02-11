@@ -59,7 +59,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
                 }
             }
         });
-        if (!hasAtomAnnotations && !molecule.getExecutor().getRequiredInputs().isEmpty()) {
+        if (!hasAtomAnnotations && molecule.getExecutor().hasInputs()) {
             logger.info("No AtomAnnotations in {}. Will call matchAndQuery()", query);
             return matchAndQuery(query, false);
         }
