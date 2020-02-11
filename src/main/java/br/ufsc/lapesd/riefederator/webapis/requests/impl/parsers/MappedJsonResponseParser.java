@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.webapis.requests.impl;
+package br.ufsc.lapesd.riefederator.webapis.requests.impl.parsers;
 
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;

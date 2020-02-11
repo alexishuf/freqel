@@ -32,33 +32,29 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     @SuppressWarnings("Immutable")
     private final @Nonnull Runnable closer;
     private final @Nullable String name;
+    private final boolean local;
 
-    public ARQEndpoint(@Nonnull Function<String, QueryExecution> executionFactory) {
-        this(executionFactory, () -> {});
-    }
-
-    public ARQEndpoint(@Nonnull Function<String, QueryExecution> executionFactory,
-                       @Nonnull Runnable closer) {
-        this.executionFactory = executionFactory;
-        this.name = null;
-        this.closer = closer;
-    }
-
-    public ARQEndpoint(@Nonnull String name,
-                       @Nonnull Function<String, QueryExecution> executionFactory) {
-        this(name, executionFactory, () -> {});
-    }
-
-    public ARQEndpoint(@Nonnull String name,
-                       @Nonnull Function<String, QueryExecution> executionFactory,
-                       @Nonnull Runnable closer) {
+    protected ARQEndpoint(@Nullable String name,
+                          @Nonnull Function<String, QueryExecution> executionFactory,
+                          @Nonnull Runnable closer, boolean local) {
         this.executionFactory = executionFactory;
         this.name = name;
         this.closer = closer;
+        this.local = local;
     }
 
     public @Nullable String getName() {
         return name;
+    }
+
+    public boolean isLocal() {
+        return local;
+    }
+
+    public boolean isEmpty() {
+        try (QueryExecution execution = executionFactory.apply("ASK WHERE {?s ?p ?o.}")) {
+            return !execution.execAsk();
+        }
     }
 
     /* ~~~ static method factories over some common source types  ~~~ */
@@ -66,24 +62,26 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     public static ARQEndpoint forModel(@Nonnull Model model) {
         String name = String.format("%s@%x", model.getClass().getSimpleName(),
                                              System.identityHashCode(model));
-        return new ARQEndpoint(name, sparql -> create(sparql, model));
+        return new ARQEndpoint(name, sparql -> create(sparql, model), () -> {}, true);
     }
     public static ARQEndpoint forDataset(@Nonnull Dataset ds) {
-        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds));
+        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds), () -> {}, true);
     }
     public static ARQEndpoint forCloseableDataset(@Nonnull Dataset ds) {
-        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds), ds::close);
+        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds), ds::close, true);
     }
 
     public static ARQEndpoint forService(@Nonnull String uri) {
-        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql));
+        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql), () -> {}, false);
     }
     public static ARQEndpoint forService(@Nonnull String uri, @Nonnull HttpClient client) {
-        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql, client));
+        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql, client),
+                               () -> {}, false);
     }
     public static ARQEndpoint forService(@Nonnull String uri, @Nonnull HttpClient client,
                                          @Nonnull HttpContext context) {
-        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql, client, context));
+        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql, client, context),
+                               () -> {}, false);
     }
 
     /* ~~~ method overloads and implementations  ~~~ */

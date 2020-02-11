@@ -71,15 +71,16 @@ public class EndpointIteratorResults implements Results {
                 currentEp = null;
             }
             currentEp = epIterator.next();
-            if (query.size() > 1) {
-                if (!(currentEp instanceof CQEndpoint)) {
-                    logger.error("Skipping TP-only ep {} for {}", query, currentEp);
+            if (currentEp != null) {
+                if (query.size() > 1) {
+                    if (!(currentEp instanceof CQEndpoint)) {
+                        logger.error("Skipping TP-only ep {} for {}", query, currentEp);
+                    } else {
+                        current = currentEp.query(this.query);
+                    }
                 } else {
                     current = currentEp.query(this.query);
                 }
-
-            } else {
-                current = currentEp.query(this.query);
             }
         }
         return current != null && current.hasNext();

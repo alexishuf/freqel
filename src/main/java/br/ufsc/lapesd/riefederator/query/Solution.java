@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
@@ -26,6 +27,9 @@ public interface Solution {
 
     default @Nullable Term get(@Nonnull String varName) {
         return get(varName, null);
+    }
+    default @Nullable Term get(@Nonnull Var var) {
+        return get(var.getName());
     }
     default boolean has(@Nonnull String varName) {
         return get(varName) != null;

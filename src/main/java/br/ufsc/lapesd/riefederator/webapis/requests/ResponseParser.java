@@ -12,5 +12,5 @@ public interface ResponseParser {
     @Nonnull String[] getAcceptable();
     @Nonnull Class<?> getDesiredClass();
     void setupClient(@Nonnull Client client);
-    @Nonnull CQEndpoint parse(@Nullable Object object, @Nonnull String uriHint);
+    @Nullable CQEndpoint parse(@Nullable Object object, @Nonnull String uriHint);
 }

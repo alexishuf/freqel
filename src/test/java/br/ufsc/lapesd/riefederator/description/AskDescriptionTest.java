@@ -20,6 +20,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -54,9 +55,10 @@ public class AskDescriptionTest {
     private static class CountingARQEndpoint extends ARQEndpoint {
         public int calls = 0;
 
-        public CountingARQEndpoint(@Nonnull String name,
-                                   @Nonnull Function<String, QueryExecution> executionFactory) {
-            super(name, executionFactory);
+        public CountingARQEndpoint(@Nullable String name,
+                                   @Nonnull Function<String, QueryExecution> executionFactory,
+                                   @Nonnull Runnable closer, boolean local) {
+            super(name, executionFactory, closer, local);
         }
 
         @Override
@@ -67,7 +69,8 @@ public class AskDescriptionTest {
     }
 
     private @Nonnull CountingARQEndpoint createEndpoint() {
-        return new CountingARQEndpoint("rdf", sparql -> create(sparql, rdf1));
+        return new CountingARQEndpoint("rdf", sparql -> create(sparql, rdf1),
+                                       () -> {}, true);
     }
 
     @DataProvider

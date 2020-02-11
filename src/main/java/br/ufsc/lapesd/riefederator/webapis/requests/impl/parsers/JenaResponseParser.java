@@ -1,9 +1,10 @@
-package br.ufsc.lapesd.riefederator.webapis.requests.impl;
+package br.ufsc.lapesd.riefederator.webapis.requests.impl.parsers;
 
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.requests.ResponseParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyReader;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.jena.rdf.model.Model;
 

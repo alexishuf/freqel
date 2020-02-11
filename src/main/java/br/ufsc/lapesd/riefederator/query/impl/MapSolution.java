@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Contract;
 
@@ -67,6 +68,13 @@ public class MapSolution extends AbstractSolution {
     @Contract("-> new")
     public static @Nonnull Builder builder() {
         return new Builder();
+    }
+
+    @Contract("_ -> new")
+    public static @Nonnull Builder builder(@Nonnull Solution other) {
+        Builder builder = new Builder();
+        other.forEach(builder::put);
+        return builder;
     }
 
     @Contract("_, _ -> new")
