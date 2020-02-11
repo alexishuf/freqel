@@ -188,7 +188,10 @@ public class ParamPagingStrategy implements PagingStrategy {
         return new Builder();
     }
     public static @Nonnull Builder builder(@Nonnull String param) {
-        return new Builder().withParam(param);
+        return builder().withParam(param);
+    }
+    public static @Nonnull ParamPagingStrategy build(@Nonnull String param) {
+        return builder(param).build();
     }
 
     @Override
