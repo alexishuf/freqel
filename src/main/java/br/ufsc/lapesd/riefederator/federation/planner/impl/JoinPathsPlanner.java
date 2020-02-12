@@ -275,6 +275,10 @@ public class JoinPathsPlanner implements Planner {
             assert novelMatched.size() >= matched.size();
             if (novelMatched.size() == matched.size())
                 return null; // no new triples satisfied
+            for (State s = ancestor; s != null; s = s.ancestor) {
+                if (nextNode.getMatchedTriples().containsAll(s.node.getMatchedTriples()))
+                    return null; // invalid path
+            }
             return new State(nextNode, info, this, novelMatched);
         }
         boolean hasInputs() {

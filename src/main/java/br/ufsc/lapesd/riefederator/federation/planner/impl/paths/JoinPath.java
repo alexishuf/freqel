@@ -48,6 +48,13 @@ public class JoinPath {
             Set<PlanNode> all;
             all = joinInfos.stream().flatMap(i -> i.getNodes().stream()).collect(toSet());
             checkArgument(nodes.equals(all), "There are extraneous nodes in the join path");
+
+            for (PlanNode l : nodes) {
+                for (PlanNode r : nodes) {
+                    if (l != r)
+                        checkArgument(!l.getMatchedTriples().containsAll(r.getMatchedTriples()));
+                }
+            }
         }
 
     }

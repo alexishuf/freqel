@@ -150,7 +150,13 @@ public abstract class UndirectedIrreflexiveArrayGraph<N, W> {
             throw new ConcurrentModificationException();
     }
 
+    public W getWeight(@Nonnull N l, @Nonnull N r) {
+        return getWeight(indexOf(l), indexOf(r));
+    }
+
     public W getWeight(int l, int r) {
+        Preconditions.checkPositionIndex(l, size());
+        Preconditions.checkPositionIndex(r, size());
         Preconditions.checkArgument(l != r, "Cannot getWeight("+l+", "+r+") on irreflexive graph");
         if (l > r) return getWeight(r, l);
         return weights[rowOffset(l) + (r-(l+1))];
