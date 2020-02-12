@@ -7,6 +7,8 @@ import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.Immutable;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -15,9 +17,10 @@ import com.google.gson.JsonParser;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.ws.rs.core.Response;
-
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
 import static javax.ws.rs.core.Response.Status.Family.SUCCESSFUL;
@@ -32,10 +35,12 @@ public class ParamPagingStrategy implements PagingStrategy {
         private final int increment;
         private boolean end;
         private final boolean endOnError, endOnNull, endOnEmptyResponse, endOnEmptyJson;
+        private final @Nonnull ImmutableMap<String, Object> jsonEndValues;
 
         public ParamPager(@Nonnull String param, int firstPage, int increment,
                           boolean endOnError, boolean endOnNull, boolean endOnEmptyResponse,
-                          boolean endOnEmptyJson) {
+                          boolean endOnEmptyJson,
+                          @Nonnull ImmutableMap<String, Object> jsonEndValues) {
             this.param = param;
             this.page = firstPage;
             this.increment = increment;
@@ -44,6 +49,7 @@ public class ParamPagingStrategy implements PagingStrategy {
             this.endOnNull = endOnNull;
             this.endOnEmptyResponse = endOnEmptyResponse;
             this.endOnEmptyJson = endOnEmptyJson;
+            this.jsonEndValues = jsonEndValues;
         }
 
         @Override
@@ -69,34 +75,103 @@ public class ParamPagingStrategy implements PagingStrategy {
                 end = true;
                 return;
             }
-            if (endOnEmptyJson && response.getMediaType().isCompatible(APPLICATION_JSON_TYPE)) {
+            boolean checkJson = endOnEmptyJson || !jsonEndValues.isEmpty();
+            if (checkJson && response.getMediaType().isCompatible(APPLICATION_JSON_TYPE)) {
                 response.bufferEntity();
                 String json = response.readEntity(String.class);
-                JsonElement e = new JsonParser().parse(json);
-                if (e.isJsonObject() && e.getAsJsonObject().size() == 0) {
+                if (endOnEmptyJson && json.trim().isEmpty()) {
                     end = true;
-                    return;
-                }
-                if (e.isJsonArray()) {
-                    JsonArray array = e.getAsJsonArray();
-                    if (array.size() == 0) {
-                        end = true;
-                    } else {
-                        boolean allEmpty = true;
-                        for (JsonElement c : array) {
-                            if (c.isJsonArray() ) {
-                                if (!(allEmpty = c.getAsJsonArray().size() == 0)) break;
-                            } else if (c.isJsonObject()) {
-                                if (!(allEmpty = c.getAsJsonObject().size() == 0)) break;
-                            } else {
-                                allEmpty = false;
-                                break;
-                            }
-                        }
-                        if (!allEmpty) end = true;
+                } else {
+                    JsonElement e = new JsonParser().parse(json);
+                    if (checkEmptyJson(e))
+                        return;
+                    for (Map.Entry<String, Object> entry : jsonEndValues.entrySet()) {
+                        if (checkJsonValue(e, entry.getKey(), entry.getValue()))
+                            return;
                     }
                 }
             }
+        }
+
+        private boolean checkJsonValue(@Nonnull JsonElement root, @Nonnull String path,
+                                       @Nullable Object value) {
+            if (!root.isJsonObject()) return false;
+            List<String> list = Splitter.on('/').omitEmptyStrings().trimResults().splitToList(path);
+            JsonElement element = root;
+            for (String property : list) {
+                if (!element.isJsonObject())
+                    return false; // path is broken
+                element = element.getAsJsonObject().get(property);
+            }
+            if (valueMatches(element, value)) {
+                end = true;
+                return true;
+            }
+            return false;
+        }
+
+        private boolean valueMatches(@Nullable JsonElement element, @Nullable Object value) {
+            if (value == null) {
+                return element == null;
+            } else {
+                if (element == null) {
+                    return false;
+                } else if (element.isJsonObject()) {
+                    return false;
+                } else if (element.isJsonArray()) {
+                    JsonArray asArray = element.getAsJsonArray();
+                    if (value instanceof Object[]) {
+                        Object[] a = (Object[]) value;
+                        if (a.length == asArray.size()) {
+                            for (int i = 0; i < a.length; i++) {
+                                if (!valueMatches(asArray.get(i), a[i]))
+                                    return false;
+                            }
+                            return true;
+                        }
+                    } else if (asArray.size() == 1) {
+                        return valueMatches(asArray.get(0), value);
+                    }
+                } else if (value instanceof Integer || value instanceof Long) {
+                    return element.getAsLong() == ((Number) value).longValue();
+                } else if (value instanceof Float || value instanceof Double) {
+                    return element.getAsDouble() == ((Number) value).doubleValue();
+                } else {
+                    return element.getAsString().equals(value.toString());
+                }
+            }
+            return false;
+        }
+
+        private boolean checkEmptyJson(@Nonnull JsonElement e) {
+            if (e.isJsonObject() && e.getAsJsonObject().size() == 0) {
+                end = true;
+                return true;
+            }
+            if (e.isJsonArray()) {
+                JsonArray array = e.getAsJsonArray();
+                if (array.size() == 0) {
+                    end = true;
+                    return true;
+                } else {
+                    boolean allEmpty = true;
+                    for (JsonElement c : array) {
+                        if (c.isJsonArray() ) {
+                            if (!(allEmpty = c.getAsJsonArray().size() == 0)) break;
+                        } else if (c.isJsonObject()) {
+                            if (!(allEmpty = c.getAsJsonObject().size() == 0)) break;
+                        } else {
+                            allEmpty = false;
+                            break;
+                        }
+                    }
+                    if (!allEmpty) {
+                        end = true;
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         @Override
@@ -122,10 +197,13 @@ public class ParamPagingStrategy implements PagingStrategy {
     private final boolean endOnEmpty;
     private final boolean endOnNull;
     private final boolean endOnEmptyJson;
+    @SuppressWarnings("Immutable")
+    private final @Nonnull ImmutableMap<String, Object> jsonEndValues;
 
     protected ParamPagingStrategy(@Nonnull String param, int firstPage, int increment,
                                   boolean endOnError, boolean endOnNull, boolean endOnEmpty,
-                                  boolean endOnEmptyJson) {
+                                  boolean endOnEmptyJson,
+                                  @Nonnull ImmutableMap<String, Object> jsonEndValues) {
         this.param = param;
         this.firstPage = firstPage;
         this.increment = increment;
@@ -133,6 +211,7 @@ public class ParamPagingStrategy implements PagingStrategy {
         this.endOnNull = endOnNull;
         this.endOnEmpty = endOnEmpty;
         this.endOnEmptyJson = endOnEmptyJson;
+        this.jsonEndValues = jsonEndValues;
     }
 
     public static class Builder {
@@ -142,6 +221,7 @@ public class ParamPagingStrategy implements PagingStrategy {
         private boolean endOnNull = true;
         private boolean endOnEmpty = true;
         private boolean endOnEmptyJson = false;
+        private Map<String, Object> jsonEndValues = new HashMap<>();
 
         public @Nonnull Builder withParam(@Nonnull String param) {
             this.param = param;
@@ -173,6 +253,11 @@ public class ParamPagingStrategy implements PagingStrategy {
             return this;
         }
 
+        public @Nonnull Builder withEndOnJsonValue(@Nonnull String path, @Nullable Object value) {
+            this.jsonEndValues.put(path, value);
+            return this;
+        }
+
         public @Nonnull Builder withEndOnEmptyJson(boolean endOnEmptyJson) {
             this.endOnEmptyJson = endOnEmptyJson;
             return this;
@@ -180,7 +265,8 @@ public class ParamPagingStrategy implements PagingStrategy {
 
         public @Nonnull ParamPagingStrategy build() {
             return new ParamPagingStrategy(param, firstPage, increment,
-                                           endOnError, endOnNull, endOnEmpty, endOnEmptyJson);
+                                           endOnError, endOnNull, endOnEmpty, endOnEmptyJson,
+                                           ImmutableMap.copyOf(jsonEndValues));
         }
     }
 
@@ -196,7 +282,8 @@ public class ParamPagingStrategy implements PagingStrategy {
 
     @Override
     public @Nonnull Pager createPager() {
-        return new ParamPager(param, firstPage, increment, endOnError, endOnNull, endOnEmpty, endOnEmptyJson);
+        return new ParamPager(param, firstPage, increment, endOnError, endOnNull,
+                              endOnEmpty, endOnEmptyJson, jsonEndValues);
     }
 
     @Override
