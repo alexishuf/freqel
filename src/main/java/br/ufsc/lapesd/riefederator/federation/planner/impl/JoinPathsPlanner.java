@@ -71,7 +71,7 @@ public class JoinPathsPlanner implements Planner {
         } else {
             PlanNode root = plan(qns, full);
             if (root == null) {
-                logger.debug("No join path across endpoints for join-connected query {}. " +
+                logger.info("No join path across endpoints for join-connected query {}. " +
                              "Returning EmptyNode", query);
                 return new EmptyNode(query);
             }

@@ -441,6 +441,20 @@ public class CQuery implements  List<Triple> {
         return copy;
     }
 
+    public @Contract("_ -> new") @Nonnull CQuery withModifiers(@Nonnull CQuery other) {
+        CQuery copy = new CQuery(list, other.getModifiers(), prefixDict,
+                                 termAnnotations, tripleAnnotations);
+        copy.ask = ask;
+        copy.varsCache = varsCache;
+        copy.set = set;
+        copy.matchedTriples = matchedTriples;
+        copy.t2triple = t2triple;
+        copy.s2triple = s2triple;
+        copy.o2triple = o2triple;
+        return copy;
+    }
+
+
     /* ~~~ CQuery methods ~~~ */
 
     /** Gets the underlying immutable triple {@link List} of this {@link CQuery}. */

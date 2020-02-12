@@ -16,6 +16,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import br.ufsc.lapesd.riefederator.webapis.requests.MismatchingQueryException;
 import br.ufsc.lapesd.riefederator.webapis.requests.MissingAPIInputsException;
 import br.ufsc.lapesd.riefederator.webapis.requests.NoTermSerializationException;
@@ -25,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.lang.ref.SoftReference;
 import java.util.Iterator;
 import java.util.Set;
@@ -42,6 +44,15 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     public @Nonnull APIMolecule getMolecule() {
         return molecule;
+    }
+
+    public @Nonnull Source asSource() {
+        return asSource(null);
+    }
+
+    public @Nonnull Source asSource(@Nullable String name) {
+        return new Source(getMatcher(), this,
+                          name != null ? name : getMolecule().getExecutor().toString());
     }
 
     @Override
@@ -93,7 +104,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             CQuery subQuery = match.getKnownExclusiveGroups().get(0);
             if (subQuery.size() != query.size())
                 return reportFailure(query, throwOnFailedMatch, varNames);
-            return query(subQuery); // no loop, since it has AtomAnnotations
+            return query(subQuery.withModifiers(query)); // no loop, since it has AtomAnnotations
         } else {
             Set<Triple> allTriples = match.getKnownExclusiveGroups().stream()
                     .flatMap(CQuery::stream).collect(toSet());

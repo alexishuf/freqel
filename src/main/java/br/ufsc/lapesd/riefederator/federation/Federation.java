@@ -8,6 +8,8 @@ import br.ufsc.lapesd.riefederator.query.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.impl.ProjectingResults;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
@@ -26,6 +28,11 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
                       @Nonnull PlanExecutor executor) {
         this.strategy = strategy;
         this.executor = executor;
+    }
+
+    public static @Nonnull Federation createDefault() {
+        Injector injector = Guice.createInjector(new SimpleFederationModule());
+        return injector.getInstance(Federation.class);
     }
 
     @Contract("_ -> this") @CanIgnoreReturnValue
