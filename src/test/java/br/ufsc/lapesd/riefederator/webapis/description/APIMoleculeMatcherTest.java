@@ -16,6 +16,7 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
+import com.google.common.collect.Sets;
 import org.glassfish.jersey.uri.UriTemplate;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -28,8 +29,7 @@ import java.util.stream.Stream;
 import static br.ufsc.lapesd.riefederator.reason.tbox.OWLAPITBoxReasoner.structural;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.*;
 
 public class APIMoleculeMatcherTest {
     public static final @Nonnull String EX = "http://example.org/";
@@ -44,6 +44,7 @@ public class APIMoleculeMatcherTest {
     public static final @Nonnull URI city1 = new StdURI(EX+"cities/1");
     public static final @Nonnull Lit title1 = StdLit.fromEscaped("title1", "en");
     public static final @Nonnull Lit title2 = StdLit.fromEscaped("title2", "en");
+    public static final @Nonnull Lit crime = StdLit.fromUnescaped("Crime");
     public static final @Nonnull Lit authorName1 = StdLit.fromEscaped("name1", "en");
     public static final @Nonnull Var X = new StdVar("x");
     public static final @Nonnull Var Y = new StdVar("y");
@@ -350,4 +351,71 @@ public class APIMoleculeMatcherTest {
             assertCompatible(actualAlternatives, expectedAlternatives);
         }
     }
+
+
+    private CQuery preservePureDescriptiveAnnotationTest(CQuery query, Triple annotated) {
+        CQueryMatch match = new APIMoleculeMatcher(BOOKS_BY_AUTHOR).match(query);
+        assertEquals(match.getNonExclusiveRelevant().size(), 0);
+        assertEquals(match.getKnownExclusiveGroups().size(), 1);
+
+        CQuery eg = match.getKnownExclusiveGroups().get(0);
+        assertTrue(eg.getTripleAnnotations(annotated).contains(PureDescriptive.INSTANCE));
+        return eg;
+    }
+
+    @Test
+    public void testPreservePureDescriptiveAnnotationInFullMatch() {
+        Triple hasTitle = new Triple(X, title, crime);
+        CQuery query = CQuery.with(hasTitle,
+                                   new Triple(X, author, Y),
+                                   new Triple(Y, authorName, authorName1))
+                             .annotate(hasTitle, PureDescriptive.INSTANCE).build();
+        CQuery eg = preservePureDescriptiveAnnotationTest(query, new Triple(X, title, crime));
+        assertEquals(eg.getSet(), query.getSet());
+    }
+
+    @Test
+    public void testPreservePureDescriptiveAnnotationInPartialMatch() {
+        Triple hasTitle = new Triple(X, title, crime);
+        CQuery query = CQuery.with(hasTitle, new Triple(X, author, Y),
+                                             new Triple(X, cites, Z),
+                                             new Triple(Y, authorName, authorName1))
+                .annotate(hasTitle, PureDescriptive.INSTANCE).build();
+        CQuery eg = preservePureDescriptiveAnnotationTest(query, new Triple(X, title, crime));
+        assertEquals(eg.getSet(),
+                     Sets.newHashSet(hasTitle, new Triple(X, author, Y),
+                                               new Triple(Y, authorName, authorName1)));
+    }
+
+    @Test
+    public void testSemanticMatchPreservesPureDescriptive() {
+        TransitiveClosureTBoxReasoner reasoner = new TransitiveClosureTBoxReasoner();
+        TBoxSpec tboxSpec = new TBoxSpec()
+                .addResource(getClass(), "../../api-molecule-matcher-tests.ttl");
+        reasoner.load(tboxSpec);
+
+        APIMoleculeMatcher matcher = new APIMoleculeMatcher(BOOKS_BY_MAIN_AUTHOR, reasoner);
+        Triple hasTitle = new Triple(X, title, crime);
+        Triple hasAuthor = new Triple(X, author, Y);
+        Triple hasCited = new Triple(X, cites, Z);
+        Triple hasName = new Triple(Y, authorName, authorName1);
+        CQuery query = CQuery.with(hasTitle, hasAuthor, hasCited, hasName)
+                             .annotate(hasTitle, PureDescriptive.INSTANCE).build();
+
+        SemanticCQueryMatch match = matcher.semanticMatch(query);
+        assertEquals(match.getKnownExclusiveGroups().size(), 1);
+        assertEquals(match.getNonExclusiveRelevant().size(), 0);
+
+        CQuery eg = match.getKnownExclusiveGroups().get(0);
+        assertEquals(eg.getSet(), Sets.newHashSet(hasTitle, hasAuthor, hasName));
+        assertTrue(eg.getTripleAnnotations(hasTitle).contains(PureDescriptive.INSTANCE));
+        assertFalse(eg.getTripleAnnotations(hasAuthor).contains(PureDescriptive.INSTANCE));
+
+        Set<CQuery> alternatives = match.getAlternatives(eg);
+        assertEquals(alternatives.size(), 1);
+
+        CQuery alt = alternatives.iterator().next();
+        assertTrue(alt.getTripleAnnotations(hasTitle).contains(PureDescriptive.INSTANCE));
+    }
+
 }

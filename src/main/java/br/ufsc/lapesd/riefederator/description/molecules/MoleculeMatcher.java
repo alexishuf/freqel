@@ -395,14 +395,17 @@ public class MoleculeMatcher implements SemanticDescription {
             }
 
             public void add(@Nonnull Triple triple, @Nonnull Collection<LinkMatch> matches) {
+                assert parentQuery.contains(triple);
                 builder.add(triple);
+                parentQuery.getTripleAnnotations(triple).forEach(a -> builder.annotate(triple, a));
             }
 
-            public void addAlternative(@Nonnull Triple triple,
-                                       @Nonnull Triple alternative) {
-                builder.add(alternative);
-                if (!alternative.equals(triple))
-                    builder.annotate(alternative, new MatchAnnotation(triple));
+            public void addAlternative(@Nonnull Triple triple, @Nonnull Triple alt) {
+                assert parentQuery.contains(triple);
+                builder.add(alt);
+                parentQuery.getTripleAnnotations(triple).forEach(a -> builder.annotate(alt, a));
+                if (!alt.equals(triple))
+                    builder.annotate(alt, new MatchAnnotation(triple));
             }
 
             public boolean isEmpty() {
@@ -414,6 +417,10 @@ public class MoleculeMatcher implements SemanticDescription {
             }
 
             public CQuery build() {
+                //copy all term annotations
+                builder.getList().stream().flatMap(Triple::stream).distinct()
+                        .forEach(t -> parentQuery.getTermAnnotations(t)
+                                .forEach(a -> builder.annotate(t, a)));
                 return builder.build();
             }
         }

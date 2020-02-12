@@ -248,15 +248,14 @@ public class CQuery implements  List<Triple> {
     }
 
     public static class Builder extends WithBuilder {
-        private ImmutableList.Builder<Triple> listBuilder;
+        private List<Triple> mutableList;
         private int size = 0;
 
         public Builder() {
-            listBuilder = ImmutableList.builder();
+            mutableList = new ArrayList<>();
         }
         public Builder(int sizeHint) {
-            //noinspection UnstableApiUsage
-            listBuilder = ImmutableList.builderWithExpectedSize(sizeHint);
+            mutableList = new ArrayList<>(sizeHint);
         }
 
         public int size() {
@@ -269,17 +268,21 @@ public class CQuery implements  List<Triple> {
 
         public @Contract("_ -> this") @Nonnull Builder add(@Nonnull Triple... triples) {
             size += triples.length;
-            listBuilder.add(triples);
+            mutableList.addAll(Arrays.asList(triples));
             return this;
         }
         public @Contract("_ -> this") @Nonnull Builder addAll(@Nonnull Collection<Triple> triples) {
             size += triples.size();
-            listBuilder.addAll(triples);
+            mutableList.addAll(triples);
             if (triples instanceof CQuery) {
                 ((CQuery) triples).forEachTermAnnotation(  this::annotate);
                 ((CQuery) triples).forEachTripleAnnotation(this::annotate);
             }
             return this;
+        }
+
+        public @Nonnull List<Triple> getList() {
+            return mutableList;
         }
 
         @Override
@@ -370,7 +373,7 @@ public class CQuery implements  List<Triple> {
 
         @Override
         public @Nonnull CQuery build() {
-            list = listBuilder.build();
+            list = ImmutableList.copyOf(mutableList);
             return super.build();
         }
     }
