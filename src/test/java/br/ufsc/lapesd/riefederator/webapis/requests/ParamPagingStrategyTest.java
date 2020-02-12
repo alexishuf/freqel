@@ -123,7 +123,6 @@ public class ParamPagingStrategyTest extends JerseyTestNg.ContainerPerClassTest 
 
                 Object object = response.readEntity(responseParser.getDesiredClass());
                 CQEndpoint endpoint = responseParser.parse(object, hint);
-                assertNotNull(endpoint);
 
                 pager.notifyResponseEndpoint(endpoint);
             }

@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.validation.constraints.Null;
 import javax.ws.rs.client.Client;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -31,7 +32,7 @@ public class MappedJsonResponseParser implements ResponseParser {
     private static final String[] SELF_NAMES = {"@id", "_self", "_id", "self", "id"};
     private static final ImmutableSet<String> TRANSPARENT = ImmutableSet.of("_embedded");
     private static final ImmutableSet<String> BLACKLIST
-            = ImmutableSet.of("_embedded", "_links", "@id");
+            = ImmutableSet.of("_embedded", "_links", "links", "@id");
     private static final Pattern RX_ABS = Pattern.compile("^[^:]+://");
     private static final Pattern RX_SL_END = Pattern.compile("/+$");
     private static final Pattern RX_SL_BEGIN = Pattern.compile("^/+");
@@ -63,12 +64,14 @@ public class MappedJsonResponseParser implements ResponseParser {
     }
 
     @Override
-    public @Nonnull CQEndpoint parse(Object object, @Nonnull String uriHint) {
+    public @Nullable CQEndpoint parse(Object object, @Nonnull String uriHint) {
         String string = (String) object;
         Model model = ModelFactory.createDefaultModel();
         // parse json into model
         JsonElement element = new JsonParser().parse(string);
         parseInto(model, element, uriHint);
+        if (model.isEmpty())
+            return null; // no data. Don't bother querying. If paging, stop
         return ARQEndpoint.forModel(model);
     }
 
@@ -152,7 +155,9 @@ public class MappedJsonResponseParser implements ResponseParser {
         return parent + "/" + uri;
     }
 
-    private String tryGetString(@Nonnull JsonElement e, @Nonnull String propertyName) {
+    private String tryGetString(@Nullable JsonElement e, @Nonnull String propertyName) {
+        if (e == null)
+            return null;
         if (e.isJsonArray() && e.getAsJsonArray().size() > 0)
             e = e.getAsJsonArray().get(0);
         if (e.isJsonPrimitive())
@@ -169,19 +174,51 @@ public class MappedJsonResponseParser implements ResponseParser {
         return null;
     }
 
+    private boolean hasString(@Nullable JsonElement element, @Nonnull String property,
+                              @Nonnull String expected) {
+        String string = tryGetString(element, property);
+        return string != null && string.trim().toLowerCase().equals(expected.trim().toLowerCase());
+    }
+
+    private @Nullable String tryGetSelfHref(@Nonnull JsonObject linksObj) {
+        // Try self as a URI ("self": "...") or as an object with href ("self": {"href": "..."})
+        JsonElement self = linksObj.getAsJsonObject().get("self");
+        String uri;
+        if ((uri = tryGetString(self, "href")) != null) return uri;
+        if ((uri = tryGetString(self, "_href")) != null) return uri;
+
+        // Try "links": {"rel": "self", "href": "..."} and variations
+        if (hasString(linksObj, "rel", "self") || hasString(linksObj, "_rel", "self")) {
+            if ((uri = tryGetString(linksObj, "href")) != null) return uri;
+            if ((uri = tryGetString(linksObj, "_href")) != null) return uri;
+        }
+        return null;
+    }
+
+    private @Nullable String tryGetSelfHref(@Nonnull JsonObject o, @Nonnull String links) {
+        JsonElement linksObj = o.get(links);
+        if (linksObj == null) return null;
+        if (linksObj.isJsonArray()) {
+            for (JsonElement member : linksObj.getAsJsonArray()) {
+                if (member.isJsonObject()) {
+                    String string = tryGetSelfHref(member.getAsJsonObject());
+                    if (string != null)
+                        return string;
+                }
+            }
+        } else if (linksObj.isJsonObject()) {
+            return tryGetSelfHref(linksObj.getAsJsonObject());
+        }
+        return null;
+    }
+
     @Contract("_, !null -> !null")
     private String tryGetURI(@Nonnull JsonObject o, @Nullable String fallback) {
-        JsonObject links = o.getAsJsonObject("_links");
-        if (links != null) {
-            JsonElement self = links.get("self");
-            String uri = tryGetString(self, "href");
-            if (uri != null)
-                return uri;
-        }
+        String uri;
+        if ((uri = tryGetSelfHref(o, "_links")) != null) return uri;
+        if ((uri = tryGetSelfHref(o, "links")) != null) return uri;
         for (String name : SELF_NAMES) {
-            String uri = tryGetString(o, name);
-            if (uri != null)
-                return uri;
+            if ((uri = tryGetString(o, name)) != null) return uri;
         }
         return fallback;
     }

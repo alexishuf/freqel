@@ -20,12 +20,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
@@ -77,15 +75,13 @@ public class MappedJsonResponseParserTest {
     @Test(dataProvider = "emptyData")
     public void testEmptyString(String json) {
         CQEndpoint ep = parser.parse(json, EX + "res/1");
-        assertNotNull(ep);
-        try (Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
-            assertFalse(results.hasNext());
-        }
+        assertNull(ep); //parser realizes it generated and empty graph
     }
 
     @Test
     public void testPlainWithExtras() {
         CQEndpoint ep = parser.parse("{\"prop_a\": 1, \"prop_c\": 2}", EX + "res/1");
+        assertNotNull(ep);
         Triple triple = new Triple(X, Y, Z);
         Set<Solution> all = new HashSet<>();
         try (Results results = ep.query(CQuery.from(triple))) {
@@ -102,7 +98,7 @@ public class MappedJsonResponseParserTest {
     @Test
     public void testBlankNode() {
         CQEndpoint ep = parser.parse("{\"prop_a\": {\"prop_b\": 23}}", EX + "res/1");
-
+        assertNotNull(ep);
         try (Results r1 = ep.query(CQuery.from(new Triple(ex("res/1"), pa, X)))) {
             assertTrue(r1.hasNext());
             Solution next = r1.next();
@@ -137,6 +133,7 @@ public class MappedJsonResponseParserTest {
                 "    \"prop_b\": 23\n" +
                 "  }\n" +
                 "}\n", EX + "res/2");
+        assertNotNull(ep);
         Set<Solution> all = new HashSet<>();
         try (Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
             results.forEachRemaining(all::add);
@@ -150,6 +147,35 @@ public class MappedJsonResponseParserTest {
     }
 
     @Test
+    public void testRelSelfLinks() {
+        for (List<String> scenario : asList(asList("", "" ), asList("_", "" ),
+                                            asList("", "["), asList("_", "["))) {
+            String u = scenario.get(0), ob = scenario.get(1);
+            String cb = ob.equals("[") ? "]" : "";
+            CQEndpoint ep = parser.parse("{\n" +
+                    "  \"prop_a\": {\n" +
+                    "    \""+u+"links\": "+ob+" {\n" +
+                    "      \""+u+"rel\": \"self\",\n" +
+                    "      \""+u+"href\": \"http://example.org/res/23\"\n" +
+                    "    } "+cb+",\n" +
+                    "    \"prop_b\": 23\n" +
+                    "  }\n" +
+                    "}\n", EX + "res/2");
+            assertNotNull(ep);
+            Set<Solution> all = new HashSet<>();
+            try (Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
+                results.forEachRemaining(all::add);
+            }
+
+            StdURI r23 = ex("res/23");
+            HashSet<MapSolution> expected = Sets.newHashSet(
+                    MapSolution.builder().put(X, ex("res/2")).put(Y, pa).put(Z, r23).build(),
+                    MapSolution.builder().put(X, r23).put(Y, pb).put(Z, i23).build());
+            assertEquals(all, expected);
+        }
+    }
+
+    @Test
     public void testHALOverrides() {
         CQEndpoint ep = parser.parse("{\n" +
                 "  \"prop_a\": 23,\n" +
@@ -159,6 +185,7 @@ public class MappedJsonResponseParserTest {
                 "    }\n" +
                 "  }\n" +
                 "}\n", EX + "res/1");
+        assertNotNull(ep);
         Set<Solution> all = new HashSet<>();
         try (Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
             results.forEachRemaining(all::add);
@@ -184,6 +211,7 @@ public class MappedJsonResponseParserTest {
                 "    }\n" +
                 "  }\n" +
                 "}\n", EX + "res/1");
+        assertNotNull(ep);
         Set<Solution> all = new HashSet<>();
         try (Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
             results.forEachRemaining(all::add);
