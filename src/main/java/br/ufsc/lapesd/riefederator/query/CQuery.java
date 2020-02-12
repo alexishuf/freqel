@@ -211,6 +211,13 @@ public class CQuery implements  List<Triple> {
             tripleAnnBuilder.put(triple, annotation);
             return this;
         }
+        @CanIgnoreReturnValue
+        public @Contract("_, _ -> this") @Nonnull
+        WithBuilder annotate(int tripleIdx, @Nonnull TripleAnnotation annotation) {
+            Preconditions.checkState(list != null);
+            Preconditions.checkPositionIndex(tripleIdx, list.size());
+            return annotate(list.get(tripleIdx), annotation);
+        }
 
         @CanIgnoreReturnValue
         public @Contract("_ -> this") @Nonnull
@@ -356,6 +363,13 @@ public class CQuery implements  List<Triple> {
         public @Contract("_, _ -> this") @Nonnull
         Builder annotate(@Nonnull Triple triple, @Nonnull TripleAnnotation annotation) {
             super.annotate(triple, annotation);
+            return this;
+        }
+        @Override
+        public @Contract("_, _ -> this") @Nonnull
+        Builder annotate(int tripleIdx, @Nonnull TripleAnnotation annotation) {
+            Preconditions.checkPositionIndex(tripleIdx, mutableList.size());
+            annotate(mutableList.get(tripleIdx), annotation);
             return this;
         }
 

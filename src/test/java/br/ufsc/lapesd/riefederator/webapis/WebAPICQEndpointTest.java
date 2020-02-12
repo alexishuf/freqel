@@ -18,6 +18,7 @@ import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import br.ufsc.lapesd.riefederator.webapis.requests.ParamPagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
@@ -41,8 +42,10 @@ import javax.ws.rs.core.UriInfo;
 import java.io.StringReader;
 import java.util.*;
 
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
@@ -52,6 +55,7 @@ public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
     private static final URI op1 = new StdURI("http://example.org/op1");
     private static final URI result = new StdURI("http://example.org/result");
     private static final URI total = new StdURI("http://example.org/total");
+    private static final URI exponent = new StdURI("http://example.org/exponent");
     private static final Lit i1 = StdLit.fromUnescaped("1", xint);
     private static final Lit i2 = StdLit.fromUnescaped("2", xint);
     private static final Lit i3 = StdLit.fromUnescaped("3", xint);
@@ -90,6 +94,17 @@ public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
             }
             return model;
         }
+
+        @GET @Path("exp/{base}")
+        public @Nonnull Model exp(@PathParam("base") int base, @QueryParam("exp") int exp,
+                                  @Context UriInfo uriInfo) {
+            if (exp == 0) exp = 2;
+            Model model = ModelFactory.createDefaultModel();
+            model.createResource(uriInfo.getAbsolutePath().toString())
+                    .addProperty(jOp1, createTypedLiteral(base))
+                    .addProperty(jResult, createTypedLiteral((int)Math.pow(base, exp)));
+            return model;
+        }
     }
 
     private @Nonnull APIMolecule squareMolecule() {
@@ -119,6 +134,26 @@ public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
         atom2in.put("Total", "i");
         return new APIMolecule(molecule, exec, atom2in);
     }
+
+    private @Nonnull APIMolecule expMolecule() {
+        UriTemplate tpl = new UriTemplate(target().getUri().toString() + "exp/{b}{?exp}");
+        UriTemplateExecutor exec = UriTemplateExecutor.from(tpl)
+                .withOptional("exp")
+                .build();
+        assertEquals(exec.getRequiredInputs(), singleton("b"));
+        assertEquals(exec.getOptionalInputs(), singleton("exp"));
+        Molecule molecule = Molecule.builder("Count")
+                .out(op1, Molecule.builder("Operand").buildAtom())
+                .out(exponent, Molecule.builder("Exponent").buildAtom())
+                .out(result, Molecule.builder("Result").buildAtom())
+                .exclusive()
+                .build();
+        Map<String, String> atom2in = new HashMap<>();
+        atom2in.put("Operand", "b");
+        atom2in.put("Exponent", "exp");
+        return new APIMolecule(molecule, exec, atom2in);
+    }
+
 
     @Override
     protected @Nonnull Application configure() {
@@ -166,6 +201,23 @@ public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
         RDFDataMgr.read(emptyModel, new StringReader(jsonEmpty), null, Lang.JSONLD);
         assertEquals(emptyModel.size(), 0);
 
+    }
+
+    @Test
+    public void selfTestExp() {
+        String jsonld = target("exp/4").queryParam("exp", 3)
+                                             .request("application/ld+json").get(String.class);
+        Model model = ModelFactory.createDefaultModel();
+        RDFDataMgr.read(model, new StringReader(jsonld), null, Lang.JSONLD);
+
+        assertEquals(model.size(), 2);
+        List<Statement> list = model.listStatements(null, jOp1, (RDFNode) null).toList();
+        assertEquals(list.size(), 1);
+        assertEquals(list.get(0).getLiteral(), createTypedLiteral(4));
+
+        list = model.listStatements(null, jResult, (RDFNode) null).toList();
+        assertEquals(list.size(), 1);
+        assertEquals(list.get(0).getLiteral(), createTypedLiteral(64));
     }
 
     @Test
@@ -229,5 +281,18 @@ public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
         List<Term> values = new ArrayList<>(), expected = asList(i1, i2, i3);
         results.forEachRemainingThenClose(s -> values.add(s.get(Y)));
         assertEquals(values, expected); //ordered due to paging
+    }
+
+    @Test
+    public void testDirectQueryDescriptiveTriple() {
+        WebAPICQEndpoint ep = new WebAPICQEndpoint(expMolecule());
+        CQuery query = CQuery.with(new Triple(X, exponent, i3),
+                                   new Triple(X, op1, i4),
+                                   new Triple(X, result, Y))
+                .annotate(new Triple(X, exponent, i3), PureDescriptive.INSTANCE)
+                .build();
+        List<Term> list = new ArrayList<>();
+        ep.query(query).forEachRemainingThenClose(s -> list.add(s.get(Y)));
+        assertEquals(list, singletonList(fromJena(createTypedLiteral(64))));
     }
 }

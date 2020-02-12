@@ -7,9 +7,11 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdBlank;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
+import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDFS;
@@ -19,18 +21,20 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import static br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict.EMPTY;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
+import static java.util.Arrays.asList;
+import static java.util.Collections.*;
 import static org.testng.Assert.*;
 
 public class SPARQLStringTest {
     private final static @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
     private final static @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
     private final static @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
+    private final static @Nonnull StdVar X = new StdVar("x");
 
     @DataProvider
     public static Object[][] term2SPARQLData() {
@@ -65,7 +69,7 @@ public class SPARQLStringTest {
 
     @Test
     public void testConjunctiveASK() {
-        SPARQLString s = new SPARQLString(Arrays.asList(
+        SPARQLString s = new SPARQLString(asList(
                 new Triple(ALICE, KNOWS, BOB), new Triple(ALICE, KNOWS, ALICE)
         ), EMPTY);
         assertEquals(s.getType(), SPARQLString.Type.ASK);
@@ -78,6 +82,17 @@ public class SPARQLStringTest {
                 singleton(new Triple(ALICE, KNOWS, new StdVar("who"))), EMPTY);
         assertEquals(s.getType(), SPARQLString.Type.SELECT);
         assertEquals(s.getVarNames(), singleton("who"));
+    }
+
+    @Test
+    public void testConjunctiveSELECTWithPureDescriptive() {
+        Triple descriptive = new Triple(X, KNOWS, BOB);
+        CQuery query = CQuery.with(descriptive, new Triple(X, KNOWS, ALICE))
+                             .annotate(descriptive, PureDescriptive.INSTANCE).build();
+        SPARQLString string = new SPARQLString(query, EMPTY, emptyList());
+        assertEquals(string.getType(), SPARQLString.Type.SELECT);
+        String sparql = string.getString();
+        assertFalse(sparql.contains("Bob"));
     }
 
     @Test

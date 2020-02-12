@@ -2,17 +2,17 @@ package br.ufsc.lapesd.riefederator.model;
 
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
+import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import static br.ufsc.lapesd.riefederator.query.Capability.ASK;
@@ -28,12 +28,28 @@ public class SPARQLString {
     private final @Nonnull String string;
     private final @Nonnull Set<String> varNames;
 
+    private static @Nonnull Collection<Triple>
+    removePureDescriptive(@Nonnull Collection<Triple> triples) {
+        if (triples instanceof CQuery && ((CQuery)triples).hasTripleAnnotations()) {
+            CQuery query = (CQuery) triples;
+            List<Triple> list = new ArrayList<>(query.size());
+            for (Triple triple : query) {
+                if (!query.getTripleAnnotations(triple).contains(PureDescriptive.INSTANCE))
+                    list.add(triple);
+            }
+            if (list.size() != query.size())
+                return list;
+        }
+        return triples;
+    }
+
     public SPARQLString(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict) {
         this(triples, dict, ImmutableList.of());
     }
 
     public SPARQLString(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict,
                         @Nonnull Collection<Modifier> modifiers) {
+        triples = removePureDescriptive(triples);
         Preconditions.checkArgument(!triples.isEmpty(), "triples cannot be empty");
         // find var names
         varNames = new HashSet<>(triples.size() * 2);
