@@ -46,10 +46,9 @@ public class JoinPathsPlanner implements Planner {
             checkArgument(qns.stream().allMatch(n -> full.containsAll(n.getMatchedTriples())),
                     "Some QueryNodes match triples not in query");
         }
-        if (!satisfiesAll(full, qns)) {
-            logger.info("QueryNodes miss some triples in query {}, returning EmptyNode", query);
+        if (!satisfiesAll(full, qns, query))
             return new EmptyNode(query);
-        }
+
 
         List<IndexedSet<Triple>> cartesianComponents = getCartesianComponents(full);
         assert !cartesianComponents.isEmpty();
@@ -193,11 +192,18 @@ public class JoinPathsPlanner implements Planner {
     }
 
     private boolean satisfiesAll(@Nonnull IndexedSet<Triple> all,
-                                 @Nonnull Collection<QueryNode> qns) {
+                              @Nonnull Collection<QueryNode> qns, @Nonnull CQuery query) {
         IndexedSubset<Triple> subset = all.emptySubset();
         for (QueryNode qn : qns)
             subset.union(qn.getMatchedTriples());
-        return subset.size() == all.size();
+        if (subset.size() != all.size()) {
+            IndexedSubset<Triple> missing = all.fullSubset();
+            missing.removeAll(subset);
+            logger.info("QueryNodes miss  triples {}. Full query was {}. Returning EmptyNode",
+                        missing, query);
+            return false;
+        }
+        return true;
     }
 
     @VisibleForTesting
