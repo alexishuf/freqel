@@ -78,10 +78,20 @@ public class PlannerTest {
     }
 
     public static void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query) {
+        assertPlanAnswers(root, query, false);
+    }
+    public static void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query,
+                                         boolean allowEmptyNode) {
         IndexedSet<Triple> triples = IndexedSet.from(query.getMatchedTriples());
 
         // the plan is acyclic
         assertTrue(isAcyclic(root));
+
+        if (!allowEmptyNode) {
+            assertFalse(root instanceof EmptyNode, "EmptyNode is not an answer!");
+            assertEquals(streamPreOrder(root).filter(EmptyNode.class::isInstance).count(),
+                         0, "There are EmptyNodes in the plan as leaves");
+        }
 
         // any query node should only match triples in the query
         List<PlanNode> bad = streamPreOrder(root)
@@ -481,7 +491,7 @@ public class PlannerTest {
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertEquals(plan.getInputVars(), emptySet());
             assertValidJoins(plan);
-            assertPlanAnswers(plan, query);
+            assertPlanAnswers(plan, query, true);
         }
     }
 
@@ -647,7 +657,7 @@ public class PlannerTest {
             assertEquals(plan.getInputVars(), emptySet());
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertValidJoins(plan);
-            assertPlanAnswers(plan, f.query);
+            assertPlanAnswers(plan, f.query, true);
         }
     }
 }

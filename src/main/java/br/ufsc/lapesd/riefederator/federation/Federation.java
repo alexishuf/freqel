@@ -41,11 +41,14 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return this;
     }
 
+    public @Nonnull PlanNode plan(@Nonnull CQuery query) {
+        ModifierUtils.check(this, query.getModifiers());
+        return strategy.decompose(query);
+    }
+
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
-        ModifierUtils.check(this, query.getModifiers());
-        PlanNode plan = strategy.decompose(query);
-        Results results = executor.executePlan(plan);
+        Results results = executor.executePlan(plan(query));
         results = ProjectingResults.applyIf(results, query);
         results = HashDistinctResults.applyIf(results, query);
         return results;

@@ -36,6 +36,7 @@ import static br.ufsc.lapesd.riefederator.query.JoinType.Position.OBJ;
 import static br.ufsc.lapesd.riefederator.query.JoinType.Position.SUBJ;
 import static com.google.common.collect.ImmutableList.builderWithExpectedSize;
 import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * A {@link CQuery} is essentially a list of {@link Triple} instances which MAY contain variables.
@@ -91,7 +92,7 @@ public class CQuery implements  List<Triple> {
         this.termAnnotations = termAnn != null && termAnn.isEmpty() ? null : termAnn;
         this.tripleAnnotations = tripleAnn != null && tripleAnn.isEmpty() ? null : tripleAnn;
         if (CQuery.class.desiredAssertionStatus()) {
-            Set<Term> terms = streamTerms(Term.class).collect(Collectors.toSet());
+            Set<Term> terms = streamTerms(Term.class).collect(toSet());
             boolean[] fail = {false};
             forEachTermAnnotation((t, a) -> {
                 if ((fail[0] |= !terms.contains(t)))
@@ -133,6 +134,11 @@ public class CQuery implements  List<Triple> {
         }
         public WithBuilder(@Nonnull ImmutableList<Triple> list) {
             this.list = list;
+        }
+
+        public @Nonnull List<Triple> getList() {
+            assert list != null;
+            return list;
         }
 
         @CanIgnoreReturnValue
@@ -214,9 +220,8 @@ public class CQuery implements  List<Triple> {
         @CanIgnoreReturnValue
         public @Contract("_, _ -> this") @Nonnull
         WithBuilder annotate(int tripleIdx, @Nonnull TripleAnnotation annotation) {
-            Preconditions.checkState(list != null);
-            Preconditions.checkPositionIndex(tripleIdx, list.size());
-            return annotate(list.get(tripleIdx), annotation);
+            Preconditions.checkPositionIndex(tripleIdx, getList().size());
+            return annotate(getList().get(tripleIdx), annotation);
         }
 
         @CanIgnoreReturnValue
@@ -234,6 +239,21 @@ public class CQuery implements  List<Triple> {
             if (multimap == null) return this;
             if (tripleAnnBuilder == null) tripleAnnBuilder = ImmutableSetMultimap.builder();
             tripleAnnBuilder.putAll(multimap);
+            return this;
+        }
+
+        public @Nonnull WithBuilder copyAnnotations(@Nullable CQuery other) {
+            if (other == null)
+                return this;
+            other.forEachTripleAnnotation((t, a) -> {
+                if (getList().contains(t)) annotate(t, a);
+            });
+            if (other.hasTermAnnotations()) {
+                Set<Term> terms = getList().stream().flatMap(Triple::stream).collect(toSet());
+                other.forEachTermAnnotation((t, a) -> {
+                    if (terms.contains(t)) annotate(t, a);
+                });
+            }
             return this;
         }
 
@@ -290,6 +310,7 @@ public class CQuery implements  List<Triple> {
             return this;
         }
 
+        @Override
         public @Nonnull List<Triple> getList() {
             return mutableList;
         }
@@ -370,8 +391,7 @@ public class CQuery implements  List<Triple> {
         @Override
         public @Contract("_, _ -> this") @Nonnull
         Builder annotate(int tripleIdx, @Nonnull TripleAnnotation annotation) {
-            Preconditions.checkPositionIndex(tripleIdx, mutableList.size());
-            annotate(mutableList.get(tripleIdx), annotation);
+            super.annotate(tripleIdx, annotation);
             return this;
         }
 
@@ -614,7 +634,7 @@ public class CQuery implements  List<Triple> {
             if (strong == null) {
                 strong = list.stream().flatMap(Triple::stream)
                         .filter(t -> t instanceof Var).map(t -> (Var) t)
-                        .collect(Collectors.toSet());
+                        .collect(toSet());
             }
             return (Stream<T>)strong.stream();
         }
