@@ -177,13 +177,13 @@ public class APIMoleculeMatcherTest {
                                               new Triple(X, cites, Y),
                                               new Triple(Y, title, Z)),
                         asList(CQuery.with(new Triple(X, title, title1),
-                                              new Triple(X, cites, Y),
-                                              new Triple(Y, title, Z))
-                                .annotate(X, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
-                                .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
-                                .annotate(Y, AtomAnnotation.of(CITED_BOOK))
-                                .annotate(Z, AtomAnnotation.of(CITED_BOOK_TITLE))
-                                .build(),
+                                           new Triple(X, cites, Y),
+                                           new Triple(Y, title, Z))
+                                        .annotate(X, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
+                                        .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
+                                        .annotate(Y, AtomAnnotation.of(CITED_BOOK))
+                                        .annotate(Z, AtomAnnotation.of(CITED_BOOK_TITLE))
+                                        .build(),
                                CQuery.with(new Triple(Y, title, Z))
                                        .annotate(Y, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
                                        .annotate(Z, AtomAnnotation.asRequired(BOOK_TITLE))
@@ -191,11 +191,39 @@ public class APIMoleculeMatcherTest {
                 asList(AM_BOOK_CITATIONS, asList(new Triple(X, title, title1),
                                                  new Triple(X, cites, Y),
                                                  new Triple(Y, title, title2)),
-                       emptyList()), // ambiguous: no result
+                       asList(CQuery.with(new Triple(X, title, title1), new Triple(X, cites, Y))
+                                    .annotate(X, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                                    .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
+                                    .annotate(Y, AtomAnnotation.of(AM_CITED_BOOK)).build(),
+                              CQuery.with(new Triple(X, cites, Y), new Triple(Y, title, title2))
+                                    .annotate(X, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                                    .annotate(Y, AtomAnnotation.of(AM_CITED_BOOK))
+                                    .annotate(title2, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
+                              CQuery.with(new Triple(X, title, title1))
+                                    .annotate(X, AtomAnnotation.of(AM_CITED_BOOK))
+                                    .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
+                              CQuery.with(new Triple(Y, title, title2))
+                                    .annotate(Y, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                                    .annotate(title2, AtomAnnotation.asRequired(BOOK_TITLE)).build()
+                       )), // ambiguity does not allow a single EG
                 asList(AM_BOOK_CITATIONS, asList(new Triple(X, title, title1),
                                                  new Triple(X, cites, Y),
                                                  new Triple(Y, title, Z)),
-                       emptyList()) // ambiguous: no result
+                        asList(CQuery.with(new Triple(X, title, title1), new Triple(X, cites, Y))
+                                        .annotate(X, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                                        .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
+                                        .annotate(Y, AtomAnnotation.of(AM_CITED_BOOK)).build(),
+                               CQuery.with(new Triple(X, cites, Y), new Triple(Y, title, Z))
+                                        .annotate(X, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                                        .annotate(Y, AtomAnnotation.of(AM_CITED_BOOK))
+                                        .annotate(Z, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
+                               CQuery.with(new Triple(X, title, title1))
+                                        .annotate(X, AtomAnnotation.of(AM_CITED_BOOK))
+                                        .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
+                               CQuery.with(new Triple(Y, title, Z))
+                                        .annotate(Y, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                                        .annotate(Z, AtomAnnotation.asRequired(BOOK_TITLE)).build()
+                        )) // ambiguity does not allow a single EG
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
@@ -214,7 +242,8 @@ public class APIMoleculeMatcherTest {
         assertEquals(actual.size(), expected.size());
         for (CQuery eg : expected) {
             boolean ok = actual.stream().anyMatch(a -> {
-                if (!a.getSet().equals(eg.getSet())) return false;
+                if (!a.getSet().equals(eg.getSet()))
+                    return false;
                 boolean[] annOk = {true};
                 eg.forEachTermAnnotation((term, ann) -> {
                     if (!a.getTermAnnotations(term).contains(ann))

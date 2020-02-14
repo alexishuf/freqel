@@ -407,6 +407,7 @@ public class MoleculeMatcherTest {
                 asList(unive, asList(new Triple(X, name, Y), new Triple(Z, advises, X),
                                      new Triple(Z, name, W)),
                               asList(asList(new Triple(X, name, Y),
+                                            new Triple(Z, name, W),
                                             new Triple(Z, advises, X)),
                                      singletonList(new Triple(Z, name, W))), e)
         );

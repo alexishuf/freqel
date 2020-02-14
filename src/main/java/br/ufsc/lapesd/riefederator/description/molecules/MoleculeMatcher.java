@@ -5,10 +5,12 @@ import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
+import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -117,6 +119,10 @@ public class MoleculeMatcher implements SemanticDescription {
                 return ImmutablePair.of(triple.getSubject(), l.s);
         }
 
+        public boolean sameMatch(@Nonnull LinkMatch other) {
+            return l.equals(other.l) && triple.equals(other.triple);
+        }
+
         @Override
         public @Nonnull String toString() {
             return String.format("LinkMatch(%s, %s, %s)", l, from, triple);
@@ -161,7 +167,9 @@ public class MoleculeMatcher implements SemanticDescription {
                     Link link = new Link(l.getAtom(), l.getEdge(), a);
                     if (!a.isExclusive())
                         pred2link.put(l.getEdge(), link);
-                    getAtom2Link(l.getEdge()).put(a.getName(), link);
+                    SetMultimap<String, Link> a2l = getAtom2Link(l.getEdge());
+                    a2l.put(a.getName(), link);
+                    a2l.put(l.getAtom().getName(), link);
                     subj.put(a.getName(), link);
                 }
                 for (MoleculeLink l : a.getOut()) {
@@ -169,7 +177,9 @@ public class MoleculeMatcher implements SemanticDescription {
                     Link link = new Link(a, l.getEdge(), l.getAtom());
                     if (!a.isExclusive())
                         pred2link.put(l.getEdge(), link);
-                    getAtom2Link(l.getEdge()).put(a.getName(), link);
+                    SetMultimap<String, Link> a2l = getAtom2Link(l.getEdge());
+                    a2l.put(a.getName(), link);
+                    a2l.put(l.getAtom().getName(), link);
                     obj.put(a.getName(), link);
                 }
             }
@@ -314,7 +324,7 @@ public class MoleculeMatcher implements SemanticDescription {
             }
             cascadeEliminations();
             // save remaining exclusive groups
-            for (EGPrototype egPrototype : getEGPrototypes())
+            for (EGPrototype egPrototype : mergeIntersecting())
                 saveExclusiveGroup(egPrototype.query, egPrototype.matchLists);
             return this;
         }
@@ -331,6 +341,62 @@ public class MoleculeMatcher implements SemanticDescription {
                     continue; // was previously eliminated
                 for (LinkMatch match : incoming.get(pair)) queue.add(match.from);
             }
+        }
+
+        private List<EGPrototype> mergeIntersecting() {
+            List<EGPrototype> list = new ArrayList<>(visited.size());
+            for (Map.Entry<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> e : visited.entrySet()) {
+                if (e.getValue() != null) {
+                    EGPrototype eg = new EGPrototype(subQueries.get(e.getKey().left), e.getValue());
+                    list.add(eg);
+                }
+            }
+            for (int i = 0; i < list.size(); i++) {
+                for (int j = i+1; j < list.size(); j++) {
+                    EGPrototype merge = tryMerge(list.get(i), list.get(j));
+                    if (merge != null) {
+                        list.remove(j);
+                        // will be i+1 on next iteration
+                        // We need to start over because for i < k < j, list[k] may share triples
+                        // with list[j]. This could make a previous failed tryMerge(i, k) succeed
+                        // now that list[i] is "bigger"
+                        j = i;
+                        list.set(i, merge);
+                    }
+                }
+            }
+            // remove non-executable EGs
+            list.removeIf(eg -> !isValidEG(eg.query, eg.matchLists));
+            return list;
+        }
+
+
+        private @Nullable EGPrototype tryMerge(@Nonnull EGPrototype l, @Nonnull EGPrototype r) {
+            Set<Triple> commonTriples = TreeUtils.intersect(l.query.getSet(), r.query.getSet());
+            if (commonTriples.isEmpty())
+                return null; //no intersection
+            CQuery union = CQuery.union(l.query, r.query);
+            List<List<LinkMatch>> matchLists = new ArrayList<>(union.size());
+            Set<Link> lLinks = new HashSet<>(), rLinks = new HashSet<>();
+            for (Triple triple : union) {
+                if (commonTriples.contains(triple)) {
+                    lLinks.clear();
+                    rLinks.clear();
+                    int lIndex = l.query.indexOf(triple);
+                    l.matchLists.get(lIndex                 ).forEach(m -> lLinks.add(m.l));
+                    r.matchLists.get(r.query.indexOf(triple)).forEach(m -> rLinks.add(m.l));
+                    if (!lLinks.equals(rLinks) || lLinks.isEmpty())
+                        return null;
+                    matchLists.add(l.matchLists.get(lIndex));
+                } else if (l.query.contains(triple)) {
+                    matchLists.add(l.matchLists.get(l.query.indexOf(triple)));
+                } else if (r.query.contains(triple)) {
+                    matchLists.add(r.matchLists.get(r.query.indexOf(triple)));
+                }
+            }
+            if (isAmbiguousEG(union, matchLists))
+                return null;
+            return new EGPrototype(union, matchLists);
         }
 
         protected class EGPrototype {
@@ -353,25 +419,35 @@ public class MoleculeMatcher implements SemanticDescription {
         }
 
         /**
-         * This is a extension point where a subclass MAY merge exclusive groups into larger ones.
+         * This allows a subclass to verify if a EG is valid.
+         *
+         * This method is called after there are no more expectations to merge and enlarge EG's.
+         * So this is the place to verify if there are enough inputs.
+         *
+         * @param query all triples in the EG. not yeat annotated with {@link AtomAnnotation}
+         * @param matchLists A list of {@link LinkMatch} for each triple in query, in the same order
+         * @return true iff valid
          */
-        protected @Nonnull List<EGPrototype> getEGPrototypes() {
-            List<EGPrototype> list = new ArrayList<>(visited.size());
-            for (Map.Entry<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> e : visited.entrySet()) {
-                if (e.getValue() == null) continue;
-                list.add(new EGPrototype(subQueries.get(e.getKey().left), e.getValue()));
-            }
-            return list;
+        protected boolean isValidEG(CQuery query, List<List<LinkMatch>> matchLists) {
+            return true;
         }
 
+        /**
+         * This allows a subclass to verify if a EG or an EG merge introduces ambiguity.
+         *
+         * @param query all triples in the EG. not yeat annotated with {@link AtomAnnotation}
+         * @param matchLists A list of {@link LinkMatch} for each triple in query, in the same order
+         * @return true iff ambiguous
+         */
+        protected boolean isAmbiguousEG(CQuery query, List<List<LinkMatch>> matchLists) {
+            return false;
+        }
 
         @Nullable List<List<LinkMatch>> findLinks(@Nonnull CQuery query,
                                                   @Nonnull ImmutablePair<Term, Atom> termAtom) {
             Atom atom = termAtom.right;
-            int linkCount = atom.getIn().size() + atom.getOut().size();
-            if (atom.isClosed() && query.size() > linkCount)
-                return null;
             ArrayList<List<LinkMatch>> linkLists = new ArrayList<>(query.size());
+            boolean empty = true;
             for (Triple triple : query) {
                 Triple.Position pos = triple.where(termAtom.left);
                 assert pos != null;
@@ -381,7 +457,10 @@ public class MoleculeMatcher implements SemanticDescription {
                 if (atom.isClosed() && found.isEmpty())
                     return null;
                 linkLists.add(found);
+                empty &= found.isEmpty();
             }
+            if (empty)
+                return null;
             if (linkLists.size() == 1 && linkLists.get(0).isEmpty())
                 return null;
             return linkLists;
@@ -448,8 +527,10 @@ public class MoleculeMatcher implements SemanticDescription {
             }
             if (subQuery.isEmpty())
                 return; //nothing to do
-            if (!reuseParentForEG || subQuery.size() != query.size()) //avoid new instance creation
+            if (!reuseParentForEG || subQuery.size() != query.size()) {//avoid new instance creation
+                assert subQuery.size() <= query.size();
                 query = subQuery.build();
+            }
             if (query.isEmpty())
                 return; // builder rejected the exclusive group during build
             builder.addExclusiveGroup(query);

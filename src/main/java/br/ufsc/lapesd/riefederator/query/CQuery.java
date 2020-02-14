@@ -221,7 +221,8 @@ public class CQuery implements  List<Triple> {
 
         @CanIgnoreReturnValue
         public @Contract("_ -> this") @Nonnull
-        WithBuilder annotateAllTerms(Multimap<Term, TermAnnotation> multimap) {
+        WithBuilder annotateAllTerms(@Nullable Multimap<Term, TermAnnotation> multimap) {
+            if (multimap == null) return this;
             if (termAnnBuilder == null) termAnnBuilder = ImmutableSetMultimap.builder();
             termAnnBuilder.putAll(multimap);
             return this;
@@ -229,7 +230,8 @@ public class CQuery implements  List<Triple> {
 
         @CanIgnoreReturnValue
         public @Contract("_ -> this") @Nonnull
-        WithBuilder annotateAllTriples(Multimap<Triple, TripleAnnotation> multimap) {
+        WithBuilder annotateAllTriples(@Nullable Multimap<Triple, TripleAnnotation> multimap) {
+            if (multimap == null) return this;
             if (tripleAnnBuilder == null) tripleAnnBuilder = ImmutableSetMultimap.builder();
             tripleAnnBuilder.putAll(multimap);
             return this;
@@ -452,6 +454,27 @@ public class CQuery implements  List<Triple> {
         copy.s2triple = s2triple;
         copy.o2triple = o2triple;
         return copy;
+    }
+
+    public static @Nonnull CQuery union(@Nonnull Collection<Triple> l,
+                                        @Nonnull Collection<Triple> r) {
+        if (l.isEmpty()) return CQuery.from(r);
+        if (r.isEmpty()) return CQuery.from(l);
+
+        Builder b = builder(l.size() + r.size());
+        b.addAll(l);
+        for (Triple triple : r) {
+            if (!b.getList().contains(triple)) b.add(triple);
+        }
+        if (l instanceof CQuery) {
+            b.annotateAllTerms(((CQuery) l).termAnnotations);
+            b.annotateAllTriples(((CQuery) l).tripleAnnotations);
+        }
+        if (r instanceof CQuery) {
+            b.annotateAllTerms(((CQuery) r).termAnnotations);
+            b.annotateAllTriples(((CQuery) r).tripleAnnotations);
+        }
+        return b.build();
     }
 
 

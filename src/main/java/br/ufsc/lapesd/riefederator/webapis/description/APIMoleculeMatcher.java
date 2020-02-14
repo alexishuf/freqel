@@ -7,17 +7,17 @@ import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.TermAnnotation;
-import br.ufsc.lapesd.riefederator.query.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.reason.tbox.OWLAPITBoxReasoner;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 import com.google.common.collect.*;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.lang.ref.SoftReference;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class APIMoleculeMatcher extends MoleculeMatcher {
     private final @Nonnull APIMolecule apiMolecule;
@@ -92,10 +92,36 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
 
     protected class APIState extends State {
         private @Nonnull InputAtoms inputAtoms;
+        private @Nullable SetMultimap<String, Term> tmpAtom2Term;
 
         public APIState(@Nonnull CQuery query, boolean reason) {
             super(query, reason);
             inputAtoms = getInputAtoms();
+        }
+
+        @Override
+        protected boolean isValidEG(CQuery query, List<List<LinkMatch>> matchLists) {
+            fillAtom2Term(matchLists);
+            assert tmpAtom2Term != null;
+            return inputAtoms.required.stream()
+                    .allMatch(atomName -> tmpAtom2Term.get(atomName).size() == 1);
+        }
+
+        private void fillAtom2Term(List<List<LinkMatch>> matchLists) {
+            if (tmpAtom2Term == null) tmpAtom2Term = HashMultimap.create();
+            else tmpAtom2Term.clear();
+            matchLists.stream().flatMap(List::stream).forEach(m -> {
+                tmpAtom2Term.put(m.l.s.getName(), m.triple.getSubject());
+                tmpAtom2Term.put(m.l.o.getName(), m.triple.getObject());
+            });
+        }
+
+        @Override
+        protected boolean isAmbiguousEG(CQuery query, List<List<LinkMatch>> matchLists) {
+            fillAtom2Term(matchLists);
+            assert tmpAtom2Term != null;
+            return inputAtoms.required.stream()
+                    .anyMatch(atomName -> tmpAtom2Term.get(atomName).size() > 1);
         }
 
         protected class APIEGQueryBuilder extends EGQueryBuilder {
@@ -131,17 +157,19 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                 CQuery query = super.build();
                 if (parentEG == null) { // only check if creating the top-level exclusive group
                     boolean[] hasVar = {false};
-                    Multiset<String> observed = HashMultiset.create(inputAtoms.size());
-                    query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
-                        if (a.isRequired()) {
-                            observed.add(a.getAtomName());
-                            if (t.isVar()) hasVar[0] = true;
-                        }
-                    });
-                    if (!observed.containsAll(inputAtoms.required))
-                        query = CQuery.EMPTY; //unsatisfiable
-                    if (inputAtoms.required.stream().anyMatch(a -> observed.count(a) > 1))
-                        query = CQuery.EMPTY; //ambiguous
+                    query.forEachTermAnnotation(AtomInputAnnotation.class,
+                            (t, a) -> hasVar[0] |= a.isRequired() && t.isVar());
+                    if (APIMolecule.class.desiredAssertionStatus()) {
+                        Multiset<String> observed = HashMultiset.create(inputAtoms.size());
+                        query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
+                            if (a.isRequired())
+                                observed.add(a.getAtomName());
+                        });
+                        if (!observed.containsAll(inputAtoms.required))
+                            query = CQuery.EMPTY; //unsatisfiable
+                        if (inputAtoms.required.stream().anyMatch(a -> observed.count(a) > 1))
+                            query = CQuery.EMPTY; //ambiguous
+                    }
                     if (query.size() == parentQuery.size() && hasVar[0])
                         query = CQuery.EMPTY; //no join triple left to bind the var
                     /* a deeper analysis could determine at this point whether all vars
@@ -162,66 +190,5 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
             return new APIEGQueryBuilder(parent);
         }
 
-        private @Nonnull EGPrototype
-        createEGPrototype(@Nonnull Collection<ImmutablePair<Term, Atom>> component) {
-            Multimap<Term, Atom> term2atom = HashMultimap.create(parentQuery.size()*2, 8);
-            for (ImmutablePair<Term, Atom> key : component)
-                term2atom.put(key.left, key.right);
-
-            Map<Triple, List<LinkMatch>> triple2matches = new HashMap<>();
-            SetMultimap<Term, TermAnnotation> termAnnotations = HashMultimap.create();
-            SetMultimap<Triple, TripleAnnotation> tripleAnnotations = HashMultimap.create();
-            for (Term term : term2atom.keySet()) {
-                CQuery query = subQueries.get(term);
-                query.forEachTermAnnotation(termAnnotations::put);
-                query.forEachTripleAnnotation(tripleAnnotations::put);
-                for (Triple triple : query)
-                    triple2matches.computeIfAbsent(triple, k -> new ArrayList<>());
-                for (Atom atom : term2atom.get(term)) {
-                    List<List<LinkMatch>> atomLists = visited.get(ImmutablePair.of(term, atom));
-                    if (atomLists == null)
-                        continue;
-                    for (int i = 0; i < atomLists.size(); i++)
-                        triple2matches.get(query.get(i)).addAll(atomLists.get(i));
-                }
-            }
-
-            CQuery query = CQuery.builder(triple2matches.size())
-                    .addAll(triple2matches.keySet())
-                    .annotateAllTerms(termAnnotations)
-                    .annotateAllTriples(tripleAnnotations).build();
-            List<List<LinkMatch>> matchLists = new ArrayList<>(query.size());
-            for (Triple triple : query)
-                matchLists.add(triple2matches.get(triple));
-            return new EGPrototype(query, matchLists);
-        }
-
-        @Override
-        protected @Nonnull List<EGPrototype> getEGPrototypes() {
-            List<EGPrototype> prototypes = new ArrayList<>();
-            Set<ImmutablePair<Term, Atom>> visited2 = new HashSet<>();
-            List<ImmutablePair<Term, Atom>> component = new ArrayList<>();
-            ArrayDeque<ImmutablePair<Term, Atom>> stack = new ArrayDeque<>();
-            for (ImmutablePair<Term, Atom> key : visited.keySet()) {
-                stack.push(key);
-                while (!stack.isEmpty()) {
-                    ImmutablePair<Term, Atom> hop = stack.pop();
-                    if (!visited2.add(hop)) continue;
-                    component.add(hop);
-                    incoming.get(hop).forEach(m -> stack.push(m.from));
-                    List<List<LinkMatch>> matchesList = visited.get(hop);
-                    if (matchesList != null)
-                        matchesList.forEach(l -> l.forEach(m -> stack.push(m.getTo())));
-                }
-                if (!component.isEmpty()) {
-                    EGPrototype prototype = createEGPrototype(component);
-                    if (!prototype.matchLists.stream().allMatch(List::isEmpty))
-                        prototypes.add(prototype);
-                }
-                component.clear();
-                stack.clear();
-            }
-            return prototypes;
-        }
     }
 }
