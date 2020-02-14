@@ -30,6 +30,10 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         this.executor = executor;
     }
 
+    public @Nonnull DecompositionStrategy getDecompositionStrategy() {
+        return strategy;
+    }
+
     public static @Nonnull Federation createDefault() {
         Injector injector = Guice.createInjector(new SimpleFederationModule());
         return injector.getInstance(Federation.class);

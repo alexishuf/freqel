@@ -62,6 +62,9 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     public static ARQEndpoint forModel(@Nonnull Model model) {
         String name = String.format("%s@%x", model.getClass().getSimpleName(),
                                              System.identityHashCode(model));
+        return forModel(model, name);
+    }
+    public static ARQEndpoint forModel(@Nonnull Model model, @Nonnull String name) {
         return new ARQEndpoint(name, sparql -> create(sparql, model), () -> {}, true);
     }
     public static ARQEndpoint forDataset(@Nonnull Dataset ds) {

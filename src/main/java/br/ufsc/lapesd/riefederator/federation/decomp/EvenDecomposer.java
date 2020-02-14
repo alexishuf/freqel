@@ -30,11 +30,17 @@ public class EvenDecomposer implements DecompositionStrategy {
         sources.add(source);
     }
 
+
     @Override
-    public @Nonnull PlanNode decompose(@Nonnull CQuery query) {
-        List<QueryNode> leafs = sources.stream()
+    public @Nonnull List<QueryNode> decomposeIntoLeaves(@Nonnull CQuery query) {
+        return sources.stream()
                 .flatMap(s -> streamQueryNodes(s, s.getDescription().match(query)))
                 .collect(toList());
+    }
+
+    @Override
+    public @Nonnull PlanNode decompose(@Nonnull CQuery query) {
+        List<QueryNode> leafs = decomposeIntoLeaves(query);
         return planner.plan(query, leafs);
     }
 

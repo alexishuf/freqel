@@ -25,6 +25,10 @@ public class Source {
         this.endpoint = endpoint;
     }
 
+    public @Nonnull String getName() {
+        return name;
+    }
+
     public @Nonnull Description getDescription() {
         return description;
     }
