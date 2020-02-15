@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.EvenDecomposer;
+import br.ufsc.lapesd.riefederator.federation.decomp.StandardDecomposer;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
@@ -60,7 +61,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.*;
 import static com.google.common.collect.Sets.newHashSet;
@@ -305,65 +306,70 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest {
         public boolean canBindJoin() { return canBindJoin; }
     }
 
-    private static final @Nonnull
-    List<Function<Provider<Planner>, TestModule>> moduleProtoList = asList(
-            planner -> new TestModule(true) {
+    private static final @Nonnull List<BiFunction<Provider<Planner>,
+                                       Class<? extends DecompositionStrategy>,
+                                       TestModule>> moduleProtoList = asList(
+            (planner, decomp) -> new TestModule(true) {
                 @Override
                 protected void configure() {
                     bind(Planner.class).toProvider(planner);
-                    bind(DecompositionStrategy.class).to(EvenDecomposer.class);
+                    bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+even"; }
+                public String toString() { return planner+"+"+decomp; }
             },
-            planner -> new TestModule(false) {
+            (planner, decomp) -> new TestModule(false) {
                 @Override
                 protected void configure() {
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
                     bind(Planner.class).toProvider(planner);
-                    bind(DecompositionStrategy.class).to(EvenDecomposer.class);
+                    bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+even+InMemoryHashJoinResults"; }
+                public String toString() { return planner+"+"+decomp+"+InMemoryHashJoinResults"; }
             },
-            planner -> new TestModule(false) {
+            (planner, decomp) -> new TestModule(false) {
                 @Override
                 protected void configure() {
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults::new);
                     bind(Planner.class).toProvider(planner);
-                    bind(DecompositionStrategy.class).to(EvenDecomposer.class);
+                    bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+even+ParallelInMemoryHashJoinResults"; }
+                public String toString() { return planner+"+"+decomp+"+ParallelInMemoryHashJoinResults"; }
             },
-            planner -> new TestModule(true) {
+            (planner, decomp) -> new TestModule(true) {
                 @Override
                 protected void configure() {
                     bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                     bind(Planner.class).toProvider(planner);
-                    bind(DecompositionStrategy.class).to(EvenDecomposer.class);
+                    bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+even+SimpleBindJoinResults"; }
+                public String toString() { return planner+"+"+decomp+"+SimpleBindJoinResults"; }
             },
-            planner -> new TestModule(true) {
+            (planner, decomp) -> new TestModule(true) {
                 @Override
                 protected void configure() {
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                     bind(JoinNodeExecutor.class).to(SimpleJoinNodeExecutor.class);
                     bind(Planner.class).toProvider(planner);
-                    bind(DecompositionStrategy.class).to(EvenDecomposer.class);
+                    bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+even+SimpleJoinNodeExecutor"; }
+                public String toString() { return planner+"+"+decomp+"+SimpleJoinNodeExecutor"; }
             }
     );
 
+    private static final @Nonnull List<Class<? extends DecompositionStrategy>>
+            decomposerClasses = asList(EvenDecomposer.class, StandardDecomposer.class);
+
     private static final @Nonnull List<TestModule> moduleList = PlannerTest.suppliers.stream()
-            .flatMap(ns -> moduleProtoList.stream().map(p -> p.apply(ns)))
+            .flatMap(ps -> decomposerClasses.stream()
+                    .flatMap(dc -> moduleProtoList.stream().map(p -> p.apply(ps, dc))))
             .collect(toList());
 
     private static @Nonnull Object[][] prependModules(List<List<Object>> in) {
