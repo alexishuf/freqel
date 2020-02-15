@@ -71,8 +71,9 @@ public abstract class PlanNode {
     }
 
     private @Nonnull String getVarNamesStringContent() {
-        StringBuilder builder = new StringBuilder();
         Set<String> results = getResultVars(), inputs = getInputVars();
+        if (results.isEmpty() && inputs.isEmpty()) return "";
+        StringBuilder builder = new StringBuilder();
         for (String out : results) {
             if (inputs.contains(out))
                 builder.append("->");
@@ -82,6 +83,7 @@ public abstract class PlanNode {
             if (!results.contains(in))
                 builder.append("->").append(in).append(", ");
         }
+        builder.setLength(builder.length()-2);
         return builder.toString();
     }
 

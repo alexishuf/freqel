@@ -24,7 +24,6 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -38,13 +37,14 @@ public class UriTemplateExecutor implements APIRequestExecutor {
     protected final @SuppressWarnings("Immutable") @Nonnull ClientConfig clientConfig;
     private final @Nonnull ResponseParser parser;
     private final @Nonnull PagingStrategy pagingStrategy;
+    private final @SuppressWarnings("Immutable") @Nonnull RateLimitsRegistry rateLimitsRegistry;
 
     public UriTemplateExecutor(@Nonnull UriTemplate template, @Nonnull ImmutableSet<String> required,
                                @Nonnull ImmutableSet<String> optional,
                                @Nonnull Map<String, TermSerializer> input2serializer,
                                @Nonnull ClientConfig clientConfig,
                                @Nonnull ResponseParser parser,
-                               @Nonnull PagingStrategy pagingStrategy) {
+                               @Nonnull PagingStrategy pagingStrategy, @Nonnull RateLimitsRegistry rateLimitsRegistry) {
         this.template = template;
         this.required = required;
         this.optional = optional;
@@ -52,12 +52,14 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         this.clientConfig = clientConfig;
         this.parser = parser;
         this.pagingStrategy = pagingStrategy;
+        this.rateLimitsRegistry = rateLimitsRegistry;
     }
 
     public UriTemplateExecutor(@Nonnull UriTemplate template) {
         this(template, ImmutableSet.copyOf(template.getTemplateVariables()), ImmutableSet.of(),
                 ImmutableMap.of(), new ClientConfig(),
-                JenaResponseParser.INSTANCE, NoPagingStrategy.INSTANCE);
+                JenaResponseParser.INSTANCE, NoPagingStrategy.INSTANCE,
+                new RateLimitsRegistry());
     }
 
     public static class Builder {
@@ -69,6 +71,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         private @Nonnull ClientConfig clientConfig = new ClientConfig();
         private @Nonnull ResponseParser parser = JenaResponseParser.INSTANCE;
         private @Nonnull PagingStrategy pagingStrategy = NoPagingStrategy.INSTANCE;
+        private @Nonnull RateLimitsRegistry rateLimitsRegistry = new RateLimitsRegistry();
 
         public Builder(@Nonnull UriTemplate template) {
             this.template = template;
@@ -122,6 +125,12 @@ public class UriTemplateExecutor implements APIRequestExecutor {
             this.pagingStrategy = pagingStrategy;
             return this;
         }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder withRateLimitsRegistry(@Nonnull RateLimitsRegistry registry) {
+            this.rateLimitsRegistry = registry;
+            return this;
+        }
+
         @CheckReturnValue
         public @Nonnull UriTemplateExecutor build() {
             if (!pagingStrategy.getParametersUsed().isEmpty()) {
@@ -141,7 +150,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
             return new UriTemplateExecutor(template, ImmutableSet.copyOf(required),
                                            ImmutableSet.copyOf(optional),
                                            input2serializer.build(), clientConfig,
-                                           parser, pagingStrategy);
+                                           parser, pagingStrategy, rateLimitsRegistry);
         }
     }
 
@@ -172,7 +181,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
             @Override
             public @Nullable CQEndpoint next() {
                 if (!hasNext()) throw new NoSuchElementException();
-                double createMs, setupMs, requestMs, parseMs;
+                double createMs, setupMs, parseMs;
+                double[] requestMs = {0};
 
                 Stopwatch sw = Stopwatch.createStarted();
                 String uri = getUri(pager.apply(input));
@@ -184,20 +194,23 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                 WebTarget target = client.target(uri);
                 setupMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
 
+                Response[] response = {null};
+                Object[] obj = {null};
+                rateLimitsRegistry.get(uri).request(() -> {
+                    sw.reset().start();
+                    response[0] = target.request(parser.getAcceptable()).get();
+                    pager.notifyResponse(response[0]);
+                    obj[0] = response[0].readEntity(parser.getDesiredClass());
+                    requestMs[0] = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+                });
                 sw.reset().start();
-                Response response = target.request(parser.getAcceptable()).get();
-                pager.notifyResponse(response);
-                Object obj = response.readEntity(parser.getDesiredClass());
-                requestMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
-
-                sw.reset().start();
-                CQEndpoint endpoint = parser.parse(obj, uri);
+                CQEndpoint endpoint = parser.parse(obj[0], uri);
                 parseMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
                 pager.notifyResponseEndpoint(endpoint);
 
                 logger.info("GET {} :: status={}, uriGeneration={}ms, jaxSetup={}ms, " +
-                            "request={}ms, parse2Endpoint={}ms", uri, response.getStatus(),
-                            createMs, setupMs, requestMs, parseMs);
+                            "request={}ms, parse2Endpoint={}ms", uri, response[0].getStatus(),
+                            createMs, setupMs, requestMs[0], parseMs);
                 return endpoint;
             }
         };
