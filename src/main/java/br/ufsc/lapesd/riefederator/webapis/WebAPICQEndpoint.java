@@ -31,7 +31,7 @@ import java.util.Set;
 
 import static java.util.stream.Collectors.toSet;
 
-public class WebAPICQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
+public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoint {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(WebAPICQEndpoint.class);
     private final @Nonnull APIMolecule molecule;
     private @Nonnull SoftReference<APIMoleculeMatcher> matcher = new SoftReference<>(null);

@@ -9,6 +9,8 @@ public class CardinalityComparator implements Comparator<Cardinality> {
     private final int large;
     private final int huge;
 
+    public static final @Nonnull CardinalityComparator DEFAULT = new CardinalityComparator();
+
     public CardinalityComparator() {
         this(256, 2048);
     }

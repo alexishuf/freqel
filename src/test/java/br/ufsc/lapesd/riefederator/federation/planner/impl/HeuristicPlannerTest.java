@@ -330,7 +330,7 @@ public class HeuristicPlannerTest {
                 .annotate(Y, AtomAnnotation.asRequired(Person)).build());
         MultiQueryNode mq = MultiQueryNode.builder().add(q2).add(q3).intersectInputs().build();
 
-        for (List<PlanNode> ordering : asList(asList(q1, mq), asList(mq, q1))) {
+        for (List<? extends PlanNode> ordering : asList(asList(q1, mq), asList(mq, q1))) {
             HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(ordering);
             PlanNode root = g.buildTree();
             assertTrue(root instanceof JoinNode);

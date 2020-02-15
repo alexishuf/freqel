@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
 
@@ -18,7 +19,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
-public class EmptyNode extends PlanNode {
+public class EmptyNode extends AbstractPlanNode {
     private @Nullable CQuery query;
 
     public EmptyNode(@Nonnull Collection<String> resultVars) {
@@ -27,7 +28,7 @@ public class EmptyNode extends PlanNode {
 
     public EmptyNode(@Nonnull Collection<String> resultVars,
                      @Nonnull Collection<String> inputVars) {
-        super(resultVars, false, inputVars, emptyList());
+        super(resultVars, false, inputVars, emptyList(), Cardinality.EMPTY);
     }
 
     public EmptyNode(@Nonnull CQuery query) {
@@ -46,7 +47,8 @@ public class EmptyNode extends PlanNode {
     }
 
     @Override
-    public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
+    public @Nonnull
+    AbstractPlanNode createBound(@Nonnull Solution solution) {
         Collection<String> names = solution.getVarNames();
         return new EmptyNode(setMinus(getResultVars(), names), setMinus(getInputVars(), names));
     }
@@ -59,12 +61,12 @@ public class EmptyNode extends PlanNode {
     }
 
     @Override
-    protected @Nonnull StringBuilder toString(@Nonnull StringBuilder builder) {
+    public @Nonnull StringBuilder toString(@Nonnull StringBuilder builder) {
         return builder.append("EMPTY").append(getVarNamesString());
     }
 
     @Override
-    protected @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder, @Nonnull String indent) {
+    public @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder, @Nonnull String indent) {
         return builder.append(indent).append(toString());
     }
 }

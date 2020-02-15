@@ -111,8 +111,9 @@ public class JoinPathsPlanner implements Planner {
         return components;
     }
 
-    private @Nullable PlanNode plan(@Nonnull Collection<QueryNode> qns,
-                                    @Nonnull IndexedSet<Triple> triples) {
+    private @Nullable
+    PlanNode plan(@Nonnull Collection<QueryNode> qns,
+                          @Nonnull IndexedSet<Triple> triples) {
         IndexedSet<PlanNode> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
         List<JoinPath> pathsSet = getPaths(triples, g);

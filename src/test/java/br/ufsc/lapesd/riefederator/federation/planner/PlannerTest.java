@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.planner;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.ArbitraryJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.impl.GreedyJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.HeuristicPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinPathsPlanner;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
@@ -57,7 +58,9 @@ public class PlannerTest {
     public static @Nonnull List<NamedSupplier<Planner>> suppliers = asList(
             new NamedSupplier<>(HeuristicPlanner.class),
             new NamedSupplier<>("JoinPathsPlanner+ArbitraryJoinOrderPlanner",
-                    () -> new JoinPathsPlanner(new ArbitraryJoinOrderPlanner()))
+                    () -> new JoinPathsPlanner(new ArbitraryJoinOrderPlanner())),
+            new NamedSupplier<>("JoinPathsPlanner+GreedyJoinOrderPlanner",
+                    () -> new JoinPathsPlanner(new GreedyJoinOrderPlanner()))
     );
 
     private static final @Nonnull

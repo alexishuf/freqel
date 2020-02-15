@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toSet;
 
-public class QueryNode extends PlanNode {
+public class QueryNode extends AbstractPlanNode {
     private final @Nonnull TPEndpoint endpoint;
     private final @Nonnull CQuery query;
 
@@ -34,18 +34,24 @@ public class QueryNode extends PlanNode {
     }
 
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
+        this(endpoint, query, Cardinality.UNSUPPORTED);
+    }
+
+    public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
+                     @Nonnull Cardinality cardinality) {
         this(endpoint, query, query.streamTerms(Var.class).map(Var::getName)
-                                   .collect(Collectors.toList()), false);
+                        .collect(Collectors.toList()), false, cardinality);
     }
 
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
                      @Nonnull Collection<String> varNames) {
-        this(endpoint, query, varNames, true);
+        this(endpoint, query, varNames, true, Cardinality.UNSUPPORTED);
     }
 
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
-                     @Nonnull Collection<String> varNames, boolean projecting) {
-        super(varNames, projecting, getInputVars(query), Collections.emptyList());
+                     @Nonnull Collection<String> varNames, boolean projecting,
+                     @Nonnull Cardinality cardinality) {
+        super(varNames, projecting, getInputVars(query), Collections.emptyList(), cardinality);
         if (QueryNode.class.desiredAssertionStatus()) { //expensive checks
             Set<String> all = query.streamTerms(Var.class).map(Var::getName).collect(toSet());
             Preconditions.checkArgument(all.containsAll(varNames), "There are extra varNames");
@@ -124,7 +130,7 @@ public class QueryNode extends PlanNode {
         projection.retainAll(getResultVars());
         boolean projecting = projection.size() < all.size();
 
-        return new QueryNode(getEndpoint(), q, projection, projecting);
+        return new QueryNode(getEndpoint(), q, projection, projecting, getCardinality());
     }
 
     @Override
@@ -156,8 +162,8 @@ public class QueryNode extends PlanNode {
     }
 
     @Override
-    protected @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
-                                                 @Nonnull String indent) {
+    public  @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
+                                               @Nonnull String indent) {
         String indent2 = indent + "  ";
         builder.append(indent);
         if (isProjecting())

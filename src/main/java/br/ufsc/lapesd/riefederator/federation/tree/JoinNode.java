@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
@@ -15,13 +17,14 @@ import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
-public class JoinNode extends PlanNode {
+public class JoinNode extends AbstractPlanNode {
     private @Nonnull Set<String> joinVars;
 
     public static class Builder {
         private @Nonnull PlanNode left, right;
         private @Nullable Set<String> joinVars = null, resultVars = null, inputVars = null;
         private boolean projecting = true;
+        private Cardinality cardinality = null;
 
         public Builder(@Nonnull PlanNode left, @Nonnull PlanNode right) {
             this.left = left;
@@ -63,6 +66,12 @@ public class JoinNode extends PlanNode {
         @Contract("_ -> this") @CanIgnoreReturnValue
         public @Nonnull Builder setInputVars(@Nonnull Collection<String> names) {
             inputVars = names instanceof Set ? (Set<String>)names : ImmutableSet.copyOf(names);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Nonnull Builder setCardinality(@Nonnull Cardinality cardinality) {
+            this.cardinality = cardinality;
             return this;
         }
 
@@ -114,7 +123,10 @@ public class JoinNode extends PlanNode {
             }
             if (inputVars == null)
                 inputVars = unionInputs(asList(left, right));
-            return new JoinNode(left, right, joinVars, resultVars, projecting, inputVars);
+            if (cardinality == null)
+                cardinality = getCardinality(left, right);
+            return new JoinNode(left, right, joinVars, resultVars, projecting,
+                                inputVars, cardinality);
         }
     }
 
@@ -125,8 +137,8 @@ public class JoinNode extends PlanNode {
     protected JoinNode(@Nonnull PlanNode left, @Nonnull PlanNode right,
                        @Nonnull Set<String> joinVars,
                        @Nonnull Set<String> resultVars, boolean projecting,
-                       @Nonnull Set<String> inputVars) {
-        super(resultVars, projecting, inputVars, asList(left, right));
+                       @Nonnull Set<String> inputVars, @Nonnull Cardinality cardinality) {
+        super(resultVars, projecting, inputVars, asList(left, right), cardinality);
         this.joinVars = joinVars;
     }
 
@@ -152,7 +164,8 @@ public class JoinNode extends PlanNode {
         Set<String> inputVars = TreeUtils.intersect(getInputVars(), all);
 
         boolean projecting = resultVars.size() < all.size();
-        return new JoinNode(left, right, joinVars, resultVars, projecting, inputVars);
+        return new JoinNode(left, right, joinVars, resultVars, projecting, inputVars,
+                            getCardinality(left, right));
     }
 
     @Override
@@ -171,7 +184,12 @@ public class JoinNode extends PlanNode {
         boolean projecting = results.size() != allResults.size();
         Set<String> inputs = intersect(getInputVars(), unionInputs(list));
 
-        return new JoinNode(l, r, joinVars, results, projecting, inputs);
+        return new JoinNode(l, r, joinVars, results, projecting, inputs, getCardinality(l, r));
+    }
+
+    private static @Nonnull Cardinality getCardinality(@Nonnull PlanNode l, @Nonnull PlanNode r) {
+        Cardinality lc = l.getCardinality(), rc = r.getCardinality();
+        return CardinalityComparator.DEFAULT.compare(lc, rc) < 0 ? lc : rc;
     }
 
     @Override
@@ -185,8 +203,8 @@ public class JoinNode extends PlanNode {
     }
 
     @Override
-    protected @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
-                                                 @Nonnull String indent) {
+    public  @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
+                                               @Nonnull String indent) {
         String indent2 = indent + "  ";
         builder.append(indent);
         if (isProjecting())

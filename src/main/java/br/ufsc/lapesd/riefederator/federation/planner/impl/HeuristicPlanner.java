@@ -25,7 +25,7 @@ import static java.util.stream.Collectors.toSet;
 public class HeuristicPlanner implements Planner {
     @Override
     public @Nonnull PlanNode plan(@Nonnull CQuery query,
-                                  @Nonnull Collection<QueryNode> conjunctiveNodes) {
+                          @Nonnull Collection<QueryNode> conjunctiveNodes) {
         checkArgument(!conjunctiveNodes.isEmpty(), "Cannot plan empty queries");
         if (conjunctiveNodes.size() == 1)
             return conjunctiveNodes.iterator().next();

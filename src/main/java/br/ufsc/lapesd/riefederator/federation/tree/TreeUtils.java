@@ -211,6 +211,11 @@ public class TreeUtils {
     }
 
     public static  @Nonnull PlanNode cleanEquivalents(@Nonnull PlanNode node) {
+        return cleanEquivalents(node, Comparator.comparing(PlanNode::hashCode));
+    }
+
+    public static  @Nonnull PlanNode cleanEquivalents(@Nonnull PlanNode node,
+                                                      @Nonnull Comparator<PlanNode> comparator) {
         node = flattenMultiQuery(node);
         if (!(node instanceof MultiQueryNode)) return node;
 
@@ -222,24 +227,28 @@ public class TreeUtils {
                 mm.put(((QueryNode) child).getQuery().getSet(), (QueryNode) child);
         }
 
-        BitSet marked = new BitSet(children.size());
+        BitSet mkd = new BitSet(children.size());
         for (Set<Triple> key : mm.keySet()) {
             List<QueryNode> list = mm.get(key);
             for (int i = 0; i < list.size(); i++) {
-                if (marked.get(i)) continue;
+                if (mkd.get(i)) continue;
                 TPEndpoint outer = list.get(i).getEndpoint();
                 for (int j = i+1; j < list.size(); j++) {
-                    if (marked.get(j)) continue;
+                    if (mkd.get(j)) continue;
                     TPEndpoint inner = list.get(j).getEndpoint();
-                    if (outer.isAlternative(inner) || inner.isAlternative(outer))
-                        marked.set(j);
+                    if (outer.isAlternative(inner) || inner.isAlternative(outer)) {
+                        int worst = comparator.compare(list.get(i), list.get(j)) <= 0 ? j : i;
+                        mkd.set(worst); //mark for removal
+                    }
                 }
             }
         }
 
-        if (marked.cardinality() > 0) {
+        if (mkd.cardinality() > 0) {
+            // transform marked "for removal" into marked "for survival"
+            mkd.flip(0, children.size());
             MultiQueryNode.Builder builder = MultiQueryNode.builder();
-            for (int i = marked.nextSetBit(0); i >= 0; i = marked.nextSetBit(i+1))
+            for (int i = mkd.nextSetBit(0); i >= 0; i = mkd.nextSetBit(i+1))
                 builder.add(children.get(i));
             return builder.buildIfMulti();
         } else {

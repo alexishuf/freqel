@@ -23,6 +23,6 @@ public interface Planner {
      * @throws IllegalArgumentException if fragments is empty.
      * @return The root of the query plan.
      */
-    @Nonnull PlanNode plan(@Nonnull CQuery query,
-                           @Nonnull Collection<QueryNode> fragments);
+    @Nonnull
+    PlanNode plan(@Nonnull CQuery query, @Nonnull Collection<QueryNode> fragments);
 }

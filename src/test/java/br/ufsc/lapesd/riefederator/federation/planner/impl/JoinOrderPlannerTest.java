@@ -58,7 +58,10 @@ public class JoinOrderPlannerTest {
     }
 
     public static final List<Supplier<JoinOrderPlanner>> suppliers =
-            singletonList(new NamedSupplier<>(ArbitraryJoinOrderPlanner.class));
+            asList(
+                    new NamedSupplier<>(ArbitraryJoinOrderPlanner.class),
+                    new NamedSupplier<>(GreedyJoinOrderPlanner.class)
+            );
 
     private void checkPlan(PlanNode root, Set<PlanNode> expectedLeaves) {
         assertTrue(isTree(root)); //stricter than acyclic
