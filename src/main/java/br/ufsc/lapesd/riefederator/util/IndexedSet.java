@@ -65,6 +65,8 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
 
     @CheckReturnValue
     public static @Nonnull <U> IndexedSet<U> fromDistinct(@Nonnull Collection<U> collection) {
+        if (collection instanceof IndexedSet)
+            return (IndexedSet<U>) collection;
         if (IndexedSet.class.desiredAssertionStatus())
             checkArgument(new HashSet<>(collection).size() == collection.size());
         ImmutableMap<U, Integer> indexMap = createIndexMap(collection);
@@ -83,7 +85,8 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
 
     @CheckReturnValue
     public static @Nonnull <U> IndexedSet<U> from(@Nonnull Collection<U> collection) {
-        return fromDistinct(new LinkedHashSet<>(collection));
+        return collection instanceof Set ? fromDistinct(collection)
+                                         : fromDistinct(new LinkedHashSet<>(collection));
     }
 
     @CheckReturnValue
