@@ -70,8 +70,27 @@ public abstract class PlanNode {
         return has;
     }
 
+    private @Nonnull String getVarNamesStringContent() {
+        StringBuilder builder = new StringBuilder();
+        Set<String> results = getResultVars(), inputs = getInputVars();
+        for (String out : results) {
+            if (inputs.contains(out))
+                builder.append("->");
+            builder.append(out).append(", ");
+        }
+        for (String in : inputs) {
+            if (!results.contains(in))
+                builder.append("->").append(in).append(", ");
+        }
+        return builder.toString();
+    }
+
     protected @Nonnull String getPiWithNames() {
-        return "π[" + String.join(",", getResultVars()) + "]";
+        return "π[" + getVarNamesStringContent() + "]";
+    }
+
+    protected @Nonnull String getVarNamesString() {
+        return (isProjecting() ? "π" : "") + "[" + getVarNamesStringContent() + "]";
     }
 
     /**
@@ -99,4 +118,12 @@ public abstract class PlanNode {
 
     @Contract("_ -> param1") @CanIgnoreReturnValue
     protected abstract @Nonnull StringBuilder toString(@Nonnull StringBuilder builder);
+
+    public @Nonnull String prettyPrint() {
+        return prettyPrint(new StringBuilder(), "").toString();
+    }
+
+    @Contract("_, _ -> param1") @CanIgnoreReturnValue
+    protected abstract @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
+                                                          @Nonnull String indent);
 }

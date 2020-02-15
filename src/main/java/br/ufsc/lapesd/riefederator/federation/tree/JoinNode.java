@@ -183,4 +183,18 @@ public class JoinNode extends PlanNode {
             builder.append(')');
         return builder;
     }
+
+    @Override
+    protected @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
+                                                 @Nonnull String indent) {
+        String indent2 = indent + "  ";
+        builder.append(indent);
+        if (isProjecting())
+            builder.append(getPiWithNames()).append('(');
+        builder.append("⋈{").append(String.join(", ", getJoinVars()))
+                .append(isProjecting() ? "})\n" : "}"+getVarNamesString()+"\n");
+        getLeft().prettyPrint(builder, indent2).append('\n');
+        getRight().prettyPrint(builder, indent2);
+        return builder;
+    }
 }

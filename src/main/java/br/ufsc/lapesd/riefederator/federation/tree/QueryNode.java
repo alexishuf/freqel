@@ -153,6 +153,17 @@ public class QueryNode extends PlanNode {
         if (isProjecting())
             builder.append(')');
         return builder;
+    }
 
+    @Override
+    protected @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
+                                                 @Nonnull String indent) {
+        String indent2 = indent + "  ";
+        builder.append(indent);
+        if (isProjecting())
+            builder.append(getPiWithNames()).append('(');
+        return builder.append("Q(").append(getEndpoint()).append(isProjecting() ? "))\n" : ")\n")
+                .append(indent2)
+                .append(getQuery().toString().replaceAll("\n", "\n"+indent2));
     }
 }

@@ -182,4 +182,23 @@ public class MultiQueryNode extends PlanNode {
             b.append(')');
         return b;
     }
+
+    @Override
+    protected @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
+                                                 @Nonnull String indent) {
+        String indent2 = indent + "  ";
+        builder.append(indent);
+        if (isProjecting())
+            builder.append(getPiWithNames()).append('(');
+        builder.append(getChildren().isEmpty() ? "Empty" : "")
+                .append("Multi-node").append(isProjecting() ? ")" : getVarNamesString());
+        if (getChildren().isEmpty())
+            return builder;
+        else
+            builder.append('\n');
+        for (PlanNode child : getChildren())
+            child.prettyPrint(builder, indent2).append('\n');
+        builder.setLength(builder.length()-1);
+        return builder;
+    }
 }

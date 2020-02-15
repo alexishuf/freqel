@@ -60,18 +60,11 @@ public class EmptyNode extends PlanNode {
 
     @Override
     protected @Nonnull StringBuilder toString(@Nonnull StringBuilder builder) {
-        builder.append("EMPTY[");
-        Set<String> results = getResultVars(), inputs = getInputVars();
-        for (String out : results) {
-            if (inputs.contains(out))
-                builder.append("->");
-            builder.append(out).append(", ");
-        }
-        for (String in : inputs) {
-            if (!results.contains(in))
-                builder.append("->").append(in).append(", ");
-        }
-        builder.setLength(builder.length()-2);
-        return builder.append("]");
+        return builder.append("EMPTY").append(getVarNamesString());
+    }
+
+    @Override
+    protected @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder, @Nonnull String indent) {
+        return builder.append(indent).append(toString());
     }
 }
