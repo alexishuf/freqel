@@ -1,5 +1,9 @@
 package br.ufsc.lapesd.riefederator.webapis.requests;
 
+import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimit;
+import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimitsRegistry;
+import br.ufsc.lapesd.riefederator.webapis.requests.rate.impl.NoRateLimit;
+import br.ufsc.lapesd.riefederator.webapis.requests.rate.impl.SimpleRateLimit;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;

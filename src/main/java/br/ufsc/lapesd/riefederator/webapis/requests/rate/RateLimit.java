@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.webapis.requests;
+package br.ufsc.lapesd.riefederator.webapis.requests.rate;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.Callable;

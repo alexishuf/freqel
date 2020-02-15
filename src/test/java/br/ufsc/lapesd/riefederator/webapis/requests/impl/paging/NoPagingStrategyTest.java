@@ -4,7 +4,8 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
-import br.ufsc.lapesd.riefederator.webapis.requests.PagingStrategy;
+import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
+import br.ufsc.lapesd.riefederator.webapis.requests.paging.impl.NoPagingStrategy;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -18,7 +19,6 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Response;
-
 import java.util.Collections;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;

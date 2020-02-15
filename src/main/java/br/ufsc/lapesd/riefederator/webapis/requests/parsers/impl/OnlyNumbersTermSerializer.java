@@ -1,17 +1,13 @@
-package br.ufsc.lapesd.riefederator.webapis.requests.impl;
+package br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
-import br.ufsc.lapesd.riefederator.webapis.requests.NoTermSerializationException;
-import br.ufsc.lapesd.riefederator.webapis.requests.TermSerializer;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.TermSerializer;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-
 import java.math.BigInteger;
-
-import static java.lang.Integer.parseInt;
 
 public class OnlyNumbersTermSerializer implements TermSerializer {
     public static final @Nonnull OnlyNumbersTermSerializer INSTANCE

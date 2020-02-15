@@ -1,10 +1,11 @@
-package br.ufsc.lapesd.riefederator.webapis.requests.impl.parsers;
+package br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl;
 
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
-import br.ufsc.lapesd.riefederator.webapis.requests.ResponseParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestInfo;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyReader;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.ResponseParser;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.jena.rdf.model.Model;
 
@@ -32,8 +33,12 @@ public class JenaResponseParser implements ResponseParser {
     }
 
     @Override
-    public @Nonnull CQEndpoint parse(@Nullable Object object, @Nonnull String uriHint) {
+    public @Nonnull CQEndpoint parse(@Nullable Object object, @Nonnull String uriHint,
+                                     @Nullable HTTPRequestInfo info) {
         if (object == null) return new EmptyEndpoint();
-        return ARQEndpoint.forModel((Model) object);
+        Model model = (Model) object;
+        if (info != null)
+            info.setParsedTriples((int)model.size());
+        return ARQEndpoint.forModel(model);
     }
 }

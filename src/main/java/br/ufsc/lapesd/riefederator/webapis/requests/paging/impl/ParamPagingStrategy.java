@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.webapis.requests;
+package br.ufsc.lapesd.riefederator.webapis.requests.paging.impl;
 
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.Immutable;

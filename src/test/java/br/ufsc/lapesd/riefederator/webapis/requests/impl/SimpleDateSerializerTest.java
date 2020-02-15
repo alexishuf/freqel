@@ -3,7 +3,8 @@ package br.ufsc.lapesd.riefederator.webapis.requests.impl;
 import br.ufsc.lapesd.riefederator.jena.model.term.JenaLit;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.webapis.requests.NoTermSerializationException;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.NoTermSerializationException;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.SimpleDateSerializer;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

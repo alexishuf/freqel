@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.query.*;
 import br.ufsc.lapesd.riefederator.query.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.impl.ProjectingResults;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import com.google.common.collect.ImmutableCollection;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -45,6 +46,10 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return this;
     }
 
+    public @Nonnull ImmutableCollection<Source> getSources() {
+        return strategy.getSources();
+    }
+
     public @Nonnull PlanNode plan(@Nonnull CQuery query) {
         ModifierUtils.check(this, query.getModifiers());
         return strategy.decompose(query);
@@ -52,7 +57,8 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
-        Results results = executor.executePlan(plan(query));
+        PlanNode plan = plan(query);
+        Results results = executor.executePlan(plan);
         results = ProjectingResults.applyIf(results, query);
         results = HashDistinctResults.applyIf(results, query);
         return results;

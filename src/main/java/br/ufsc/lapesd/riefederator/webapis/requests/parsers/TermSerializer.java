@@ -1,6 +1,8 @@
-package br.ufsc.lapesd.riefederator.webapis.requests;
+package br.ufsc.lapesd.riefederator.webapis.requests.parsers;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.NoTermSerializationException;
 
 import javax.annotation.Nonnull;
 

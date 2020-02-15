@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.webapis.requests;
+package br.ufsc.lapesd.riefederator.webapis.requests.paging;
 
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.Solution;

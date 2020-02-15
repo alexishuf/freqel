@@ -2,9 +2,17 @@ package br.ufsc.lapesd.riefederator.webapis.requests.impl;
 
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.Solution;
-import br.ufsc.lapesd.riefederator.webapis.requests.*;
-import br.ufsc.lapesd.riefederator.webapis.requests.impl.paging.NoPagingStrategy;
-import br.ufsc.lapesd.riefederator.webapis.requests.impl.parsers.JenaResponseParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
+import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestInfo;
+import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
+import br.ufsc.lapesd.riefederator.webapis.requests.MissingAPIInputsException;
+import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
+import br.ufsc.lapesd.riefederator.webapis.requests.paging.impl.NoPagingStrategy;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.ResponseParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.TermSerializer;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.JenaResponseParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.SimpleTermSerializer;
+import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimitsRegistry;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -25,7 +33,6 @@ import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 @Immutable
 public class UriTemplateExecutor implements APIRequestExecutor {
@@ -38,13 +45,16 @@ public class UriTemplateExecutor implements APIRequestExecutor {
     private final @Nonnull ResponseParser parser;
     private final @Nonnull PagingStrategy pagingStrategy;
     private final @SuppressWarnings("Immutable") @Nonnull RateLimitsRegistry rateLimitsRegistry;
+    private @SuppressWarnings("Immutable") @Nonnull HTTPRequestObserver requestObserver;
 
     public UriTemplateExecutor(@Nonnull UriTemplate template, @Nonnull ImmutableSet<String> required,
                                @Nonnull ImmutableSet<String> optional,
                                @Nonnull Map<String, TermSerializer> input2serializer,
                                @Nonnull ClientConfig clientConfig,
                                @Nonnull ResponseParser parser,
-                               @Nonnull PagingStrategy pagingStrategy, @Nonnull RateLimitsRegistry rateLimitsRegistry) {
+                               @Nonnull PagingStrategy pagingStrategy,
+                               @Nonnull RateLimitsRegistry rateLimitsRegistry,
+                               @Nonnull HTTPRequestObserver requestObserver) {
         this.template = template;
         this.required = required;
         this.optional = optional;
@@ -53,13 +63,14 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         this.parser = parser;
         this.pagingStrategy = pagingStrategy;
         this.rateLimitsRegistry = rateLimitsRegistry;
+        this.requestObserver = requestObserver;
     }
 
     public UriTemplateExecutor(@Nonnull UriTemplate template) {
         this(template, ImmutableSet.copyOf(template.getTemplateVariables()), ImmutableSet.of(),
                 ImmutableMap.of(), new ClientConfig(),
                 JenaResponseParser.INSTANCE, NoPagingStrategy.INSTANCE,
-                new RateLimitsRegistry());
+                new RateLimitsRegistry(), i -> {});
     }
 
     public static class Builder {
@@ -72,6 +83,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         private @Nonnull ResponseParser parser = JenaResponseParser.INSTANCE;
         private @Nonnull PagingStrategy pagingStrategy = NoPagingStrategy.INSTANCE;
         private @Nonnull RateLimitsRegistry rateLimitsRegistry = new RateLimitsRegistry();
+        private @Nonnull HTTPRequestObserver requestObserver = i -> {};
 
         public Builder(@Nonnull UriTemplate template) {
             this.template = template;
@@ -130,6 +142,11 @@ public class UriTemplateExecutor implements APIRequestExecutor {
             this.rateLimitsRegistry = registry;
             return this;
         }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder setRequestObserver(@Nonnull HTTPRequestObserver observer) {
+            this.requestObserver = observer;
+            return this;
+        }
 
         @CheckReturnValue
         public @Nonnull UriTemplateExecutor build() {
@@ -150,7 +167,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
             return new UriTemplateExecutor(template, ImmutableSet.copyOf(required),
                                            ImmutableSet.copyOf(optional),
                                            input2serializer.build(), clientConfig,
-                                           parser, pagingStrategy, rateLimitsRegistry);
+                                           parser, pagingStrategy, rateLimitsRegistry,
+                                           requestObserver);
         }
     }
 
@@ -181,43 +199,63 @@ public class UriTemplateExecutor implements APIRequestExecutor {
             @Override
             public @Nullable CQEndpoint next() {
                 if (!hasNext()) throw new NoSuchElementException();
-                double createMs, setupMs, parseMs;
-                double[] requestMs = {0};
 
                 Stopwatch sw = Stopwatch.createStarted();
                 String uri = getUri(pager.apply(input));
-                createMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+                HTTPRequestInfo info = new HTTPRequestInfo("GET", uri)
+                        .setCreateUriMs(sw);
 
                 sw.reset().start();
                 Client client = createClient();
                 parser.setupClient(client);
                 WebTarget target = client.target(uri);
-                setupMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+                info.setSetupMs(sw);
 
                 Response[] response = {null};
                 Object[] obj = {null};
                 rateLimitsRegistry.get(uri).request(() -> {
-                    sw.reset().start();
-                    response[0] = target.request(parser.getAcceptable()).get();
-                    pager.notifyResponse(response[0]);
-                    obj[0] = response[0].readEntity(parser.getDesiredClass());
-                    requestMs[0] = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+                    try {
+                        info.setRequestDate(new Date());
+                        sw.reset().start();
+                        response[0] = target.request(parser.getAcceptable()).get();
+                        info.setStatus(response[0].getStatus());
+                        pager.notifyResponse(response[0]);
+                        obj[0] = response[0].readEntity(parser.getDesiredClass());
+                        info.setRequestMs(sw);
+                        info.setContentType(response[0].getMediaType().toString());
+                        info.setResponseBytes(response[0].getLength());
+                    } catch (RuntimeException e) {
+                        info.setException(e);
+                        throw e;
+                    }
                 });
                 sw.reset().start();
-                CQEndpoint endpoint = parser.parse(obj[0], uri);
-                parseMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+                CQEndpoint endpoint;
+                try {
+                    endpoint = parser.parse(obj[0], uri, info);
+                    info.setParseMs(sw);
+                } catch (RuntimeException e) {
+                    info.setException(e);
+                    throw e;
+                }
                 pager.notifyResponseEndpoint(endpoint);
 
-                logger.info("GET {} :: status={}, uriGeneration={}ms, jaxSetup={}ms, " +
-                            "request={}ms, parse2Endpoint={}ms", uri, response[0].getStatus(),
-                            createMs, setupMs, requestMs[0], parseMs);
+                logger.info(info.toString());
+                requestObserver.accept(info);
                 return endpoint;
             }
         };
     }
 
     @Override
-    public String toString() {
+    public @Nonnull HTTPRequestObserver setObserver(@Nonnull HTTPRequestObserver observer) {
+        HTTPRequestObserver old = this.requestObserver;
+        this.requestObserver = observer;
+        return old;
+    }
+
+    @Override
+    public @Nonnull String toString() {
         return template.getTemplate();
     }
 

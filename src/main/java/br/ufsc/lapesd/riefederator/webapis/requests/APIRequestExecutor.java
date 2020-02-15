@@ -1,13 +1,13 @@
 package br.ufsc.lapesd.riefederator.webapis.requests;
 
-import br.ufsc.lapesd.riefederator.model.term.Blank;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.NoTermSerializationException;
 import com.google.errorprone.annotations.Immutable;
 import org.glassfish.jersey.uri.UriTemplate;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -51,4 +51,6 @@ public interface APIRequestExecutor {
      */
     @Nonnull Iterator<? extends CQEndpoint>
     execute(@Nonnull Solution input) throws MissingAPIInputsException, NoTermSerializationException;
+
+    @Nullable HTTPRequestObserver setObserver(@Nonnull HTTPRequestObserver observer);
 }

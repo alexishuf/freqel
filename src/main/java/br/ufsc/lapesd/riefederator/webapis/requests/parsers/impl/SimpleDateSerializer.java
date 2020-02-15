@@ -1,11 +1,10 @@
-package br.ufsc.lapesd.riefederator.webapis.requests.impl;
+package br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl;
 
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
-import br.ufsc.lapesd.riefederator.webapis.requests.NoTermSerializationException;
-import br.ufsc.lapesd.riefederator.webapis.requests.TermSerializer;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.TermSerializer;
 import com.google.common.collect.Sets;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.XSDDatatype;

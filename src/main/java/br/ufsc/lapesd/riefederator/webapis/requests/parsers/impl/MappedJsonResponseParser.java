@@ -1,8 +1,9 @@
-package br.ufsc.lapesd.riefederator.webapis.requests.impl.parsers;
+package br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl;
 
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
-import br.ufsc.lapesd.riefederator.webapis.requests.ResponseParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestInfo;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.ResponseParser;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.Immutable;
@@ -15,7 +16,6 @@ import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.validation.constraints.Null;
 import javax.ws.rs.client.Client;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -64,12 +64,23 @@ public class MappedJsonResponseParser implements ResponseParser {
     }
 
     @Override
-    public @Nullable CQEndpoint parse(Object object, @Nonnull String uriHint) {
+    public @Nullable CQEndpoint parse(@Nullable Object object, @Nonnull String uriHint,
+                                      @Nullable HTTPRequestInfo info) {
+        if (object == null)
+            return null;
         String string = (String) object;
         Model model = ModelFactory.createDefaultModel();
         // parse json into model
         JsonElement element = new JsonParser().parse(string);
+        if (info != null) {
+            if (element.isJsonArray())
+                info.setJsonRootArrayMembers(element.getAsJsonArray().size());
+            if (element.isJsonObject())
+                info.setJsonRootObjectMembers(element.getAsJsonObject().size());
+        }
         parseInto(model, element, uriHint);
+        if (info != null)
+            info.setParsedTriples((int) model.size());
         if (model.isEmpty())
             return null; // no data. Don't bother querying. If paging, stop
         return ARQEndpoint.forModel(model);

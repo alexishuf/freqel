@@ -16,10 +16,8 @@ import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
-import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
+import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
 import br.ufsc.lapesd.riefederator.webapis.requests.MismatchingQueryException;
-import br.ufsc.lapesd.riefederator.webapis.requests.MissingAPIInputsException;
-import br.ufsc.lapesd.riefederator.webapis.requests.NoTermSerializationException;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.APIRequestExecutorException;
 import com.google.inject.Guice;
 import org.slf4j.Logger;
@@ -130,6 +128,10 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         if (matcher == null)
             this.matcher = new SoftReference<>(matcher = new APIMoleculeMatcher(getMolecule()));
         return matcher;
+    }
+
+    public @Nullable HTTPRequestObserver setObserver(@Nonnull HTTPRequestObserver observer) {
+        return this.molecule.getExecutor().setObserver(observer);
     }
 
     private Results reportFailure(@Nonnull CQuery query, boolean mustThrow,

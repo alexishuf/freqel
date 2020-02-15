@@ -7,6 +7,8 @@ import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -30,6 +32,10 @@ public class EvenDecomposer implements DecompositionStrategy {
         sources.add(source);
     }
 
+    @Override
+    public @Nonnull ImmutableCollection<Source> getSources() {
+        return ImmutableList.copyOf(sources);
+    }
 
     @Override
     public @Nonnull List<QueryNode> decomposeIntoLeaves(@Nonnull CQuery query) {

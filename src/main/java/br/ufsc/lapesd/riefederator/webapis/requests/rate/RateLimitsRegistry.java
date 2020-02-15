@@ -1,5 +1,6 @@
-package br.ufsc.lapesd.riefederator.webapis.requests;
+package br.ufsc.lapesd.riefederator.webapis.requests.rate;
 
+import br.ufsc.lapesd.riefederator.webapis.requests.rate.impl.NoRateLimit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

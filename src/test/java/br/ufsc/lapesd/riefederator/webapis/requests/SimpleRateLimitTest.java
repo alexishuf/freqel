@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.webapis.requests;
 
+import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimit;
+import br.ufsc.lapesd.riefederator.webapis.requests.rate.impl.SimpleRateLimit;
 import com.google.common.base.Stopwatch;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

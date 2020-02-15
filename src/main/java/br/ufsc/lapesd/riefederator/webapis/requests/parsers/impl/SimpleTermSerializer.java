@@ -1,16 +1,13 @@
-package br.ufsc.lapesd.riefederator.webapis.requests.impl;
+package br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
-import br.ufsc.lapesd.riefederator.webapis.requests.NoTermSerializationException;
-import br.ufsc.lapesd.riefederator.webapis.requests.TermSerializer;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.TermSerializer;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 
 import static java.lang.String.format;
 

@@ -1,8 +1,8 @@
-package br.ufsc.lapesd.riefederator.webapis.requests.impl.paging;
+package br.ufsc.lapesd.riefederator.webapis.requests.paging.impl;
 
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.Solution;
-import br.ufsc.lapesd.riefederator.webapis.requests.PagingStrategy;
+import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
