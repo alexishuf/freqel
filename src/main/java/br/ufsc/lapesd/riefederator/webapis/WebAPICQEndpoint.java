@@ -54,6 +54,12 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     }
 
     @Override
+    public @Nonnull Cardinality estimate(@Nonnull CQuery query, int policy) {
+        if (query.isEmpty()) return Cardinality.EMPTY;
+        return molecule.getCardinality();
+    }
+
+    @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         MapSolution.Builder b = MapSolution.builder();
         boolean hasAtomAnnotations = query.forEachTermAnnotation(AtomAnnotation.class, (t, a) -> {

@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
@@ -21,6 +22,7 @@ import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.EmptyWebApiEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.Collections2;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -31,9 +33,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.query.Cardinality.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 public class GreedyJoinOrderPlannerTest {
@@ -262,39 +266,42 @@ public class GreedyJoinOrderPlannerTest {
         assertEquals(new HashSet<>(root.getChildren()), new HashSet<>(best));
     }
 
-
-    @Test
-    public void testTakeInitialJoin() {
-        StdLit name = StdLit.fromUnescaped("name");
-        StdLit date1 = StdLit.fromUnescaped("date1");
-        StdLit date2 = StdLit.fromUnescaped("date2");
-        QueryNode organizationByName = n(wep, upperBound(1),
+    public static class Scenario1 {
+        static final StdLit name = StdLit.fromUnescaped("name");
+        static final StdLit date1 = StdLit.fromUnescaped("date1");
+        static final StdLit date2 = StdLit.fromUnescaped("date2");
+        static final QueryNode organizationByName = n(wep, upperBound(1),
                 z, p1, name,
                 z, p1, t);
-        QueryNode contracts = n(wep, lowerBound(2), singletonList(t),
+        static final QueryNode contracts = n(wep, lowerBound(2), singletonList(t),
                 x, p1, date1,
                 x, p1, date2,
                 x, p1, t,
                 x, p1, b,
                 x, p1, u,
                 x, p1, k);
-        QueryNode contractById = n(wep, upperBound(1), singletonList(b),
+        static final QueryNode contractById = n(wep, upperBound(1), singletonList(b),
                 w, p1, b,
                 w, p1, d);
-        QueryNode modalities = n(ep1, NON_EMPTY,
+        static final QueryNode modalities = n(ep1, NON_EMPTY,
                 m, p1, c,
                 m, p1, d);
-        QueryNode procurementByUMN = n(wep, upperBound(1), asList(c, u, k),
+        static final QueryNode procurementByUMN = n(wep, upperBound(1), asList(c, u, k),
                 y, p1, c,
                 y, p1, u,
                 y, p1, k,
                 y, p1, e);
-        List<PlanNode> nodes = asList(organizationByName, contracts, contractById,
-                                      modalities, procurementByUMN);
-        HashSet<QueryNode> expected = Sets.newHashSet(organizationByName, contracts);
+        static final ImmutableList<PlanNode> nodes = ImmutableList.of(organizationByName, contracts, contractById,
+                modalities, procurementByUMN);
+    }
+
+    @Test
+    public void testTakeInitialJoin() {
+        HashSet<QueryNode> expected = Sets.newHashSet(Scenario1.organizationByName,
+                                                      Scenario1.contracts);
         int i = 0;
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : Collections2.permutations(nodes)) {
+        for (List<PlanNode> permutation : Collections2.permutations(Scenario1.nodes)) {
             JoinGraph graph = new JoinGraph(IndexedSet.from(permutation));
             IndexedSubset<PlanNode> pending = graph.getNodes().fullSubset();
             PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(graph, pending);
@@ -302,6 +309,32 @@ public class GreedyJoinOrderPlannerTest {
             assertEquals(new HashSet<>(root.getChildren()), expected, "i="+i);
             assertTrue(expected.stream().noneMatch(pending::contains), "i="+i);
         }
+    }
+
+    @Test
+    public void testPlanForScenario() {
+        GreedyJoinOrderPlanner planner = new GreedyJoinOrderPlanner();
+        JoinGraph graph = new JoinGraph(IndexedSet.from(Scenario1.nodes));
+        PlanNode root = planner.plan(graph, Scenario1.nodes);
+
+        assertEquals(streamPreOrder(root).filter(n -> !(n instanceof JoinNode)).collect(toSet()),
+                     new HashSet<>(Scenario1.nodes));
+        assertEquals(streamPreOrder(root).filter(n -> !(n instanceof JoinNode)).count(),
+                     Scenario1.nodes.size(), "There are duplicate leaves in the plan");
+
+        assertTrue(root instanceof JoinNode);
+        JoinNode j1 = (JoinNode)((JoinNode) root).getLeft();
+        JoinNode j2 = (JoinNode) j1.getLeft();
+        JoinNode j3 = (JoinNode) j2.getLeft();
+
+        assertEquals(new HashSet<>(j3.getChildren()),
+                     Sets.newHashSet(Scenario1.organizationByName, Scenario1.contracts));
+        assertSame(j2.getRight(), Scenario1.contractById);
+
+        HashSet<PlanNode> lastSet = Sets.newHashSet(Scenario1.modalities,
+                                                     Scenario1.procurementByUMN);
+        assertTrue(lastSet.contains(j1.getRight()));
+        assertTrue(lastSet.contains(root.getChildren().get(1)));
     }
 
 }

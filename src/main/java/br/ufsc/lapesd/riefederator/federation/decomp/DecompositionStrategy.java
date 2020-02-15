@@ -14,4 +14,5 @@ public interface DecompositionStrategy {
     @Nonnull Collection<QueryNode> decomposeIntoLeaves(@Nonnull CQuery query);
     @Nonnull PlanNode decompose(@Nonnull CQuery query);
     @Nonnull ImmutableCollection<Source> getSources();
+    void setEstimatePolicy(int flags);
 }

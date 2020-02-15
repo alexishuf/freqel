@@ -31,7 +31,7 @@ public class StandardDecomposer extends ListSourcesAbstractDecomposer {
                 .map(src -> ImmutablePair.of(src.getEndpoint(), src.getDescription().match(query)))
                 .forEachOrdered(p -> {
                     CQueryMatch m = p.right;
-                    m.getKnownExclusiveGroups().forEach(eg -> qns.add(new QueryNode(p.left, eg)));
+                    m.getKnownExclusiveGroups().forEach(eg -> qns.add(createQN(p.left, eg)));
                     m.getNonExclusiveRelevant().forEach(t  -> ne2ep.put(t, p.left));
                 });
 
@@ -42,13 +42,13 @@ public class StandardDecomposer extends ListSourcesAbstractDecomposer {
             if (eps.size() == 1)
                 protoEGs.put(eps.iterator().next(), triple);
             else
-                eps.forEach(ep -> qns.add(new QueryNode(ep, CQuery.from(triple))));
+                eps.forEach(ep -> qns.add(createQN(ep, triple)));
         }
         ne2ep.clear();
 
         // for single-endpoint triples, build the EGs
         for (TPEndpoint ep : protoEGs.keySet())
-            qns.add(new QueryNode(ep, CQuery.from(protoEGs.get(ep))));
+            qns.add(createQN(ep, CQuery.from(protoEGs.get(ep))));
         return qns;
     }
 

@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.webapis.description;
 
 import br.ufsc.lapesd.riefederator.description.Molecule;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.Immutable;
@@ -18,9 +19,11 @@ public class APIMolecule  {
     private final @Nonnull Molecule molecule;
     private final @Nonnull APIRequestExecutor executor;
     private final @Nonnull ImmutableMap<String, String> atom2input;
+    private final @Nonnull Cardinality cardinality;
 
     public APIMolecule(@Nonnull Molecule molecule, @Nonnull APIRequestExecutor executor,
-                       @Nonnull Map<String, String> atom2input) {
+                       @Nonnull Map<String, String> atom2input,
+                       @Nonnull Cardinality cardinality) {
         checkArgument(atom2input.values().containsAll(executor.getRequiredInputs()),
                 "There are some requiredInputs in executor which are not mapped to in atom2input");
         if (APIMolecule.class.desiredAssertionStatus()) {
@@ -31,6 +34,12 @@ public class APIMolecule  {
         this.molecule = molecule;
         this.executor = executor;
         this.atom2input = ImmutableMap.copyOf(atom2input);
+        this.cardinality = cardinality;
+    }
+
+    public APIMolecule(@Nonnull Molecule molecule, @Nonnull APIRequestExecutor executor,
+                       @Nonnull Map<String, String> atom2input) {
+        this(molecule, executor, atom2input, Cardinality.UNSUPPORTED);
     }
 
     public @Nonnull Molecule getMolecule() {
@@ -45,9 +54,14 @@ public class APIMolecule  {
         return atom2input;
     }
 
+    public @Nonnull Cardinality getCardinality() {
+        return cardinality;
+    }
+
     @Override
     public @Nonnull String toString() {
-        return format("APIMolecule(%s, %s, %s)", getMolecule(), getAtom2input(), getExecutor());
+        return format("APIMolecule(%s, |%s|, %s, %s)", getMolecule(), getCardinality(),
+                                                       getAtom2input(), getExecutor());
     }
 
     @Override

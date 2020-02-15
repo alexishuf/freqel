@@ -46,6 +46,11 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return this;
     }
 
+    public @Nonnull Federation setEstimatePolicy(int flags) {
+        strategy.setEstimatePolicy(flags);
+        return this;
+    }
+
     public @Nonnull ImmutableCollection<Source> getSources() {
         return strategy.getSources();
     }
@@ -62,6 +67,11 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         results = ProjectingResults.applyIf(results, query);
         results = HashDistinctResults.applyIf(results, query);
         return results;
+    }
+
+    @Override
+    public @Nonnull Cardinality estimate(@Nonnull CQuery query, int policy) {
+        return Cardinality.UNSUPPORTED;
     }
 
     @Override

@@ -8,7 +8,11 @@ import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.impl.IteratorResults;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableList;
 import org.apache.commons.collections4.iterators.TransformIterator;
 import org.apache.http.client.HttpClient;
 import org.apache.http.protocol.HttpContext;
@@ -19,8 +23,10 @@ import org.apache.jena.rdf.model.Model;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import static br.ufsc.lapesd.riefederator.query.EstimatePolicy.*;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.apache.jena.query.QueryExecutionFactory.create;
@@ -133,6 +139,47 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
                 throw t;
             }
         }
+    }
+
+    @Override
+    public @Nonnull Cardinality estimate(@Nonnull CQuery query, int policy) {
+        if (query.isEmpty()) return Cardinality.EMPTY;
+        if (isLocal() && isEmpty()) return Cardinality.EMPTY;
+        if (policy == 0)
+            return Cardinality.UNSUPPORTED;
+        if (isLocal() && !canLocal(policy))
+            return Cardinality.UNSUPPORTED;
+        if (!isLocal() && !canRemote(policy))
+            return Cardinality.UNSUPPORTED;
+
+        PrefixDict dict = query.getPrefixDict(StdPrefixDict.EMPTY);
+        ImmutableList<Modifier> mods = query.getModifiers();
+        if ((isLocal() && !canQueryLocal(policy)) || (!isLocal() && !canQueryRemote(policy)))
+            mods = ImmutableList.<Modifier>builder().addAll(mods).add(Ask.ADVISED).build();
+
+        SPARQLString sparql = new SPARQLString(query, dict, mods);
+        if (sparql.getType() == SPARQLString.Type.ASK) {
+            try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
+                return exec.execAsk() ? Cardinality.exact(1) : Cardinality.EMPTY;
+            }
+        } else {
+            String withLimit = sparql.getString() + "\nLIMIT "+ Math.max(limit(policy), 4) +"\n";
+            try (QueryExecution exec = executionFactory.apply(withLimit)) {
+                ResultSet results = exec.execSelect();
+                int count = 0;
+                boolean exhausted = false;
+                Stopwatch sw = Stopwatch.createStarted();
+                while (!exhausted && sw.elapsed(TimeUnit.MILLISECONDS) < 50) {
+                    if (results.hasNext())
+                        ++count;
+                    else
+                        exhausted = true;
+                }
+                return count == 0 ? Cardinality.EMPTY
+                        : (exhausted ? Cardinality.exact(count) : Cardinality.lowerBound(count));
+            }
+        }
+//        return Cardinality.UNSUPPORTED;
     }
 
     @Override

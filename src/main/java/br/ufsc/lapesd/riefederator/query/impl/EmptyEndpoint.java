@@ -17,6 +17,11 @@ public class EmptyEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     @Override
+    public @Nonnull Cardinality estimate(@Nonnull CQuery query, int policy) {
+        return Cardinality.UNSUPPORTED;
+    }
+
+    @Override
     public boolean hasCapability(@Nonnull Capability capability) {
         return true;
     }

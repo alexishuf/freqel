@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
+import br.ufsc.lapesd.riefederator.webapis.WebApiEndpoint;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
@@ -32,6 +33,25 @@ public interface TPEndpoint extends AutoCloseable {
      */
     @Contract("_ -> new")
     @Nonnull Results query(@Nonnull CQuery query);
+
+    /**
+     * Estimate the cardinality of results for the given query.
+     *
+     * The cardinality is an estimate and even higher {@link Cardinality.Reliability}
+     * values do not imply the cardinality is correct.
+     *
+     * Implementations are allowed to perform querying. However, this should only be done
+     * if querying will be fast. {@link WebApiEndpoint}, for example, typically will not query.
+     *
+     * @param query a query that is known to be relevant to this endpoint
+     * @param estimatePolicy A {@link EstimatePolicy} with allowed operations
+     * @return A {@link Cardinality}, which may be {@link Cardinality#UNSUPPORTED}.
+     */
+    @Nonnull Cardinality estimate(@Nonnull CQuery query, int estimatePolicy);
+
+    default @Nonnull Cardinality estimate(@Nonnull CQuery query) {
+        return estimate(query, 0);
+    }
 
     /**
      * Get a set of {@link TPEndpoint}s which contain the same data as this one.

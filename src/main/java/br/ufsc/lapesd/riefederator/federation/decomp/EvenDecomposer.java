@@ -36,7 +36,7 @@ public class EvenDecomposer extends ListSourcesAbstractDecomposer {
                                                         @Nonnull CQueryMatch m) {
         TPEndpoint ep = source.getEndpoint();
         return Stream.concat(
-                m.getKnownExclusiveGroups().stream().map(g -> new QueryNode(ep, g)),
-                m.getNonExclusiveRelevant().stream().map(t -> new QueryNode(ep, CQuery.from(t))));
+                m.getKnownExclusiveGroups().stream().map(g -> createQN(ep, g)),
+                m.getNonExclusiveRelevant().stream().map(t -> createQN(ep, t)));
     }
 }
