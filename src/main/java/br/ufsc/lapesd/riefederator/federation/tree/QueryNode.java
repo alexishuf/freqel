@@ -168,7 +168,7 @@ public class QueryNode extends AbstractPlanNode {
         builder.append(indent);
         if (isProjecting())
             builder.append(getPiWithNames()).append('(');
-        return builder.append("Q(").append(getEndpoint())
+        return builder.append("Q(").append(getCardinality()).append(' ').append(getEndpoint())
                 .append(isProjecting() ? "))\n" : ")"+getVarNamesString()+"\n")
                 .append(indent2)
                 .append(getQuery().toString().replaceAll("\n", "\n"+indent2));

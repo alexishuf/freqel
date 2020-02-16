@@ -74,7 +74,8 @@ public class CartesianNode extends AbstractPlanNode {
         if (isProjecting())
             builder.append(getPiWithNames()).append('(');
         builder.append(getChildren().isEmpty() ? "Empty" : "").append('×')
-                .append(isProjecting() ? ")" : getVarNamesString());
+                .append(isProjecting() ? ")" : getVarNamesString())
+                .append(' ').append(getCardinality());
         if (getChildren().isEmpty())
             return builder;
         else

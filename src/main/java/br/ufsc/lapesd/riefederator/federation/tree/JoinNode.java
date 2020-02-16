@@ -210,7 +210,9 @@ public class JoinNode extends AbstractPlanNode {
         if (isProjecting())
             builder.append(getPiWithNames()).append('(');
         builder.append("⋈{").append(String.join(", ", getJoinVars()))
-                .append(isProjecting() ? "})\n" : "}"+getVarNamesString()+"\n");
+                .append("} ").append(getCardinality())
+                .append(isProjecting() ? ") " : "")
+                .append(getVarNamesString()).append('\n');
         getLeft().prettyPrint(builder, indent2).append('\n');
         getRight().prettyPrint(builder, indent2);
         return builder;

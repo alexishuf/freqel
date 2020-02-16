@@ -217,7 +217,8 @@ public class MultiQueryNode extends AbstractPlanNode {
         if (isProjecting())
             builder.append(getPiWithNames()).append('(');
         builder.append(getChildren().isEmpty() ? "Empty" : "")
-                .append("Multi-node").append(isProjecting() ? ")" : getVarNamesString());
+                .append("Multi-node").append(isProjecting() ? ")" : getVarNamesString())
+                .append(' ').append(getCardinality());
         if (getChildren().isEmpty())
             return builder;
         else
