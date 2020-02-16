@@ -46,6 +46,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return this;
     }
 
+    @CanIgnoreReturnValue
     public @Nonnull Federation setEstimatePolicy(int flags) {
         strategy.setEstimatePolicy(flags);
         return this;

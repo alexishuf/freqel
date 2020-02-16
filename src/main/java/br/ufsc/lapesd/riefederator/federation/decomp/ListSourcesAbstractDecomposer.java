@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.query.TPEndpoint;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
@@ -18,7 +19,7 @@ import java.util.List;
 public abstract class ListSourcesAbstractDecomposer implements DecompositionStrategy {
     protected final @Nonnull List<Source> sources = new ArrayList<>();
     protected final @Nonnull Planner planner;
-    protected int estimatePolicy = 0;
+    protected int estimatePolicy = EstimatePolicy.local(50);
 
     public ListSourcesAbstractDecomposer(@Nonnull Planner planner) {
         this.planner = planner;

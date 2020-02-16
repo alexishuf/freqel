@@ -163,17 +163,18 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
                 return exec.execAsk() ? Cardinality.exact(1) : Cardinality.EMPTY;
             }
         } else {
-            String withLimit = sparql.getString() + "\nLIMIT "+ Math.max(limit(policy), 4) +"\n";
+            String withLimit = sparql.getString() + "LIMIT "+ Math.max(limit(policy), 4) +"\n";
             try (QueryExecution exec = executionFactory.apply(withLimit)) {
                 ResultSet results = exec.execSelect();
                 int count = 0;
                 boolean exhausted = false;
                 Stopwatch sw = Stopwatch.createStarted();
                 while (!exhausted && sw.elapsed(TimeUnit.MILLISECONDS) < 50) {
-                    if (results.hasNext())
+                    exhausted = !results.hasNext();
+                    if (!exhausted) {
+                        results.next();
                         ++count;
-                    else
-                        exhausted = true;
+                    }
                 }
                 return count == 0 ? Cardinality.EMPTY
                         : (exhausted ? Cardinality.exact(count) : Cardinality.lowerBound(count));
