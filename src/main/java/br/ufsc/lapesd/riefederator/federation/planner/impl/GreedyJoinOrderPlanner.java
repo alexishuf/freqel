@@ -114,7 +114,18 @@ public class GreedyJoinOrderPlanner extends AbstractJoinOrderPlanner {
             boolean hasWebApi = OrderTuple.hasWebApi(node);
             JoinInfo i = JoinInfo.getPlainJoinability(root, node);
             if (!i.isValid()) return OrderTuple.MAX;
-            return new OrderTuple(node.getCardinality(), i.getPendingInputs().size(), hasWebApi);
+
+            int pendingInputs = i.getPendingInputs().size();
+            Cardinality cardinality = node.getCardinality();
+
+            // if the join leaves pending inputs, node (and possibly other nodes under root)
+            // will be re-instantiated to bind the variable. This will very likely occur more
+            // than once. If cardinality of node is reliable, degrade it to lower bound to
+            // represent that effect
+            if (pendingInputs > 0 && cardinality.getReliability().ordinal() > LOWER_BOUND.ordinal())
+                cardinality = Cardinality.lowerBound(cardinality.getValue(MAX_VALUE)*2);
+
+            return new OrderTuple(cardinality, pendingInputs, hasWebApi);
         }
     }
 

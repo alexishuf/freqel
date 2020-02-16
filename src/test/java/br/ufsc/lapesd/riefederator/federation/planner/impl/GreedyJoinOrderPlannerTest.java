@@ -273,7 +273,7 @@ public class GreedyJoinOrderPlannerTest {
         static final QueryNode organizationByName = n(wep, upperBound(1),
                 z, p1, name,
                 z, p1, t);
-        static final QueryNode contracts = n(wep, lowerBound(2), singletonList(t),
+        static final QueryNode contracts = n(wep, guess(2), singletonList(t),
                 x, p1, date1,
                 x, p1, date2,
                 x, p1, t,
@@ -283,7 +283,7 @@ public class GreedyJoinOrderPlannerTest {
         static final QueryNode contractById = n(wep, upperBound(1), singletonList(b),
                 w, p1, b,
                 w, p1, d);
-        static final QueryNode modalities = n(ep1, NON_EMPTY,
+        static final QueryNode modalities = n(ep1, lowerBound(10),
                 m, p1, c,
                 m, p1, d);
         static final QueryNode procurementByUMN = n(wep, upperBound(1), asList(c, u, k),
@@ -331,10 +331,8 @@ public class GreedyJoinOrderPlannerTest {
                      Sets.newHashSet(Scenario1.organizationByName, Scenario1.contracts));
         assertSame(j2.getRight(), Scenario1.contractById);
 
-        HashSet<PlanNode> lastSet = Sets.newHashSet(Scenario1.modalities,
-                                                     Scenario1.procurementByUMN);
-        assertTrue(lastSet.contains(j1.getRight()));
-        assertTrue(lastSet.contains(root.getChildren().get(1)));
+        assertSame(((JoinNode) root).getRight(), Scenario1.procurementByUMN);
+        assertSame(j1.getRight(), Scenario1.modalities);
     }
 
 }
