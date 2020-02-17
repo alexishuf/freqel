@@ -94,8 +94,8 @@ public class MappedJsonResponseParser implements ResponseParser {
         return model;
     }
 
-    private RDFNode parseInto(@Nonnull Model model, @Nonnull JsonElement element,
-                              @Nullable String subjectHint) {
+    protected RDFNode parseInto(@Nonnull Model model, @Nonnull JsonElement element,
+                                @Nullable String subjectHint) {
         if (element.isJsonArray()) {
             for (JsonElement e : element.getAsJsonArray())
                 parseInto(model, e, null);
