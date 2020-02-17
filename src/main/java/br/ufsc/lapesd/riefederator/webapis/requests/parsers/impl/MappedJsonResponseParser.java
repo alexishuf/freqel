@@ -13,6 +13,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import org.apache.jena.rdf.model.*;
 import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -69,9 +70,20 @@ public class MappedJsonResponseParser implements ResponseParser {
         if (object == null)
             return null;
         String string = (String) object;
+        Model model = parseAsModel(string, info, uriHint);
+        if (info != null)
+            info.setParsedTriples((int) model.size());
+        if (model.isEmpty())
+            return null; // no data. Don't bother querying. If paging, stop
+        return ARQEndpoint.forModel(model);
+    }
+
+    @NotNull
+    public Model parseAsModel(@Nonnull String json, @Nullable HTTPRequestInfo info,
+                              @Nonnull String uriHint) {
         Model model = ModelFactory.createDefaultModel();
         // parse json into model
-        JsonElement element = new JsonParser().parse(string);
+        JsonElement element = new JsonParser().parse(json);
         if (info != null) {
             if (element.isJsonArray())
                 info.setJsonRootArrayMembers(element.getAsJsonArray().size());
@@ -79,11 +91,7 @@ public class MappedJsonResponseParser implements ResponseParser {
                 info.setJsonRootObjectMembers(element.getAsJsonObject().size());
         }
         parseInto(model, element, uriHint);
-        if (info != null)
-            info.setParsedTriples((int) model.size());
-        if (model.isEmpty())
-            return null; // no data. Don't bother querying. If paging, stop
-        return ARQEndpoint.forModel(model);
+        return model;
     }
 
     private RDFNode parseInto(@Nonnull Model model, @Nonnull JsonElement element,
