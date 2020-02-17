@@ -20,6 +20,7 @@ public class JoinComponent {
     private final @Nonnull ImmutableIndexedSubset<PlanNode> nodes;
     private @LazyInit int hash = 0;
 
+    @SuppressWarnings("ReferenceEquality")
     public JoinComponent(@Nonnull IndexedSet<PlanNode> allNodes,
                          @Nonnull Collection<PlanNode> component) {
         checkArgument(!component.isEmpty(), "Empty component not allowed");

@@ -29,18 +29,21 @@ public class ImmutableIndexedSubset<T> extends IndexedSubset<T> {
         return new ImmutableIndexedSubset<>(IndexedSet.empty(), emptyBitSet);
     }
 
+    @Override
     public @Nonnull ImmutableIndexedSubset<T> createIntersection(@Nonnull Collection<? extends T> coll) {
         IndexedSubset<T> copy = copy();
         copy.intersect(coll);
         return new ImmutableIndexedSubset<>(parent, copy.bitSet);
     }
 
+    @Override
     public @Nonnull ImmutableIndexedSubset<T> createUnion(@Nonnull Collection<? extends T> collection) {
         IndexedSubset<T> copy = copy();
         copy.union(collection);
         return new ImmutableIndexedSubset<>(parent, copy.bitSet);
     }
 
+    @Override
     public @Nonnull ImmutableIndexedSubset<T> createDifference(@Nonnull Collection<? extends T> coll) {
         IndexedSubset<T> copy = copy();
         copy.difference(coll);
