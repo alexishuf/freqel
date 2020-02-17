@@ -12,24 +12,24 @@ import java.util.*;
 
 public class SubPathAggregation {
     private @Nonnull JoinGraph graph;
-    private @Nonnull List<JoinPath> joinPaths;
+    private @Nonnull List<JoinComponent> joinComponents;
 
-    private SubPathAggregation(@Nonnull JoinGraph graph, @Nonnull List<JoinPath> joinPaths) {
+    private SubPathAggregation(@Nonnull JoinGraph graph, @Nonnull List<JoinComponent> joinComponents) {
         this.graph = graph;
-        this.joinPaths = joinPaths;
+        this.joinComponents = joinComponents;
     }
 
     public static @Nonnull
-    SubPathAggregation aggregate(@Nonnull JoinGraph g, @Nonnull Collection<JoinPath> paths,
+    SubPathAggregation aggregate(@Nonnull JoinGraph g, @Nonnull Collection<JoinComponent> paths,
                                  @Nonnull JoinOrderPlanner joinOrderPlanner) {
         if (paths.isEmpty()) {
             return new SubPathAggregation(new JoinGraph(), Collections.emptyList());
         }
-        List<JoinPath> pathsList = paths instanceof List ? (List<JoinPath>)paths
+        List<JoinComponent> pathsList = paths instanceof List ? (List<JoinComponent>)paths
                                                          : new ArrayList<>(paths);
         State state = new State(g);
         int i = -1, size = pathsList.size();
-        for (JoinPath path : pathsList) {
+        for (JoinComponent path : pathsList) {
             ++i;
             for (int j = i+1; j < size; j++)
                 state.processPair(path, pathsList.get(j));
@@ -37,8 +37,8 @@ public class SubPathAggregation {
 
         state.planComponents(joinOrderPlanner);
         JoinGraph reducedGraph = state.createReducedJoinGraph(pathsList);
-        List<JoinPath> reducedPaths = new ArrayList<>(pathsList.size());
-        for (JoinPath path : pathsList) {
+        List<JoinComponent> reducedPaths = new ArrayList<>(pathsList.size());
+        for (JoinComponent path : pathsList) {
             reducedPaths.add(state.reducePath(path));
         }
         return new SubPathAggregation(reducedGraph, reducedPaths);
@@ -48,8 +48,8 @@ public class SubPathAggregation {
         return graph;
     }
 
-    public @Nonnull List<JoinPath> getJoinPaths() {
-        return joinPaths;
+    public @Nonnull List<JoinComponent> getJoinComponents() {
+        return joinComponents;
     }
 
     @VisibleForTesting
@@ -99,7 +99,7 @@ public class SubPathAggregation {
             }
         }
 
-        public @Nonnull JoinGraph createReducedJoinGraph(@Nonnull Collection<JoinPath> paths) {
+        public @Nonnull JoinGraph createReducedJoinGraph(@Nonnull Collection<JoinComponent> paths) {
             Preconditions.checkState(planned != null, "Call planComponents() before!");
             Preconditions.checkState(planned.size() == components.size());
 
@@ -109,7 +109,7 @@ public class SubPathAggregation {
                 nodes.add(pc.node);
                 visited.addAll(pc.component);
             }
-            for (JoinPath path : paths) {
+            for (JoinComponent path : paths) {
                 IndexedSubset<PlanNode> novel = path.getNodes().createDifference(visited);
                 nodes.addAll(novel);
                 visited.addAll(novel);
@@ -119,7 +119,8 @@ public class SubPathAggregation {
             return reducedGraph;
         }
 
-        public @Nonnull JoinPath reducePath(@Nonnull JoinPath path) {
+        public @Nonnull
+        JoinComponent reducePath(@Nonnull JoinComponent path) {
             if (path.isWhole())
                 return path;
             IndexedSubset<PlanNode> nodes = reducedGraph.getNodes().emptySubset();
@@ -134,14 +135,12 @@ public class SubPathAggregation {
             }
             if (needsRebuild) {
                 nodes.addAll(pending);
-                JoinPath reducedPath = JoinPath.findPath(reducedGraph, nodes);
-                assert reducedPath != null;
-                return reducedPath;
+                return new JoinComponent(reducedGraph, nodes);
             }
             return path; // no components or only singleton components
         }
 
-        public void processPair(@Nonnull JoinPath left, @Nonnull JoinPath right) {
+        public void processPair(@Nonnull JoinComponent left, @Nonnull JoinComponent right) {
             assert left.getNodes().getParent().containsAll(right.getNodes());
             assert right.getNodes().getParent().containsAll(left.getNodes());
             IndexedSubset<PlanNode> common = left.getNodes().createIntersection(right.getNodes());

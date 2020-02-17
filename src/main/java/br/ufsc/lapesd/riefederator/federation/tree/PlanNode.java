@@ -16,6 +16,7 @@ import java.util.function.BiConsumer;
 
 public interface PlanNode {
     @Nonnull Set<String> getResultVars();
+    @Nonnull Set<String> getStrictResultVars();
 
     @Nonnull Set<String> getInputVars();
 

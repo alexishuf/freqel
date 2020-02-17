@@ -25,7 +25,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.Integer.MAX_VALUE;
 
-public class GreedyJoinOrderPlanner extends AbstractJoinOrderPlanner {
+public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
 
     @Override
     public @Nonnull PlanNode plan(@Nonnull JoinGraph joinGraph,

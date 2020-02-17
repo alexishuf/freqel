@@ -1,17 +1,19 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
+import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinComponent;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinPath;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.SubPathAggregation;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
@@ -25,6 +27,7 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 public class JoinPathsPlanner implements Planner {
     private static final Logger logger = LoggerFactory.getLogger(JoinPathsPlanner.class);
@@ -111,29 +114,28 @@ public class JoinPathsPlanner implements Planner {
         return components;
     }
 
-    private @Nullable
-    PlanNode plan(@Nonnull Collection<QueryNode> qns,
-                          @Nonnull IndexedSet<Triple> triples) {
+    private @Nullable PlanNode plan(@Nonnull Collection<QueryNode> qns,
+                                    @Nonnull IndexedSet<Triple> triples) {
         IndexedSet<PlanNode> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
-        List<JoinPath> pathsSet = getPaths(triples, g);
+        List<JoinComponent> pathsSet = getPaths(triples, g);
         removeAlternativePaths(pathsSet);
         if (pathsSet.isEmpty())
             return null;
 
         SubPathAggregation aggregation = SubPathAggregation.aggregate(g, pathsSet, joinOrderPlanner);
         JoinGraph g2 = aggregation.getGraph();
-        List<JoinPath> aggregatedPaths = aggregation.getJoinPaths();
+        List<JoinComponent> aggregatedPaths = aggregation.getJoinComponents();
         boolean parallel = pathsSet.size() > PATHS_PAR_THRESHOLD;
         MultiQueryNode.Builder builder = MultiQueryNode.builder();
         builder.addAll((parallel ? aggregatedPaths.parallelStream() : aggregatedPaths.stream())
-                .map(p -> p.isWhole() ? p.getWhole() : joinOrderPlanner.plan(p.getJoinInfos(), g2))
+                .map(p -> p.isWhole() ? p.getWhole() : joinOrderPlanner.plan(g2, p.getNodes()))
                 .collect(toList()));
         return builder.buildIfMulti();
     }
 
     @VisibleForTesting
-    void removeAlternativePaths(@Nonnull List<JoinPath> paths) {
+    void removeAlternativePaths(@Nonnull List<JoinComponent> paths) {
         IndexedSet<PlanNode> set = getNodesIndexedSetFromPaths(paths);
         BitSet marked = new BitSet(paths.size());
         for (int i = 0; i < paths.size(); i++) {
@@ -154,11 +156,11 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @VisibleForTesting
-    @Nonnull IndexedSet<PlanNode> getNodesIndexedSetFromPaths(@Nonnull List<JoinPath> paths) {
+    @Nonnull IndexedSet<PlanNode> getNodesIndexedSetFromPaths(@Nonnull List<JoinComponent> paths) {
         List<PlanNode> list = new ArrayList<>();
         Map<PlanNode, Integer> n2idx = new HashMap<>();
         Multimap<Set<Triple>, QueryNode> mm = MultimapBuilder.hashKeys().arrayListValues().build();
-        for (JoinPath path : paths) {
+        for (JoinComponent path : paths) {
             for (PlanNode node : path.getNodes()) {
                 if (node instanceof QueryNode && !n2idx.containsKey(node)) {
                     QueryNode qn = (QueryNode) node;
@@ -181,7 +183,7 @@ public class JoinPathsPlanner implements Planner {
                 }
             }
         }
-        for (JoinPath path : paths) {
+        for (JoinComponent path : paths) {
             for (PlanNode node : path.getNodes()) {
                 if (node instanceof QueryNode) continue;
                 assert list.size() == n2idx.size();
@@ -227,81 +229,159 @@ public class JoinPathsPlanner implements Planner {
         return IndexedSet.fromDistinct(list);
     }
 
+//    @VisibleForTesting
+//    List<JoinComponent> getPaths(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g) {
+//        Set<JoinComponent> paths = new HashSet<>(g.size());
+//        int totalTriples = full.size();
+//        IndexedSet<PlanNode> nodes = g.getNodes();
+//        ArrayDeque<State> stack = new ArrayDeque<>(nodes.size()*2);
+//        nodes.forEach(n -> stack.push(State.start(full, n)));
+//        while (!stack.isEmpty()) {
+//            State state = stack.pop();
+//            if (state.matched.size() == totalTriples) {
+//                if (!state.hasInputs()) //ignore join paths that leave pending inputs
+//                    paths.add(state.toPath(nodes));
+//                else
+//                    logger.debug("Discarding path with pending inputs {}", state.toPath(nodes));
+//            } else {
+//                g.forEachNeighbor(state.node, (info, node) -> {
+//                    State next = state.advance(info, node);
+//                    if (next != null)
+//                        stack.push(next);
+//                });
+//            }
+//        }
+//        return new ArrayList<>(paths);
+//    }
+
     @VisibleForTesting
-    List<JoinPath> getPaths(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g) {
-        Set<JoinPath> paths = new HashSet<>(g.size());
-        int totalTriples = full.size();
-        IndexedSet<PlanNode> nodes = g.getNodes();
-        ArrayDeque<State> stack = new ArrayDeque<>(nodes.size()*2);
-        nodes.forEach(n -> stack.push(State.start(full, n)));
-        while (!stack.isEmpty()) {
-            State state = stack.pop();
-            if (state.matched.size() == totalTriples) {
-                if (!state.hasInputs()) //ignore join paths that leave pending inputs
-                    paths.add(state.toPath(nodes));
-                else
-                    logger.debug("Discarding path with pending inputs {}", state.toPath(nodes));
-            } else {
-                g.forEachNeighbor(state.node, (info, node) -> {
-                    State next = state.advance(info, node);
-                    if (next != null)
-                        stack.push(next);
-                });
-            }
-        }
-        return new ArrayList<>(paths);
+    List<JoinComponent> getPaths(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g) {
+        if (g.isEmpty())
+            return Collections.emptyList();
+        PathsContext context = new PathsContext(full, g);
+        context.run();
+        return context.result;
     }
 
-    @VisibleForTesting
-    static class State {
-        final @Nonnull PlanNode node;
-        final @Nullable JoinInfo joinInfo;
-        final @Nullable State ancestor;
-        final int depth;
-        final IndexedSubset<Triple> matched;
 
-        private State(@Nonnull PlanNode node, @Nullable JoinInfo joinInfo,
-                      @Nullable State ancestor,
-                      @Nonnull IndexedSubset<Triple> matched) {
-            this.node = node;
-            this.joinInfo = joinInfo;
-            this.ancestor = ancestor;
-            this.depth = ancestor == null ? 0 : ancestor.depth+1;
-            this.matched = matched;
-        }
-        static @Nonnull State start(@Nonnull IndexedSet<Triple> all, @Nonnull PlanNode start) {
-            IndexedSubset<Triple> matchedTriples = all.subset(start.getMatchedTriples());
-            return new State(start, null, null, matchedTriples);
-        }
-        @Nullable State advance(@Nonnull JoinInfo info, PlanNode nextNode) {
-            assert nextNode != node;
-            assert info.getLeft() == nextNode || info.getRight() == nextNode;
-            assert info.getLeft() == node     || info.getRight() == node    ;
+    private final static class PathsContext {
+        private final List<JoinComponent> result;
+        private final ArrayDeque<State> queue = new ArrayDeque<>();
+        private final @Nonnull IndexedSet<Triple> full;
+        private final @Nonnull JoinGraph g;
+        private final @Nonnull Cache<State, Boolean> recent;
 
-            IndexedSubset<Triple> novelMatched = matched.createUnion(nextNode.getMatchedTriples());
-            assert novelMatched.size() >= matched.size();
-            if (novelMatched.size() == matched.size())
-                return null; // no new triples satisfied
-            for (State s = ancestor; s != null; s = s.ancestor) {
-                if (nextNode.getMatchedTriples().containsAll(s.node.getMatchedTriples()))
-                    return null; // invalid path
+        private static final class State {
+            final @Nonnull ImmutableIndexedSubset<PlanNode> nodes;
+            final @Nonnull ImmutableIndexedSubset<Triple> matched;
+
+            public State(@Nonnull ImmutableIndexedSubset<PlanNode> nodes,
+                         @Nonnull ImmutableIndexedSubset<Triple> matched) {
+                this.nodes = nodes;
+                this.matched = matched;
             }
-            return new State(nextNode, info, this, novelMatched);
-        }
-        boolean hasInputs() {
-            return joinInfo == null ? node.hasInputs() : !joinInfo.getPendingInputs().isEmpty();
+
+            @Override
+            public @Nonnull String toString() {
+                return nodes.getBitSet().toString();
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof State)) return false;
+                State state = (State) o;
+                assert nodes.equals(state.nodes) == matched.equals(state.matched);
+                return nodes.equals(state.nodes);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(nodes);
+            }
+
+            @Nonnull JoinComponent toJoinComponent() {
+                // invariant: no node subsumes another
+                assert nodes.stream().noneMatch(
+                        n -> nodes.stream().anyMatch(
+                                n2 -> n != n2 && n.getMatchedTriples()
+                                                  .containsAll(n2.getMatchedTriples())));
+                // invariant: matched is the union of all matched triples
+                assert nodes.stream().flatMap(n -> n.getMatchedTriples().stream())
+                            .collect(toSet()).equals(matched);
+                return new JoinComponent(nodes.getParent(), nodes); //share nodes
+            }
+
+            @Nullable State tryAdvance(@Nonnull PlanNode node) {
+                IndexedSubset<Triple> nodeMatched;
+                nodeMatched = matched.getParent().subset(node.getMatchedTriples());
+                assert nodeMatched.size() == node.getMatchedTriples().size();
+
+                ImmutableIndexedSubset<Triple> novel = matched.createUnion(nodeMatched);
+                if (novel.size() == matched.size())
+                    return null; //no new triples
+                if (nodes.stream().anyMatch(o -> nodeMatched.containsAll(o.getMatchedTriples())))
+                    return null; // cannot incorporate node
+                return new State(nodes.createAdding(node), novel);
+            }
         }
 
-        @Nonnull JoinPath toPath(IndexedSet<PlanNode> allNodes) {
-            if (depth == 0)
-                return new JoinPath(allNodes, node);
-            //noinspection UnstableApiUsage
-            ImmutableList.Builder<JoinInfo> builder = ImmutableList.builderWithExpectedSize(depth);
-            for (State s = this; s != null; s = s.ancestor) {
-                if (s.joinInfo != null) builder.add(s.joinInfo);
-                else                    assert s.ancestor == null;
+        public PathsContext(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g) {
+            this.full = full;
+            this.g = g;
+            result = new ArrayList<>();
+            recent = CacheBuilder.newBuilder().maximumSize(4096).initialCapacity(512).build();
+        }
+
+        void run() {
+            assert !g.isEmpty();
+            assert queue.isEmpty();
+            for (PlanNode node : g.getNodes())
+                queue.add(createState(node));
+            while (!queue.isEmpty()) {
+                State state = queue.remove();
+                if (checkRecent(state))
+                    continue;
+                if (state.matched.size() == full.size()) {
+                    assert state.matched.equals(full); // size() works bcs full is shared as parent
+                    Set<String> nonIn = state.nodes.stream()
+                            .flatMap(n -> n.getStrictResultVars().stream()).collect(toSet());
+                    if (state.nodes.stream().allMatch(n -> nonIn.containsAll(n.getInputVars()))) {
+                        JoinComponent component = state.toJoinComponent();
+                        assert component.getNodes().getParent().equals(g.getNodes());
+                        result.add(component);
+                        continue;
+                    }
+                }
+                advance(state);
             }
-            return new JoinPath(allNodes, builder.build());
+            assert result.stream().distinct().count() == result.size(); // no duplicates!
+        }
+
+        private State createState(@Nonnull PlanNode node) {
+            return new State(g.getNodes().immutableSubset(node),
+                             full.immutableSubset(node.getMatchedTriples()));
+        }
+
+        private boolean checkRecent(@Nonnull State state) {
+            if (recent.getIfPresent(state) != null)
+                return true; //was recently visited
+            recent.put(state, true);
+            return false; //not recent
+        }
+
+        private void advance(@Nonnull State state) {
+            for (PlanNode node : state.nodes) {
+                g.forEachNeighbor(node, (i, neighbor) -> {
+                    if (state.nodes.contains(neighbor))
+                        return; // do not add something it already has
+                    State next = state.tryAdvance(neighbor);
+                    if (next != null) {
+                        assert next.nodes.size() > state.nodes.size(); //invariant
+                        queue.add(next);
+                    }
+                });
+            }
         }
     }
 

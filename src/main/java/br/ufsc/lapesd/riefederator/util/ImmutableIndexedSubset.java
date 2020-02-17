@@ -18,15 +18,44 @@ public class ImmutableIndexedSubset<T> extends IndexedSubset<T> {
     }
 
     public static @Nonnull <U> ImmutableIndexedSubset<U> copyOf(@Nonnull IndexedSubset<U> subset) {
-        BitSet bitSet = new BitSet(subset.getParent().size());
-        bitSet.or(subset.getBitSet());
-        return new ImmutableIndexedSubset<>(subset.getParent(), bitSet);
+        BitSet bitSet = new BitSet(subset.parent.size());
+        bitSet.or(subset.bitSet);
+        return new ImmutableIndexedSubset<>(subset.parent, bitSet);
     }
 
     public static @Nonnull <U> ImmutableIndexedSubset<U> empty() {
         assert emptyBitSet.cardinality() == 0;
         assert emptyBitSet.size() == 0;
         return new ImmutableIndexedSubset<>(IndexedSet.empty(), emptyBitSet);
+    }
+
+    public @Nonnull ImmutableIndexedSubset<T> createIntersection(@Nonnull Collection<? extends T> coll) {
+        IndexedSubset<T> copy = copy();
+        copy.intersect(coll);
+        return new ImmutableIndexedSubset<>(parent, copy.bitSet);
+    }
+
+    public @Nonnull ImmutableIndexedSubset<T> createUnion(@Nonnull Collection<? extends T> collection) {
+        IndexedSubset<T> copy = copy();
+        copy.union(collection);
+        return new ImmutableIndexedSubset<>(parent, copy.bitSet);
+    }
+
+    public @Nonnull ImmutableIndexedSubset<T> createDifference(@Nonnull Collection<? extends T> coll) {
+        IndexedSubset<T> copy = copy();
+        copy.difference(coll);
+        return new ImmutableIndexedSubset<>(parent, copy.bitSet);
+    }
+
+    public @Nonnull ImmutableIndexedSubset<T> createAdding(@Nonnull T obj) {
+        int idx = parent.indexOf(obj);
+        if (idx >= 0) {
+            BitSet copy = new BitSet(parent.size());
+            copy.or(this.bitSet);
+            copy.set(idx);
+            return new ImmutableIndexedSubset<>(parent, copy);
+        }
+        return this;
     }
 
     @Override

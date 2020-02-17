@@ -52,7 +52,6 @@ public class TemplateExpander implements Function<CQuery, CQuery> {
             return;
         }
         TemplateLink templateLink = (TemplateLink) input.getPredicate();
-        Term sub = input.getSubject(), obj = input.getObject();
         CQuery tplQuery = apply(templateLink.getTemplate(), lastId);
         for (Triple triple : tplQuery) {
             Term s = getCanon(lastId, var2Safe, triple.getSubject(), templateLink, input);

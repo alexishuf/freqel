@@ -20,7 +20,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -43,10 +46,24 @@ public class JoinOrderPlannerTest {
     private static final URI p5 = new StdURI("http://example.org/p5");
     private static final URI p6 = new StdURI("http://example.org/p6");
     private static final URI p7 = new StdURI("http://example.org/p7");
+    private static final URI p8 = new StdURI("http://example.org/p8");
+    private static final URI p9 = new StdURI("http://example.org/p9");
     private static final Var x = new StdVar("x");
     private static final Var y = new StdVar("y");
     private static final Var z = new StdVar("z");
     private static final Var w = new StdVar("w");
+
+    private static final URI o1 = new StdURI("http://example.org/o1");
+    private static final URI o2 = new StdURI("http://example.org/o2");
+    private static final URI o3 = new StdURI("http://example.org/o3");
+    private static final URI o4 = new StdURI("http://example.org/o4");
+
+    private static final Var a = new StdVar("a");
+    private static final Var b = new StdVar("b");
+    private static final Var c = new StdVar("c");
+    private static final Var d = new StdVar("d");
+    private static final Var s = new StdVar("s");
+    private static final Var t = new StdVar("t");
 
     private static EmptyEndpoint e1 = new EmptyEndpoint(), e1a = new EmptyEndpoint(),
                                  e2 = new EmptyEndpoint();
@@ -184,37 +201,6 @@ public class JoinOrderPlannerTest {
     }
 
     @Test(dataProvider = "planData")
-    public void testPlan(Supplier<JoinOrderPlanner> supplier, List<JoinInfo> list) {
-        JoinOrderPlanner planner = supplier.get();
-        ArrayList<JoinInfo> reversed = new ArrayList<>(list);
-        Collections.reverse(reversed);
-        for (List<JoinInfo> infos : asList(list, reversed)) {
-            if (isBadPath(infos))
-                expectThrows(IllegalArgumentException.class, () -> planner.plan(list));
-            else
-                checkPlan(planner.plan(infos), getPlanNodes(infos));
-        }
-    }
-
-    @Test(dataProvider = "planData")
-    public void testPlanGivenGraph(Supplier<JoinOrderPlanner> supplier, List<JoinInfo> list) {
-        JoinOrderPlanner planner = supplier.get();
-        Set<PlanNode> leavesSet = getPlanNodes(list);
-        ArrayList<PlanNode> nodesList = new ArrayList<>(leavesSet);
-        int rounds = 0;
-        //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : Collections2.permutations(nodesList)) {
-            JoinGraph joinGraph = new JoinGraph(IndexedSet.from(permutation));
-            if (isBadPath(list))
-                expectThrows(IllegalArgumentException.class, () -> planner.plan(list, joinGraph));
-            else
-                checkPlan(planner.plan(list, joinGraph), leavesSet);
-            if (++rounds > 1024)
-                 break;
-        }
-    }
-
-    @Test(dataProvider = "planData")
     public void testPlanGivenNodes(Supplier<JoinOrderPlanner> supplier, List<JoinInfo> list) {
         JoinOrderPlanner planner = supplier.get();
         Set<PlanNode> leavesSet = getPlanNodes(list);
@@ -231,6 +217,45 @@ public class JoinOrderPlannerTest {
             if (++rounds > 1024)
                 break;
         }
+    }
+
+    @DataProvider
+    public static Object[][] suppliersData() {
+        return suppliers.stream().map(s -> new Object[]{s}).toArray(Object[][]::new);
+    }
+
+
+    @Test(dataProvider = "suppliersData")
+    public void testPlanGivenNodesNonLinearPath(Supplier<JoinOrderPlanner> supplier) {
+        QueryNode orgByDesc = new QueryNode(e1, CQuery.from(new Triple(o1, p1, t)));
+        QueryNode contract = new QueryNode(e1, CQuery.with(
+                new Triple(o2, p2, b),
+                new Triple(o2, p3, c),
+                new Triple(o2, p4, t)
+        ).annotate(t, AtomAnnotation.asRequired(new Atom("A1"))).build());
+        QueryNode contractById = new QueryNode(e1, CQuery.with(
+                new Triple(b, p5, o3)
+        ).annotate(b, AtomAnnotation.asRequired(new Atom("A2"))).build());
+        QueryNode contractorByName = new QueryNode(e1, CQuery.with(
+                new Triple(c, p6, s)
+        ).annotate(c, AtomAnnotation.asRequired(new Atom("A3"))).build());
+        QueryNode procurementsOfContractor = new QueryNode(e1, CQuery.with(
+                new Triple(s, p7, a)
+        ).annotate(s, AtomAnnotation.asRequired(new Atom("A4"))).build());
+        QueryNode procurementById = new QueryNode(e1, CQuery.with(
+                new Triple(a, p8, d)
+        ).annotate(a, AtomAnnotation.asRequired(new Atom("A5"))).build());
+        QueryNode modalities = new QueryNode(e1, CQuery.from(new Triple(o4, p9, d)));
+
+        JoinOrderPlanner planner = supplier.get();
+        IndexedSet<PlanNode> leaves = IndexedSet.from(asList(
+                contractorByName, procurementsOfContractor, contractById, modalities,
+                procurementById, orgByDesc, contract));
+        JoinGraph graph = new JoinGraph(leaves);
+        assertEquals(graph.size(), 7);
+
+        PlanNode plan = planner.plan(graph, new ArrayList<>(leaves));
+        checkPlan(plan, leaves);
     }
 
 }

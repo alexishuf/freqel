@@ -28,7 +28,6 @@ import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.OBJ;
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.SUBJ;
@@ -139,36 +138,26 @@ public class SubPathAggregationTest {
     @DataProvider
     public static Object[][] stateProcessPairData() {
         return Stream.of(
-                asList(new JoinPath(allNodes, getPlainJoinability(n1, n2)),
-                       new JoinPath(allNodes, getPlainJoinability(n1, n2)),
+                asList(new JoinComponent(allNodes, n1, n2),
+                       new JoinComponent(allNodes, n1, n2),
                        singleton(asList(n1, n2))),
-                asList(new JoinPath(allNodes, getPlainJoinability(n1, n2)),
-                       new JoinPath(allNodes, getPlainJoinability(n3, n4)),
+                asList(new JoinComponent(allNodes, n1, n2),
+                       new JoinComponent(allNodes, n3, n4),
                        emptySet()),
-                asList(new JoinPath(allNodes, getPlainJoinability(n1, n2),
-                                              getPlainJoinability(n2, o3)),
-                       new JoinPath(allNodes, getPlainJoinability(n1, n2),
-                                              getPlainJoinability(n2, n3)),
+                asList(new JoinComponent(allNodes, n1, n2, o3),
+                       new JoinComponent(allNodes, n1, n2, n3),
                        singleton(asList(n1, n2))),
-                asList(new JoinPath(allNodes, getPlainJoinability(n1, o2),
-                                              getPlainJoinability(o2, o3),
-                                              getPlainJoinability(o3, n4)),
-                       new JoinPath(allNodes, getPlainJoinability(n4, l3),
-                                              getPlainJoinability(l3, l2),
-                                              getPlainJoinability(l2, n1)),
+                asList(new JoinComponent(allNodes, n1, o2, o3, n4),
+                       new JoinComponent(allNodes, n4, l3, l2, n1),
                        asList(singleton(n1), singleton(n4))),
-                asList(new JoinPath(allNodes, getPlainJoinability(n1, n2),
-                                              getPlainJoinability(n2, o3),
-                                              getPlainJoinability(o3, n4)),
-                       new JoinPath(allNodes, getPlainJoinability(n4, l3),
-                                              getPlainJoinability(l3, n2),
-                                              getPlainJoinability(n2, n1)),
+                asList(new JoinComponent(allNodes, n1, n2, o3, n4),
+                       new JoinComponent(allNodes, n4, l3, n2, n1),
                        asList(asList(n1, n2), singleton(n4)))
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "stateProcessPairData")
-    public void testStateProcessPair(JoinPath left, JoinPath right,
+    public void testStateProcessPair(JoinComponent left, JoinComponent right,
                                      Collection<Collection<PlanNode>> expected) {
         for (int i = 0; i < 256; i++) {
             ArrayList<PlanNode> permutation = new ArrayList<>(allNodes);
@@ -197,7 +186,7 @@ public class SubPathAggregationTest {
         assertEquals(state.getPlanned().size(), 0);
 
         JoinGraph reduced = state.createReducedJoinGraph(singleton(
-                new JoinPath(allNodes, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3))));
+                new JoinComponent(allNodes, n1, n2, n3)));
         assertEquals(reduced.getNodes(), newHashSet(n1, n2, n3));
     }
 
@@ -209,7 +198,7 @@ public class SubPathAggregationTest {
         assertEquals(state.getPlanned().size(), 1);
 
         JoinGraph reduced = state.createReducedJoinGraph(singleton(
-                new JoinPath(allNodes, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3))));
+                new JoinComponent(allNodes, n1, n2, n2, n3)));
         assertEquals(reduced.getNodes(),
                      newHashSet(n3, state.getPlanned().iterator().next().node));
     }
@@ -224,12 +213,8 @@ public class SubPathAggregationTest {
         assertEquals(state.getPlanned().size(), 3);
 
         JoinGraph reduced = state.createReducedJoinGraph(asList(
-                new JoinPath(allNodes, getPlainJoinability(o1, o2),
-                                       getPlainJoinability(o2, n3),
-                                       getPlainJoinability(n3, n4)),
-                new JoinPath(allNodes, getPlainJoinability(l1, l2),
-                                       getPlainJoinability(l2, n3),
-                                       getPlainJoinability(n3, n4))));
+                new JoinComponent(allNodes, o1, o2, n3, n4),
+                new JoinComponent(allNodes, l1, l2, n3, n4)));
         assertEquals(reduced.getNodes(),
                      state.getPlanned().stream().map(pc -> pc.node).collect(toSet()));
     }
@@ -247,22 +232,18 @@ public class SubPathAggregationTest {
         assertEquals(planned.size(), 5);
         assertTrue(planned.stream().allMatch(TreeUtils::isTree));
 
-        List<JoinPath> paths = asList(
-                new JoinPath(allNodes, getPlainJoinability(o1, o2), getPlainJoinability(o2, n3),
-                                       getPlainJoinability(n3, o4)),
-                new JoinPath(allNodes, getPlainJoinability(o1, o2), getPlainJoinability(o2, n3),
-                                       getPlainJoinability(n3, l4)),
-                new JoinPath(allNodes, getPlainJoinability(l1, l2), getPlainJoinability(l2, n3),
-                                       getPlainJoinability(n3, o4)),
-                new JoinPath(allNodes, getPlainJoinability(l1, l2), getPlainJoinability(l2, n3),
-                                       getPlainJoinability(n3, l4))
+        List<JoinComponent> paths = asList(
+                new JoinComponent(allNodes, o1, o2, n3, o4),
+                new JoinComponent(allNodes, o1, o2, n3, l4),
+                new JoinComponent(allNodes, l1, l2, n3, o4),
+                new JoinComponent(allNodes, l1, l2, n3, l4)
         );
 
         JoinGraph reducedGraph = state.createReducedJoinGraph(paths);
         assertEquals(reducedGraph.getNodes(), new HashSet<>(planned));
 
-        List<JoinPath> reducedPaths = paths.stream().map(state::reducePath).collect(toList());
-        assertEquals(reducedPaths.stream().map(JoinPath::getNodes).collect(toList()),
+        List<JoinComponent> reducedPaths = paths.stream().map(state::reducePath).collect(toList());
+        assertEquals(reducedPaths.stream().map(JoinComponent::getNodes).collect(toList()),
                      asList(
                              newHashSet(planned.get(1), planned.get(0), planned.get(3)),
                              newHashSet(planned.get(1), planned.get(0), planned.get(4)),
@@ -284,21 +265,18 @@ public class SubPathAggregationTest {
         assertEquals(planned.size(), 3);
         assertTrue(planned.stream().allMatch(TreeUtils::isTree));
 
-        List<JoinPath> paths = asList(
-                new JoinPath(allNodes, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3),
-                                       getPlainJoinability(n3, o4)),
-                new JoinPath(allNodes, getPlainJoinability(o1, o2), getPlainJoinability(o2, n3),
-                                       getPlainJoinability(n3, o4)),
-                new JoinPath(allNodes, getPlainJoinability(l1, l2), getPlainJoinability(l2, l3),
-                                       getPlainJoinability(l3, l4))
+        List<JoinComponent> paths = asList(
+                new JoinComponent(allNodes, n1, n2, n3, o4),
+                new JoinComponent(allNodes, o1, o2, n3, o4),
+                new JoinComponent(allNodes, l1, l2, l3, l4)
         );
 
         JoinGraph reducedGraph = state.createReducedJoinGraph(paths);
         assertEquals(reducedGraph.getNodes(),
                      union(new HashSet<>(planned), newHashSet(l1, l2, l3, l4)));
 
-        List<JoinPath> reducedPaths = paths.stream().map(state::reducePath).collect(toList());
-        assertEquals(reducedPaths.stream().map(JoinPath::getNodes).collect(toList()),
+        List<JoinComponent> reducedPaths = paths.stream().map(state::reducePath).collect(toList());
+        assertEquals(reducedPaths.stream().map(JoinComponent::getNodes).collect(toList()),
                 asList(
                         newHashSet(planned.get(1), planned.get(0)),
                         newHashSet(planned.get(2), planned.get(0)),
@@ -319,29 +297,25 @@ public class SubPathAggregationTest {
         SubPathAggregation aggregation = SubPathAggregation.aggregate(new JoinGraph(allNodes),
                 emptyList(), new ArbitraryJoinOrderPlanner());
         assertEquals(aggregation.getGraph().size(), 0);
-        assertEquals(aggregation.getJoinPaths(), emptyList());
+        assertEquals(aggregation.getJoinComponents(), emptyList());
     }
 
 
     @Test(dataProvider = "joinOrderPlannerData")
     public void testAggregateSinglePath(Supplier<JoinOrderPlanner> supplier) {
-        List<JoinPath> paths = singletonList(new JoinPath(allNodes, getPlainJoinability(n1, n2),
-                                                                    getPlainJoinability(n2, n3),
-                                                                    getPlainJoinability(n3, n4)));
+        List<JoinComponent> paths = singletonList(new JoinComponent(allNodes, n1, n2, n3, n4));
         SubPathAggregation aggregation = SubPathAggregation.aggregate(new JoinGraph(allNodes),
                 paths, supplier.get());
-        assertEquals(aggregation.getJoinPaths().size(), 1);
-        assertSame(aggregation.getJoinPaths().get(0), paths.get(0));
+        assertEquals(aggregation.getJoinComponents().size(), 1);
+        assertSame(aggregation.getJoinComponents().get(0), paths.get(0));
         assertEquals(aggregation.getGraph().getNodes(), allNodes.subset(asList(n1, n2, n3, n4)));
     }
 
     @Test(dataProvider = "joinOrderPlannerData")
     public void testAggregateCommonPrefix(Supplier<JoinOrderPlanner> supplier) {
-        List<JoinPath> paths = asList(
-                new JoinPath(allNodes, getPlainJoinability(n1, n2), getPlainJoinability(n2, n3),
-                                       getPlainJoinability(n3, n4)),
-                new JoinPath(allNodes, getPlainJoinability(n1, n2), getPlainJoinability(n2, o3),
-                                       getPlainJoinability(o3, o4)));
+        List<JoinComponent> paths = asList(
+                new JoinComponent(allNodes, n1, n2, n3, n4),
+                new JoinComponent(allNodes, n1, n2, o3, o4));
         SubPathAggregation a;
         a = SubPathAggregation.aggregate(new JoinGraph(allNodes), paths, supplier.get());
 
@@ -349,26 +323,22 @@ public class SubPathAggregationTest {
         assertFalse(a.getGraph().getNodes().containsAll(asList(n1, n2)));
 
         IndexedSubset<PlanNode> novel;
-        novel = a.getJoinPaths().get(0).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(0).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
         PlanNode common = novel.iterator().next();
         assertTrue(streamPreOrder(common).collect(toSet()).containsAll(newHashSet(n1, n2)));
 
-        assertEquals(a.getJoinPaths().stream().map(JoinPath::getNodes).collect(toList()),
+        assertEquals(a.getJoinComponents().stream().map(JoinComponent::getNodes).collect(toList()),
                      asList(newHashSet(common, n3, n4), newHashSet(common, o3, o4)));
     }
 
     @Test(dataProvider = "joinOrderPlannerData")
     public void testAggregateStarAtPrefix(Supplier<JoinOrderPlanner> supplier) {
-        List<JoinPath> paths = asList(
-                new JoinPath(allNodes, getPlainJoinability(l1, l2), getPlainJoinability(l2, n3),
-                                       getPlainJoinability(n3, l4)),
-                new JoinPath(allNodes, getPlainJoinability(l1, l2), getPlainJoinability(l2, n3),
-                                       getPlainJoinability(n3, o4)),
-                new JoinPath(allNodes, getPlainJoinability(o1, o2), getPlainJoinability(o2, n3),
-                                       getPlainJoinability(n3, l4)),
-                new JoinPath(allNodes, getPlainJoinability(o1, o2), getPlainJoinability(o2, n3),
-                                       getPlainJoinability(n3, o4))
+        List<JoinComponent> paths = asList(
+                new JoinComponent(allNodes, l1, l2, n3, l4),
+                new JoinComponent(allNodes, l1, l2, n3, o4),
+                new JoinComponent(allNodes, o1, o2, n3, l4),
+                new JoinComponent(allNodes, o1, o2, n3, o4)
         );
         SubPathAggregation a;
         a = SubPathAggregation.aggregate(new JoinGraph(allNodes), paths, supplier.get());
@@ -376,21 +346,21 @@ public class SubPathAggregationTest {
         assertEquals(a.getGraph().getNodes().fullSubset().createIntersection(allNodes),
                      allNodes.subset(asList(n3, o4, l4)));
 
-        assertEquals(a.getJoinPaths().stream().map(p -> p.getNodes().size()).collect(toList()),
+        assertEquals(a.getJoinComponents().stream().map(p -> p.getNodes().size()).collect(toList()),
                      asList(3, 3, 3, 3));
 
         IndexedSubset<PlanNode> novel;
-        novel = a.getJoinPaths().get(0).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(0).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
         PlanNode common0 = novel.iterator().next();
         assertTrue(streamPreOrder(common0).collect(toSet()).containsAll(newHashSet(l1, l2)));
 
-        novel = a.getJoinPaths().get(2).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(2).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
         PlanNode common2 = novel.iterator().next();
         assertTrue(streamPreOrder(common2).collect(toSet()).containsAll(newHashSet(o1, o2)));
 
-        assertEquals(a.getJoinPaths().stream().map(JoinPath::getNodes).collect(toList()),
+        assertEquals(a.getJoinComponents().stream().map(JoinComponent::getNodes).collect(toList()),
                 asList(newHashSet(common0, n3, l4), newHashSet(common0, n3, o4),
                        newHashSet(common2, n3, l4), newHashSet(common2, n3, o4)));
     }
@@ -398,15 +368,11 @@ public class SubPathAggregationTest {
 
     @Test(dataProvider = "joinOrderPlannerData")
     public void testAggregateStarAtSuffix(Supplier<JoinOrderPlanner> supplier) {
-        List<JoinPath> paths = asList(
-                new JoinPath(allNodes, getPlainJoinability(l1, n2), getPlainJoinability(n2, l3),
-                                       getPlainJoinability(l3, l4)),
-                new JoinPath(allNodes, getPlainJoinability(l1, n2), getPlainJoinability(n2, o3),
-                                       getPlainJoinability(o3, o4)),
-                new JoinPath(allNodes, getPlainJoinability(o1, n2), getPlainJoinability(n2, l3),
-                                       getPlainJoinability(l3, l4)),
-                new JoinPath(allNodes, getPlainJoinability(o1, n2), getPlainJoinability(n2, o3),
-                                       getPlainJoinability(o3, o4))
+        List<JoinComponent> paths = asList(
+                new JoinComponent(allNodes, l1, n2, l3, l4),
+                new JoinComponent(allNodes, l1, n2, o3, o4),
+                new JoinComponent(allNodes, o1, n2, l3, l4),
+                new JoinComponent(allNodes, o1, n2, o3, o4)
         );
         SubPathAggregation a;
         a = SubPathAggregation.aggregate(new JoinGraph(allNodes), paths, supplier.get());
@@ -414,21 +380,21 @@ public class SubPathAggregationTest {
         assertEquals(a.getGraph().getNodes().fullSubset().createIntersection(allNodes),
                      allNodes.subset(asList(n2, l1, o1)));
 
-        assertEquals(a.getJoinPaths().stream().map(p -> p.getNodes().size()).collect(toList()),
+        assertEquals(a.getJoinComponents().stream().map(p -> p.getNodes().size()).collect(toList()),
                      asList(3, 3, 3, 3));
 
         IndexedSubset<PlanNode> novel;
-        novel = a.getJoinPaths().get(0).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(0).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
         PlanNode common0 = novel.iterator().next();
         assertTrue(streamPreOrder(common0).collect(toSet()).containsAll(newHashSet(l3, l4)));
 
-        novel = a.getJoinPaths().get(1).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(1).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
         PlanNode common1 = novel.iterator().next();
         assertTrue(streamPreOrder(common1).collect(toSet()).containsAll(newHashSet(o3, o4)));
 
-        assertEquals(a.getJoinPaths().stream().map(JoinPath::getNodes).collect(toList()),
+        assertEquals(a.getJoinComponents().stream().map(JoinComponent::getNodes).collect(toList()),
                 asList(newHashSet(l1, n2, common0), newHashSet(l1, n2, common1),
                        newHashSet(o1, n2, common0), newHashSet(o1, n2, common1)));
     }

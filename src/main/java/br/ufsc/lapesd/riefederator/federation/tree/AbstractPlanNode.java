@@ -5,8 +5,10 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.TermAnnotation;
 import com.google.common.collect.ImmutableSet;
+import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.lang.ref.SoftReference;
 import java.util.Collection;
 import java.util.HashSet;
@@ -16,6 +18,7 @@ import java.util.function.BiConsumer;
 
 public abstract class AbstractPlanNode implements PlanNode {
     private @Nonnull Set<String> resultVars, inputVars;
+    private @Nullable @LazyInit Set<String> strictResultVars = null;
     private boolean projecting;
     private @Nonnull List<PlanNode> children;
     private @Nonnull Cardinality cardinality;
@@ -38,6 +41,14 @@ public abstract class AbstractPlanNode implements PlanNode {
     @Override
     public @Nonnull Set<String> getResultVars() {
         return resultVars;
+    }
+
+    @Override
+    public @Nonnull Set<String> getStrictResultVars() {
+        if (inputVars.isEmpty()) return resultVars;
+        if (strictResultVars == null)
+            strictResultVars = TreeUtils.setMinus(resultVars, inputVars);
+        return strictResultVars;
     }
 
     @Override

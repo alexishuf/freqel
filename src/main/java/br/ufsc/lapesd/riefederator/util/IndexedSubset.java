@@ -7,8 +7,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Spliterator.*;
 
 public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
-    private final @Nonnull IndexedSet<T> parent;
-    private final @Nonnull BitSet bitSet;
+    protected final @Nonnull IndexedSet<T> parent;
+    protected final @Nonnull BitSet bitSet;
 
     protected static final @Nonnull BitSet emptyBitSet = new BitSet(0);
 
