@@ -1,12 +1,11 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.impl;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Results;
@@ -28,14 +27,11 @@ import static java.util.Collections.singleton;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
 
-public class MappedJsonResponseParserTest {
+public class MappedJsonResponseParserTest implements TestContext {
     private static final @Nonnull String EX = "http://example.org/";
     private static final @Nonnull String AEX = "http://auto.example.org/";
     private static final @Nonnull URI pa = ex("p/a");
     private static final @Nonnull URI pb = ex("p/b");
-    private static final @Nonnull Var X = new StdVar("x");
-    private static final @Nonnull Var Y = new StdVar("y");
-    private static final @Nonnull Var Z = new StdVar("z");
     private static final @Nonnull Lit i23 = fromJena(createTypedLiteral(23));
     private static final @Nonnull Lit i27 = fromJena(createTypedLiteral(27));
     private static final @Nonnull Lit i31 = fromJena(createTypedLiteral(31));
@@ -82,16 +78,16 @@ public class MappedJsonResponseParserTest {
     public void testPlainWithExtras() {
         CQEndpoint ep = parser.parse("{\"prop_a\": 1, \"prop_c\": 2}", EX + "res/1");
         assertNotNull(ep);
-        Triple triple = new Triple(X, Y, Z);
+        Triple triple = new Triple(x, y, z);
         Set<Solution> all = new HashSet<>();
         try (Results results = ep.query(CQuery.from(triple))) {
             results.forEachRemaining(all::add);
         }
 
         Set<MapSolution> expected = singleton(MapSolution.builder()
-                .put(X, ex("res/1"))
-                .put(Y, pa)
-                .put(Z, fromJena(createTypedLiteral(1))).build());
+                .put(x, ex("res/1"))
+                .put(y, pa)
+                .put(z, fromJena(createTypedLiteral(1))).build());
         assertEquals(all, expected);
     }
 
@@ -99,23 +95,23 @@ public class MappedJsonResponseParserTest {
     public void testBlankNode() {
         CQEndpoint ep = parser.parse("{\"prop_a\": {\"prop_b\": 23}}", EX + "res/1");
         assertNotNull(ep);
-        try (Results r1 = ep.query(CQuery.from(new Triple(ex("res/1"), pa, X)))) {
+        try (Results r1 = ep.query(CQuery.from(new Triple(ex("res/1"), pa, x)))) {
             assertTrue(r1.hasNext());
             Solution next = r1.next();
-            Term x = next.get(X.getName());
+            Term x = next.get(MappedJsonResponseParserTest.x.getName());
             assertNotNull(x);
             assertTrue(x.isBlank());
         }
 
-        try (Results r2 = ep.query(CQuery.from(new Triple(X, pb, i23)))) {
+        try (Results r2 = ep.query(CQuery.from(new Triple(x, pb, i23)))) {
             assertTrue(r2.hasNext());
-            Term x = r2.next().get(X.getName());
+            Term x = r2.next().get(MappedJsonResponseParserTest.x.getName());
             assertNotNull(x);
             assertTrue(x.isBlank());
         }
 
         Set<Solution> all = new HashSet<>();
-        try (Results r3 = ep.query(new Triple(X, Y, Z))) {
+        try (Results r3 = ep.query(new Triple(x, y, z))) {
             r3.forEachRemaining(all::add);
         }
         assertEquals(all.size(), 2);
@@ -135,14 +131,14 @@ public class MappedJsonResponseParserTest {
                 "}\n", EX + "res/2");
         assertNotNull(ep);
         Set<Solution> all = new HashSet<>();
-        try (Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
+        try (Results results = ep.query(CQuery.from(new Triple(x, y, z)))) {
             results.forEachRemaining(all::add);
         }
 
         StdURI r23 = ex("res/23");
         HashSet<MapSolution> expected = Sets.newHashSet(
-                MapSolution.builder().put(X, ex("res/2")).put(Y, pa).put(Z, r23).build(),
-                MapSolution.builder().put(X, r23).put(Y, pb).put(Z, i23).build());
+                MapSolution.builder().put(x, ex("res/2")).put(y, pa).put(z, r23).build(),
+                MapSolution.builder().put(x, r23).put(y, pb).put(z, i23).build());
         assertEquals(all, expected);
     }
 
@@ -163,14 +159,14 @@ public class MappedJsonResponseParserTest {
                     "}\n", EX + "res/2");
             assertNotNull(ep);
             Set<Solution> all = new HashSet<>();
-            try (Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
+            try (Results results = ep.query(CQuery.from(new Triple(x, y, z)))) {
                 results.forEachRemaining(all::add);
             }
 
             StdURI r23 = ex("res/23");
             HashSet<MapSolution> expected = Sets.newHashSet(
-                    MapSolution.builder().put(X, ex("res/2")).put(Y, pa).put(Z, r23).build(),
-                    MapSolution.builder().put(X, r23).put(Y, pb).put(Z, i23).build());
+                    MapSolution.builder().put(x, ex("res/2")).put(y, pa).put(z, r23).build(),
+                    MapSolution.builder().put(x, r23).put(y, pb).put(z, i23).build());
             assertEquals(all, expected);
         }
     }
@@ -187,12 +183,12 @@ public class MappedJsonResponseParserTest {
                 "}\n", EX + "res/1");
         assertNotNull(ep);
         Set<Solution> all = new HashSet<>();
-        try (Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
+        try (Results results = ep.query(CQuery.from(new Triple(x, y, z)))) {
             results.forEachRemaining(all::add);
         }
 
         assertEquals(all, singleton(
-                MapSolution.builder().put(X, ex("res/37")).put(Y, pa).put(Z, i23).build()));
+                MapSolution.builder().put(x, ex("res/37")).put(y, pa).put(z, i23).build()));
     }
 
     @Test
@@ -213,16 +209,16 @@ public class MappedJsonResponseParserTest {
                 "}\n", EX + "res/1");
         assertNotNull(ep);
         Set<Solution> all = new HashSet<>();
-        try (Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
+        try (Results results = ep.query(CQuery.from(new Triple(x, y, z)))) {
             results.forEachRemaining(all::add);
         }
 
         StdURI pc = new StdURI(AEX + "prop_c");
         HashSet<Solution> expected = Sets.newHashSet(
-                MapSolution.builder().put(X, ex("res/1")).put(Y, pa).put(Z, i23).build(),
-                MapSolution.builder().put(X, ex("res/1")).put(Y, pb).put(Z, ex("res/5")).build(),
-                MapSolution.builder().put(X, ex("res/5")).put(Y, pa).put(Z, i27).build(),
-                MapSolution.builder().put(X, ex("res/5")).put(Y, pc).put(Z, i31).build()
+                MapSolution.builder().put(x, ex("res/1")).put(y, pa).put(z, i23).build(),
+                MapSolution.builder().put(x, ex("res/1")).put(y, pb).put(z, ex("res/5")).build(),
+                MapSolution.builder().put(x, ex("res/5")).put(y, pa).put(z, i27).build(),
+                MapSolution.builder().put(x, ex("res/5")).put(y, pc).put(z, i31).build()
         );
         assertEquals(all, expected);
     }

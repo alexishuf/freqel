@@ -1,18 +1,14 @@
 package br.ufsc.lapesd.riefederator.description;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.sparql.vocabulary.FOAF;
-import org.apache.jena.vocabulary.RDF;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -28,21 +24,8 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.testng.Assert.assertEquals;
 
-public class SelectDescriptionTest {
-    public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
-    public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
-    public static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
-    public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
-    public static final @Nonnull StdURI AGE = new StdURI(FOAF.age.getURI());
-    public static final @Nonnull StdURI NAME = new StdURI(FOAF.name.getURI());
-    public static final @Nonnull StdURI PRIMARY_TOPIC = new StdURI(FOAF.primaryTopic.getURI());
-    public static final @Nonnull StdURI PERSON = new StdURI(FOAF.Person.getURI());
-    public static final @Nonnull StdURI DOCUMENT = new StdURI(FOAF.Document.getURI());
-    public static final @Nonnull StdURI INT = new StdURI(XSDDatatype.XSDint.getURI());
-    public static final @Nonnull StdLit A_AGE = fromUnescaped("23", INT);
-    public static final @Nonnull StdVar S = new StdVar("S");
-    public static final @Nonnull StdVar P = new StdVar("P");
-    public static final @Nonnull StdVar O = new StdVar("O");
+public class SelectDescriptionTest implements TestContext {
+    public static final @Nonnull StdLit A_AGE = fromUnescaped("23", xsdInt);
 
     ARQEndpoint rdf1;
 
@@ -51,60 +34,60 @@ public class SelectDescriptionTest {
     @DataProvider
     public static Object[][] matchData() {
         return new Object[][] {
-                new Object[]{true, singletonList(new Triple(S, NAME, O)),
-                                   singletonList(new Triple(S, NAME, O))},
-                new Object[]{true, singletonList(new Triple(S, TYPE, PERSON)),
-                                   singletonList(new Triple(S, TYPE, PERSON))},
-                new Object[]{true, singletonList(new Triple(ALICE, KNOWS, BOB)),
-                                   singletonList(new Triple(ALICE, KNOWS, BOB))},
+                new Object[]{true, singletonList(new Triple(s, name, o)),
+                                   singletonList(new Triple(s, name, o))},
+                new Object[]{true, singletonList(new Triple(s, type, Person)),
+                                   singletonList(new Triple(s, type, Person))},
+                new Object[]{true, singletonList(new Triple(Alice, knows, Bob)),
+                                   singletonList(new Triple(Alice, knows, Bob))},
                 // ok: not in rdf-1.nt, but matches predicate
-                new Object[]{true, singletonList(new Triple(ALICE, KNOWS, ALICE)),
-                                   singletonList(new Triple(ALICE, KNOWS, ALICE))},
-                new Object[]{true, singletonList(new Triple(ALICE, AGE, A_AGE)),
-                                   singletonList(new Triple(ALICE, AGE, A_AGE))},
-                new Object[]{true, singletonList(new Triple(ALICE, AGE, A_AGE)),
-                                   singletonList(new Triple(ALICE, AGE, A_AGE))},
+                new Object[]{true, singletonList(new Triple(Alice, knows, Alice)),
+                                   singletonList(new Triple(Alice, knows, Alice))},
+                new Object[]{true, singletonList(new Triple(Alice, age, A_AGE)),
+                                   singletonList(new Triple(Alice, age, A_AGE))},
+                new Object[]{true, singletonList(new Triple(Alice, age, A_AGE)),
+                                   singletonList(new Triple(Alice, age, A_AGE))},
                 // fail: bad predicate
-                new Object[]{true, singletonList(new Triple(S, PRIMARY_TOPIC, ALICE)), emptyList()},
+                new Object[]{true, singletonList(new Triple(s, primaryTopic, Alice)), emptyList()},
                 // fail: bad predicate
-                new Object[]{true, singletonList(new Triple(S, PRIMARY_TOPIC, O)), emptyList()},
+                new Object[]{true, singletonList(new Triple(s, primaryTopic, o)), emptyList()},
                 // fail: still bad predicate without classes
-                new Object[]{false, singletonList(new Triple(S, PRIMARY_TOPIC, O)), emptyList()},
+                new Object[]{false, singletonList(new Triple(s, primaryTopic, o)), emptyList()},
                 // ok: predicate is a variable
-                new Object[]{true, singletonList(new Triple(S, P, O)),
-                                   singletonList(new Triple(S, P, O))},
+                new Object[]{true, singletonList(new Triple(s, p, o)),
+                                   singletonList(new Triple(s, p, o))},
                 // still ok without classes
-                new Object[]{false, singletonList(new Triple(S, P, O)),
-                                    singletonList(new Triple(S, P, O))},
+                new Object[]{false, singletonList(new Triple(s, p, o)),
+                                    singletonList(new Triple(s, p, o))},
                 // ok: predicate is a variable
-                new Object[]{true, singletonList(new Triple(ALICE, P, ALICE)),
-                                   singletonList(new Triple(ALICE, P, ALICE))},
+                new Object[]{true, singletonList(new Triple(Alice, p, Alice)),
+                                   singletonList(new Triple(Alice, p, Alice))},
                 // ok: predicate is a variable
-                new Object[]{true, singletonList(new Triple(PRIMARY_TOPIC, P, ALICE)),
-                                   singletonList(new Triple(PRIMARY_TOPIC, P, ALICE))},
+                new Object[]{true, singletonList(new Triple(primaryTopic, p, Alice)),
+                                   singletonList(new Triple(primaryTopic, p, Alice))},
                 // fail bcs classes were collected and there is no Document instance
-                new Object[]{true, singletonList(new Triple(S, TYPE, DOCUMENT)), emptyList()},
+                new Object[]{true, singletonList(new Triple(s, type, Document)), emptyList()},
                 // ok without classes data
-                new Object[]{false, singletonList(new Triple(S, TYPE, DOCUMENT)),
-                                    singletonList(new Triple(S, TYPE, DOCUMENT))},
+                new Object[]{false, singletonList(new Triple(s, type, Document)),
+                                    singletonList(new Triple(s, type, Document))},
                 // both match (var predicate and known predicate)
-                new Object[]{true, asList(new Triple(S, P, O), new Triple(ALICE, KNOWS, O)),
-                                   asList(new Triple(S, P, O), new Triple(ALICE, KNOWS, O))},
+                new Object[]{true, asList(new Triple(s, p, o), new Triple(Alice, knows, o)),
+                                   asList(new Triple(s, p, o), new Triple(Alice, knows, o))},
                 // partial match bcs PRIMARY_TOPIC is not matched
-                new Object[]{true, asList(new Triple(S, PRIMARY_TOPIC, O), new Triple(ALICE, KNOWS, O)),
-                                   singletonList(new Triple(ALICE, KNOWS, O))},
+                new Object[]{true, asList(new Triple(s, primaryTopic, o), new Triple(Alice, knows, o)),
+                                   singletonList(new Triple(Alice, knows, o))},
                 // partial match bcs PRIMARY_TOPIC is not matched (reverse query order)
-                new Object[]{true, asList(new Triple(ALICE, KNOWS, O), new Triple(S, PRIMARY_TOPIC, O)),
-                                   singletonList(new Triple(ALICE, KNOWS, O))},
+                new Object[]{true, asList(new Triple(Alice, knows, o), new Triple(s, primaryTopic, o)),
+                                   singletonList(new Triple(Alice, knows, o))},
                 // partial match bcs class-elimination
-                new Object[]{true, asList(new Triple(S, KNOWS, O), new Triple(S, TYPE, DOCUMENT)),
-                                   singletonList(new Triple(S, KNOWS, O))},
+                new Object[]{true, asList(new Triple(s, knows, o), new Triple(s, type, Document)),
+                                   singletonList(new Triple(s, knows, o))},
                 // no evidence for class-elimination
-                new Object[]{true, asList(new Triple(S, KNOWS, O), new Triple(S, KNOWS, DOCUMENT)),
-                                   asList(new Triple(S, KNOWS, O), new Triple(S, KNOWS, DOCUMENT))},
+                new Object[]{true, asList(new Triple(s, knows, o), new Triple(s, knows, Document)),
+                                   asList(new Triple(s, knows, o), new Triple(s, knows, Document))},
                 // full match without classes data
-                new Object[]{false, asList(new Triple(S, KNOWS, O), new Triple(S, TYPE, DOCUMENT)),
-                                    asList(new Triple(S, KNOWS, O), new Triple(S, TYPE, DOCUMENT))},
+                new Object[]{false, asList(new Triple(s, knows, o), new Triple(s, type, Document)),
+                                    asList(new Triple(s, knows, o), new Triple(s, type, Document))},
         };
     }
 

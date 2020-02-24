@@ -1,19 +1,15 @@
 package br.ufsc.lapesd.riefederator.description;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Results;
-import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.sparql.vocabulary.FOAF;
-import org.apache.jena.vocabulary.RDF;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -33,22 +29,7 @@ import static org.apache.jena.query.QueryExecutionFactory.create;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-public class AskDescriptionTest {
-    public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
-    public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
-    public static final @Nonnull StdURI CHARLIE = new StdURI("http://example.org/Charlie");
-    public static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
-    public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
-    public static final @Nonnull StdURI NAME = new StdURI(FOAF.name.getURI());
-    public static final @Nonnull StdURI PRIMARY_TOPIC = new StdURI(FOAF.primaryTopic.getURI());
-    public static final @Nonnull StdURI PERSON = new StdURI(FOAF.Person.getURI());
-    public static final @Nonnull StdURI DOCUMENT = new StdURI(FOAF.Document.getURI());
-    public static final @Nonnull StdURI INT = new StdURI(XSDDatatype.XSDint.getURI());
-    public static final @Nonnull StdVar X = new StdVar("X");
-    public static final @Nonnull StdVar S = new StdVar("S");
-    public static final @Nonnull StdVar P = new StdVar("P");
-    public static final @Nonnull StdVar O = new StdVar("O");
-
+public class AskDescriptionTest implements TestContext {
     private Model rdf1;
 
     @SuppressWarnings("Immutable") //testing purposes
@@ -76,45 +57,45 @@ public class AskDescriptionTest {
     @DataProvider
     public static Object[][] matchData() {
         return new Object[][] {
-                new Object[] {singletonList(new Triple(ALICE, KNOWS, BOB)),
-                              singletonList(new Triple(ALICE, KNOWS, BOB))},
-                new Object[] {singletonList(new Triple(S, P, O)),
-                              singletonList(new Triple(S, P, O))},
-                new Object[] {singletonList(new Triple(ALICE, KNOWS, O)),
-                              singletonList(new Triple(ALICE, KNOWS, O))},
-                new Object[] {singletonList(new Triple(S, KNOWS, BOB)),
-                              singletonList(new Triple(S, KNOWS, BOB))},
-                new Object[] {singletonList(new Triple(S, KNOWS, O)),
-                              singletonList(new Triple(S, KNOWS, O))},
-                new Object[] {singletonList(new Triple(ALICE, KNOWS, BOB)),
-                              singletonList(new Triple(ALICE, KNOWS, BOB))},
+                new Object[] {singletonList(new Triple(Alice, knows, Bob)),
+                              singletonList(new Triple(Alice, knows, Bob))},
+                new Object[] {singletonList(new Triple(s, p, o)),
+                              singletonList(new Triple(s, p, o))},
+                new Object[] {singletonList(new Triple(Alice, knows, o)),
+                              singletonList(new Triple(Alice, knows, o))},
+                new Object[] {singletonList(new Triple(s, knows, Bob)),
+                              singletonList(new Triple(s, knows, Bob))},
+                new Object[] {singletonList(new Triple(s, knows, o)),
+                              singletonList(new Triple(s, knows, o))},
+                new Object[] {singletonList(new Triple(Alice, knows, Bob)),
+                              singletonList(new Triple(Alice, knows, Bob))},
                 // generalized to S KNOWS CHARLIE, but still fails
-                new Object[] {singletonList(new Triple(ALICE, KNOWS, CHARLIE)),
+                new Object[] {singletonList(new Triple(Alice, knows, Charlie)),
                               emptyList()},
                 // bad predicate
-                new Object[] {singletonList(new Triple(S, PRIMARY_TOPIC, O)), emptyList()},
+                new Object[] {singletonList(new Triple(s, primaryTopic, o)), emptyList()},
                 // bad predicate
-                new Object[] {singletonList(new Triple(BOB, PRIMARY_TOPIC, O)), emptyList()},
+                new Object[] {singletonList(new Triple(Bob, primaryTopic, o)), emptyList()},
                 // generalized to S PRIMARY_TOPIC CHARLIE, which then fails the ASK
-                new Object[] {singletonList(new Triple(ALICE, PRIMARY_TOPIC, CHARLIE)),
+                new Object[] {singletonList(new Triple(Alice, primaryTopic, Charlie)),
                               emptyList()},
-                new Object[] {singletonList(new Triple(ALICE, PRIMARY_TOPIC, CHARLIE)),
+                new Object[] {singletonList(new Triple(Alice, primaryTopic, Charlie)),
                               emptyList()},
-                new Object[] {singletonList(new Triple(S, TYPE, PERSON)),
-                              singletonList(new Triple(S, TYPE, PERSON))},
+                new Object[] {singletonList(new Triple(s, type, Person)),
+                              singletonList(new Triple(s, type, Person))},
                 // fails bcs query is not generalized since predicate is rdf:type
-                new Object[] {singletonList(new Triple(S, TYPE, DOCUMENT)), emptyList()},
+                new Object[] {singletonList(new Triple(s, type, Document)), emptyList()},
 
                 /* ~~~ try partial matches ~~~ */
-                new Object[] {asList(new Triple(BOB, PRIMARY_TOPIC, O), new Triple(S, P, O)),
-                              singletonList(new Triple(S, P, O))},
-                new Object[] {asList(new Triple(S, P, O), new Triple(BOB, PRIMARY_TOPIC, O)),
-                              singletonList(new Triple(S, P, O))},
-                new Object[] {asList(new Triple(S, PRIMARY_TOPIC, O), new Triple(S, KNOWS, O)),
-                              singletonList(new Triple(S, KNOWS, O))},
-                new Object[] {asList(new Triple(S, PRIMARY_TOPIC, O), new Triple(S, KNOWS, O),
-                                     new Triple(S, NAME, CHARLIE)),
-                              singletonList(new Triple(S, KNOWS, O))},
+                new Object[] {asList(new Triple(Bob, primaryTopic, o), new Triple(s, p, o)),
+                              singletonList(new Triple(s, p, o))},
+                new Object[] {asList(new Triple(s, p, o), new Triple(Bob, primaryTopic, o)),
+                              singletonList(new Triple(s, p, o))},
+                new Object[] {asList(new Triple(s, primaryTopic, o), new Triple(s, knows, o)),
+                              singletonList(new Triple(s, knows, o))},
+                new Object[] {asList(new Triple(s, primaryTopic, o), new Triple(s, knows, o),
+                                     new Triple(s, name, Charlie)),
+                              singletonList(new Triple(s, knows, o))},
         };
     }
 
@@ -143,42 +124,42 @@ public class AskDescriptionTest {
     public void testCache() {
         CountingARQEndpoint ep = createEndpoint();
         AskDescription d = new AskDescription(ep);
-        CQueryMatch match = d.match(CQuery.from(singletonList(new Triple(ALICE, KNOWS, O))));
+        CQueryMatch match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, o))));
         assertEquals(ep.calls, 1);
-        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(ALICE, KNOWS, O)));
+        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, o)));
 
-        match = d.match(CQuery.from(singletonList(new Triple(ALICE, KNOWS, O))));
+        match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, o))));
         assertEquals(ep.calls, 1);
-        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(ALICE, KNOWS, O)));
+        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, o)));
 
-        match = d.match(CQuery.from(singletonList(new Triple(ALICE, KNOWS, X))));
+        match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, x))));
         assertEquals(ep.calls, 1); //different var name should not matter
-        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(ALICE, KNOWS, X)));
+        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, x)));
     }
 
     @Test
     public void testCacheLearnsGeneralized() {
         CountingARQEndpoint ep = createEndpoint();
         AskDescription d = new AskDescription(ep);
-        CQueryMatch match = d.match(CQuery.from(singletonList(new Triple(ALICE, KNOWS, BOB))));
+        CQueryMatch match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, Bob))));
         assertEquals(ep.calls, 1);
-        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(ALICE, KNOWS, BOB)));
+        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, Bob)));
 
-        match = d.match(CQuery.from(singletonList(new Triple(ALICE, KNOWS, O))));
+        match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, o))));
         assertEquals(ep.calls, 1); //should have learned from previous query
-        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(ALICE, KNOWS, O)));
+        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, o)));
     }
 
     @Test
     public void testTriesToFailGeneralized() {
         CountingARQEndpoint ep = createEndpoint();
         AskDescription d = new AskDescription(ep);
-        CQueryMatch match = d.match(CQuery.from(singletonList(new Triple(ALICE, KNOWS, CHARLIE))));
+        CQueryMatch match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, Charlie))));
         assertEquals(ep.calls, 2); //already tries to prove failure of subsequent
         assertTrue(match.isEmpty());
 
-        match = d.match(CQuery.from(singletonList(new Triple(ALICE, KNOWS, O))));
+        match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, o))));
         assertEquals(ep.calls, 2); // no new ASK
-        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(ALICE, KNOWS, O)));
+        assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, o)));
     }
 }

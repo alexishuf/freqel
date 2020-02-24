@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
@@ -8,12 +9,9 @@ import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import com.google.common.collect.Sets;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
-import org.apache.jena.sparql.vocabulary.FOAF;
-import org.apache.jena.vocabulary.RDFS;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -30,127 +28,117 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
-public class CQueryTest {
-    public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
-    public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
-    public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
-    public static final @Nonnull StdURI AGE = new StdURI(FOAF.age.getURI());
-    public static final @Nonnull StdURI AGE_EX = new StdURI("http://example.org/age");
-    public static final @Nonnull StdURI SUBP = new StdURI(RDFS.subPropertyOf.getURI());
+public class CQueryTest implements TestContext {
+    public static final @Nonnull StdURI ageEx = new StdURI("http://example.org/age");
     public static final @Nonnull StdLit AGE_1 =
             StdLit.fromUnescaped("23", new StdURI(XSDDatatype.XSDint.getURI()));
-    public static final @Nonnull StdVar X = new StdVar("x");
-    public static final @Nonnull StdVar Y = new StdVar("y");
-    public static final @Nonnull StdVar Z = new StdVar("z");
-    public static final @Nonnull StdVar W = new StdVar("w");
-    public static final @Nonnull StdVar P = new StdVar("p");
 
     /* ~~~ data methods ~~~ */
 
     @DataProvider
     public static Object[][] joinClosureData() {
         Triple[] ts = new Triple[]{
-                new Triple(ALICE, KNOWS, X    ), // 0
-                new Triple(X,     KNOWS, Y    ), // 1
-                new Triple(Y,     KNOWS, BOB  ), // 2
-                new Triple(Y,     AGE,   AGE_1), // 3
-                new Triple(Y,     P,     Z    ), // 4
-                new Triple(P,     SUBP,  KNOWS), // 5
-                new Triple(Z,     KNOWS, ALICE), // 6
+                new Triple(Alice, knows, x), // 0
+                new Triple(x, knows, y), // 1
+                new Triple(y, knows, Bob), // 2
+                new Triple(y, age,   AGE_1), // 3
+                new Triple(y, p, z), // 4
+                new Triple(p, subPropertyOf, knows), // 5
+                new Triple(z, knows, Alice), // 6
         };
         List<Triple> all = asList(ts);
         return new Object[][] {
-                new Object[]{singletonList(ts[0]), ts[0], X, JoinType.ANY,
+                new Object[]{singletonList(ts[0]), ts[0], x, JoinType.ANY,
                         emptyList()},
-                new Object[]{singletonList(ts[0]), null, X, JoinType.ANY,
+                new Object[]{singletonList(ts[0]), null, x, JoinType.ANY,
                         singletonList(ts[0])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[0], X, JoinType.ANY,
+                new Object[]{asList(ts[0], ts[1], ts[2]), ts[0], x, JoinType.ANY,
                         asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, X, JoinType.ANY,
+                new Object[]{asList(ts[0], ts[1], ts[2]), null, x, JoinType.ANY,
                         asList(ts[0], ts[1], ts[2])},
 
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[0], X, JoinType.VARS,
+                new Object[]{asList(ts[0], ts[1], ts[2]), ts[0], x, JoinType.VARS,
                         asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, X, JoinType.VARS,
+                new Object[]{asList(ts[0], ts[1], ts[2]), null, x, JoinType.VARS,
                         asList(ts[0], ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[0], X, OBJ_SUBJ,
+                new Object[]{asList(ts[0], ts[1], ts[2]), ts[0], x, OBJ_SUBJ,
                         asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, X, OBJ_SUBJ,
+                new Object[]{asList(ts[0], ts[1], ts[2]), null, x, OBJ_SUBJ,
                         asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[1], Y, OBJ_SUBJ,
+                new Object[]{asList(ts[0], ts[1], ts[2]), ts[1], y, OBJ_SUBJ,
                         singletonList(ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, Y, OBJ_SUBJ,
+                new Object[]{asList(ts[0], ts[1], ts[2]), null, y, OBJ_SUBJ,
                         singletonList(ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[1], X, OBJ_SUBJ,
+                new Object[]{asList(ts[0], ts[1], ts[2]), ts[1], x, OBJ_SUBJ,
                         emptyList()},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, X, OBJ_SUBJ,
+                new Object[]{asList(ts[0], ts[1], ts[2]), null, x, OBJ_SUBJ,
                         asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2], ts[6]), ts[1], X, JoinType.SUBJ_OBJ,
+                new Object[]{asList(ts[0], ts[1], ts[2], ts[6]), ts[1], x, JoinType.SUBJ_OBJ,
                         asList(ts[0], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[2], ts[6]), null, X, JoinType.SUBJ_OBJ,
+                new Object[]{asList(ts[0], ts[1], ts[2], ts[6]), null, x, JoinType.SUBJ_OBJ,
                         asList(ts[0], ts[6])},
 
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], ALICE,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Alice,
                         JoinType.ANY, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, ALICE,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Alice,
                         JoinType.ANY, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], ALICE,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Alice,
                         OBJ_SUBJ, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, ALICE,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Alice,
                         OBJ_SUBJ, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], ALICE,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Alice,
                         JoinType.SUBJ_SUBJ, singletonList(ts[0])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, ALICE,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Alice,
                         JoinType.SUBJ_SUBJ, singletonList(ts[0])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], ALICE,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Alice,
                         JoinType.SUBJ_OBJ, emptyList()},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, ALICE,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Alice,
                         JoinType.SUBJ_OBJ, asList(ts[0], ts[1], ts[4], ts[6])},
 
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Z,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], z,
                         JoinType.ANY, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Z,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, z,
                         JoinType.ANY, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Z,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], z,
                         JoinType.VARS, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Z,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, z,
                         JoinType.VARS, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Z,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], z,
                         OBJ_SUBJ, emptyList()},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Z,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, z,
                         OBJ_SUBJ, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Z,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], z,
                         JoinType.SUBJ_OBJ, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Z,
+                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, z,
                         JoinType.SUBJ_OBJ, asList(ts[0], ts[1], ts[4], ts[6])},
 
-                new Object[]{all, ts[0], X, JoinType.ANY,
+                new Object[]{all, ts[0], x, JoinType.ANY,
                         asList(ts[1], ts[2], ts[3], ts[4], ts[5], ts[6])},
-                new Object[]{all, null, X, JoinType.ANY, all},
-                new Object[]{all, ts[0], X, JoinType.VARS,
+                new Object[]{all, null, x, JoinType.ANY, all},
+                new Object[]{all, ts[0], x, JoinType.VARS,
                         asList(ts[1], ts[2], ts[3], ts[4], ts[5], ts[6])},
-                new Object[]{all, null, X, JoinType.VARS, all},
-                new Object[]{all, ts[0], X, OBJ_SUBJ,
+                new Object[]{all, null, x, JoinType.VARS, all},
+                new Object[]{all, ts[0], x, OBJ_SUBJ,
                         asList(ts[1], ts[2], ts[3], ts[4], ts[6])},
-                new Object[]{all, null, X, OBJ_SUBJ,
+                new Object[]{all, null, x, OBJ_SUBJ,
                         asList(ts[0], ts[1], ts[2], ts[3], ts[4], ts[6])},
-                new Object[]{all, ts[0], X, JoinType.SUBJ_SUBJ, singletonList(ts[1])},
-                new Object[]{all, null, X, JoinType.SUBJ_SUBJ, singletonList(ts[1])},
-                new Object[]{all, ts[0], X, JoinType.OBJ_OBJ,  emptyList()},
-                new Object[]{all, null, X, JoinType.OBJ_OBJ,  singletonList(ts[0])},
+                new Object[]{all, ts[0], x, JoinType.SUBJ_SUBJ, singletonList(ts[1])},
+                new Object[]{all, null, x, JoinType.SUBJ_SUBJ, singletonList(ts[1])},
+                new Object[]{all, ts[0], x, JoinType.OBJ_OBJ,  emptyList()},
+                new Object[]{all, null, x, JoinType.OBJ_OBJ,  singletonList(ts[0])},
         };
     }
 
     @DataProvider
     public static @Nonnull Object[][] triplesJoinClosureData() {
         Triple[] ts = new Triple[]{
-                new Triple(ALICE, KNOWS, X    ), // 0
-                new Triple(X,     KNOWS, Y    ), // 1
-                new Triple(Y,     KNOWS, BOB  ), // 2
-                new Triple(Y,     AGE,   AGE_1), // 3
-                new Triple(Y,     P,     Z    ), // 4
-                new Triple(P,     SUBP,  KNOWS), // 5
-                new Triple(Z,     KNOWS, ALICE), // 6
+                new Triple(Alice, knows, x), // 0
+                new Triple(x, knows, y), // 1
+                new Triple(y, knows, Bob), // 2
+                new Triple(y, age,   AGE_1), // 3
+                new Triple(y, p, z), // 4
+                new Triple(p, subPropertyOf, knows), // 5
+                new Triple(z, knows, Alice), // 6
         };
         List<Triple> all = asList(ts);
         List<Triple> e = emptyList();
@@ -172,14 +160,14 @@ public class CQueryTest {
     @DataProvider
     public static @Nonnull Object[][] containingData() {
         List<Triple> q = asList(
-                new Triple(ALICE, KNOWS, X), // 0
-                new Triple(X, KNOWS, Y),     // 1
-                new Triple(Y, KNOWS, BOB),   // 2
-                new Triple(Y, AGE, AGE_1),   // 3
-                new Triple(Y, P, Z),         // 4
-                new Triple(P, SUBP, KNOWS),  // 5
-                new Triple(Z, KNOWS, ALICE), // 6
-                new Triple(W, KNOWS, W)      // 7
+                new Triple(Alice, knows, x), // 0
+                new Triple(x, knows, y),     // 1
+                new Triple(y, knows, Bob),   // 2
+                new Triple(y, age, AGE_1),   // 3
+                new Triple(y, p, z),         // 4
+                new Triple(p, subPropertyOf, knows),  // 5
+                new Triple(z, knows, Alice), // 6
+                new Triple(w, knows, w)      // 7
         );
         List<Triple.Position> s   = singletonList(Triple.Position.SUBJ);
         List<Triple.Position> p   = singletonList(Triple.Position.PRED);
@@ -190,54 +178,54 @@ public class CQueryTest {
         List<Triple.Position> spo = asList(Triple.Position.SUBJ, Triple.Position.PRED,
                                            Triple.Position.OBJ);
         return new Object[][] {
-                new Object[] {q, X    , s  , singletonList(q.get(1))},
-                new Object[] {q, Y    , s  , q.subList(2, 5)},
-                new Object[] {q, Z    , so , asList(q.get(4), q.get(6))},
-                new Object[] {q, P    , spo, asList(q.get(4), q.get(5))},
-                new Object[] {q, P    , sp , asList(q.get(4), q.get(5))},
-                new Object[] {q, P    , s  , singletonList(q.get(5))},
-                new Object[] {q, P    , p  , singletonList(q.get(4))},
-                new Object[] {q, X    , so , q.subList(0, 2)},
-                new Object[] {q, Y    , so , q.subList(1, 5)},
-                new Object[] {q, X    , spo, q.subList(0, 2)},
-                new Object[] {q, Y    , spo, q.subList(1, 5)},
-                new Object[] {q, ALICE, so , asList(q.get(0), q.get(6))},
-                new Object[] {q, ALICE, os , asList(q.get(0), q.get(6))},
-                new Object[] {q, AGE  , p  , singletonList(q.get(3))},
-                new Object[] {q, P    , p  , singletonList(q.get(4))},
-                new Object[] {q, W    , s  , singletonList(q.get(7))},
-                new Object[] {q, W    , o  , singletonList(q.get(7))},
-                new Object[] {q, W    , so , singletonList(q.get(7))},
+                new Object[] {q, x, s  , singletonList(q.get(1))},
+                new Object[] {q, y, s  , q.subList(2, 5)},
+                new Object[] {q, z, so , asList(q.get(4), q.get(6))},
+                new Object[] {q, CQueryTest.p, spo, asList(q.get(4), q.get(5))},
+                new Object[] {q, CQueryTest.p, sp , asList(q.get(4), q.get(5))},
+                new Object[] {q, CQueryTest.p, s  , singletonList(q.get(5))},
+                new Object[] {q, CQueryTest.p, p  , singletonList(q.get(4))},
+                new Object[] {q, x, so , q.subList(0, 2)},
+                new Object[] {q, y, so , q.subList(1, 5)},
+                new Object[] {q, x, spo, q.subList(0, 2)},
+                new Object[] {q, y, spo, q.subList(1, 5)},
+                new Object[] {q, Alice, so , asList(q.get(0), q.get(6))},
+                new Object[] {q, Alice, os , asList(q.get(0), q.get(6))},
+                new Object[] {q, age, p  , singletonList(q.get(3))},
+                new Object[] {q, CQueryTest.p, p  , singletonList(q.get(4))},
+                new Object[] {q, w, s  , singletonList(q.get(7))},
+                new Object[] {q, w, o  , singletonList(q.get(7))},
+                new Object[] {q, w, so , singletonList(q.get(7))},
         };
     }
 
     @DataProvider
     public static Object[][] streamVarsData() {
         List<Triple> triples = asList(
-                new Triple(ALICE, KNOWS, BOB),
-                new Triple(BOB, KNOWS, X),
-                new Triple(X, KNOWS, Y),
-                new Triple(ALICE, P, Z));
+                new Triple(Alice, knows, Bob),
+                new Triple(Bob, knows, x),
+                new Triple(x, knows, y),
+                new Triple(Alice, p, z));
         return new Object[][] {
                 new Object[] {triples.subList(0, 1), emptyList()},
-                new Object[] {triples.subList(0, 2), singletonList(X)},
-                new Object[] {triples.subList(0, 3), asList(X, Y)},
-                new Object[] {triples.subList(0, 4), asList(X, Y, P, Z)},
+                new Object[] {triples.subList(0, 2), singletonList(x)},
+                new Object[] {triples.subList(0, 3), asList(x, y)},
+                new Object[] {triples.subList(0, 4), asList(x, y, p, z)},
         };
     }
 
     @DataProvider
     public static Object[][] streamURIsData() {
         List<Triple> triples = asList(
-                new Triple(X, P, Y),
-                new Triple(X, KNOWS, ALICE),
-                new Triple(ALICE, KNOWS, Y),
-                new Triple(ALICE, KNOWS, BOB));
+                new Triple(x, p, y),
+                new Triple(x, knows, Alice),
+                new Triple(Alice, knows, y),
+                new Triple(Alice, knows, Bob));
         return new Object[][] {
                 new Object[] {triples.subList(0, 1), emptyList()},
-                new Object[] {triples.subList(0, 2), asList(KNOWS, ALICE)},
-                new Object[] {triples.subList(0, 3), asList(KNOWS, ALICE)},
-                new Object[] {triples.subList(0, 4), asList(KNOWS, ALICE, BOB)},
+                new Object[] {triples.subList(0, 2), asList(knows, Alice)},
+                new Object[] {triples.subList(0, 3), asList(knows, Alice)},
+                new Object[] {triples.subList(0, 4), asList(knows, Alice, Bob)},
         };
     }
 
@@ -254,9 +242,9 @@ public class CQueryTest {
     @Test
     @SuppressWarnings("DoNotCall")
     public void testImmutable() {
-        CQuery q = CQuery.from(new Triple(ALICE, KNOWS, BOB));
+        CQuery q = CQuery.from(new Triple(Alice, knows, Bob));
         expectThrows(UnsupportedOperationException.class, q::clear);
-        Triple triple = new Triple(BOB, KNOWS, ALICE);
+        Triple triple = new Triple(Bob, knows, Alice);
         expectThrows(UnsupportedOperationException.class, () -> q.add(triple));
         expectThrows(UnsupportedOperationException.class, () -> q.remove(triple));
         expectThrows(UnsupportedOperationException.class, () -> q.remove(0));
@@ -265,7 +253,7 @@ public class CQueryTest {
     @Test
     @SuppressWarnings({"UseBulkOperation", "ForLoopReplaceableByForEach", "SimplifyStreamApiCallChains"})
     public void testList() {
-        Triple t1 = new Triple(ALICE, KNOWS, BOB), t2 = new Triple(BOB, KNOWS, ALICE);
+        Triple t1 = new Triple(Alice, knows, Bob), t2 = new Triple(Bob, knows, Alice);
         CQuery q = CQuery.from(asList(t1, t2));
         assertEquals(q.size(), 2);
         assertFalse(q.isEmpty());
@@ -280,16 +268,16 @@ public class CQueryTest {
 
         assertEquals(q.indexOf(t1), 0);
         assertEquals(q.indexOf(t2), 1);
-        assertEquals(q.indexOf(new Triple(ALICE, KNOWS, ALICE)), -1);
+        assertEquals(q.indexOf(new Triple(Alice, knows, Alice)), -1);
 
         assertEquals(q.lastIndexOf(t1), 0);
         assertEquals(q.lastIndexOf(t2), 1);
-        assertEquals(q.lastIndexOf(new Triple(ALICE, KNOWS, ALICE)), -1);
+        assertEquals(q.lastIndexOf(new Triple(Alice, knows, Alice)), -1);
     }
 
     @Test
     public void testEqualsAcceptsList() {
-        Triple t1 = new Triple(ALICE, KNOWS, BOB), t2 = new Triple(BOB, KNOWS, ALICE);
+        Triple t1 = new Triple(Alice, knows, Bob), t2 = new Triple(Bob, knows, Alice);
         assertEquals(CQuery.EMPTY, emptyList());
         assertEquals(CQuery.from(t1), singletonList(t1));
         assertEquals(CQuery.from(asList(t1, t2)), asList(t1, t2));
@@ -304,8 +292,8 @@ public class CQueryTest {
 
     @Test
     public void testPrefixDictIgnoredOnEquals() {
-        CQuery q1 = CQuery.from(new Triple(ALICE, KNOWS, X));
-        CQuery q2 = CQuery.from(new Triple(ALICE, KNOWS, X));
+        CQuery q1 = CQuery.from(new Triple(Alice, knows, x));
+        CQuery q2 = CQuery.from(new Triple(Alice, knows, x));
         CQuery qd = q1.withPrefixDict(StdPrefixDict.DEFAULT);
 
         assertEquals(q1, q2);
@@ -320,7 +308,7 @@ public class CQueryTest {
 
     @Test
     public void testEqualsConsidersModifiers() {
-        Triple triple = new Triple(X, KNOWS, Y);
+        Triple triple = new Triple(x, knows, y);
         CQuery plain1 = CQuery.from(triple);
         CQuery plain2 = CQuery.from(triple);
         CQuery distinct1 = CQuery.with(triple).distinct().build();
@@ -344,12 +332,12 @@ public class CQueryTest {
 
     @Test
     public void testEqualsConsidersTermAnnotations() {
-        CQuery qy = CQuery.with(new Triple(X, KNOWS, Y)).annotate(Y, new MockAnnotation()).build();
-        CQuery qx = CQuery.with(new Triple(X, KNOWS, Y)).annotate(X, new MockAnnotation()).build();
+        CQuery qy = CQuery.with(new Triple(x, knows, y)).annotate(y, new MockAnnotation()).build();
+        CQuery qx = CQuery.with(new Triple(x, knows, y)).annotate(x, new MockAnnotation()).build();
         MockAnnotation annotation = new MockAnnotation();
-        CQuery qk1 = CQuery.with(new Triple(X, KNOWS, Y)).annotate(KNOWS, annotation).build();
-        CQuery qk2 = CQuery.with(new Triple(X, KNOWS, Y)).annotate(KNOWS, annotation).build();
-        CQuery plain = CQuery.from(new Triple(X, KNOWS, Y));
+        CQuery qk1 = CQuery.with(new Triple(x, knows, y)).annotate(knows, annotation).build();
+        CQuery qk2 = CQuery.with(new Triple(x, knows, y)).annotate(knows, annotation).build();
+        CQuery plain = CQuery.from(new Triple(x, knows, y));
 
         assertEquals(qy, qy);
         assertEquals(qk1, qk1);
@@ -360,12 +348,12 @@ public class CQueryTest {
         assertNotEquals(qx, plain);
         assertNotEquals(qk1, plain);
 
-        assertEquals(qx, singletonList(new Triple(X, KNOWS, Y)));
+        assertEquals(qx, singletonList(new Triple(x, knows, y)));
     }
 
     @Test
     public void testEqualsConsidersTripleAnnotations() {
-        Triple triple = new Triple(X, KNOWS, Y);
+        Triple triple = new Triple(x, knows, y);
         CQuery q1 = CQuery.with(triple).annotate(triple, new MockAnnotation()).build();
         CQuery q2 = CQuery.with(triple).annotate(triple, new MockAnnotation()).build();
         MockAnnotation annotation = new MockAnnotation();
@@ -385,28 +373,28 @@ public class CQueryTest {
 
     @Test
     public void testGetSelfMatchedSet() {
-        CQuery query = CQuery.from(new Triple(X, KNOWS, Y), new Triple(X, KNOWS, BOB));
+        CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(x, knows, Bob));
         assertEquals(query.getMatchedTriples(), Sets.newHashSet(
-                new Triple(X, KNOWS, Y), new Triple(X, KNOWS, BOB)
+                new Triple(x, knows, y), new Triple(x, knows, Bob)
         ));
     }
 
     @Test
     public void testGetSelfAndAnnotatedMatchedSet() {
-        List<Triple> triples = asList(new Triple(X, KNOWS, Y), new Triple(X, AGE_EX, AGE_1));
+        List<Triple> triples = asList(new Triple(x, knows, y), new Triple(x, ageEx, AGE_1));
         CQuery query = CQuery.with(triples)
-                .annotate(triples.get(1), new MatchAnnotation(new Triple(X, AGE, AGE_1)))
+                .annotate(triples.get(1), new MatchAnnotation(new Triple(x, age, AGE_1)))
                 .build();
         assertEquals(query.getMatchedTriples(), Sets.newHashSet(
-                new Triple(X, KNOWS, Y),
-                new Triple(X, AGE, AGE_1)
+                new Triple(x, knows, y),
+                new Triple(x, age, AGE_1)
         ));
     }
 
     @Test
     public void testIsASK() {
-        Triple t1 = new Triple(ALICE, KNOWS, BOB), t2 = new Triple(BOB, KNOWS, ALICE),
-               t3 = new Triple(BOB, KNOWS, X);
+        Triple t1 = new Triple(Alice, knows, Bob), t2 = new Triple(Bob, knows, Alice),
+               t3 = new Triple(Bob, knows, x);
         assertTrue(CQuery.from(t1).isAsk());
         assertTrue(CQuery.from(asList(t1, t2)).isAsk());
 

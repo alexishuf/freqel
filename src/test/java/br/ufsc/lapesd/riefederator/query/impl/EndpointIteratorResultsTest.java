@@ -1,23 +1,18 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.*;
 import com.google.common.collect.Sets;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.InputStream;
 import java.util.*;
@@ -27,14 +22,7 @@ import static java.util.Collections.emptyIterator;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
-public class EndpointIteratorResultsTest {
-    private static final @Nonnull URI ALICE = new StdURI("http://example.org/Alice");
-    private static final @Nonnull URI BOB = new StdURI("http://example.org/Bob");
-    private static final @Nonnull URI DAVE = new StdURI("http://example.org/Dave");
-    private static final @Nonnull URI knows = new StdURI(FOAF.knows.getURI());
-    private static final @Nonnull Var X = new StdVar("x");
-    private static final @Nonnull Var Y = new StdVar("y");
-
+public class EndpointIteratorResultsTest implements TestContext {
     private @Nullable CQEndpoint e1, e2, rdf1, rdf2;
 
     private ARQEndpoint createEndpoint(String resourcePath) {
@@ -59,7 +47,7 @@ public class EndpointIteratorResultsTest {
 
     @Test
     public void testNoEndpoints() {
-        CQuery query = CQuery.from(new Triple(X, knows, Y));
+        CQuery query = CQuery.from(new Triple(x, knows, y));
         try (Results results = new EndpointIteratorResults(emptyIterator(), query)) {
             assertFalse(results.hasNext());
             expectThrows(NoSuchElementException.class, results::next);
@@ -70,7 +58,7 @@ public class EndpointIteratorResultsTest {
 
     @Test
     public void testEmptyEndpoints() {
-        CQuery query = CQuery.from(new Triple(X, knows, Y));
+        CQuery query = CQuery.from(new Triple(x, knows, y));
         try (Results results = new EndpointIteratorResults(singleton(e1).iterator(), query)) {
             assertFalse(results.hasNext());
             assertEquals(results.getCardinality(), Cardinality.EMPTY);
@@ -83,7 +71,7 @@ public class EndpointIteratorResultsTest {
 
     @Test
     public void testSingleEndpoint() {
-        CQuery query = CQuery.from(new Triple(X, knows, Y));
+        CQuery query = CQuery.from(new Triple(x, knows, y));
         Set<Solution> actual = new HashSet<>();
         try (Results results = new EndpointIteratorResults(singleton(rdf1).iterator(), query)) {
             assertEquals(results.getReadyCount(), 0);
@@ -91,26 +79,26 @@ public class EndpointIteratorResultsTest {
             assertEquals(results.getReadyCount(), 1);
             results.forEachRemaining(actual::add);
         }
-        assertEquals(actual, singleton(MapSolution.builder().put(X, ALICE).put(Y, BOB).build()));
+        assertEquals(actual, singleton(MapSolution.builder().put(x, Alice).put(y, Bob).build()));
     }
 
 
     @Test
     public void testEmptyEndpointsInBetween() {
-        CQuery qry = CQuery.from(new Triple(X, knows, BOB));
+        CQuery qry = CQuery.from(new Triple(x, knows, Bob));
         Set<Solution> actual = new HashSet<>();
         try (Results results = new EndpointIteratorResults(asList(e1, rdf2, e2).iterator(), qry)) {
             assertEquals(results.getReadyCount(), 0);
             results.forEachRemaining(actual::add);
             assertEquals(results.getCardinality(), Cardinality.EMPTY);
         }
-        assertEquals(actual, Sets.newHashSet(MapSolution.build(X, ALICE),
-                                             MapSolution.build(X, DAVE)));
+        assertEquals(actual, Sets.newHashSet(MapSolution.build(x, Alice),
+                                             MapSolution.build(x, Dave)));
     }
 
     @Test
     public void testAllEndpoints() {
-        CQuery query = CQuery.from(new Triple(X, knows, BOB));
+        CQuery query = CQuery.from(new Triple(x, knows, Bob));
         List<CQEndpoint> eps = asList(e1, rdf2, e2, rdf1);
         try (Results results = new EndpointIteratorResults(eps.iterator(), query)) {
             assertEquals(results.getReadyCount(), 0);
@@ -118,10 +106,10 @@ public class EndpointIteratorResultsTest {
             Set<Solution> set = new HashSet<>();
             set.add(results.next());
             set.add(results.next());
-            assertEquals(set, Sets.newHashSet(MapSolution.build(X, ALICE),
-                                              MapSolution.build(X, DAVE)));
+            assertEquals(set, Sets.newHashSet(MapSolution.build(x, Alice),
+                                              MapSolution.build(x, Dave)));
             assertTrue(results.hasNext());
-            assertEquals(results.next(), MapSolution.build(X, ALICE));
+            assertEquals(results.next(), MapSolution.build(x, Alice));
             assertFalse(results.hasNext());
             assertEquals(results.getCardinality(), Cardinality.EMPTY);
         }
@@ -129,7 +117,7 @@ public class EndpointIteratorResultsTest {
 
     @Test
     public void testBadProjection() {
-        CQuery query = CQuery.from(new Triple(X, knows, BOB));
+        CQuery query = CQuery.from(new Triple(x, knows, Bob));
         HashSet<String> xy = Sets.newHashSet("x", "y");
         expectThrows(IllegalArgumentException.class,
                 () -> new EndpointIteratorResults(emptyIterator(), query, xy, true));
@@ -138,7 +126,7 @@ public class EndpointIteratorResultsTest {
 
     @Test
     public void testDeclareProjectionNotProjecting() {
-        CQuery query = CQuery.from(new Triple(X, knows, Y));
+        CQuery query = CQuery.from(new Triple(x, knows, y));
         HashSet<String> xy = Sets.newHashSet("x", "y");
         expectThrows(IllegalArgumentException.class,
                 () -> new EndpointIteratorResults(emptyIterator(), query, xy, true));
@@ -146,7 +134,7 @@ public class EndpointIteratorResultsTest {
 
     @Test
     public void testProjectNotDeclaring() {
-        CQuery query = CQuery.from(new Triple(X, knows, Y));
+        CQuery query = CQuery.from(new Triple(x, knows, y));
         Set<String> x = singleton("x");
         expectThrows(IllegalArgumentException.class,
                 () -> new EndpointIteratorResults(emptyIterator(), query, x, false));
@@ -154,19 +142,19 @@ public class EndpointIteratorResultsTest {
 
     @Test
     public void testProject() {
-        CQuery query = CQuery.from(new Triple(X, knows, Y));
+        CQuery query = CQuery.from(new Triple(x, knows, y));
         Iterator<CQEndpoint> iterator = asList(rdf1, e1, rdf2).iterator();
         Set<String> x = singleton("x");
         try (Results results = new EndpointIteratorResults(iterator, query, x, true)) {
             assertTrue(results.hasNext());
-            assertEquals(results.next(), MapSolution.build(X, ALICE));
+            assertEquals(results.next(), MapSolution.build(EndpointIteratorResultsTest.x, Alice));
             assertTrue(results.hasNext());
 
             Set<Solution> set = new HashSet<>();
             set.add(results.next());
             set.add(results.next());
-            assertEquals(set, Sets.newHashSet(MapSolution.build(X, ALICE),
-                                              MapSolution.build(X, DAVE)));
+            assertEquals(set, Sets.newHashSet(MapSolution.build(EndpointIteratorResultsTest.x, Alice),
+                                              MapSolution.build(EndpointIteratorResultsTest.x, Dave)));
             assertFalse(results.hasNext());
         }
     }

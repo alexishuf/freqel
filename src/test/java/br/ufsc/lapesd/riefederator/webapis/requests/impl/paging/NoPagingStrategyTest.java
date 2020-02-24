@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.impl.paging;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
@@ -24,8 +25,7 @@ import java.util.Collections;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.testng.Assert.*;
 
-public class NoPagingStrategyTest extends JerseyTestNg.ContainerPerClassTest {
-    private static final StdURI ALICE = new StdURI("http://example.org/Alice");
+public class NoPagingStrategyTest extends JerseyTestNg.ContainerPerClassTest implements TestContext {
 
     @Path("/")
     public static class Service {
@@ -71,9 +71,9 @@ public class NoPagingStrategyTest extends JerseyTestNg.ContainerPerClassTest {
         PagingStrategy.Pager pager = new NoPagingStrategy().createPager();
         assertFalse(pager.atEnd());
 
-        Solution original = MapSolution.build("x", ALICE);
+        Solution original = MapSolution.build("x", Alice);
         Solution copy = pager.apply(original);
-        assertEquals(copy, MapSolution.build("x", ALICE));
+        assertEquals(copy, MapSolution.build("x", Alice));
         assertFalse(pager.atEnd());
 
         Response response = target("/square/3").request(APPLICATION_JSON).get();

@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.ArbitraryJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.GreedyJoinOrderPlanner;
@@ -21,7 +22,6 @@ import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
-import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -33,6 +33,7 @@ import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMu
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.isAcyclic;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static com.google.common.collect.Collections2.permutations;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -40,36 +41,11 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
-public class PlannerTest {
-    public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
-    public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
-    public static final @Nonnull StdURI knows = new StdURI(FOAF.knows.getURI());
-    public static final @Nonnull StdURI name = new StdURI(FOAF.name.getURI());
-    public static final @Nonnull StdURI manages = new StdURI("http://example.org/manages");
-    public static final @Nonnull StdURI title = new StdURI("http://example.org/title");
-    public static final @Nonnull StdURI genre = new StdURI("http://example.org/genre");
-    public static final @Nonnull StdURI author = new StdURI("http://example.org/author");
-    public static final @Nonnull StdURI genreName = new StdURI("http://example.org/genreName");
+public class PlannerTest implements TestContext {
     public static final @Nonnull StdLit title1 = StdLit.fromEscaped("title 1", "en");
     public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author 1", "en");
-    public static final @Nonnull StdVar x = new StdVar("x");
-    public static final @Nonnull StdVar y = new StdVar("y");
-    public static final @Nonnull StdVar z = new StdVar("z");
-    public static final @Nonnull StdVar u = new StdVar("u");
-    public static final @Nonnull StdVar v = new StdVar("v");
-
-    private static final URI p1 = new StdURI("http://example.org/p1");
-    private static final URI p2 = new StdURI("http://example.org/p2");
-    private static final URI p3 = new StdURI("http://example.org/p3");
-    private static final URI p4 = new StdURI("http://example.org/p4");
-    private static final URI p5 = new StdURI("http://example.org/p5");
-    private static final URI p6 = new StdURI("http://example.org/p6");
-    private static final URI p7 = new StdURI("http://example.org/p7");
-    private static final URI p8 = new StdURI("http://example.org/p8");
-    private static final URI p9 = new StdURI("http://example.org/p9");
 
     private static final URI o3 = new StdURI("http://example.org/o3");
-
     private static final Var a = new StdVar("a");
     private static final Var b = new StdVar("b");
     private static final Var c = new StdVar("c");
@@ -237,13 +213,13 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testEmpty(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        expectThrows(IllegalArgumentException.class, () -> planner.plan(CQuery.from(), emptyList()));
+        expectThrows(IllegalArgumentException.class, () -> planner.plan(createQuery(), emptyList()));
     }
 
     @Test(dataProvider = "suppliersData")
     public void testSingleQuery(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery query = CQuery.from(new Triple(ALICE, knows, x));
+        CQuery query = createQuery(Alice, knows, x);
         QueryNode queryNode = new QueryNode(empty1, query);
         PlanNode node = planner.plan(query, singleton(queryNode));
         assertSame(node, queryNode);
@@ -253,7 +229,7 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testDuplicateQuery(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery query = CQuery.from(new Triple(ALICE, knows, x));
+        CQuery query = createQuery(Alice, knows, x);
         QueryNode node1 = new QueryNode(empty1, query);
         QueryNode node2 = new QueryNode(empty2, query);
         PlanNode root = planner.plan(query, asList(node1, node2));
@@ -268,7 +244,7 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testSingleJoin(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery query = CQuery.from(new Triple(ALICE, knows, x),
+        CQuery query = CQuery.from(new Triple(Alice, knows, x),
                                    new Triple(x, knows, y));
         CQuery q1 = CQuery.from(query.get(0));
         CQuery q2 = CQuery.from(query.get(1));
@@ -291,7 +267,7 @@ public class PlannerTest {
     public void testDoNotJoinSameVarsDifferentQueries(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(
-                new Triple(x, knows, ALICE), new Triple(x, knows, y), new Triple(x, manages, y)
+                new Triple(x, knows, Alice), new Triple(x, knows, y), new Triple(x, manages, y)
         );
         CQuery q1 = CQuery.from(query.get(0), query.get(1));
         CQuery q2 = CQuery.from(query.get(2));
@@ -309,7 +285,7 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void testCartesianProduct(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        CQuery query = CQuery.from(new Triple(ALICE, knows, x), new Triple(y, knows, BOB));
+        CQuery query = CQuery.from(new Triple(Alice, knows, x), new Triple(y, knows, Bob));
         CQuery q1 = CQuery.from(query.get(0));
         CQuery q2 = CQuery.from(query.get(1));
         QueryNode node1 = new QueryNode(empty1, q1), node2 = new QueryNode(empty1, q2);
@@ -331,9 +307,9 @@ public class PlannerTest {
     public void testLargeTree(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(
-                new Triple(ALICE, knows, x),
+                new Triple(Alice, knows, x),
                 new Triple(x, knows, y),
-                new Triple(ALICE, knows, u),
+                new Triple(Alice, knows, u),
                 new Triple(u, knows, v)
         );
         CQuery q1 = CQuery.from(query.get(0));
@@ -404,9 +380,9 @@ public class PlannerTest {
         Set<CQuery> queries = streamPreOrder(root).filter(n -> n instanceof QueryNode)
                 .map(n -> ((QueryNode) n).getQuery()).collect(toSet());
         HashSet<CQuery> expectedQueries = Sets.newHashSet(
-                CQuery.from(new Triple(x, title, title1)),
-                CQuery.from(new Triple(x, genre, y)),
-                CQuery.from(new Triple(y, genreName, z))
+                createQuery(x, title, title1),
+                createQuery(x, genre, y),
+                createQuery(y, genreName, z)
         );
         assertEquals(queries, expectedQueries);
         assertPlanAnswers(root, query);
@@ -451,7 +427,7 @@ public class PlannerTest {
     @Test(dataProvider = "suppliersData")
     public void booksByAuthorWithIncompatibleService(Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        QueryNode q1 = new QueryNode(empty1, CQuery.from(new Triple(y, name, author1)));
+        QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
         QueryNode q2 = new QueryNode(empty2, CQuery.with(new Triple(x, author, y))
                 .annotate(x, AtomAnnotation.asRequired(Book))
                 .annotate(y, AtomAnnotation.of(Person)).build());
@@ -471,7 +447,7 @@ public class PlannerTest {
         CQEndpoint e2 = markAsAlternatives ? empty3a : empty2;
         CQEndpoint e3 = markAsAlternatives ? empty3b : empty4;
 
-        QueryNode q1 = new QueryNode(empty1, CQuery.from(new Triple(y, name, author1)));
+        QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
         QueryNode q2 = new QueryNode(e2, CQuery.with(new Triple(x, author, y))
                 .annotate(x, AtomAnnotation.asRequired(Book))
                 .annotate(y, AtomAnnotation.of(Person)).build());
@@ -518,28 +494,28 @@ public class PlannerTest {
 
         public TwoServicePathsNodes(@Nonnull CQEndpoint epFromAlice,
                                     @Nonnull CQEndpoint epFromBob) {
-            query = CQuery.from(new Triple(ALICE, knows, x),
+            query = CQuery.from(new Triple(Alice, knows, x),
                                 new Triple(x, knows, y),
-                                new Triple(y, knows, BOB));
-            q1 = new QueryNode(epFromAlice, CQuery.with(new Triple(ALICE, knows, x))
-                    .annotate(ALICE, AtomAnnotation.asRequired(Person))
+                                new Triple(y, knows, Bob));
+            q1 = new QueryNode(epFromAlice, CQuery.with(new Triple(Alice, knows, x))
+                    .annotate(Alice, AtomAnnotation.asRequired(Person))
                     .annotate(x, AtomAnnotation.of(KnownPerson)).build());
             q2 = new QueryNode(epFromAlice, CQuery.with(new Triple(x, knows, y))
                     .annotate(x, AtomAnnotation.asRequired(Person))
                     .annotate(y, AtomAnnotation.of(KnownPerson)).build());
-            q3 = new QueryNode(epFromAlice, CQuery.with(new Triple(y, knows, BOB))
+            q3 = new QueryNode(epFromAlice, CQuery.with(new Triple(y, knows, Bob))
                     .annotate(y, AtomAnnotation.asRequired(Person))
-                    .annotate(BOB, AtomAnnotation.of(KnownPerson)).build());
+                    .annotate(Bob, AtomAnnotation.of(KnownPerson)).build());
 
-            p1 = new QueryNode(epFromBob, CQuery.with(new Triple(ALICE, knows, x))
-                    .annotate(ALICE, AtomAnnotation.of(Person))
+            p1 = new QueryNode(epFromBob, CQuery.with(new Triple(Alice, knows, x))
+                    .annotate(Alice, AtomAnnotation.of(Person))
                     .annotate(x, AtomAnnotation.asRequired(KnownPerson)).build());
             p2 = new QueryNode(epFromBob, CQuery.with(new Triple(x, knows, y))
                     .annotate(x, AtomAnnotation.of(Person))
                     .annotate(y, AtomAnnotation.asRequired(KnownPerson)).build());
-            p3 = new QueryNode(epFromBob, CQuery.with(new Triple(y, knows, BOB))
+            p3 = new QueryNode(epFromBob, CQuery.with(new Triple(y, knows, Bob))
                     .annotate(y, AtomAnnotation.of(Person))
-                    .annotate(BOB, AtomAnnotation.asRequired(KnownPerson)).build());
+                    .annotate(Bob, AtomAnnotation.asRequired(KnownPerson)).build());
             all = asList(q1, q2, q3, p1, p2, p3);
             fromAlice  = asList(q1, q2, q3);
             fromAlice2 = asList(q1, q2, p3);

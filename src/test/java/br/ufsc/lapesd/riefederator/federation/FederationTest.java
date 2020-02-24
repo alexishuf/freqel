@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.AskDescription;
 import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
@@ -23,7 +24,6 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Res;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Results;
 import br.ufsc.lapesd.riefederator.query.Solution;
@@ -40,9 +40,7 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDF;
-import org.apache.jena.vocabulary.XSD;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.uri.UriTemplate;
@@ -72,27 +70,12 @@ import static org.apache.jena.rdf.model.ResourceFactory.createResource;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-public class FederationTest extends JerseyTestNg.ContainerPerClassTest {
-    public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
-    public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
-    public static final @Nonnull StdURI DAVE = new StdURI("http://example.org/Dave");
-    public static final @Nonnull StdURI type = new StdURI(RDF.type.getURI());
-    public static final @Nonnull StdURI knows = new StdURI(FOAF.knows.getURI());
-    public static final @Nonnull StdURI age = new StdURI(FOAF.age.getURI());
-    public static final @Nonnull StdURI author = new StdURI("http://example.org/author");
-    public static final @Nonnull StdURI name = new StdURI("http://example.org/name");
-    public static final @Nonnull StdURI title = new StdURI("http://example.org/title");
-    public static final @Nonnull StdURI genre = new StdURI("http://example.org/genre");
-    public static final @Nonnull StdURI genreName = new StdURI("http://example.org/genreName");
+public class FederationTest extends JerseyTestNg.ContainerPerClassTest implements TestContext {
     public static final @Nonnull StdLit title1 = StdLit.fromUnescaped("title 1", "en");
     public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author1", "en");
     public static final @Nonnull StdLit genre1 = StdLit.fromUnescaped("genre1", "en");
-    public static final @Nonnull StdLit i23 = StdLit.fromUnescaped("23", new StdURI(XSD.xint.getURI()));
-    public static final @Nonnull StdLit i25 = StdLit.fromUnescaped("25", new StdURI(XSD.xint.getURI()));
-    public static final @Nonnull StdVar X = new StdVar("x");
-    public static final @Nonnull StdVar Y = new StdVar("y");
-    public static final @Nonnull StdVar Z = new StdVar("z");
-    public static final @Nonnull StdVar W = new StdVar("w");
+    public static final @Nonnull StdLit i23 = StdLit.fromUnescaped("23", xsdInt);
+    public static final @Nonnull StdLit i25 = StdLit.fromUnescaped("25", xsdInt);
 
     private static @Nonnull StdURI ex(@Nonnull String local) {
         return new StdURI("http://example.org/"+local);
@@ -144,7 +127,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest {
             Model out = ModelFactory.createDefaultModel();
             ARQEndpoint src = createEndpoint(file);
             Resource subj = createResource(uri);
-            try (Results results = src.query(CQuery.from(new Triple(fromJena(subj), X, Y)))) {
+            try (Results results = src.query(CQuery.from(new Triple(fromJena(subj), x, y)))) {
                 while (results.hasNext()) {
                     Solution solution = results.next();
                     out.add(subj, toJenaProperty(solution.get("x")), toJena(solution.get("y")));
@@ -161,8 +144,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest {
             ARQEndpoint src = createEndpoint(file);
             Resource subj = createResource(uri);
             StdURI pred = new StdURI(predicateUri);
-            try (Results results = src.query(CQuery.from(new Triple(X, Y, Z),
-                                                         new Triple(X, pred, fromJena(subj))))) {
+            try (Results results = src.query(CQuery.from(new Triple(x, y, z),
+                                                         new Triple(x, pred, fromJena(subj))))) {
                 while (results.hasNext()) {
                     Solution s = results.next();
                     out.add(toJena((Res)s.get("x")), toJenaProperty(s.get("y")), toJena(s.get("z")));
@@ -389,90 +372,90 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest {
 
     public static List<List<Object>> singleTripleData() {
         return asList(
-                asList(new SetupSingleEp(), CQuery.from(new Triple(X, knows, BOB)),
-                       newHashSet(MapSolution.build(X, ALICE))),
-                asList(new SetupSingleEp(), CQuery.from(new Triple(X, knows, Y)),
-                       newHashSet(MapSolution.builder().put(X, ALICE).put(Y, BOB).build())),
-                asList(new SetupTwoEps(), CQuery.from(new Triple(X, knows, BOB)),
-                       newHashSet(MapSolution.build(X, ALICE),
-                                  MapSolution.build(X, DAVE))),
-                asList(new SetupTwoEps(), CQuery.from(new Triple(X, knows, BOB)),
-                       newHashSet(MapSolution.build(X, ALICE),
-                                  MapSolution.build(X, DAVE))),
-                asList(new SetupTwoEps(), CQuery.from(new Triple(X, knows, Y)),
-                        newHashSet(MapSolution.builder().put(X, ALICE).put(Y, BOB).build(),
-                                   MapSolution.builder().put(X,  DAVE).put(Y, BOB).build()))
+                asList(new SetupSingleEp(), CQuery.from(new Triple(x, knows, Bob)),
+                       newHashSet(MapSolution.build(x, Alice))),
+                asList(new SetupSingleEp(), CQuery.from(new Triple(x, knows, y)),
+                       newHashSet(MapSolution.builder().put(x, Alice).put(y, Bob).build())),
+                asList(new SetupTwoEps(), CQuery.from(new Triple(x, knows, Bob)),
+                       newHashSet(MapSolution.build(x, Alice),
+                                  MapSolution.build(x, Dave))),
+                asList(new SetupTwoEps(), CQuery.from(new Triple(x, knows, Bob)),
+                       newHashSet(MapSolution.build(x, Alice),
+                                  MapSolution.build(x, Dave))),
+                asList(new SetupTwoEps(), CQuery.from(new Triple(x, knows, y)),
+                        newHashSet(MapSolution.builder().put(x, Alice).put(y, Bob).build(),
+                                   MapSolution.builder().put(x, Dave).put(y, Bob).build()))
         );
     }
 
     public static List<List<Object>> singleEpQueryData() {
         return asList(
                 asList(new SetupSingleEp(),
-                        CQuery.from(asList(new Triple(X, knows, BOB),
-                                           new Triple(X, age, i23))),
-                        newHashSet(MapSolution.build(X, ALICE))),
+                        CQuery.from(asList(new Triple(x, knows, Bob),
+                                           new Triple(x, age, i23))),
+                        newHashSet(MapSolution.build(x, Alice))),
                 asList(new SetupSingleEp(),
-                       CQuery.from(asList(new Triple(X, knows, Y),
-                                          new Triple(X, age, i23))),
-                       newHashSet(MapSolution.builder().put(X, ALICE).put(Y, BOB).build())),
+                       CQuery.from(asList(new Triple(x, knows, y),
+                                          new Triple(x, age, i23))),
+                       newHashSet(MapSolution.builder().put(x, Alice).put(y, Bob).build())),
                 asList(new SetupTwoEps(),
-                        CQuery.from(asList(new Triple(X, knows, BOB),
-                                           new Triple(X, age, i23))),
-                        newHashSet(MapSolution.build(X, ALICE))),
+                        CQuery.from(asList(new Triple(x, knows, Bob),
+                                           new Triple(x, age, i23))),
+                        newHashSet(MapSolution.build(x, Alice))),
                 asList(new SetupTwoEps(),
-                        CQuery.from(asList(new Triple(X, knows, Y),
-                                           new Triple(X, age, i23))),
-                        newHashSet(MapSolution.builder().put(X, ALICE).put(Y, BOB).build())),
+                        CQuery.from(asList(new Triple(x, knows, y),
+                                           new Triple(x, age, i23))),
+                        newHashSet(MapSolution.builder().put(x, Alice).put(y, Bob).build())),
                 asList(new SetupTwoEps(),
-                        CQuery.from(asList(new Triple(X, knows, Y),
-                                           new Triple(X, age, i25))),
-                        newHashSet(MapSolution.builder().put(X, DAVE).put(Y, BOB).build()))
+                        CQuery.from(asList(new Triple(x, knows, y),
+                                           new Triple(x, age, i25))),
+                        newHashSet(MapSolution.builder().put(x, Dave).put(y, Bob).build()))
         );
     }
 
     public static List<List<Object>> crossEpJoinsData() {
         return asList(
                 asList(new SetupBookShop(0),
-                       CQuery.from(asList(new Triple(X, author, Y),
-                                          new Triple(Y, name, author1))),
-                       newHashSet(MapSolution.builder().put(X, ex("books/1"))
-                                                       .put(Y, ex("authors/1")).build())),
+                       CQuery.from(asList(new Triple(x, author, y),
+                                          new Triple(y, nameEx, author1))),
+                       newHashSet(MapSolution.builder().put(x, ex("books/1"))
+                                                       .put(y, ex("authors/1")).build())),
                 asList(new SetupBookShop(0),
-                       CQuery.with(asList(new Triple(X, author, Y),
-                                          new Triple(Y, name, author1))).project(X).build(),
-                        newHashSet(MapSolution.build(X, ex("books/1")))),
+                       CQuery.with(asList(new Triple(x, author, y),
+                                          new Triple(y, nameEx, author1))).project(x).build(),
+                        newHashSet(MapSolution.build(x, ex("books/1")))),
                 asList(new SetupBookShop(0),
-                        CQuery.from(asList(new Triple(X, author, Y),
-                                           new Triple(X, genre, Z),
-                                           new Triple(Y, name, author1),
-                                           new Triple(Z, genreName, genre1))),
-                        newHashSet(MapSolution.builder().put(X, ex("books/1"))
-                                                        .put(Y, ex("authors/1"))
-                                                        .put(Z, ex("genres/1")).build())),
+                        CQuery.from(asList(new Triple(x, author, y),
+                                           new Triple(x, genre, z),
+                                           new Triple(y, nameEx, author1),
+                                           new Triple(z, genreName, genre1))),
+                        newHashSet(MapSolution.builder().put(x, ex("books/1"))
+                                                        .put(y, ex("authors/1"))
+                                                        .put(z, ex("genres/1")).build())),
                 asList(new SetupBookShop(0),
-                        CQuery.with(asList(new Triple(X, author, Y),
-                                           new Triple(X, genre, Z),
-                                           new Triple(Y, name, author1),
-                                           new Triple(Z, genreName, genre1))).project(X).build(),
-                        newHashSet(MapSolution.build(X, ex("books/1")))),
+                        CQuery.with(asList(new Triple(x, author, y),
+                                           new Triple(x, genre, z),
+                                           new Triple(y, nameEx, author1),
+                                           new Triple(z, genreName, genre1))).project(x).build(),
+                        newHashSet(MapSolution.build(x, ex("books/1")))),
                 asList(new SetupBookShop(0),
-                        CQuery.with(asList(new Triple(X, author, Y),
-                                           new Triple(X, genre, Z),
-                                           new Triple(Y, name, author1),
-                                           new Triple(Z, genreName, genre1))).project(Y).build(),
-                        newHashSet(MapSolution.build(Y, ex("authors/1")))),
+                        CQuery.with(asList(new Triple(x, author, y),
+                                           new Triple(x, genre, z),
+                                           new Triple(y, nameEx, author1),
+                                           new Triple(z, genreName, genre1))).project(y).build(),
+                        newHashSet(MapSolution.build(y, ex("authors/1")))),
                 asList(new SetupBookShop(0),
-                       CQuery.from(asList(new Triple(X, title, title1),
-                                          new Triple(X, genre, Y),
-                                          new Triple(Y, genreName, Z))),
-                       newHashSet(MapSolution.builder().put(X, ex("books/1"))
-                                                       .put(Y, ex("genres/1"))
-                                                       .put(Z, genre1).build())),
+                       CQuery.from(asList(new Triple(x, title, title1),
+                                          new Triple(x, genre, y),
+                                          new Triple(y, genreName, z))),
+                       newHashSet(MapSolution.builder().put(x, ex("books/1"))
+                                                       .put(y, ex("genres/1"))
+                                                       .put(z, genre1).build())),
                 asList(new SetupBookShop(0),
-                       CQuery.with(asList(new Triple(X, title, title1),
-                                          new Triple(X, genre, Y),
-                                          new Triple(Y, genreName, Z))).project(X).build(),
-                       newHashSet(MapSolution.build(X, ex("books/1"))))
+                       CQuery.with(asList(new Triple(x, title, title1),
+                                          new Triple(x, genre, y),
+                                          new Triple(y, genreName, z))).project(x).build(),
+                       newHashSet(MapSolution.build(x, ex("books/1"))))
         );
     }
 

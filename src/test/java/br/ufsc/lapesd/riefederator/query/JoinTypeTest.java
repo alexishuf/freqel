@@ -1,10 +1,8 @@
 package br.ufsc.lapesd.riefederator.query;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
-import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
@@ -12,17 +10,11 @@ import javax.annotation.Nonnull;
 import static br.ufsc.lapesd.riefederator.query.JoinType.*;
 import static org.testng.Assert.*;
 
-public class JoinTypeTest {
-    public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
-    public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
-    public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
-    public static final @Nonnull StdVar X = new StdVar("x");
-    public static final @Nonnull StdVar Y = new StdVar("y");
-
-    public static final @Nonnull Triple    BOUND = new Triple(ALICE, KNOWS, BOB);
-    public static final @Nonnull Triple S_TRIPLE = new Triple(X,     KNOWS, BOB);
-    public static final @Nonnull Triple P_TRIPLE = new Triple(ALICE, X,     BOB);
-    public static final @Nonnull Triple O_TRIPLE = new Triple(ALICE, KNOWS, X  );
+public class JoinTypeTest  implements TestContext {
+    public static final @Nonnull Triple    BOUND = new Triple(Alice, knows, Bob);
+    public static final @Nonnull Triple S_TRIPLE = new Triple(x, knows, Bob);
+    public static final @Nonnull Triple P_TRIPLE = new Triple(Alice, x, Bob);
+    public static final @Nonnull Triple O_TRIPLE = new Triple(Alice, knows, x);
 
     protected Term[] forEachSourceAt(@Nonnull JoinType type, @Nonnull Triple triple) {
         Term[] terms = new Term[3];
@@ -38,82 +30,82 @@ public class JoinTypeTest {
 
     @Test
     public void testForEachANY() {
-        assertEquals(forEachSourceAt(ANY, BOUND), new Term[]{ALICE, KNOWS, BOB});
-        assertEquals(forEachSourceAt(ANY, S_TRIPLE), new Term[]{X, KNOWS, BOB});
-        assertEquals(forEachDestinationAt(ANY, BOUND), new Term[]{ALICE, KNOWS, BOB});
-        assertEquals(forEachDestinationAt(ANY, S_TRIPLE), new Term[]{X, KNOWS, BOB});
+        assertEquals(forEachSourceAt(ANY, BOUND), new Term[]{Alice, knows, Bob});
+        assertEquals(forEachSourceAt(ANY, S_TRIPLE), new Term[]{x, knows, Bob});
+        assertEquals(forEachDestinationAt(ANY, BOUND), new Term[]{Alice, knows, Bob});
+        assertEquals(forEachDestinationAt(ANY, S_TRIPLE), new Term[]{x, knows, Bob});
     }
 
     @Test
     public void testForEachVARS() {
         assertEquals(forEachSourceAt(VARS, BOUND), new Term[]{null, null, null});
-        assertEquals(forEachSourceAt(VARS, S_TRIPLE), new Term[]{X, null, null});
-        assertEquals(forEachSourceAt(VARS, P_TRIPLE), new Term[]{null, X, null});
+        assertEquals(forEachSourceAt(VARS, S_TRIPLE), new Term[]{x, null, null});
+        assertEquals(forEachSourceAt(VARS, P_TRIPLE), new Term[]{null, x, null});
         assertEquals(forEachDestinationAt(VARS, BOUND), new Term[]{null, null, null});
-        assertEquals(forEachDestinationAt(VARS, S_TRIPLE), new Term[]{X, null, null});
-        assertEquals(forEachDestinationAt(VARS, P_TRIPLE), new Term[]{null, X, null});
+        assertEquals(forEachDestinationAt(VARS, S_TRIPLE), new Term[]{x, null, null});
+        assertEquals(forEachDestinationAt(VARS, P_TRIPLE), new Term[]{null, x, null});
     }
 
     @Test
     public void testForEachSUBJ_OBJ() {
-        assertEquals(forEachSourceAt(SUBJ_OBJ, BOUND), new Term[]{ALICE, null, null});
-        assertEquals(forEachSourceAt(SUBJ_OBJ, S_TRIPLE), new Term[]{X, null, null});
-        assertEquals(forEachSourceAt(SUBJ_OBJ, O_TRIPLE), new Term[]{ALICE, null, null});
+        assertEquals(forEachSourceAt(SUBJ_OBJ, BOUND), new Term[]{Alice, null, null});
+        assertEquals(forEachSourceAt(SUBJ_OBJ, S_TRIPLE), new Term[]{x, null, null});
+        assertEquals(forEachSourceAt(SUBJ_OBJ, O_TRIPLE), new Term[]{Alice, null, null});
 
-        assertEquals(forEachDestinationAt(SUBJ_OBJ, BOUND), new Term[]{null, null, BOB});
-        assertEquals(forEachDestinationAt(SUBJ_OBJ, S_TRIPLE), new Term[]{null, null, BOB});
-        assertEquals(forEachDestinationAt(SUBJ_OBJ, O_TRIPLE), new Term[]{null, null, X});
+        assertEquals(forEachDestinationAt(SUBJ_OBJ, BOUND), new Term[]{null, null, Bob});
+        assertEquals(forEachDestinationAt(SUBJ_OBJ, S_TRIPLE), new Term[]{null, null, Bob});
+        assertEquals(forEachDestinationAt(SUBJ_OBJ, O_TRIPLE), new Term[]{null, null, x});
     }
 
     @Test
     public void testForEachOBJ_SUBJ() {
-        assertEquals(forEachSourceAt(OBJ_SUBJ, BOUND), new Term[]{null, null, BOB});
-        assertEquals(forEachSourceAt(OBJ_SUBJ, O_TRIPLE), new Term[]{null, null, X});
+        assertEquals(forEachSourceAt(OBJ_SUBJ, BOUND), new Term[]{null, null, Bob});
+        assertEquals(forEachSourceAt(OBJ_SUBJ, O_TRIPLE), new Term[]{null, null, x});
 
-        assertEquals(forEachDestinationAt(OBJ_SUBJ, BOUND), new Term[]{ALICE, null, null});
-        assertEquals(forEachDestinationAt(OBJ_SUBJ, S_TRIPLE), new Term[]{X, null, null});
+        assertEquals(forEachDestinationAt(OBJ_SUBJ, BOUND), new Term[]{Alice, null, null});
+        assertEquals(forEachDestinationAt(OBJ_SUBJ, S_TRIPLE), new Term[]{x, null, null});
     }
 
     @Test
     public void testForEachSUBJ_SUBJ() {
-        assertEquals(forEachSourceAt(SUBJ_SUBJ, BOUND), new Term[]{ALICE, null, null});
-        assertEquals(forEachSourceAt(SUBJ_SUBJ, O_TRIPLE), new Term[]{ALICE, null, null});
-        assertEquals(forEachSourceAt(SUBJ_SUBJ, S_TRIPLE), new Term[]{X, null, null});
-        assertEquals(forEachDestinationAt(SUBJ_SUBJ, BOUND), new Term[]{ALICE, null, null});
-        assertEquals(forEachDestinationAt(SUBJ_SUBJ, O_TRIPLE), new Term[]{ALICE, null, null});
-        assertEquals(forEachDestinationAt(SUBJ_SUBJ, S_TRIPLE), new Term[]{X, null, null});
+        assertEquals(forEachSourceAt(SUBJ_SUBJ, BOUND), new Term[]{Alice, null, null});
+        assertEquals(forEachSourceAt(SUBJ_SUBJ, O_TRIPLE), new Term[]{Alice, null, null});
+        assertEquals(forEachSourceAt(SUBJ_SUBJ, S_TRIPLE), new Term[]{x, null, null});
+        assertEquals(forEachDestinationAt(SUBJ_SUBJ, BOUND), new Term[]{Alice, null, null});
+        assertEquals(forEachDestinationAt(SUBJ_SUBJ, O_TRIPLE), new Term[]{Alice, null, null});
+        assertEquals(forEachDestinationAt(SUBJ_SUBJ, S_TRIPLE), new Term[]{x, null, null});
     }
 
     @Test
     public void testAllowDestination() {
-        assertTrue(ANY.allowDestination(X, S_TRIPLE));
-        assertTrue(ANY.allowDestination(X, O_TRIPLE));
-        assertTrue(ANY.allowDestination(KNOWS, BOUND));
-        assertTrue(VARS.allowDestination(X, S_TRIPLE));
-        assertTrue(VARS.allowDestination(X, P_TRIPLE));
-        assertFalse(VARS.allowDestination(Y, P_TRIPLE));
+        assertTrue(ANY.allowDestination(x, S_TRIPLE));
+        assertTrue(ANY.allowDestination(x, O_TRIPLE));
+        assertTrue(ANY.allowDestination(knows, BOUND));
+        assertTrue(VARS.allowDestination(x, S_TRIPLE));
+        assertTrue(VARS.allowDestination(x, P_TRIPLE));
+        assertFalse(VARS.allowDestination(y, P_TRIPLE));
 
-        expectThrows(IllegalArgumentException.class, () -> VARS.allowDestination(ALICE, BOUND));
-        expectThrows(IllegalArgumentException.class, () -> VARS.allowDestination(KNOWS, S_TRIPLE));
+        expectThrows(IllegalArgumentException.class, () -> VARS.allowDestination(Alice, BOUND));
+        expectThrows(IllegalArgumentException.class, () -> VARS.allowDestination(knows, S_TRIPLE));
 
-        assertTrue(OBJ_SUBJ.allowDestination(ALICE, BOUND));
-        assertFalse(OBJ_SUBJ.allowDestination(BOB,  BOUND));
-        assertFalse(OBJ_SUBJ.allowDestination(X,    BOUND));
+        assertTrue(OBJ_SUBJ.allowDestination(Alice, BOUND));
+        assertFalse(OBJ_SUBJ.allowDestination(Bob,  BOUND));
+        assertFalse(OBJ_SUBJ.allowDestination(x,    BOUND));
     }
 
     @Test
     public void testAllowDestinationValidatingSource() {
-        assertTrue(ANY.allowDestination(ALICE, Triple.Position.SUBJ, BOUND));
-        assertTrue(ANY.allowDestination(X, Triple.Position.OBJ, O_TRIPLE));
+        assertTrue(ANY.allowDestination(Alice, Triple.Position.SUBJ, BOUND));
+        assertTrue(ANY.allowDestination(x, Triple.Position.OBJ, O_TRIPLE));
 
-        assertTrue(VARS.allowDestination(X, Triple.Position.SUBJ, S_TRIPLE));
-        assertTrue(VARS.allowDestination(X, Triple.Position.PRED, P_TRIPLE));
-        assertTrue(VARS.allowDestination(X, Triple.Position.OBJ, S_TRIPLE));
-        assertFalse(VARS.allowDestination(ALICE, Triple.Position.SUBJ, P_TRIPLE));
+        assertTrue(VARS.allowDestination(x, Triple.Position.SUBJ, S_TRIPLE));
+        assertTrue(VARS.allowDestination(x, Triple.Position.PRED, P_TRIPLE));
+        assertTrue(VARS.allowDestination(x, Triple.Position.OBJ, S_TRIPLE));
+        assertFalse(VARS.allowDestination(Alice, Triple.Position.SUBJ, P_TRIPLE));
 
-        assertTrue(OBJ_SUBJ.allowDestination(X, Triple.Position.OBJ, S_TRIPLE));
-        assertFalse(OBJ_SUBJ.allowDestination(X, Triple.Position.SUBJ, S_TRIPLE));
-        assertFalse(OBJ_SUBJ.allowDestination(X, Triple.Position.OBJ, BOUND));
-        assertFalse(OBJ_SUBJ.allowDestination(Y, Triple.Position.OBJ, S_TRIPLE));
+        assertTrue(OBJ_SUBJ.allowDestination(x, Triple.Position.OBJ, S_TRIPLE));
+        assertFalse(OBJ_SUBJ.allowDestination(x, Triple.Position.SUBJ, S_TRIPLE));
+        assertFalse(OBJ_SUBJ.allowDestination(x, Triple.Position.OBJ, BOUND));
+        assertFalse(OBJ_SUBJ.allowDestination(y, Triple.Position.OBJ, S_TRIPLE));
     }
 }

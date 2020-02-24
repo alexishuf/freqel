@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
@@ -8,10 +9,8 @@ import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -40,15 +39,7 @@ import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
-public class GreedyJoinOrderPlannerTest {
-    private static final URI Alice = new StdURI("https://example.org/Alice");
-    private static final URI Bob = new StdURI("https://example.org/Alice");
-    private static final URI p1 = new StdURI("https://example.org/p1");
-    private static final Var x = new StdVar("x");
-    private static final Var y = new StdVar("y");
-    private static final Var z = new StdVar("z");
-    private static final Var w = new StdVar("w");
-    private static final Var u = new StdVar("u");
+public class GreedyJoinOrderPlannerTest implements TestContext {
     private static final Var t = new StdVar("t");
     private static final Var b = new StdVar("b");
     private static final Var k = new StdVar("k");

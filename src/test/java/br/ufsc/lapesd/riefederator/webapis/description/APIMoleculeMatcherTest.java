@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.webapis.description;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.description.Molecule;
@@ -8,10 +9,8 @@ import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
@@ -31,25 +30,14 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.*;
 
-public class APIMoleculeMatcherTest {
+public class APIMoleculeMatcherTest implements TestContext {
     public static final @Nonnull String EX = "http://example.org/";
-    public static final @Nonnull URI title = new StdURI(EX+"title");
-    public static final @Nonnull URI author = new StdURI(EX+"author");
-    public static final @Nonnull URI mainAuthor = new StdURI(EX+"mainAuthor");
-    public static final @Nonnull URI bornIn = new StdURI(EX+"bornIn");
-    public static final @Nonnull URI name = new StdURI(EX+"name");
-    public static final @Nonnull URI cites = new StdURI(EX+"cites");
-    public static final @Nonnull URI authorName = new StdURI(EX+"authorName");
     public static final @Nonnull URI author1 = new StdURI(EX+"authors/1");
     public static final @Nonnull URI city1 = new StdURI(EX+"cities/1");
     public static final @Nonnull Lit title1 = StdLit.fromEscaped("title1", "en");
     public static final @Nonnull Lit title2 = StdLit.fromEscaped("title2", "en");
     public static final @Nonnull Lit crime = StdLit.fromUnescaped("Crime");
     public static final @Nonnull Lit authorName1 = StdLit.fromEscaped("name1", "en");
-    public static final @Nonnull Var X = new StdVar("x");
-    public static final @Nonnull Var Y = new StdVar("y");
-    public static final @Nonnull Var Z = new StdVar("z");
-    public static final @Nonnull Var W = new StdVar("w");
 
     public static final @Nonnull APIMolecule BOOKS_BY_AUTHOR, BOOK_CITATIONS, AM_BOOK_CITATIONS;
     public static final @Nonnull Atom AUTHOR, AUTHOR_NAME, BOOK_TITLE, CITED_BOOK,
@@ -128,101 +116,101 @@ public class APIMoleculeMatcherTest {
     public static Object[][] matchData() {
         List<CQuery> e = emptyList();
         return Stream.of(
-                asList(BOOKS_BY_AUTHOR, singleton(new Triple(X, author, author1)), e),
-                asList(BOOKS_BY_AUTHOR, singleton(new Triple(X, authorName, Y)), e),
-                asList(BOOKS_BY_AUTHOR, singleton(new Triple(X, authorName, authorName1)),
+                asList(BOOKS_BY_AUTHOR, singleton(new Triple(x, author, author1)), e),
+                asList(BOOKS_BY_AUTHOR, singleton(new Triple(x, authorName, y)), e),
+                asList(BOOKS_BY_AUTHOR, singleton(new Triple(x, authorName, authorName1)),
                        singleton(CQuery.builder()
-                               .add(new Triple(X, authorName, authorName1))
-                               .annotate(X, AtomAnnotation.of(AUTHOR))
+                               .add(new Triple(x, authorName, authorName1))
+                               .annotate(x, AtomAnnotation.of(AUTHOR))
                                .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                                .build())),
                 asList(BOOKS_BY_AUTHOR,
-                       asList(new Triple(X, author, Y), new Triple(Y, authorName, authorName1)),
+                       asList(new Triple(x, author, y), new Triple(y, authorName, authorName1)),
                        singleton(CQuery.builder()
-                                .add(new Triple(X, author, Y),
-                                     new Triple(Y, authorName, authorName1))
-                                .annotate(X, AtomAnnotation.of(BOOKS_BY_AUTHOR.getMolecule().getCore()))
-                                .annotate(Y, AtomAnnotation.of(AUTHOR))
+                                .add(new Triple(x, author, y),
+                                     new Triple(y, authorName, authorName1))
+                                .annotate(x, AtomAnnotation.of(BOOKS_BY_AUTHOR.getMolecule().getCore()))
+                                .annotate(y, AtomAnnotation.of(AUTHOR))
                                 .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                                 .build())),
                 asList(BOOKS_BY_AUTHOR,
-                       asList(new Triple(X, bornIn, city1),
-                              new Triple(X, name, Y),
-                              new Triple(Z, author, W),
-                              new Triple(W, authorName, Y)),
-                       singleton(CQuery.with(asList(new Triple(Z, author, W),
-                                                    new Triple(W, authorName, Y)))
-                                       .annotate(Z, AtomAnnotation.of(BOOKS_BY_AUTHOR.getMolecule().getCore()))
-                                       .annotate(W, AtomAnnotation.of(AUTHOR))
-                                       .annotate(Y, AtomAnnotation.asRequired(AUTHOR_NAME))
+                       asList(new Triple(x, bornIn, city1),
+                              new Triple(x, name, y),
+                              new Triple(z, author, w),
+                              new Triple(w, authorName, y)),
+                       singleton(CQuery.with(asList(new Triple(z, author, w),
+                                                    new Triple(w, authorName, y)))
+                                       .annotate(z, AtomAnnotation.of(BOOKS_BY_AUTHOR.getMolecule().getCore()))
+                                       .annotate(w, AtomAnnotation.of(AUTHOR))
+                                       .annotate(y, AtomAnnotation.asRequired(AUTHOR_NAME))
                                        .build()
                                )),
-                asList(BOOK_CITATIONS, singleton(new Triple(X, title, title1)),
-                        singleton(CQuery.with(new Triple(X, title, title1))
-                                .annotate(X, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
+                asList(BOOK_CITATIONS, singleton(new Triple(x, title, title1)),
+                        singleton(CQuery.with(new Triple(x, title, title1))
+                                .annotate(x, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
                                 .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
                                 .build())),
-                asList(BOOK_CITATIONS, asList(new Triple(X, title, title1),
-                                              new Triple(X, cites, Y),
-                                              new Triple(Y, author, author1)),
-                        singleton(CQuery.with(new Triple(X, title, title1),
-                                              new Triple(X, cites, Y),
-                                              new Triple(Y, author, author1))
-                                .annotate(X, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
+                asList(BOOK_CITATIONS, asList(new Triple(x, title, title1),
+                                              new Triple(x, cites, y),
+                                              new Triple(y, author, author1)),
+                        singleton(CQuery.with(new Triple(x, title, title1),
+                                              new Triple(x, cites, y),
+                                              new Triple(y, author, author1))
+                                .annotate(x, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
                                 .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
-                                .annotate(Y, AtomAnnotation.of(CITED_BOOK))
+                                .annotate(y, AtomAnnotation.of(CITED_BOOK))
                                 .annotate(author1, AtomAnnotation.of(AUTHOR))
                                 .build())),
-                asList(BOOK_CITATIONS, asList(new Triple(X, title, title1),
-                                              new Triple(X, cites, Y),
-                                              new Triple(Y, title, Z)),
-                        asList(CQuery.with(new Triple(X, title, title1),
-                                           new Triple(X, cites, Y),
-                                           new Triple(Y, title, Z))
-                                        .annotate(X, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
+                asList(BOOK_CITATIONS, asList(new Triple(x, title, title1),
+                                              new Triple(x, cites, y),
+                                              new Triple(y, title, z)),
+                        asList(CQuery.with(new Triple(x, title, title1),
+                                           new Triple(x, cites, y),
+                                           new Triple(y, title, z))
+                                        .annotate(x, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
                                         .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
-                                        .annotate(Y, AtomAnnotation.of(CITED_BOOK))
-                                        .annotate(Z, AtomAnnotation.of(CITED_BOOK_TITLE))
+                                        .annotate(y, AtomAnnotation.of(CITED_BOOK))
+                                        .annotate(z, AtomAnnotation.of(CITED_BOOK_TITLE))
                                         .build(),
-                               CQuery.with(new Triple(Y, title, Z))
-                                       .annotate(Y, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
-                                       .annotate(Z, AtomAnnotation.asRequired(BOOK_TITLE))
+                               CQuery.with(new Triple(y, title, z))
+                                       .annotate(y, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
+                                       .annotate(z, AtomAnnotation.asRequired(BOOK_TITLE))
                                        .build())),
-                asList(AM_BOOK_CITATIONS, asList(new Triple(X, title, title1),
-                                                 new Triple(X, cites, Y),
-                                                 new Triple(Y, title, title2)),
-                       asList(CQuery.with(new Triple(X, title, title1), new Triple(X, cites, Y))
-                                    .annotate(X, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                asList(AM_BOOK_CITATIONS, asList(new Triple(x, title, title1),
+                                                 new Triple(x, cites, y),
+                                                 new Triple(y, title, title2)),
+                       asList(CQuery.with(new Triple(x, title, title1), new Triple(x, cites, y))
+                                    .annotate(x, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
                                     .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
-                                    .annotate(Y, AtomAnnotation.of(AM_CITED_BOOK)).build(),
-                              CQuery.with(new Triple(X, cites, Y), new Triple(Y, title, title2))
-                                    .annotate(X, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
-                                    .annotate(Y, AtomAnnotation.of(AM_CITED_BOOK))
+                                    .annotate(y, AtomAnnotation.of(AM_CITED_BOOK)).build(),
+                              CQuery.with(new Triple(x, cites, y), new Triple(y, title, title2))
+                                    .annotate(x, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                                    .annotate(y, AtomAnnotation.of(AM_CITED_BOOK))
                                     .annotate(title2, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
-                              CQuery.with(new Triple(X, title, title1))
-                                    .annotate(X, AtomAnnotation.of(AM_CITED_BOOK))
+                              CQuery.with(new Triple(x, title, title1))
+                                    .annotate(x, AtomAnnotation.of(AM_CITED_BOOK))
                                     .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
-                              CQuery.with(new Triple(Y, title, title2))
-                                    .annotate(Y, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                              CQuery.with(new Triple(y, title, title2))
+                                    .annotate(y, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
                                     .annotate(title2, AtomAnnotation.asRequired(BOOK_TITLE)).build()
                        )), // ambiguity does not allow a single EG
-                asList(AM_BOOK_CITATIONS, asList(new Triple(X, title, title1),
-                                                 new Triple(X, cites, Y),
-                                                 new Triple(Y, title, Z)),
-                        asList(CQuery.with(new Triple(X, title, title1), new Triple(X, cites, Y))
-                                        .annotate(X, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                asList(AM_BOOK_CITATIONS, asList(new Triple(x, title, title1),
+                                                 new Triple(x, cites, y),
+                                                 new Triple(y, title, z)),
+                        asList(CQuery.with(new Triple(x, title, title1), new Triple(x, cites, y))
+                                        .annotate(x, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
                                         .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
-                                        .annotate(Y, AtomAnnotation.of(AM_CITED_BOOK)).build(),
-                               CQuery.with(new Triple(X, cites, Y), new Triple(Y, title, Z))
-                                        .annotate(X, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
-                                        .annotate(Y, AtomAnnotation.of(AM_CITED_BOOK))
-                                        .annotate(Z, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
-                               CQuery.with(new Triple(X, title, title1))
-                                        .annotate(X, AtomAnnotation.of(AM_CITED_BOOK))
+                                        .annotate(y, AtomAnnotation.of(AM_CITED_BOOK)).build(),
+                               CQuery.with(new Triple(x, cites, y), new Triple(y, title, z))
+                                        .annotate(x, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                                        .annotate(y, AtomAnnotation.of(AM_CITED_BOOK))
+                                        .annotate(z, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
+                               CQuery.with(new Triple(x, title, title1))
+                                        .annotate(x, AtomAnnotation.of(AM_CITED_BOOK))
                                         .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
-                               CQuery.with(new Triple(Y, title, Z))
-                                        .annotate(Y, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
-                                        .annotate(Z, AtomAnnotation.asRequired(BOOK_TITLE)).build()
+                               CQuery.with(new Triple(y, title, z))
+                                        .annotate(y, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
+                                        .annotate(z, AtomAnnotation.asRequired(BOOK_TITLE)).build()
                         )) // ambiguity does not allow a single EG
         ).map(List::toArray).toArray(Object[][]::new);
     }
@@ -272,76 +260,76 @@ public class APIMoleculeMatcherTest {
             plain.add(filled.toArray());
         }
         List<Object[]> semantic= Stream.of(
-            asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, mainAuthor, Y),
-                                                new Triple(Y, authorName, authorName1)),
-                    singletonList(CQuery.with(new Triple(X, mainAuthor, Y),
-                                         new Triple(Y, authorName, authorName1))
-                           .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
-                           .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+            asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(x, mainAuthor, y),
+                                                new Triple(y, authorName, authorName1)),
+                    singletonList(CQuery.with(new Triple(x, mainAuthor, y),
+                                         new Triple(y, authorName, authorName1))
+                           .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                           .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                            .build()),
                     singletonList(null)),
-            asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, author, Y),
-                                                new Triple(Y, authorName, authorName1)),
-                    singletonList(CQuery.with(new Triple(X, author, Y),
-                                              new Triple(Y, authorName, authorName1))
-                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
-                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+            asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(x, author, y),
+                                                new Triple(y, authorName, authorName1)),
+                    singletonList(CQuery.with(new Triple(x, author, y),
+                                              new Triple(y, authorName, authorName1))
+                            .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                             .build()),
-                    singletonList(singleton(CQuery.with(new Triple(X, mainAuthor, Y),
-                                                        new Triple(Y, authorName, authorName1))
-                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
-                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+                    singletonList(singleton(CQuery.with(new Triple(x, mainAuthor, y),
+                                                        new Triple(y, authorName, authorName1))
+                            .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
-                            .annotate(new Triple(X, mainAuthor, Y),
-                                      new MatchAnnotation(new Triple(X, author, Y)))
+                            .annotate(new Triple(x, mainAuthor, y),
+                                      new MatchAnnotation(new Triple(x, author, y)))
                             .build()))),
-            asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, title,  Z),
-                                                new Triple(X, author, Y),
-                                                new Triple(Y, authorName, authorName1)),
-                    singletonList(CQuery.with(new Triple(X, title,  Z),
-                                              new Triple(X, author, Y),
-                                              new Triple(Y, authorName, authorName1))
-                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
-                            .annotate(Z, AtomAnnotation.of(BOOK_TITLE))
-                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+            asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(x, title, z),
+                                                new Triple(x, author, y),
+                                                new Triple(y, authorName, authorName1)),
+                    singletonList(CQuery.with(new Triple(x, title, z),
+                                              new Triple(x, author, y),
+                                              new Triple(y, authorName, authorName1))
+                            .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(z, AtomAnnotation.of(BOOK_TITLE))
+                            .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                             .build()),
-                    singletonList(singleton(CQuery.with(new Triple(X, title,  Z),
-                                                        new Triple(X, mainAuthor, Y),
-                                                        new Triple(Y, authorName, authorName1))
-                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
-                            .annotate(Z, AtomAnnotation.of(BOOK_TITLE))
-                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+                    singletonList(singleton(CQuery.with(new Triple(x, title, z),
+                                                        new Triple(x, mainAuthor, y),
+                                                        new Triple(y, authorName, authorName1))
+                            .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                            .annotate(z, AtomAnnotation.of(BOOK_TITLE))
+                            .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
-                            .annotate(new Triple(X, mainAuthor, Y),
-                                      new MatchAnnotation(new Triple(X, author, Y)))
+                            .annotate(new Triple(x, mainAuthor, y),
+                                      new MatchAnnotation(new Triple(x, author, y)))
                             .build()))),
-            asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(X, title,  title1),
-                                                new Triple(X, author, Y),
-                                                new Triple(Y, authorName, authorName1)),
-                    singletonList(CQuery.with(new Triple(X, title,  title1),
-                                          new Triple(X, author, Y),
-                                          new Triple(Y, authorName, authorName1))
-                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+            asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(x, title,  title1),
+                                                new Triple(x, author, y),
+                                                new Triple(y, authorName, authorName1)),
+                    singletonList(CQuery.with(new Triple(x, title,  title1),
+                                          new Triple(x, author, y),
+                                          new Triple(y, authorName, authorName1))
+                            .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(title1, AtomAnnotation.of(BOOK_TITLE))
-                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+                            .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
                             .build()),
-                    singletonList(singleton(CQuery.with(new Triple(X, title,  title1),
-                                                        new Triple(X, mainAuthor, Y),
-                                                        new Triple(Y, authorName, authorName1))
-                            .annotate(X, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
+                    singletonList(singleton(CQuery.with(new Triple(x, title,  title1),
+                                                        new Triple(x, mainAuthor, y),
+                                                        new Triple(y, authorName, authorName1))
+                            .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(title1, AtomAnnotation.of(BOOK_TITLE))
-                            .annotate(Y, AtomAnnotation.of(MAIN_AUTHOR))
+                            .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
                             .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
-                            .annotate(new Triple(X, mainAuthor, Y),
-                                      new MatchAnnotation(new Triple(X, author, Y)))
+                            .annotate(new Triple(x, mainAuthor, y),
+                                      new MatchAnnotation(new Triple(x, author, y)))
                             .build()))),
-            asList(BOOKS_BY_MAIN_AUTHOR, singleton(new Triple(X, author, author1)),
+            asList(BOOKS_BY_MAIN_AUTHOR, singleton(new Triple(x, author, author1)),
                    emptyList(), emptyList()),
-            asList(BOOKS_BY_MAIN_AUTHOR, singleton(new Triple(X, author, Y)),
+            asList(BOOKS_BY_MAIN_AUTHOR, singleton(new Triple(x, author, y)),
                    emptyList(), emptyList())
         ).map(List::toArray).collect(Collectors.toList());
         return Stream.concat(plain.stream(), semantic.stream()).toArray(Object[][]::new);
@@ -394,26 +382,26 @@ public class APIMoleculeMatcherTest {
 
     @Test
     public void testPreservePureDescriptiveAnnotationInFullMatch() {
-        Triple hasTitle = new Triple(X, title, crime);
+        Triple hasTitle = new Triple(x, title, crime);
         CQuery query = CQuery.with(hasTitle,
-                                   new Triple(X, author, Y),
-                                   new Triple(Y, authorName, authorName1))
+                                   new Triple(x, author, y),
+                                   new Triple(y, authorName, authorName1))
                              .annotate(hasTitle, PureDescriptive.INSTANCE).build();
-        CQuery eg = preservePureDescriptiveAnnotationTest(query, new Triple(X, title, crime));
+        CQuery eg = preservePureDescriptiveAnnotationTest(query, new Triple(x, title, crime));
         assertEquals(eg.getSet(), query.getSet());
     }
 
     @Test
     public void testPreservePureDescriptiveAnnotationInPartialMatch() {
-        Triple hasTitle = new Triple(X, title, crime);
-        CQuery query = CQuery.with(hasTitle, new Triple(X, author, Y),
-                                             new Triple(X, cites, Z),
-                                             new Triple(Y, authorName, authorName1))
+        Triple hasTitle = new Triple(x, title, crime);
+        CQuery query = CQuery.with(hasTitle, new Triple(x, author, y),
+                                             new Triple(x, cites, z),
+                                             new Triple(y, authorName, authorName1))
                 .annotate(hasTitle, PureDescriptive.INSTANCE).build();
-        CQuery eg = preservePureDescriptiveAnnotationTest(query, new Triple(X, title, crime));
+        CQuery eg = preservePureDescriptiveAnnotationTest(query, new Triple(x, title, crime));
         assertEquals(eg.getSet(),
-                     Sets.newHashSet(hasTitle, new Triple(X, author, Y),
-                                               new Triple(Y, authorName, authorName1)));
+                     Sets.newHashSet(hasTitle, new Triple(x, author, y),
+                                               new Triple(y, authorName, authorName1)));
     }
 
     @Test
@@ -424,10 +412,10 @@ public class APIMoleculeMatcherTest {
         reasoner.load(tboxSpec);
 
         APIMoleculeMatcher matcher = new APIMoleculeMatcher(BOOKS_BY_MAIN_AUTHOR, reasoner);
-        Triple hasTitle = new Triple(X, title, crime);
-        Triple hasAuthor = new Triple(X, author, Y);
-        Triple hasCited = new Triple(X, cites, Z);
-        Triple hasName = new Triple(Y, authorName, authorName1);
+        Triple hasTitle = new Triple(x, title, crime);
+        Triple hasAuthor = new Triple(x, author, y);
+        Triple hasCited = new Triple(x, cites, z);
+        Triple hasName = new Triple(y, authorName, authorName1);
         CQuery query = CQuery.with(hasTitle, hasAuthor, hasCited, hasName)
                              .annotate(hasTitle, PureDescriptive.INSTANCE).build();
 

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinComponent;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
@@ -8,10 +9,6 @@ import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
@@ -31,6 +28,7 @@ import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.util.IndexedSet.fromDistinctCopy;
 import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static com.google.common.collect.Collections2.permutations;
@@ -42,18 +40,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 @SuppressWarnings("UnstableApiUsage")
-public class JoinPathsPlannerTest {
-    private static final URI Alice = new StdURI("http://example.org/Alice");
-    private static final URI Bob = new StdURI("http://example.org/Bob");
-    private static final URI p1 = new StdURI("http://example.org/p1");
-    private static final URI p2 = new StdURI("http://example.org/p2");
-    private static final URI p3 = new StdURI("http://example.org/p3");
-    private static final URI p4 = new StdURI("http://example.org/p4");
-    private static final URI knows = new StdURI("http://example.org/knows");
-    private static final Var x = new StdVar("x");
-    private static final Var y = new StdVar("y");
-    private static final Var z = new StdVar("z");
-
+public class JoinPathsPlannerTest implements TestContext {
     private static final Atom Person = new Atom("Person"), Atom1 = new Atom("Atom1");
 
     private static final EmptyEndpoint e1 = new EmptyEndpoint(), e1a = new EmptyEndpoint(),
@@ -79,16 +66,6 @@ public class JoinPathsPlannerTest {
         Preconditions.checkArgument(Arrays.stream(nodes).allMatch(Objects::nonNull));
         return MultiQueryNode.builder().addAll(stream(nodes).collect(toList())).build();
     }
-
-//    private boolean isBroken(@Nonnull List<JoinInfo> path) {
-//        JoinInfo last = null;
-//        for (JoinInfo info : path) {
-//            if (last != null && !info.isLinkedTo(last))
-//                return true;
-//            last = info;
-//        }
-//        return false;
-//    }
 
     @DataProvider
     public static Object[][] pathEqualsData() {
@@ -308,21 +285,20 @@ public class JoinPathsPlannerTest {
                 asList(n1, n2, n3, n4, n5, n6, n1i, n2i, n4i, n5i, n1j, n2j, n5j, m1i));
 
         return Stream.of(
-                asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y)),
+                asList(createQuery(Alice, p1, x, x, p1, y),
                         asList(n1, n2),
                         singleton(new JoinComponent(nodes, n1, n2))),
-                asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y)),
+                asList(createQuery(Alice, p1, x, x, p1, y),
                         singletonList(n3),
                         singleton(new JoinComponent(nodes, n3))),
-                asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y)),
+                asList(createQuery(Alice, p1, x, x, p1, y),
                         asList(n1, n2, n3),
                         asList(new JoinComponent(nodes, n1, n2),
                                new JoinComponent(nodes, n3))),
 
                 // n1 -> n2 --> n4
                 //          +-> n4i
-                asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
-                                   new Triple(y, p1, Bob)),
+                asList(createQuery(Alice, p1, x, x, p1, y, y, p1, Bob),
                         asList(n1, n2, n4, n4i),
                         asList(new JoinComponent(nodes, n1, n2, n4),
                                new JoinComponent(nodes, n1, n2, n4i))),
@@ -331,8 +307,8 @@ public class JoinPathsPlannerTest {
                 //     |         +--> n4 --+
                 //     +-> n2i --+         +--> n5i
                 //
-                asList(CQuery.from(new Triple(Alice, p1, x  ), new Triple(x, p1, y  ),
-                                   new Triple(y,     p1, Bob), new Triple(y, p2, Bob)),
+                asList(createQuery(Alice, p1, x   , x, p1, y  ,
+                                   y,     p1, Bob , y, p2, Bob),
                         asList(m1i, n2, n4, n5, n2i, n5i),
                         asList(new JoinComponent(nodes, m1i, n2, n4, n5),
                                new JoinComponent(nodes, m1i, n2, n4, n5i),
@@ -345,8 +321,8 @@ public class JoinPathsPlannerTest {
                 //   +-----+     +--> n4 <--+
                 //   v           |          |
                 // n1i -> n2i  --+          +--> n5i
-                asList(CQuery.from(new Triple(Alice, p1, x  ), new Triple(x, p1, y  ),
-                                   new Triple(y,     p1, Bob), new Triple(y, p2, Bob)),
+                asList(createQuery(Alice, p1, x  , x, p1, y  ,
+                                   y,     p1, Bob, y, p2, Bob),
                         asList(n1j, n2j, n4, n5j, n1i, n2i, n5i),
                         asList(new JoinComponent(nodes, n1i, n2i, n4, n5i),
                                new JoinComponent(nodes, n1i, n2i, n4, n5j),
@@ -362,8 +338,7 @@ public class JoinPathsPlannerTest {
                 //  |      |      |
                 //  v      v      v
                 // n1 <-> n2 <-> n6
-                asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
-                                   new Triple(y, p2, x)),
+                asList(createQuery(Alice, p1, x, x, p1, y, y, p2, x),
                        asList(n1, n2, n6),
                        singletonList(new JoinComponent(nodes, n1, n2, n6))),
 
@@ -371,8 +346,7 @@ public class JoinPathsPlannerTest {
                 //  |      |      |
                 //  v      v      |
                 // n1j <- n2j <- n6
-                asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
-                        new Triple(y, p2, x)),
+                asList(createQuery(Alice, p1, x, x, p1, y, y, p2, x),
                         asList(n1j, n2j, n6),
                         singletonList(new JoinComponent(nodes, n1j, n2j, n6))),
 
@@ -381,16 +355,14 @@ public class JoinPathsPlannerTest {
                 //  |      |      ||
                 //  v      v      v|
                 // n1i -> n2i -> n6i
-                asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
-                        new Triple(y, p2, x)),
+                asList(createQuery(Alice, p1, x, x, p1, y, y, p2, x),
                         asList(n1i, n2i, n6),
                         singletonList(new JoinComponent(nodes, n1i, n2i, n6))),
 
                 //          +----n5j
                 //          v
                 //  n1j <- n2 -> n5i
-                asList(CQuery.from(new Triple(Alice, p1, x), new Triple(x, p1, y),
-                                   new Triple(y, p2, Bob)),
+                asList(createQuery(Alice, p1, x, x, p1, y, y, p2, Bob),
                        asList(n1j, n2, n5i, n5j),
                        asList(new JoinComponent(nodes, n2, n1j, n5i),
                               new JoinComponent(nodes, n5j, n2, n1j)))

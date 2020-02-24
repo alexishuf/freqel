@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
@@ -18,23 +19,12 @@ import static br.ufsc.lapesd.riefederator.query.TemplateExpander.expandTemplates
 import static java.util.Arrays.asList;
 import static org.testng.Assert.*;
 
-public class TemplateExpanderTest {
-    private static final URI Alice = new StdURI("https://example.org/Alice");
-    private static final URI Bob = new StdURI("https://example.org/Bob");
-    private static final URI p1 = new StdURI("https://example.org/p1");
-    private static final URI p2 = new StdURI("https://example.org/p2");
-    private static final URI p3 = new StdURI("https://example.org/p3");
-
+public class TemplateExpanderTest implements TestContext {
     private static final URI r1 = new StdURI("https://example.org/r1");
 
     private static final URI s1 = new StdURI("https://example.org/s1");
     private static final URI s2 = new StdURI("https://example.org/s2");
     private static final URI s3 = new StdURI("https://example.org/s3");
-
-    private static final Var x = new StdVar("x");
-    private static final Var y = new StdVar("y");
-    private static final Var z = new StdVar("z");
-    private static final Var w = new StdVar("w");
 
     private static final Var tpl3 = new StdVar("tpl3");
     private static final Var tpl4 = new StdVar("tpl4");

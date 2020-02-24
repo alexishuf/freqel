@@ -17,7 +17,6 @@ import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
 public class CartesianResultsTest {
-
     private @Nonnull CollectionResults createResults(int count, String... varNames) {
         return new CollectionResults(createSolutions(count, varNames),
                                      Sets.newHashSet(varNames));

@@ -1,10 +1,9 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
 import org.apache.jena.query.QuerySolutionMap;
 import org.testng.annotations.DataProvider;
@@ -20,11 +19,9 @@ import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJena;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
-public class SolutionTest {
+public class SolutionTest implements TestContext {
     private static final @Nonnull List<NamedSupplier<Solution>> empty;
     private static final @Nonnull List<NamedSupplier<Solution>> nonEmpty;
-    private static final URI ALICE = new StdURI("http://example.org/Alice");
-    private static final URI BOB = new StdURI("http://example.org/Bob");
 
     static {
         empty = new ArrayList<>();
@@ -34,20 +31,20 @@ public class SolutionTest {
         nonEmpty = new ArrayList<>();
         nonEmpty.add(new NamedSupplier<>("MapSolution", () -> {
             MapSolution s = new MapSolution();
-            s.getMap().put("x", ALICE);
+            s.getMap().put("x", Alice);
             return s;
         }));
         nonEmpty.add(new NamedSupplier<>("MapSolution(from map)", () -> {
             HashMap<String, Term> map = new HashMap<>();
-            map.put("x", ALICE);
+            map.put("x", Alice);
             return new MapSolution(map);
         }));
         nonEmpty.add(new NamedSupplier<>("MapSolution(from builder)",
-                () -> MapSolution.builder().put("x", ALICE).build()
+                () -> MapSolution.builder().put("x", Alice).build()
         ));
         nonEmpty.add(new NamedSupplier<>("JenaSolution", () -> {
             QuerySolutionMap m = new QuerySolutionMap();
-            m.add("x", toJena(ALICE));
+            m.add("x", toJena(Alice));
             return new JenaSolution(m);
         }));
     }
@@ -67,8 +64,8 @@ public class SolutionTest {
         Solution s = supplier.get();
         assertFalse(s.has("x"));
         assertFalse(s.has("missing"));
-        assertEquals(s.get("x", ALICE), ALICE);
-        assertEquals(s.get("missing", ALICE), ALICE);
+        assertEquals(s.get("x", Alice), Alice);
+        assertEquals(s.get("missing", Alice), Alice);
         assertNull(s.get("x"));
         assertNull(s.get("missing"));
     }
@@ -76,8 +73,8 @@ public class SolutionTest {
     @Test(dataProvider = "nonEmptyData")
     public void testGet(Supplier<Solution> supplier) {
         Solution s = supplier.get();
-        assertEquals(s.get("x"), ALICE);
-        assertEquals(s.get("missing", BOB), BOB);
+        assertEquals(s.get("x"), Alice);
+        assertEquals(s.get("missing", Bob), Bob);
         assertNull(s.get("missing", null));
         assertNull(s.get("missing"));
     }
@@ -92,27 +89,27 @@ public class SolutionTest {
 
     @Test(dataProvider = "nonEmptyData")
     public void testEquals(Supplier<Solution> supplier) {
-        MapSolution std = MapSolution.build("x", ALICE);
+        MapSolution std = MapSolution.build("x", Alice);
         assertEquals(supplier.get(), std);
     }
 
     @Test(dataProvider = "nonEmptyData")
     public void testNotEquals(Supplier<Solution> supplier) {
-        MapSolution a = MapSolution.build("y", ALICE);
-        MapSolution b = MapSolution.build("x", BOB);
+        MapSolution a = MapSolution.build("y", Alice);
+        MapSolution b = MapSolution.build("x", Bob);
         assertNotEquals(supplier.get(), a);
         assertNotEquals(supplier.get(), b);
     }
 
     @Test(dataProvider = "nonEmptyData")
     public void testNameIsCaseSensitive(Supplier<Solution> supplier) {
-        MapSolution a = MapSolution.build("X", ALICE);
+        MapSolution a = MapSolution.build("X", Alice);
         assertNotEquals(supplier.get(), a);
     }
 
     @Test(dataProvider = "nonEmptyData")
     public void testMoreVarsNotEquals(Supplier<Solution> supplier) {
-        MapSolution a = MapSolution.builder().put("x", ALICE).put("y", BOB).build();
+        MapSolution a = MapSolution.builder().put("x", Alice).put("y", Bob).build();
         assertNotEquals(supplier.get(), a);
     }
 }

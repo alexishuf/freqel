@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.description.Molecule;
@@ -7,12 +8,10 @@ import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import com.google.common.collect.Sets;
-import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -27,16 +26,7 @@ import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
 import static org.testng.Assert.assertEquals;
 
-public class MoleculeMatcherTest {
-    public static @Nonnull StdURI knows = new StdURI(FOAF.knows.getURI());
-    public static @Nonnull StdURI name = new StdURI(FOAF.name.getURI());
-    public static @Nonnull StdURI age = new StdURI(FOAF.age.getURI());
-    public static @Nonnull StdURI primaryTopic = new StdURI(FOAF.primaryTopic.getURI());
-    public static @Nonnull StdURI Alice = new StdURI("http://example.org/Alice");
-    public static @Nonnull StdVar X = new StdVar("x");
-    public static @Nonnull StdVar Y = new StdVar("y");
-    public static @Nonnull StdVar Z = new StdVar("z");
-    public static @Nonnull StdVar W = new StdVar("w");
+public class MoleculeMatcherTest implements TestContext {
 
     /* ~~~ single-atom molecules ~~~ */
 
@@ -182,50 +172,50 @@ public class MoleculeMatcherTest {
     private static List<List<Object>> nonExclusiveMatchData() {
         List<Object> e = emptyList();
         return asList(
-                asList(person1o, singletonList(new Triple(X, name, Y)),
-                                 e, singleton(new Triple(X, name, Y))),
-                asList(person1o, singletonList(new Triple(X, knows, Y)), e, e),
-                asList(person1o, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
-                                 e, singletonList(new Triple(X, name, Y))),
-                asList(person1o, singletonList(new Triple(X, Y, Z)),
-                                 e, singletonList(new Triple(X, Y, Z))),
+                asList(person1o, singletonList(new Triple(x, name, y)),
+                                 e, singleton(new Triple(x, name, y))),
+                asList(person1o, singletonList(new Triple(x, knows, y)), e, e),
+                asList(person1o, asList(new Triple(x, name, y), new Triple(x, age, z)),
+                                 e, singletonList(new Triple(x, name, y))),
+                asList(person1o, singletonList(new Triple(x, y, z)),
+                                 e, singletonList(new Triple(x, y, z))),
                 //ok: neither "name" nor "person1o" is disjoint
-                asList(person1o, singletonList(new Triple(X, name, X)),
-                                   e, singleton(new Triple(X, name, X))),
+                asList(person1o, singletonList(new Triple(x, name, x)),
+                                   e, singleton(new Triple(x, name, x))),
 
-                asList(person2o, singletonList(new Triple(X, name, Y)),
-                                   e, singleton(new Triple(X, name, Y))),
-                asList(person2o, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
-                                 e, newHashSet(new Triple(X, name, Y), new Triple(X, age, Z))),
-                asList(person2o, asList(new Triple(X, knows, Y), new Triple(Y, age, Z)),
-                                   e, singleton(new Triple(Y, age, Z))),
-                asList(person2o, singletonList(new Triple(X, knows, Y)), e, e),
-                asList(person2o, asList(new Triple(X, knows, Y), new Triple(Y, primaryTopic, X)),
+                asList(person2o, singletonList(new Triple(x, name, y)),
+                                   e, singleton(new Triple(x, name, y))),
+                asList(person2o, asList(new Triple(x, name, y), new Triple(x, age, z)),
+                                 e, newHashSet(new Triple(x, name, y), new Triple(x, age, z))),
+                asList(person2o, asList(new Triple(x, knows, y), new Triple(y, age, z)),
+                                   e, singleton(new Triple(y, age, z))),
+                asList(person2o, singletonList(new Triple(x, knows, y)), e, e),
+                asList(person2o, asList(new Triple(x, knows, y), new Triple(y, primaryTopic, x)),
                                  e, e),
-                asList(person2o, singletonList(new Triple(X, Y, Z)),
-                                 e, singletonList(new Triple(X, Y, Z))),
+                asList(person2o, singletonList(new Triple(x, y, z)),
+                                 e, singletonList(new Triple(x, y, z))),
 
                 /* the extra input in person1i2o should not change the person2o results */
-                asList(person1i2o, singletonList(new Triple(X, name, Y)),
-                                   e, singleton(new Triple(X, name, Y))),
-                asList(person1i2o, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
-                                   e, newHashSet(new Triple(X, name, Y), new Triple(X, age, Z))),
-                asList(person1i2o, asList(new Triple(X, knows, Y), new Triple(Y, age, Z)),
-                                   e, singleton(new Triple(Y, age, Z))),
-                asList(person1i2o, singletonList(new Triple(X, knows, Y)), e, e),
-                asList(person1i2o, asList(new Triple(X, knows, Y), new Triple(Y, primaryTopic, X)),
-                                   e, singleton(new Triple(Y, primaryTopic, X))),
-                asList(person1i2o, singletonList(new Triple(X, Y, Z)),
-                                   e, singletonList(new Triple(X, Y, Z))),
+                asList(person1i2o, singletonList(new Triple(x, name, y)),
+                                   e, singleton(new Triple(x, name, y))),
+                asList(person1i2o, asList(new Triple(x, name, y), new Triple(x, age, z)),
+                                   e, newHashSet(new Triple(x, name, y), new Triple(x, age, z))),
+                asList(person1i2o, asList(new Triple(x, knows, y), new Triple(y, age, z)),
+                                   e, singleton(new Triple(y, age, z))),
+                asList(person1i2o, singletonList(new Triple(x, knows, y)), e, e),
+                asList(person1i2o, asList(new Triple(x, knows, y), new Triple(y, primaryTopic, x)),
+                                   e, singleton(new Triple(y, primaryTopic, x))),
+                asList(person1i2o, singletonList(new Triple(x, y, z)),
+                                   e, singletonList(new Triple(x, y, z))),
 
                 /* test matching of the input link in person1i2o */
-                asList(person1i2o, singletonList(new Triple(X, primaryTopic, Y)),
-                                   e, singleton(new Triple(X, primaryTopic, Y))),
-                asList(person1i2o, asList(new Triple(X, primaryTopic, Y), new Triple(X, name, Y)),
-                                   e, newHashSet(new Triple(X, primaryTopic, Y),
-                                                 new Triple(X, name, Y))),
-                asList(person1i2o, asList(new Triple(X, primaryTopic, Y), new Triple(X, knows, Y)),
-                                   e, singleton(new Triple(X, primaryTopic, Y)))
+                asList(person1i2o, singletonList(new Triple(x, primaryTopic, y)),
+                                   e, singleton(new Triple(x, primaryTopic, y))),
+                asList(person1i2o, asList(new Triple(x, primaryTopic, y), new Triple(x, name, y)),
+                                   e, newHashSet(new Triple(x, primaryTopic, y),
+                                                 new Triple(x, name, y))),
+                asList(person1i2o, asList(new Triple(x, primaryTopic, y), new Triple(x, knows, y)),
+                                   e, singleton(new Triple(x, primaryTopic, y)))
         );
     }
 
@@ -261,70 +251,70 @@ public class MoleculeMatcherTest {
     private static List<List<Object>> exclusiveMatchData() {
         List<Object> e = emptyList();
         return asList(
-                asList(person1oe, singletonList(new Triple(X, name, Y)),
-                                  singleton(singleton(new Triple(X, name, Y))), e),
+                asList(person1oe, singletonList(new Triple(x, name, y)),
+                                  singleton(singleton(new Triple(x, name, y))), e),
 
                 // ok bcs neither Atom in the link is disjoint
-                asList(person1oe, singletonList(new Triple(X, name, X)),
-                                  singleton(singleton(new Triple(X, name, X))), e),
+                asList(person1oe, singletonList(new Triple(x, name, x)),
+                                  singleton(singleton(new Triple(x, name, x))), e),
                 // fails bcs foaf:knows is not in the molecule
-                asList(person1oe, singletonList(new Triple(X, knows, Y)), e, e),
+                asList(person1oe, singletonList(new Triple(x, knows, y)), e, e),
                 // fails bcs AGE is not in molecule
-                asList(person1oe, asList(new Triple(X, name, Y), new Triple(X, age, Z)), e, e),
-                asList(person1oe, singletonList(new Triple(X, Y, Z)),
-                                  singleton(singleton(new Triple(X, Y, Z))), e),
+                asList(person1oe, asList(new Triple(x, name, y), new Triple(x, age, z)), e, e),
+                asList(person1oe, singletonList(new Triple(x, y, z)),
+                                  singleton(singleton(new Triple(x, y, z))), e),
 
-                asList(person2oe, singletonList(new Triple(X, name, Y)),
-                                  singleton(singleton(new Triple(X, name, Y))), e),
-                asList(person2oe, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
-                                  singleton(newHashSet(new Triple(X, name, Y),
-                                                       new Triple(X, age, Z))), e),
+                asList(person2oe, singletonList(new Triple(x, name, y)),
+                                  singleton(singleton(new Triple(x, name, y))), e),
+                asList(person2oe, asList(new Triple(x, name, y), new Triple(x, age, z)),
+                                  singleton(newHashSet(new Triple(x, name, y),
+                                                       new Triple(x, age, z))), e),
                 // ok bcs X and Z match independently
-                asList(person2oe, asList(new Triple(X, name, Y), new Triple(Z, age, W)),
-                                  asList(singleton(new Triple(X, name, Y)),
-                                         singleton(new Triple(Z, age, W))), e),
+                asList(person2oe, asList(new Triple(x, name, y), new Triple(z, age, w)),
+                                  asList(singleton(new Triple(x, name, y)),
+                                         singleton(new Triple(z, age, w))), e),
                 // fail bcs Y will not occur in other sources
-                asList(person2oe, asList(new Triple(X, knows, Y), new Triple(Y, age, Z)), e, e),
+                asList(person2oe, asList(new Triple(x, knows, y), new Triple(y, age, z)), e, e),
                 // fail for the same reason as non-exclusive
-                asList(person2oe, singletonList(new Triple(X, knows, Y)), e, e),
-                asList(person2oe, asList(new Triple(X, knows, Y), new Triple(Y, primaryTopic, X)),
+                asList(person2oe, singletonList(new Triple(x, knows, y)), e, e),
+                asList(person2oe, asList(new Triple(x, knows, y), new Triple(y, primaryTopic, x)),
                                   e, e),
-                asList(person2oe, singletonList(new Triple(X, Y, Z)),
-                                  singleton(singleton(new Triple(X, Y, Z))), e),
+                asList(person2oe, singletonList(new Triple(x, y, z)),
+                                  singleton(singleton(new Triple(x, y, z))), e),
 
                 /* the extra input in person1i2o should not change the person2o results */
-                asList(person1i2oe, singletonList(new Triple(X, name, Y)),
-                              singleton(singleton(new Triple(X, name, Y))), e),
-                asList(person1i2oe, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
-                                    singleton(newHashSet(new Triple(X, name, Y),
-                                                         new Triple(X, age, Z))), e),
+                asList(person1i2oe, singletonList(new Triple(x, name, y)),
+                              singleton(singleton(new Triple(x, name, y))), e),
+                asList(person1i2oe, asList(new Triple(x, name, y), new Triple(x, age, z)),
+                                    singleton(newHashSet(new Triple(x, name, y),
+                                                         new Triple(x, age, z))), e),
                 // fail bcs Y solutions would only occur in this source
-                asList(person1i2oe, asList(new Triple(X, knows, Y), new Triple(Y, age, Z)), e, e),
+                asList(person1i2oe, asList(new Triple(x, knows, y), new Triple(y, age, z)), e, e),
                 // fail bcs KNOWS does not occur in the molecule
-                asList(person1i2oe, singletonList(new Triple(X, knows, Y)), e, e),
+                asList(person1i2oe, singletonList(new Triple(x, knows, y)), e, e),
                 // PRIMARY_TOPIC is in molecule, but KNOWS causes its elimination
-                asList(person1i2oe, asList(new Triple(X, knows, Y),
-                        new Triple(Y, primaryTopic, X)), e, e),
-                asList(person1i2oe, singletonList(new Triple(X, Y, Z)),
-                                    singleton(singleton(new Triple(X, Y, Z))), e),
+                asList(person1i2oe, asList(new Triple(x, knows, y),
+                        new Triple(y, primaryTopic, x)), e, e),
+                asList(person1i2oe, singletonList(new Triple(x, y, z)),
+                                    singleton(singleton(new Triple(x, y, z))), e),
 
                 /* test matching of the input link in person1i2o */
-                asList(person1i2oe, singletonList(new Triple(X, primaryTopic, Y)),
-                        singleton(singleton(new Triple(X, primaryTopic, Y))), e),
-                asList(person1i2oe, asList(new Triple(X, primaryTopic, Y),
-                        new Triple(Y, age, Z),
-                        new Triple(Y, name, W)),
-                        singleton(newHashSet(new Triple(X, primaryTopic, Y),
-                                new Triple(Y, age, Z),
-                                new Triple(Y, name, W))), e),
+                asList(person1i2oe, singletonList(new Triple(x, primaryTopic, y)),
+                        singleton(singleton(new Triple(x, primaryTopic, y))), e),
+                asList(person1i2oe, asList(new Triple(x, primaryTopic, y),
+                        new Triple(y, age, z),
+                        new Triple(y, name, w)),
+                        singleton(newHashSet(new Triple(x, primaryTopic, y),
+                                new Triple(y, age, z),
+                                new Triple(y, name, w))), e),
 //                // ok bcs X can be both Document and person, given that they are not disjoint
 //                asList(person1i2oe, asList(new Triple(X, primaryTopic, Y),
 //                                           new Triple(X, name, Y)),
 //                                    singleton(asList(new Triple(X, primaryTopic, Y),
 //                                                     new Triple(X, name, Y))), e),
                 // fail bcs X KNOWS fail and Y matches a exclusive&complete atom
-                asList(person1i2oe, asList(new Triple(X, primaryTopic, Y),
-                        new Triple(X, knows, Y)), e, e)
+                asList(person1i2oe, asList(new Triple(x, primaryTopic, y),
+                        new Triple(x, knows, y)), e, e)
         );
     }
 
@@ -372,18 +362,18 @@ public class MoleculeMatcherTest {
     private static List<List<Object>>  nonExclusiveMatchDataOnLargeMolecules() {
         List<Object> e = emptyList();
         return asList(
-                asList(univ, singletonList(new Triple(X, name, Y)),
-                             e, singletonList(new Triple(X, name, Y))),
-                asList(univ, singletonList(new Triple(X, Y, Z)),
-                             e, singletonList(new Triple(X, Y, Z))),
-                asList(univ, singletonList(new Triple(Alice, Y, Z)),
-                             e, singletonList(new Triple(Alice, Y, Z))),
-                asList(univ, singletonList(new Triple(X, advises, Y)),
-                             e, singletonList(new Triple(X, advises, Y))),
-                asList(univ, asList(new Triple(X, advises, Y), new Triple(Y, name, Z),
-                                    new Triple(X, name, Z)),
-                             e, asList(new Triple(X, advises, Y), new Triple(Y, name, Z),
-                                       new Triple(X, name, Z)))
+                asList(univ, singletonList(new Triple(x, name, y)),
+                             e, singletonList(new Triple(x, name, y))),
+                asList(univ, singletonList(new Triple(x, y, z)),
+                             e, singletonList(new Triple(x, y, z))),
+                asList(univ, singletonList(new Triple(Alice, y, z)),
+                             e, singletonList(new Triple(Alice, y, z))),
+                asList(univ, singletonList(new Triple(x, advises, y)),
+                             e, singletonList(new Triple(x, advises, y))),
+                asList(univ, asList(new Triple(x, advises, y), new Triple(y, name, z),
+                                    new Triple(x, name, z)),
+                             e, asList(new Triple(x, advises, y), new Triple(y, name, z),
+                                       new Triple(x, name, z)))
         );
     }
 
@@ -391,25 +381,25 @@ public class MoleculeMatcherTest {
     private static List<List<Object>>  exclusiveMatchDataOnLargeMolecules() {
         List<Object> e = emptyList();
         return asList(
-                asList(unive, singletonList(new Triple(X, name, Y)),
-                              singleton(singleton(new Triple(X, name, Y))), e),
-                asList(unive, singletonList(new Triple(X, Y, Z)),
-                              singleton(singleton(new Triple(X, Y, Z))), e),
-                asList(unive, singletonList(new Triple(Alice, Y, Z)),
-                              singleton(singleton(new Triple(Alice, Y, Z))), e),
-                asList(unive, singletonList(new Triple(X, advises, Y)),
-                              singleton(singleton(new Triple(X, advises, Y))), e),
-                asList(unive, asList(new Triple(X, name, Y), new Triple(X, age, Z)),
-                              singleton(asList(new Triple(X, name, Y), new Triple(X, age, Z))), e),
+                asList(unive, singletonList(new Triple(x, name, y)),
+                              singleton(singleton(new Triple(x, name, y))), e),
+                asList(unive, singletonList(new Triple(x, y, z)),
+                              singleton(singleton(new Triple(x, y, z))), e),
+                asList(unive, singletonList(new Triple(Alice, y, z)),
+                              singleton(singleton(new Triple(Alice, y, z))), e),
+                asList(unive, singletonList(new Triple(x, advises, y)),
+                              singleton(singleton(new Triple(x, advises, y))), e),
+                asList(unive, asList(new Triple(x, name, y), new Triple(x, age, z)),
+                              singleton(asList(new Triple(x, name, y), new Triple(x, age, z))), e),
 //                // fails bcs name and age are disjoint atoms
 //                asList(unive, asList(new Triple(X, name, Y), new Triple(X, age, Y)),
 //                              e, e),
-                asList(unive, asList(new Triple(X, name, Y), new Triple(Z, advises, X),
-                                     new Triple(Z, name, W)),
-                              asList(asList(new Triple(X, name, Y),
-                                            new Triple(Z, name, W),
-                                            new Triple(Z, advises, X)),
-                                     singletonList(new Triple(Z, name, W))), e)
+                asList(unive, asList(new Triple(x, name, y), new Triple(z, advises, x),
+                                     new Triple(z, name, w)),
+                              asList(asList(new Triple(x, name, y),
+                                            new Triple(z, name, w),
+                                            new Triple(z, advises, x)),
+                                     singletonList(new Triple(z, name, w))), e)
         );
     }
 

@@ -131,81 +131,81 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testEmpty(@Nonnull Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryEmptyTest(f, new Triple(ALICE, KNOWS, X));
+        queryEmptyTest(f, new Triple(Alice, knows, x));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testAllOnEmpty(@Nonnull Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryEmptyTest(f, new Triple(S, P, O));
+        queryEmptyTest(f, new Triple(s, p, o));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testAskOnEmpty(@Nonnull Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryEmptyTest(f, new Triple(ALICE, KNOWS, BOB));
+        queryEmptyTest(f, new Triple(Alice, knows, Bob));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testSingleObject(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(ALICE, KNOWS, X),
-                singleton(MapSolution.build("X", BOB)));
+        queryResourceTest(f, "../rdf-1.nt", new Triple(Alice, knows, x),
+                singleton(MapSolution.build(x, Bob)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryTwoObjects(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(BOB, NAME, X),
-                newHashSet(MapSolution.build("X", B_NAME1),
-                           MapSolution.build("X", B_NAME2)));
+        queryResourceTest(f, "../rdf-1.nt", new Triple(Bob, name, x),
+                newHashSet(MapSolution.build(x, B_NAME1),
+                           MapSolution.build(x, B_NAME2)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryTwoSubjects(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(X, TYPE, PERSON),
-                newHashSet(MapSolution.build("X", ALICE),
-                           MapSolution.build("X", BOB)));
+        queryResourceTest(f, "../rdf-1.nt", new Triple(x, type, Person),
+                newHashSet(MapSolution.build(x, Alice),
+                           MapSolution.build(x, Bob)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryObjectWithVarPredicate(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(ALICE, P, O),
-                newHashSet(MapSolution.builder().put("P", KNOWS).put("O", BOB).build(),
-                           MapSolution.builder().put("P", TYPE).put("O", PERSON).build(),
-                           MapSolution.builder().put("P", AGE).put("O", A_AGE).build(),
-                           MapSolution.builder().put("P", NAME).put("O", A_NAME).build()));
+        queryResourceTest(f, "../rdf-1.nt", new Triple(Alice, p, o),
+                newHashSet(MapSolution.builder().put(p, knows).put(o, Bob).build(),
+                           MapSolution.builder().put(p, type).put(o, Person).build(),
+                           MapSolution.builder().put(p, age).put(o, A_AGE).build(),
+                           MapSolution.builder().put(p, name).put(o, A_NAME).build()));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQuerySubjectFromLiteral(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(X, NAME, B_NAME1),
-                singleton(MapSolution.build("X", BOB)));
+        queryResourceTest(f, "../rdf-1.nt", new Triple(x, name, B_NAME1),
+                singleton(MapSolution.build(x, Bob)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQuerySubjectObject(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(S, NAME, O),
-                newHashSet(MapSolution.builder().put("S", ALICE).put("O", A_NAME).build(),
-                           MapSolution.builder().put("S",   BOB).put("O", B_NAME1).build(),
-                           MapSolution.builder().put("S",   BOB).put("O", B_NAME2).build()));
+        queryResourceTest(f, "../rdf-1.nt", new Triple(s, name, o),
+                newHashSet(MapSolution.builder().put(s, Alice).put(o, A_NAME).build(),
+                           MapSolution.builder().put(s, Bob).put(o, B_NAME1).build(),
+                           MapSolution.builder().put(s, Bob).put(o, B_NAME2).build()));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryDistinctPredicates(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(S, P, O),
-                newHashSet(MapSolution.build("P", KNOWS),
-                        MapSolution.build("P", TYPE),
-                        MapSolution.build("P", AGE),
-                        MapSolution.build("P", NAME)
+        queryResourceTest(f, "../rdf-1.nt", new Triple(s, p, o),
+                newHashSet(MapSolution.build(p, knows),
+                        MapSolution.build(p, type),
+                        MapSolution.build(p, age),
+                        MapSolution.build(p, name)
                         ),
-                Distinct.ADVISED, Projection.advised("P"));
+                Distinct.ADVISED, Projection.advised("p"));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testForceAskWithVars(Function<InputStream, Fixture<TPEndpoint>> f) {
         InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
-            CQuery cQuery = CQuery.with(new Triple(S, P, O)).ask(true).build();
+            CQuery cQuery = CQuery.with(new Triple(s, p, o)).ask(true).build();
             try (Results results = fix.endpoint.query(cQuery)) {
                 assertTrue(results.hasNext());
-                assertFalse(results.next().has("P"));
+                assertFalse(results.next().has(p.getName()));
             }
         }
     }
@@ -214,7 +214,7 @@ public class TPEndpointTest extends EndpointTestBase {
     public void testForceAskWithVarsNegative(Function<InputStream, Fixture<TPEndpoint>> f) {
         InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
-            CQuery cQuery = CQuery.with(new Triple(S, PRIMARY_TOPIC, O)).ask(true).build();
+            CQuery cQuery = CQuery.with(new Triple(s, primaryTopic, o)).ask(true).build();
             try (Results results = fix.endpoint.query(cQuery)) {
                 assertFalse(results.hasNext());
             }

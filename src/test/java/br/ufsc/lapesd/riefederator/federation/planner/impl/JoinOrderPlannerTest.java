@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
@@ -30,29 +31,14 @@ import java.util.stream.Stream;
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMultiJoinability;
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
-public class JoinOrderPlannerTest {
-    private static final URI Alice = new StdURI("http://example.org/Alice");
-    private static final URI Bob = new StdURI("http://example.org/Bob");
-    private static final URI p1 = new StdURI("http://example.org/p1");
-    private static final URI p2 = new StdURI("http://example.org/p2");
-    private static final URI p3 = new StdURI("http://example.org/p3");
-    private static final URI p4 = new StdURI("http://example.org/p4");
-    private static final URI p5 = new StdURI("http://example.org/p5");
-    private static final URI p6 = new StdURI("http://example.org/p6");
-    private static final URI p7 = new StdURI("http://example.org/p7");
-    private static final URI p8 = new StdURI("http://example.org/p8");
-    private static final URI p9 = new StdURI("http://example.org/p9");
-    private static final Var x = new StdVar("x");
-    private static final Var y = new StdVar("y");
-    private static final Var z = new StdVar("z");
-    private static final Var w = new StdVar("w");
-
+public class JoinOrderPlannerTest implements TestContext {
     private static final URI o1 = new StdURI("http://example.org/o1");
     private static final URI o2 = new StdURI("http://example.org/o2");
     private static final URI o3 = new StdURI("http://example.org/o3");
@@ -137,18 +123,18 @@ public class JoinOrderPlannerTest {
 
     @DataProvider
     public static Object[][] planData() {
-        QueryNode n1 = new QueryNode(e1, CQuery.from(new Triple(Alice, p1, x)));
-        QueryNode n2 = new QueryNode(e1, CQuery.from(new Triple(x, p2, y)));
-        QueryNode n3 = new QueryNode(e1, CQuery.from(new Triple(y, p3, z)));
-        QueryNode n4 = new QueryNode(e1, CQuery.from(new Triple(z, p4, w)));
-        QueryNode n5 = new QueryNode(e1, CQuery.from(new Triple(w, p5, Bob)));
-        QueryNode n6 = new QueryNode(e1, CQuery.from(new Triple(w, p6, Bob)));
-        QueryNode n7 = new QueryNode(e1, CQuery.from(new Triple(z, p7, x)));
+        QueryNode n1 = new QueryNode(e1, createQuery(Alice, p1, x));
+        QueryNode n2 = new QueryNode(e1, createQuery(x, p2, y));
+        QueryNode n3 = new QueryNode(e1, createQuery(y, p3, z));
+        QueryNode n4 = new QueryNode(e1, createQuery(z, p4, w));
+        QueryNode n5 = new QueryNode(e1, createQuery(w, p5, Bob));
+        QueryNode n6 = new QueryNode(e1, createQuery(w, p6, Bob));
+        QueryNode n7 = new QueryNode(e1, createQuery(z, p7, x));
 
         QueryNode n2i = new QueryNode(e1, CQuery.with(new Triple(x, p2, y))
                 .annotate(x, AtomAnnotation.asRequired(Person)).build());
-        QueryNode n3a = new QueryNode(e1a, CQuery.from(new Triple(y, p3, z)));
-        QueryNode n4b  = new QueryNode(e2, CQuery.from(new Triple(z, p4, w)));
+        QueryNode n3a = new QueryNode(e1a, createQuery(y, p3, z));
+        QueryNode n4b  = new QueryNode(e2, createQuery(z, p4, w));
 
         MultiQueryNode m2 = MultiQueryNode.builder().add(n2).add(n2i).build();
         MultiQueryNode m3 = MultiQueryNode.builder().add(n3).add(n3a).build();
@@ -227,7 +213,7 @@ public class JoinOrderPlannerTest {
 
     @Test(dataProvider = "suppliersData")
     public void testPlanGivenNodesNonLinearPath(Supplier<JoinOrderPlanner> supplier) {
-        QueryNode orgByDesc = new QueryNode(e1, CQuery.from(new Triple(o1, p1, t)));
+        QueryNode orgByDesc = new QueryNode(e1, createQuery(o1, p1, t));
         QueryNode contract = new QueryNode(e1, CQuery.with(
                 new Triple(o2, p2, b),
                 new Triple(o2, p3, c),
@@ -245,7 +231,7 @@ public class JoinOrderPlannerTest {
         QueryNode procurementById = new QueryNode(e1, CQuery.with(
                 new Triple(a, p8, d)
         ).annotate(a, AtomAnnotation.asRequired(new Atom("A5"))).build());
-        QueryNode modalities = new QueryNode(e1, CQuery.from(new Triple(o4, p9, d)));
+        QueryNode modalities = new QueryNode(e1, createQuery(o4, p9, d));
 
         JoinOrderPlanner planner = supplier.get();
         IndexedSet<PlanNode> leaves = IndexedSet.from(asList(

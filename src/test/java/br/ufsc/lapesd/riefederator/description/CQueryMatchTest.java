@@ -1,15 +1,11 @@
 package br.ufsc.lapesd.riefederator.description;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import com.google.common.base.Splitter;
-import org.apache.jena.sparql.vocabulary.FOAF;
-import org.apache.jena.vocabulary.RDF;
 import org.testng.annotations.Test;
 
-import javax.annotation.Nonnull;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -17,14 +13,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
-public class CQueryMatchTest {
-    public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
-    public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bob");
-    public static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
-    public static final @Nonnull StdURI KNOWS = new StdURI(FOAF.knows.getURI());
-    public static final @Nonnull StdURI PERSON = new StdURI(FOAF.Person.getURI());
-    public static final @Nonnull StdVar X = new StdVar("X");
-
+public class CQueryMatchTest implements TestContext {
 
     @Test
     public void testEmpty() {
@@ -39,25 +28,25 @@ public class CQueryMatchTest {
 
     @Test
     public void testRequireValidTriple() {
-        List<Triple> query = asList(new Triple(ALICE, KNOWS, X), new Triple(X, TYPE, PERSON));
+        List<Triple> query = asList(new Triple(Alice, knows, x), new Triple(x, type, Person));
         CQueryMatch.Builder builder = CQueryMatch.builder(CQuery.from(query));
-        builder.addTriple(new Triple(ALICE, KNOWS, X));
+        builder.addTriple(new Triple(Alice, knows, x));
         assertThrows(IllegalArgumentException.class,
-                () -> builder.addTriple(new Triple(ALICE, TYPE, PERSON)));
+                () -> builder.addTriple(new Triple(Alice, type, Person)));
     }
 
     @Test
     public void testRequireValidTripleInExclusiveGroup() {
-        List<Triple> query = asList(new Triple(ALICE, KNOWS, X), new Triple(X, TYPE, PERSON));
+        List<Triple> query = asList(new Triple(Alice, knows, x), new Triple(x, type, Person));
         CQueryMatch.Builder builder = CQueryMatch.builder(CQuery.from(query));
-        List<Triple> badGroup = asList(new Triple(ALICE, KNOWS, X), new Triple(ALICE, TYPE, PERSON));
+        List<Triple> badGroup = asList(new Triple(Alice, knows, x), new Triple(Alice, type, Person));
         assertThrows(IllegalArgumentException.class,
                 () -> builder.addExclusiveGroup(badGroup));
     }
 
     @Test
     public void testRequireNonEmptyExclusiveGroup() {
-        List<Triple> query = asList(new Triple(ALICE, KNOWS, X), new Triple(X, TYPE, PERSON));
+        List<Triple> query = asList(new Triple(Alice, knows, x), new Triple(x, type, Person));
         CQueryMatch.Builder builder = CQueryMatch.builder(CQuery.from(query));
         assertThrows(IllegalArgumentException.class,
                 () -> builder.addExclusiveGroup(emptyList()));
@@ -65,14 +54,14 @@ public class CQueryMatchTest {
 
     @Test
     public void testBuild() {
-        List<Triple> query = asList(new Triple(ALICE, KNOWS, X),
-                                    new Triple(X, TYPE, PERSON),
-                                    new Triple(X, KNOWS, BOB),
-                                    new Triple(X, KNOWS, X));
+        List<Triple> query = asList(new Triple(Alice, knows, x),
+                                    new Triple(x, type, Person),
+                                    new Triple(x, knows, Bob),
+                                    new Triple(x, knows, x));
         CQueryMatch m = CQueryMatch.builder(CQuery.from(query))
-                .addExclusiveGroup(asList(new Triple(ALICE, KNOWS, X),
-                                          new Triple(X, TYPE, PERSON)))
-                .addTriple(new Triple(X, KNOWS, BOB)).build();
+                .addExclusiveGroup(asList(new Triple(Alice, knows, x),
+                                          new Triple(x, type, Person)))
+                .addTriple(new Triple(x, knows, Bob)).build();
         assertFalse(m.isEmpty());
         assertEquals(m.getAllRelevant(), query.subList(0, 3));
         assertEquals(m.getIrrelevant(), query.subList(3, 4));

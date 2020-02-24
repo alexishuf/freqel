@@ -1,18 +1,15 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
-import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,13 +18,7 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
-public class JoinNodeTest {
-    public static final @Nonnull StdURI ALICE = new StdURI("http://example.org/Alice");
-    public static final @Nonnull StdURI BOB = new StdURI("http://example.org/Bon");
-    public static final @Nonnull StdURI knows = new StdURI(FOAF.knows.getURI());
-    public static final @Nonnull StdURI manages = new StdURI("http://example.org/manages");
-    public static final @Nonnull StdVar X = new StdVar("x");
-    public static final @Nonnull StdVar Y = new StdVar("y");
+public class JoinNodeTest implements TestContext {
     private static final EmptyEndpoint empty = new EmptyEndpoint();
 
     public QueryNode aliceKnowsX, xKnowsY, yKnown, xKnowsYInput;
@@ -36,13 +27,13 @@ public class JoinNodeTest {
 
     @BeforeMethod
     public void setUp() {
-        aliceKnowsX = new QueryNode(empty, CQuery.from(new Triple(ALICE, knows, X)));
-        xKnowsY = new QueryNode(empty, CQuery.from(new Triple(X, knows, Y)));
-        xKnowsYInput = new QueryNode(empty, CQuery.with(new Triple(X, knows, Y))
-                .annotate(X, AtomAnnotation.of(Person))
-                .annotate(Y, AtomAnnotation.asRequired(KnownPerson))
+        aliceKnowsX = new QueryNode(empty, CQuery.from(new Triple(Alice, knows, x)));
+        xKnowsY = new QueryNode(empty, CQuery.from(new Triple(x, knows, y)));
+        xKnowsYInput = new QueryNode(empty, CQuery.with(new Triple(x, knows, y))
+                .annotate(x, AtomAnnotation.of(Person))
+                .annotate(y, AtomAnnotation.asRequired(KnownPerson))
                 .build());
-        yKnown = new QueryNode(empty, CQuery.from(new Triple(X, knows, Y)), singleton("y"));
+        yKnown = new QueryNode(empty, CQuery.from(new Triple(x, knows, y)), singleton("y"));
     }
 
     @Test

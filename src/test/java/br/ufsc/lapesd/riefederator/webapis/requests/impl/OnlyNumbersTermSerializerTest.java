@@ -1,13 +1,11 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.impl;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdBlank;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.NoTermSerializationException;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.OnlyNumbersTermSerializer;
-import org.apache.jena.vocabulary.XSD;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -18,17 +16,12 @@ import static java.util.Arrays.asList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-public class OnlyNumbersTermSerializerTest {
-    private static final StdURI XSD_STRING = new StdURI(XSD.xstring.getURI());
-    private static final StdURI XSD_INT = new StdURI(XSD.xint.getURI());
-    private static final StdLit cnpjFormatado = StdLit.fromUnescaped("04.196.645/0001-00", XSD_STRING);
-    private static final StdLit cnpjFormatadoNome = StdLit.fromUnescaped("04.196.645/0001-00 MATRIZ", XSD_STRING);
+public class OnlyNumbersTermSerializerTest implements TestContext {
+    private static final StdLit cnpjFormatado = StdLit.fromUnescaped("04.196.645/0001-00", xsdString);
+    private static final StdLit cnpjFormatadoNome = StdLit.fromUnescaped("04.196.645/0001-00 MATRIZ", xsdString);
     private static final StdLit cnpjFormatadoNomeLang = StdLit.fromUnescaped("04.196.645/0001-00 MATRIZ", "pt");
-    private static final StdLit cnpjWithLeading = StdLit.fromUnescaped("04196645000100", XSD_INT);
-    private static final StdLit cnpj = StdLit.fromUnescaped("4196645000100", XSD_INT);
-    private static final StdURI Alice = new StdURI("https://example.org/Alice");
-    private static final StdURI Alice2 = new StdURI("https://example.org/Alice-2");
-    private static final StdVar x = new StdVar("x");
+    private static final StdLit cnpjWithLeading = StdLit.fromUnescaped("04196645000100", xsdInt);
+    private static final StdLit cnpj = StdLit.fromUnescaped("4196645000100", xsdInt);
     private static final StdBlank blank = new StdBlank();
 
     private static final String expectedCnpjWithZero = "04196645000100";

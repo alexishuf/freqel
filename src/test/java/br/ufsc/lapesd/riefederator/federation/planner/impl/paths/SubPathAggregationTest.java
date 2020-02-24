@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl.paths;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.ArbitraryJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinOrderPlanner;
@@ -9,10 +10,6 @@ import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
@@ -39,18 +36,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
-public class SubPathAggregationTest {
-    public static final URI Alice = new StdURI("http://example.org/Alice");
-    public static final URI Bob = new StdURI("http://example.org/Bob");
-    public static final URI p1 = new StdURI("http://example.org/p1");
-    public static final URI p2 = new StdURI("http://example.org/p2");
-    public static final URI p3 = new StdURI("http://example.org/p3");
-    public static final URI p4 = new StdURI("http://example.org/p4");
-    public static final Var x = new StdVar("x");
-    public static final Var y = new StdVar("y");
-    public static final Var z = new StdVar("z");
-    public static final Var w = new StdVar("w");
-
+public class SubPathAggregationTest implements TestContext {
     public static final EmptyEndpoint e1 = new EmptyEndpoint(), e2 = new EmptyEndpoint();
 
     public static final Atom A1 = new Atom("Atom1"), A2 = new Atom("Atom2");

@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.webapis.requests;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
@@ -11,7 +11,6 @@ import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.impl.ParamPagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.MappedJsonResponseParser;
 import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.vocabulary.XSD;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.testng.annotations.Test;
@@ -29,12 +28,12 @@ import java.util.List;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.testng.Assert.*;
 
-public class ParamPagingStrategyTest extends JerseyTestNg.ContainerPerClassTest {
+public class ParamPagingStrategyTest
+        extends JerseyTestNg.ContainerPerClassTest implements TestContext {
     private static final String EXAMPLE_NS = "http://example.org/";
-    private static final StdURI XSD_INT = new StdURI(XSD.xint.getURI());
-    private static final StdLit i1 = StdLit.fromUnescaped("1", XSD_INT);
-    private static final StdLit i2 = StdLit.fromUnescaped("2", XSD_INT);
-    private static final StdLit i3 = StdLit.fromUnescaped("3", XSD_INT);
+    private static final StdLit i1 = StdLit.fromUnescaped("1", xsdInt);
+    private static final StdLit i2 = StdLit.fromUnescaped("2", xsdInt);
+    private static final StdLit i3 = StdLit.fromUnescaped("3", xsdInt);
 
     @Path("/")
     public static class Service {
@@ -113,7 +112,7 @@ public class ParamPagingStrategyTest extends JerseyTestNg.ContainerPerClassTest 
                 assertFalse(pager.atEnd());
 
                 Solution bindings = pager.apply(MapSolution.build("pages", i3));
-                StdLit iLit = StdLit.fromUnescaped(String.valueOf(i), XSD_INT);
+                StdLit iLit = StdLit.fromUnescaped(String.valueOf(i), xsdInt);
                 assertEquals(bindings,
                         MapSolution.builder().put("pages", i3).put("page", iLit).build());
 

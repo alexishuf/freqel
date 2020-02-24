@@ -1,12 +1,11 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.impl;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Results;
@@ -20,8 +19,6 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.sparql.vocabulary.FOAF;
-import org.apache.jena.vocabulary.XSD;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.uri.UriTemplate;
@@ -42,21 +39,13 @@ import static java.util.Collections.singleton;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.testng.Assert.*;
 
-public class UriTemplateExecutorTest extends JerseyTestNg.ContainerPerClassTest {
+public class UriTemplateExecutorTest extends JerseyTestNg.ContainerPerClassTest implements TestContext {
     private static final String EX = "http://example.org/";
-    private static final @Nonnull URI ALICE = new StdURI(EX+"Alice");
-    private static final @Nonnull URI BOB = new StdURI(EX+"Bob");
-    private static final @Nonnull URI knows = new StdURI(FOAF.knows.getURI());
     private static final @Nonnull URI op1 = new StdURI(EX+"op1");
     private static final @Nonnull URI op2 = new StdURI(EX+"op2");
-    private static final @Nonnull URI result = new StdURI(EX+"result");
-    private static final @Nonnull URI xint = new StdURI(XSD.xint.getURI());
-    private static final @Nonnull Lit i2 = StdLit.fromEscaped("2", xint);
-    private static final @Nonnull Lit i3 = StdLit.fromEscaped("3", xint);
-    private static final @Nonnull Lit i5 = StdLit.fromEscaped("5", xint);
-    private static final @Nonnull Var X = new StdVar("x");
-    private static final @Nonnull Var Y = new StdVar("y");
-    private static final @Nonnull Var Z = new StdVar("z");
+    private static final @Nonnull Lit i2 = StdLit.fromEscaped("2", xsdInt);
+    private static final @Nonnull Lit i3 = StdLit.fromEscaped("3", xsdInt);
+    private static final @Nonnull Lit i5 = StdLit.fromEscaped("5", xsdInt);
 
     @Path("/")
     public static class Service {
@@ -123,10 +112,10 @@ public class UriTemplateExecutorTest extends JerseyTestNg.ContainerPerClassTest 
 
         Set<Solution> all = new HashSet<>();
         try (CQEndpoint ep = it.next();
-             Results results = ep.query(CQuery.from(new Triple(ALICE, knows, X)))) {
+             Results results = ep.query(CQuery.from(new Triple(Alice, knows, x)))) {
             results.forEachRemaining(all::add);
         }
-        assertEquals(all, singleton(MapSolution.build(X, BOB)));
+        assertEquals(all, singleton(MapSolution.build(x, Bob)));
         assertFalse(it.hasNext());
     }
 
@@ -141,20 +130,20 @@ public class UriTemplateExecutorTest extends JerseyTestNg.ContainerPerClassTest 
                 .withResponseParser(jsonParser).build();
 
         Iterator<? extends CQEndpoint> it;
-        it = exec.execute(MapSolution.builder().put(X, i2).put(Y, i3).build());
+        it = exec.execute(MapSolution.builder().put(x, i2).put(y, i3).build());
         assertTrue(it.hasNext());
 
         Set<Solution> all = new HashSet<>();
         try (CQEndpoint ep = it.next();
-             Results results = ep.query(CQuery.from(new Triple(X, Y, Z)))) {
+             Results results = ep.query(CQuery.from(new Triple(x, y, z)))) {
             results.forEachRemaining(all::add);
         }
 
         StdURI res = new StdURI(new UriTemplate(template).createURI("2", "3"));
         Set<Solution> expected = Sets.newHashSet(
-                MapSolution.builder().put(X, res).put(Y, op1   ).put(Z, i2).build(),
-                MapSolution.builder().put(X, res).put(Y, op2   ).put(Z, i3).build(),
-                MapSolution.builder().put(X, res).put(Y, result).put(Z, i5).build()
+                MapSolution.builder().put(x, res).put(y, op1   ).put(z, i2).build(),
+                MapSolution.builder().put(x, res).put(y, op2   ).put(z, i3).build(),
+                MapSolution.builder().put(x, res).put(y, result).put(z, i5).build()
         );
         assertEquals(all, expected);
     }

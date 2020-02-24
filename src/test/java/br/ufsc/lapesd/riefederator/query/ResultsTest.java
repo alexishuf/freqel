@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.NamedFunction;
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.impl.IteratorResults;
@@ -19,18 +20,18 @@ import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 
-public class ResultsTest {
+public class ResultsTest implements TestContext {
     public static final @Nonnull List<NamedFunction<List<Solution>, Results>> factories;
     public static final @Nonnull List<Solution> expectedNone, expectedOne, expectedTWo;
-    public static final @Nonnull StdURI ALICE = new StdURI("https://example.org/Alice");
-    public static final @Nonnull StdURI BOB = new StdURI("https://example.org/BOB");
+    public static final @Nonnull StdURI Alice = new StdURI("https://example.org/Alice");
+    public static final @Nonnull StdURI Bob = new StdURI("https://example.org/BOB");
     public static final @Nonnull Set<String> xSet = unmodifiableSet(singleton("x"));
 
     static {
         expectedNone = unmodifiableList(emptyList());
-        expectedOne = unmodifiableList(singletonList(MapSolution.build("x", ALICE)));
-        expectedTWo = unmodifiableList(asList(MapSolution.build("x", ALICE),
-                                              MapSolution.build("x", BOB)));
+        expectedOne = unmodifiableList(singletonList(MapSolution.build("x", Alice)));
+        expectedTWo = unmodifiableList(asList(MapSolution.build("x", Alice),
+                                              MapSolution.build("x", Bob)));
 
         factories = new ArrayList<>();
         factories.add(new NamedFunction<>("CollectionSolutionIterator",

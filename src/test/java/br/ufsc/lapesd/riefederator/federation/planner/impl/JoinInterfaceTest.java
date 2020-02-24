@@ -1,15 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
@@ -29,13 +26,7 @@ import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 
-public class JoinInterfaceTest {
-    private static final URI Alice = new StdURI("http://example.org/Alice");
-    private static final URI Bob = new StdURI("http://example.org/Bob");
-    private static final URI p1 = new StdURI("http://example.org/p1");
-    private static final URI p2 = new StdURI("http://example.org/p2");
-    private static final Var x = new StdVar("x");
-    private static final Var y = new StdVar("y");
+public class JoinInterfaceTest implements TestContext {
 
     private static final Atom Person = new Atom("Person"), Atom1 = new Atom("Atom1");
 

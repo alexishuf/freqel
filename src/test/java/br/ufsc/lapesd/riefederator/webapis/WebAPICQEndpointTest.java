@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.webapis;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
@@ -8,10 +9,8 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Results;
 import br.ufsc.lapesd.riefederator.query.Solution;
@@ -25,7 +24,6 @@ import br.ufsc.lapesd.riefederator.webapis.requests.paging.impl.ParamPagingStrat
 import org.apache.jena.rdf.model.*;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.vocabulary.XSD;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.uri.UriTemplate;
@@ -53,18 +51,14 @@ import static java.util.Collections.singletonList;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
 
-public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
-    private static final URI xint = new StdURI(XSD.xint.getURI());
+public class WebAPICQEndpointTest
+        extends JerseyTestNg.ContainerPerClassTest implements TestContext {
     private static final URI op1 = new StdURI("http://example.org/op1");
-    private static final URI result = new StdURI("http://example.org/result");
-    private static final URI total = new StdURI("http://example.org/total");
     private static final URI exponent = new StdURI("http://example.org/exponent");
-    private static final Lit i1 = StdLit.fromUnescaped("1", xint);
-    private static final Lit i2 = StdLit.fromUnescaped("2", xint);
-    private static final Lit i3 = StdLit.fromUnescaped("3", xint);
-    private static final Lit i4 = StdLit.fromUnescaped("4", xint);
-    private static final Var X = new StdVar("x");
-    private static final Var Y = new StdVar("y");
+    private static final Lit i1 = StdLit.fromUnescaped("1", xsdInt);
+    private static final Lit i2 = StdLit.fromUnescaped("2", xsdInt);
+    private static final Lit i3 = StdLit.fromUnescaped("3", xsdInt);
+    private static final Lit i4 = StdLit.fromUnescaped("4", xsdInt);
 
     private static final Property jOp1 = ResourceFactory.createProperty(op1.getURI());
     private static final Property jResult = ResourceFactory.createProperty(result.getURI());
@@ -226,14 +220,14 @@ public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testDirectQuery() {
         WebAPICQEndpoint ep = new WebAPICQEndpoint(squareMolecule());
-        Results results = ep.query(CQuery.from(new Triple(X, op1, i2),
-                                               new Triple(X, result, Y)));
+        Results results = ep.query(CQuery.from(new Triple(x, op1, i2),
+                                               new Triple(x, result, y)));
         assertTrue(results.hasNext());
         Solution solution = results.next();
-        Term x = solution.get(X.getName());
+        Term x = solution.get(WebAPICQEndpointTest.x.getName());
         assertNotNull(x);
         assertTrue(x.isURI());
-        assertEquals(solution.get(Y.getName()), i4);
+        assertEquals(solution.get(y.getName()), i4);
     }
 
     @Test
@@ -241,18 +235,18 @@ public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
         WebAPICQEndpoint ep = new WebAPICQEndpoint(squareMolecule());
 
         APIMoleculeMatcher matcher = new APIMoleculeMatcher(ep.getMolecule());
-        CQuery query = CQuery.from(new Triple(X, op1, i2),
-                                   new Triple(X, result, Y));
+        CQuery query = CQuery.from(new Triple(x, op1, i2),
+                                   new Triple(x, result, y));
         CQueryMatch match = matcher.match(query);
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
 
         Results results = ep.query(match.getKnownExclusiveGroups().get(0));
         assertTrue(results.hasNext());
         Solution solution = results.next();
-        Term x = solution.get(X.getName());
+        Term x = solution.get(WebAPICQEndpointTest.x.getName());
         assertNotNull(x);
         assertTrue(x.isURI());
-        assertEquals(solution.get(Y.getName()), i4);
+        assertEquals(solution.get(y.getName()), i4);
     }
 
     @Test
@@ -260,8 +254,8 @@ public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
         WebAPICQEndpoint ep = new WebAPICQEndpoint(countMolecule());
 
         APIMoleculeMatcher matcher = new APIMoleculeMatcher(ep.getMolecule());
-        CQuery query = CQuery.from(new Triple(X, total, i3),
-                                   new Triple(X, result, Y));
+        CQuery query = CQuery.from(new Triple(x, total, i3),
+                                   new Triple(x, result, y));
         CQueryMatch match = matcher.match(query);
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
 
@@ -271,31 +265,31 @@ public class WebAPICQEndpointTest extends JerseyTestNg.ContainerPerClassTest {
 
         Results results = ep.query(match.getKnownExclusiveGroups().get(0));
         List<Term> values = new ArrayList<>(), expected = asList(i1, i2, i3);
-        results.forEachRemainingThenClose(s -> values.add(s.get(Y)));
+        results.forEachRemainingThenClose(s -> values.add(s.get(y)));
         assertEquals(values, expected); //ordered due to paging
     }
 
     @Test
     public void testDirectConsumePaged() {
         WebAPICQEndpoint ep = new WebAPICQEndpoint(countMolecule());
-        CQuery query = CQuery.from(new Triple(X, total, i3),
-                                   new Triple(X, result, Y));
+        CQuery query = CQuery.from(new Triple(x, total, i3),
+                                   new Triple(x, result, y));
         Results results = ep.query(query);
         List<Term> values = new ArrayList<>(), expected = asList(i1, i2, i3);
-        results.forEachRemainingThenClose(s -> values.add(s.get(Y)));
+        results.forEachRemainingThenClose(s -> values.add(s.get(y)));
         assertEquals(values, expected); //ordered due to paging
     }
 
     @Test
     public void testDirectQueryDescriptiveTriple() {
         WebAPICQEndpoint ep = new WebAPICQEndpoint(expMolecule());
-        CQuery query = CQuery.with(new Triple(X, exponent, i3),
-                                   new Triple(X, op1, i4),
-                                   new Triple(X, result, Y))
-                .annotate(new Triple(X, exponent, i3), PureDescriptive.INSTANCE)
+        CQuery query = CQuery.with(new Triple(x, exponent, i3),
+                                   new Triple(x, op1, i4),
+                                   new Triple(x, result, y))
+                .annotate(new Triple(x, exponent, i3), PureDescriptive.INSTANCE)
                 .build();
         List<Term> list = new ArrayList<>();
-        ep.query(query).forEachRemainingThenClose(s -> list.add(s.get(Y)));
+        ep.query(query).forEachRemainingThenClose(s -> list.add(s.get(y)));
         assertEquals(list, singletonList(fromJena(createTypedLiteral(64))));
     }
 }

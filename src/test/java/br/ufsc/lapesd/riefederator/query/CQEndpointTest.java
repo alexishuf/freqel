@@ -55,31 +55,31 @@ public class CQEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testTPSelect(Function<InputStream, Fixture<CQEndpoint>> f) {
-        queryResourceTest(f, singletonList(new Triple(S, KNOWS, BOB)),
-                newHashSet(MapSolution.build("S", ALICE),
-                           MapSolution.build("S", DAVE)));
+        queryResourceTest(f, singletonList(new Triple(s, knows, Bob)),
+                newHashSet(MapSolution.build(s, Alice),
+                           MapSolution.build(s, Dave)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testConjunctiveSelect(Function<InputStream, Fixture<CQEndpoint>> f) {
-        List<Triple> query = asList(new Triple(S, KNOWS, BOB),
-                                    new Triple(S, AGE, A_AGE));
-        queryResourceTest(f, query, singleton(MapSolution.build("S", ALICE)));
+        List<Triple> query = asList(new Triple(s, knows, Bob),
+                                    new Triple(s, age, A_AGE));
+        queryResourceTest(f, query, singleton(MapSolution.build(s, Alice)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testConjunctiveAsk(Function<InputStream, Fixture<CQEndpoint>> f) {
-        List<Triple> query = asList(new Triple(CHARLIE, TYPE, PERSON),
-                                    new Triple(CHARLIE, AGE, A_AGE),
-                                    new Triple(ALICE, KNOWS, BOB));
+        List<Triple> query = asList(new Triple(Charlie, type, Person),
+                                    new Triple(Charlie, age, A_AGE),
+                                    new Triple(Alice, knows, Bob));
         queryResourceTest(f, query, singleton(MapSolution.EMPTY));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testNegativeConjunctiveAsk(Function<InputStream, Fixture<CQEndpoint>> f) {
-        List<Triple> query = asList(new Triple(CHARLIE, TYPE, PERSON), //ok
-                                    new Triple(CHARLIE, AGE, A_AGE),   //ok
-                                    new Triple(ALICE, KNOWS, DAVE));   //wrong
+        List<Triple> query = asList(new Triple(Charlie, type, Person), //ok
+                                    new Triple(Charlie, age, A_AGE),   //ok
+                                    new Triple(Alice, knows, Dave));   //wrong
         queryResourceTest(f, query, emptySet());
     }
 }

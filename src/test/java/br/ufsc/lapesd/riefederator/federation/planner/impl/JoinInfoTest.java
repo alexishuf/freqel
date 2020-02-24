@@ -1,15 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.UndirectedIrreflexiveArrayGraph;
@@ -33,27 +30,21 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.*;
 
-public class JoinInfoTest {
-    private static final URI p = new StdURI("http://example.org/p1");
-    private static final Var x = new StdVar("x");
-    private static final Var y = new StdVar("y");
-    private static final Var z = new StdVar("z");
-    private static final Var w = new StdVar("w");
-
+public class JoinInfoTest implements TestContext {
     private static final Atom X = new Atom("X");
     private static final Atom Y = new Atom("Y");
     private static final Atom Z = new Atom("Z");
 
 
-    private static final CQuery xpy = CQuery.from(new Triple(x, p, y));
-    private static final CQuery ypz = CQuery.from(new Triple(y, p, z));
-    private static final CQuery zpw = CQuery.from(new Triple(z, p, w));
-    private static final CQuery zpx = CQuery.from(new Triple(z, p, x));
+    private static final CQuery xpy = CQuery.from(new Triple(x, p1, y));
+    private static final CQuery ypz = CQuery.from(new Triple(y, p1, z));
+    private static final CQuery zpw = CQuery.from(new Triple(z, p1, w));
+    private static final CQuery zpx = CQuery.from(new Triple(z, p1, x));
 
-    private static final CQuery xpyi = CQuery.with(new Triple(x, p, y))
+    private static final CQuery xpyi = CQuery.with(new Triple(x, p1, y))
             .annotate(x, AtomAnnotation.of(X))
             .annotate(y, AtomAnnotation.asRequired(Y)).build();
-    private static final CQuery yipz = CQuery.with(new Triple(y, p, z))
+    private static final CQuery yipz = CQuery.with(new Triple(y, p1, z))
             .annotate(y, AtomAnnotation.asRequired(Y))
             .annotate(z, AtomAnnotation.of(Z)).build();
 

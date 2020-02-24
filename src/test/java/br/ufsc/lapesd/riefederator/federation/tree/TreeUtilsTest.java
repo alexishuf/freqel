@@ -1,17 +1,13 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.Sets;
-import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -21,33 +17,26 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.isAcyclic;
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
-public class TreeUtilsTest {
-    public static final URI ALICE = new StdURI("http://example.org/Alice");
-    public static final URI BOB = new StdURI("http://example.org/Bob");
-    public static final URI CHARLIE = new StdURI("http://example.org/Charlie");
-    public static final URI DAVE = new StdURI("http://example.org/Dave");
-    public static final URI knows = new StdURI(FOAF.knows.getURI());
-    public static final Var X = new StdVar("x");
-    public static final Var Y = new StdVar("y");
-    public static final Var Z = new StdVar("z");
+public class TreeUtilsTest implements TestContext {
     private static EmptyEndpoint ep = new EmptyEndpoint();
     private final Atom person = Molecule.builder("Person").buildAtom();
 
     @DataProvider
     public static Object[][] iterateDeepLeft() {
-        QueryNode q1 = new QueryNode(ep, CQuery.from(new Triple(X, knows, ALICE)));
-        QueryNode q2 = new QueryNode(ep, CQuery.from(new Triple(X, knows, Y)));
+        QueryNode q1 = new QueryNode(ep, createQuery(x, knows, Alice));
+        QueryNode q2 = new QueryNode(ep, createQuery(x, knows, y));
         JoinNode j1 = JoinNode.builder(q1, q2).build();
-        QueryNode q3 = new QueryNode(ep, CQuery.from(new Triple(Y, knows, CHARLIE)));
-        QueryNode q4 = new QueryNode(ep, CQuery.from(new Triple(Y, knows, DAVE)));
+        QueryNode q3 = new QueryNode(ep, createQuery(y, knows, Charlie));
+        QueryNode q4 = new QueryNode(ep, createQuery(y, knows, Dave));
         JoinNode j2 = JoinNode.builder(q3, q4).build();
         JoinNode j3 = JoinNode.builder(j1, j2).build();
-        QueryNode q5 = new QueryNode(ep, CQuery.from(new Triple(Z, knows, ALICE)));
+        QueryNode q5 = new QueryNode(ep, createQuery(z, knows, Alice));
         CartesianNode c1 = new CartesianNode(asList(j3, q5));
 
         return new Object[][] {
@@ -72,10 +61,10 @@ public class TreeUtilsTest {
 
     @Test
     public void testIsTreeForgivesQueryNodes() {
-        QueryNode q1  = new QueryNode(ep, CQuery.from(new Triple(X, knows, ALICE)));
-        QueryNode q2  = new QueryNode(ep, CQuery.from(new Triple(X, knows, BOB)));
-        QueryNode q1a = new QueryNode(ep, CQuery.with(new Triple(X, knows, ALICE))
-                .annotate(X, AtomAnnotation.asRequired(person))
+        QueryNode q1  = new QueryNode(ep, createQuery(x, knows, Alice));
+        QueryNode q2  = new QueryNode(ep, createQuery(x, knows, Bob));
+        QueryNode q1a = new QueryNode(ep, CQuery.with(new Triple(x, knows, Alice))
+                .annotate(x, AtomAnnotation.asRequired(person))
                 .build());
         JoinNode j1 = JoinNode.builder(q1,  q2).build();
         JoinNode j2 = JoinNode.builder(q1a, q2).build();
@@ -89,8 +78,8 @@ public class TreeUtilsTest {
 
     @Test
     public void testIsAcyclicSimple() {
-        QueryNode n1 = new QueryNode(ep, CQuery.from(new Triple(ALICE, knows, X)));
-        QueryNode n2 = new QueryNode(ep, CQuery.from(new Triple(X, knows, BOB)));
+        QueryNode n1 = new QueryNode(ep, createQuery(Alice, knows, x));
+        QueryNode n2 = new QueryNode(ep, createQuery(x, knows, Bob));
         JoinNode root = JoinNode.builder(n1, n2).build();
 
         assertTrue(isAcyclic(n1));
@@ -99,8 +88,8 @@ public class TreeUtilsTest {
 
     @Test
     public void testIsAcyclicWithQueryNodeReuse() {
-        QueryNode n1 = new QueryNode(ep, CQuery.from(new Triple(ALICE, knows, X)));
-        QueryNode n2 = new QueryNode(ep, CQuery.from(new Triple(X, knows, BOB)));
+        QueryNode n1 = new QueryNode(ep, createQuery(Alice, knows, x));
+        QueryNode n2 = new QueryNode(ep, createQuery(x, knows, Bob));
         JoinNode j1 = JoinNode.builder(n1, n2).build();
         JoinNode j2 = JoinNode.builder(n1, n2).build();
         MultiQueryNode r = MultiQueryNode.builder().add(j1).add(j2).build();
@@ -111,10 +100,10 @@ public class TreeUtilsTest {
     @Test
     public void testIsAcyclicWithJoinNodeReuse() {
         EmptyEndpoint ep2 = new EmptyEndpoint();
-        QueryNode n1 = new QueryNode(ep, CQuery.from(new Triple(ALICE, knows, X)));
-        QueryNode n2 = new QueryNode(ep, CQuery.from(new Triple(X, knows, Y)));
-        QueryNode n3a = new QueryNode(ep , CQuery.from(new Triple(Y, knows, BOB)));
-        QueryNode n3b = new QueryNode(ep2, CQuery.from(new Triple(Y, knows, BOB)));
+        QueryNode n1 = new QueryNode(ep, createQuery(Alice, knows, x));
+        QueryNode n2 = new QueryNode(ep, createQuery(x, knows, y));
+        QueryNode n3a = new QueryNode(ep , createQuery(y, knows, Bob));
+        QueryNode n3b = new QueryNode(ep2, createQuery(y, knows, Bob));
         JoinNode j1 = JoinNode.builder(n1, n2).build();
         JoinNode j2 = JoinNode.builder(j1, n3a).build();
         JoinNode j3 = JoinNode.builder(j1, n3b).build();
@@ -126,10 +115,10 @@ public class TreeUtilsTest {
 
     @DataProvider
     public static Object[][] intersectResultsData() {
-        QueryNode x = new QueryNode(ep, CQuery.from(new Triple(X, knows, ALICE)));
-        QueryNode xy = new QueryNode(ep, CQuery.from(new Triple(X, knows, Y)));
-        QueryNode z = new QueryNode(ep, CQuery.from(new Triple(ALICE, Z, BOB)));
-        QueryNode xyz = new QueryNode(ep, CQuery.from(new Triple(X, Y, Z)));
+        QueryNode x = new QueryNode(ep, createQuery(TreeUtilsTest.x, knows, Alice));
+        QueryNode xy = new QueryNode(ep, createQuery(TreeUtilsTest.x, knows, y));
+        QueryNode z = new QueryNode(ep, createQuery(Alice, TreeUtilsTest.z, Bob));
+        QueryNode xyz = new QueryNode(ep, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
 
         return new Object[][] {
                 new Object[] {emptyList(), emptySet(), false},
@@ -164,10 +153,10 @@ public class TreeUtilsTest {
 
     @DataProvider
     public static Object[][] unionResultsData() {
-        QueryNode x = new QueryNode(ep, CQuery.from(new Triple(X, knows, ALICE)));
-        QueryNode xy = new QueryNode(ep, CQuery.from(new Triple(X, knows, Y)));
-        QueryNode z = new QueryNode(ep, CQuery.from(new Triple(ALICE, Z, BOB)));
-        QueryNode xyz = new QueryNode(ep, CQuery.from(new Triple(X, Y, Z)));
+        QueryNode x = new QueryNode(ep, createQuery(TreeUtilsTest.x, knows, Alice));
+        QueryNode xy = new QueryNode(ep, createQuery(TreeUtilsTest.x, knows, y));
+        QueryNode z = new QueryNode(ep, createQuery(Alice, TreeUtilsTest.z, Bob));
+        QueryNode xyz = new QueryNode(ep, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
 
         return new Object[][] {
                 new Object[] {emptyList(), emptySet()},
@@ -206,16 +195,16 @@ public class TreeUtilsTest {
         Atom atom1 = new Atom("Atom1");
         Atom atom2 = new Atom("Atom2");
 
-        QueryNode xInYZOut = new QueryNode(ep, CQuery.with(new Triple(X, Y, Z))
-                .annotate(X, AtomAnnotation.asRequired(atom1))
+        QueryNode xInYZOut = new QueryNode(ep, CQuery.with(new Triple(x, y, z))
+                .annotate(x, AtomAnnotation.asRequired(atom1))
                 .build());
-        QueryNode xyInZOut = new QueryNode(ep, CQuery.with(new Triple(X, Y, Z))
-                .annotate(X, AtomAnnotation.asRequired(atom1))
-                .annotate(Y, AtomAnnotation.asRequired(atom2))
+        QueryNode xyInZOut = new QueryNode(ep, CQuery.with(new Triple(x, y, z))
+                .annotate(x, AtomAnnotation.asRequired(atom1))
+                .annotate(y, AtomAnnotation.asRequired(atom2))
                 .build());
-        QueryNode xKnowsALICE = new QueryNode(ep, CQuery.from(new Triple(X, knows, ALICE)));
-        QueryNode xKnowsZ = new QueryNode(ep, CQuery.from(new Triple(X, knows, Z)));
-        QueryNode xKnowsY = new QueryNode(ep, CQuery.from(new Triple(X, knows, Y)));
+        QueryNode xKnowsALICE = new QueryNode(ep, createQuery(x, knows, Alice));
+        QueryNode xKnowsZ = new QueryNode(ep, createQuery(x, knows, z));
+        QueryNode xKnowsY = new QueryNode(ep, createQuery(x, knows, y));
 
         return new Object[][] {
                 new Object[]{xKnowsALICE, xKnowsZ, singleton("x"), emptyList()},
