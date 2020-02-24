@@ -1,0 +1,28 @@
+single-step:
+  path:
+    - x
+empty-path:
+  path: []
+null-step:
+  path:
+    - x
+    - null
+two-step:
+  path:
+    - x
+    - y
+missing-in:
+  path:
+    - x
+    - y
+  direction: in
+  missing: true
+start-date:
+    path:
+      - date
+    filter:
+      sparql: FILTER($actual >= $input)
+start-date-assume-sparql:
+  path:
+    - date
+  filter: FILTER($actual >= $input)

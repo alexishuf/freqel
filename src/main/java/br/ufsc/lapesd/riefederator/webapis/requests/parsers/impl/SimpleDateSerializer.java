@@ -54,6 +54,18 @@ public class SimpleDateSerializer implements TermSerializer {
         this.resultFormat = resultFormat;
     }
 
+    /**
+     * Indicates whether format is a valid format or not.
+     */
+    public static boolean isValidFormat(@Nonnull String format) {
+        try {
+            new SimpleDateFormat(format);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
 
     public @Nonnull SimpleDateFormat getResultFormat() {
         return resultFormat;

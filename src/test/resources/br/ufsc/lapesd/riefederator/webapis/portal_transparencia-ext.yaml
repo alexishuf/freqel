@@ -1,0 +1,44 @@
+baseSwagger:
+  $ref: "/portal_transparencia.json"
+overlay:
+  x-paging:
+    param: pagina
+    start: 1
+    increment: 1
+  x-definitions:
+    date-serializer:
+      serializer: date
+      date-format: "dd/MM/yyyy"
+    only-numbers:
+      serializer: "only-numbers"
+  paths:
+    /api-de-dados/licitacoes:
+      get:
+        responses:
+          200:
+            x-cardinality: LOWER_BOUND(3)
+        parameters:
+          - name: dataInicial
+            x-serializer:
+              $ref: "#/x-definitions/date-serializer"
+            x-path:
+              path: ["dataAbertura"]
+              filter:
+                sparql: "FILTER($actual >= $input)"
+          - name: dataFinal
+            x-serializer:
+              $ref: "#/x-definitions/date-serializer"
+            x-path:
+              path: ["dataAbertura"]
+              filter:
+                sparql: "FILTER($actual <= $input)"
+          - name: codigoOrgao
+            x-serializer:
+              $ref: "#/x-definitions/only-numbers"
+            x-path:
+              path: ["unidadeGestora", "orgaoVinculado", "codigoSIAFI"]
+    /api-de-dados/licitacoes/{id}:
+      parameters:
+        - name: id
+          x-path:
+            path: ["id"]

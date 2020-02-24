@@ -43,16 +43,19 @@ public class TPEndpointTest extends EndpointTestBase {
     static {
         endpoints = new ArrayList<>();
         endpoints.add(new NamedFunction<>("ARQEndpoint.forModel", stream -> {
+            assertNotNull(stream);
             Model model = ModelFactory.createDefaultModel();
             RDFDataMgr.read(model, stream, "", Lang.TTL);
             return new Fixture<>(ARQEndpoint.forModel(model));
         }));
         endpoints.add(new NamedFunction<>("ARQEndpoint.forDataset", stream -> {
+            assertNotNull(stream);
             Dataset ds = DatasetFactory.create();
             RDFDataMgr.read(ds, stream, "", Lang.TTL);
             return new Fixture<>(ARQEndpoint.forDataset(ds));
         }));
         endpoints.add(new NamedFunction<>("ARQEndpoint.forService", stream -> {
+            assertNotNull(stream);
             Dataset ds = DatasetFactory.createTxnMem();
             RDFDataMgr.read(ds, stream, "", Lang.TTL);
             int port = 3331;

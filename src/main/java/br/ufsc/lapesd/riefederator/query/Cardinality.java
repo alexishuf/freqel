@@ -5,9 +5,15 @@ import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Immutable
 public class Cardinality  {
+    private static final Pattern parseRx =
+            Pattern.compile("([a-zA-Z_]+)(?:\\((\\d+)\\))?|(\\d+)");
+
     public enum Reliability {
         UNSUPPORTED,
         /**
@@ -72,6 +78,29 @@ public class Cardinality  {
      */
     public int getValue(int fallback) {
         return reliability == Reliability.UNSUPPORTED ? fallback : value;
+    }
+
+    public static @Nullable Cardinality parse(@Nonnull String string) {
+        Matcher matcher = parseRx.matcher(string);
+        if (!matcher.matches())
+            return null;
+        if (matcher.group(1) == null) {
+            return exact(Integer.parseInt(matcher.group(3)));
+        } else {
+            for (Reliability v : Reliability.values()) {
+                if (v.name().equals(matcher.group(1).toUpperCase())) {
+                    if (v == Reliability.UNSUPPORTED) {
+                        return UNSUPPORTED;
+                    } else if (v == Reliability.NON_EMPTY) {
+                        return NON_EMPTY;
+                    } else {
+                        return matcher.group(2) == null ? null
+                                : new Cardinality(v, Integer.parseInt(matcher.group(2)));
+                    }
+                }
+            }
+            return null; //bad reliability
+        }
     }
 
     @Override

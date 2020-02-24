@@ -1,0 +1,22 @@
+---
+a_string: asd
+lom1:
+  - x: 1
+lom2:
+  - 23
+  - x: 1
+  - bogus
+  - x: 3
+tree:
+  leaf:
+    x: 4
+child:
+  grandchild:
+    backref1:
+      "$ref": "#/lom1"
+    backreft:
+      "$ref": "#/tree/"
+    backref3:
+      "$ref": "#/tree/leaf"
+    backrefx:
+      "$ref": "#/tree/leaf/x"
