@@ -11,6 +11,8 @@ overlay:
       date-format: "dd/MM/yyyy"
     only-numbers:
       serializer: "only-numbers"
+  produces: # Original description is bugged and lacks this
+    - application/json
   paths:
     /api-de-dados/licitacoes:
       get:

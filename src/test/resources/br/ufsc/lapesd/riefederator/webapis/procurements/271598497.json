@@ -1,0 +1,57 @@
+{
+  "id": 271598497,
+  "dataResultadoCompra": "06/12/2019",
+  "dataAbertura": "27/11/2019",
+  "dataReferencia": "24/10/2019",
+  "dataPublicacao": "24/10/2019",
+  "situacaoCompra": {
+    "codigo": 75,
+    "descricao": "Evento de Resultado de Julgamento Publicado"
+  },
+  "modalidadeLicitacao": {
+    "descricao": "Pregão - Registro de Preço"
+  },
+  "instrumentoLegal": null,
+  "valor": 2075.9200,
+  "municipio": {
+    "codigoIBGE": "4205407",
+    "nomeIBGE": "FLORIANÓPOLIS",
+    "nomeIBGEsemAcento": "FLORIANOPOLIS",
+    "pais": "BRASIL",
+    "uf": {
+      "sigla": "SC",
+      "nome": "SANTA CATARINA"
+    }
+  },
+  "unidadeGestora": {
+    "codigo": "153163",
+    "nome": "MEC - UNIV. FED. DE SANTA CATARINA - SC",
+    "nomeSemAcento": "MEC - UNIV. FED. DE SANTA CATARINA - SC",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "",
+      "nome": "Universidade Federal de Santa Catarina",
+      "naturezaJuridica": {
+        "codigo": "0000    ",
+        "descricao": "Sem informação",
+        "codigoTipo": "0 ",
+        "descricaoTipo": "Sem informação"
+      },
+      "sigla": ""
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "nome": "Ministério da Educação",
+      "sigla": ""
+    },
+    "existeFatoDespesa": false,
+    "existeFatoReceita": false
+  },
+  "licitacao": {
+    "numero": "003282019",
+    "objeto": "Objeto: Pregão Eletrônico -  Registro de Preços para a eventual aquisição de equipamento de proteção, segurança e socorro para atender a Universidade Federal de Santa Catarina (UFSC).",
+    "numeroProcesso": "23080050891201916",
+    "contatoResponsavel": "RICARDO DA SILVEIRA PORTO"
+  }
+}

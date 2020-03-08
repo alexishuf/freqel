@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.webapis.parser;
 
 import br.ufsc.lapesd.riefederator.description.Molecule;
+import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
@@ -10,11 +11,13 @@ import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.impl.ParamPagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.ResponseParser;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.TermSerializer;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.MappedJsonResponseParser;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.OnlyNumbersTermSerializer;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.SimpleDateSerializer;
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimitsRegistry;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.FormatMethod;
 import org.glassfish.jersey.uri.UriTemplate;
 import org.slf4j.Logger;
@@ -49,6 +52,17 @@ public class SwaggerParser implements APIDescriptionParser {
             throw new APIDescriptionParseException("Missing required properties: "+missing)
                     .setMap(this.swagger);
         }
+    }
+
+    @CanIgnoreReturnValue
+    public @Nullable String setHost(@Nonnull String host) {
+        Object old = swagger.put("host", host);
+        return old == null ? null : old.toString();
+    }
+
+    public @Nullable String getHost() {
+        Object host = swagger.get("host");
+        return host == null ? null : host.toString();
     }
 
     /* --- --- --- --- Interface implementation --- --- --- --- */
@@ -228,7 +242,11 @@ public class SwaggerParser implements APIDescriptionParser {
         ResponseParser parser = null;
         List<Object> mediaTypes;
         mediaTypes = new ArrayList<>(getPathObj(endpoint).getListNN("get/produces"));
-        mediaTypes.add("application/json"); //fallback media type
+        mediaTypes.addAll(swagger.getListNN("produces"));
+        mediaTypes.removeIf(mt ->
+                !(mt instanceof String) || mt.toString().trim().startsWith("*/*"));
+        if (mediaTypes.isEmpty())
+            mediaTypes.add("application/json"); //fallback media type
         for (Object o : mediaTypes) {
             if (!(o instanceof String)) continue;
             String mediaType = o.toString();
@@ -239,6 +257,8 @@ public class SwaggerParser implements APIDescriptionParser {
             if (parser != null)
                 return parser;
         }
+        if (mediaTypes.contains("application/json")) // fallback to urn:plain
+            return new MappedJsonResponseParser(Collections.emptyMap(), StdPlain.URI_PREFIX);
         return null;
     }
 
@@ -402,7 +422,7 @@ public class SwaggerParser implements APIDescriptionParser {
                 swagger.getOrDefault("basePath", "") + '/' + endpoint;
         String proto = builder.replaceAll("//+", "/");
         if (!proto.matches("^https?://"))
-            proto = getScheme() + proto;
+            proto = getScheme().replaceAll("://$", "") + "://" + proto;
         return new UriTemplate(proto);
     }
 
@@ -444,7 +464,7 @@ public class SwaggerParser implements APIDescriptionParser {
     /* --- --- --- --- --- --- Factory --- --- --- --- --- --- */
 
     public static class Factory extends AbstractAPIDescriptionParserFactory {
-        public static  @Nonnull SwaggerParser fromDict(@Nonnull DictTree root) {
+        public @Nonnull SwaggerParser fromDict(@Nonnull DictTree root) {
             Queue<DictTree> queue = new ArrayDeque<>();
             queue.add(root);
             while (!queue.isEmpty()) {

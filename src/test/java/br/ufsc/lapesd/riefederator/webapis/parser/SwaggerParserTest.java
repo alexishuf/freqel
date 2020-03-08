@@ -1,30 +1,52 @@
 package br.ufsc.lapesd.riefederator.webapis.parser;
 
+import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeLink;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.util.DictTree;
+import br.ufsc.lapesd.riefederator.webapis.ProcurementsService;
+import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
+import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.impl.ParamPagingStrategy;
+import com.google.common.collect.Sets;
+import com.google.gson.Gson;
+import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.test.JerseyTestNg;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.ws.rs.core.Application;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Objects;
+import java.net.URI;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.stream.Collectors.toSet;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.testng.Assert.*;
 
-public class SwaggerParserTest {
+public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implements TestContext {
     private static final String RESOURCES_BASE = "br/ufsc/lapesd/riefederator/webapis";
     private static final String ptExtYaml = RESOURCES_BASE + "/portal_transparencia-ext.yaml";
+
+    private static final StdPlain id             = new StdPlain("id");
+    private static final StdPlain unidadeGestora = new StdPlain("unidadeGestora");
+    private static final StdPlain orgaoVinculado = new StdPlain("orgaoVinculado");
+    private static final StdPlain orgaoMaximo    = new StdPlain("orgaoMaximo");
+    private static final StdPlain codigoSIAFI    = new StdPlain("codigoSIAFI");
+    private static final StdPlain codigo         = new StdPlain("codigo");
 
     @DataProvider
     public static Object[][] resourcePathData() {
@@ -154,5 +176,81 @@ public class SwaggerParserTest {
                 asList(new StdPlain("unidadeGestora"),
                        new StdPlain("orgaoVinculado"),
                        new StdPlain("codigoSIAFI")));
+    }
+
+    @Override
+    protected Application configure() {
+        return new ResourceConfig().register(ModelMessageBodyWriter.class)
+                                   .register(ProcurementsService.class);
+    }
+
+    @Test
+    public void selfTestGetProcurement() throws IOException {
+        String json = target("/api-de-dados/licitacoes/277815533")
+                .request(APPLICATION_JSON).get(String.class);
+        DictTree tree = DictTree.load().fromJsonString(json);
+        assertEquals(tree.getLong("id", 0), 277815533);
+        assertEquals(tree.getPrimitive("unidadeGestora/codigo", "").toString(),
+                "150232");
+
+        assertEquals(target("/api-de-dados/licitacoes/666").request(APPLICATION_JSON)
+                                                                 .get().getStatus(),
+                     404);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void selfTestListProcurements() throws IOException {
+        String json = target("/api-de-dados/licitacoes")
+                .queryParam("dataInicial", "01/12/2019")
+                .queryParam("dataFinal", "31/12/2019")
+                .queryParam("codigoOrgao", "26246")
+                .request(APPLICATION_JSON).get(String.class);
+        List<Map<String, Object>> list;
+        list = (List<Map<String, Object>>)new Gson().fromJson(json, List.class);
+
+        assertEquals(list.size(), 2);
+        List<DictTree> trees = new ArrayList<>();
+        for (Map<String, Object> map : list) trees.add(DictTree.load().fromMap(map));
+
+        assertEquals(trees.stream().map(d -> d.get("id")).collect(toSet()),
+                Sets.newHashSet(267291791.0, 278614622.0));
+        assertEquals(trees.stream().map(d -> d.get("licitacao/numero")).collect(toSet()),
+                     Sets.newHashSet("003272019", "002472019"));
+    }
+
+    @Test
+    public void testCreateEndpointGetProcurement() throws IOException {
+        SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
+        URI rootUri = target().getUri();
+        assertEquals(parser.setHost(rootUri.getHost() + ":" + rootUri.getPort()),
+                     "www.transparencia.gov.br");
+
+        String endpointPath = "/api-de-dados/licitacoes/{id}";
+        WebAPICQEndpoint endpoint = parser.getEndpoint(endpointPath);
+
+        CQueryMatch match = endpoint.getMatcher().match(createQuery(
+                x, unidadeGestora, y,
+                y, orgaoMaximo, u,
+                y, orgaoVinculado, z,
+                z, codigoSIAFI, lit("26246")));
+        assertTrue(match.isEmpty()); // missing required inputss !
+
+        CQuery query = createQuery(
+                x, id, lit(267291791),
+                x, unidadeGestora, y,
+                y, orgaoMaximo, u,
+                u, codigo, v,
+                y, orgaoVinculado, z,
+                z, codigoSIAFI, lit("26246"));
+        match = endpoint.getMatcher().match(query);
+        assertEquals(match.getKnownExclusiveGroups().size(), 1);
+
+        try (Results results = endpoint.query(query)) {
+            assertTrue(results.hasNext());
+            Solution solution = results.next();
+            assertEquals(solution.get(v), lit("26000"));
+            assertFalse(results.hasNext());
+        }
     }
 }

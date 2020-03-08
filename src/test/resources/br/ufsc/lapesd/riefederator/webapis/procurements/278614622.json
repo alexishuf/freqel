@@ -1,0 +1,57 @@
+{
+  "id": 278614622,
+  "dataResultadoCompra": "17/12/2019",
+  "dataAbertura": "13/12/2019",
+  "dataReferencia": "03/12/2019",
+  "dataPublicacao": "03/12/2019",
+  "situacaoCompra": {
+    "codigo": 75,
+    "descricao": "Evento de Resultado de Julgamento Publicado"
+  },
+  "modalidadeLicitacao": {
+    "descricao": "Pregão - Registro de Preço"
+  },
+  "instrumentoLegal": null,
+  "valor": 12040.0000,
+  "municipio": {
+    "codigoIBGE": "4205407",
+    "nomeIBGE": "FLORIANÓPOLIS",
+    "nomeIBGEsemAcento": "FLORIANOPOLIS",
+    "pais": "BRASIL",
+    "uf": {
+      "sigla": "SC",
+      "nome": "SANTA CATARINA"
+    }
+  },
+  "unidadeGestora": {
+    "codigo": "150232",
+    "nome": "HOSPITAL UNIVERSITÁRIO/UFSC",
+    "nomeSemAcento": "HOSPITAL UNIVERSITARIO/UFSC",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "",
+      "nome": "Universidade Federal de Santa Catarina",
+      "naturezaJuridica": {
+        "codigo": "0000    ",
+        "descricao": "Sem informação",
+        "codigoTipo": "0 ",
+        "descricaoTipo": "Sem informação"
+      },
+      "sigla": ""
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "nome": "Ministério da Educação",
+      "sigla": ""
+    },
+    "existeFatoDespesa": false,
+    "existeFatoReceita": false
+  },
+  "licitacao": {
+    "numero": "002472019",
+    "objeto": "Objeto: Pregão Eletrônico -  Registro de Preços para a eventual contratação de empresa prestadora de serviço contínuo de manejo de resíduos do Grupo B: reatores, baterias, pilhas, lâmpadas queimadas e não quebradas e lâmpadas queimadas quebradas sem disponibilização de mão de obra exclusiva, conforme normas preconizadas da Anvisa e Conama, gerados pelo Hospital Universitário/UFSC.",
+    "numeroProcesso": "23080048760201979",
+    "contatoResponsavel": "ALECIO CARMINATTI JUNIOR"
+  }
+}

@@ -1,7 +1,9 @@
 package br.ufsc.lapesd.riefederator;
 
+import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
@@ -24,6 +26,13 @@ public interface TestContext {
 
     @Nonnull URI xsdInt    = new StdURI(XSDDatatype.XSDint.getURI());
     @Nonnull URI xsdString = new StdURI(XSDDatatype.XSDstring.getURI());
+
+    default @Nonnull Lit lit(int value) {
+        return StdLit.fromUnescaped(String.valueOf(value), xsdInt);
+    }
+    default @Nonnull Lit lit(String value) {
+        return StdLit.fromUnescaped(String.valueOf(value), xsdString);
+    }
 
     @Nonnull URI Person   = new StdURI(FOAF.Person.getURI());
     @Nonnull URI Document = new StdURI(FOAF.Document.getURI());
