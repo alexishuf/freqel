@@ -12,8 +12,16 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.QuerySolution;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDFS;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,9 +31,12 @@ import javax.annotation.Nullable;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJena;
 import static br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict.EMPTY;
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
 
 public class SPARQLStringTest implements TestContext {
@@ -75,6 +86,31 @@ public class SPARQLStringTest implements TestContext {
                 singleton(new Triple(Alice, knows, new StdVar("who"))), EMPTY);
         assertEquals(s.getType(), SPARQLString.Type.SELECT);
         assertEquals(s.getVarNames(), singleton("who"));
+    }
+
+    @Test
+    public void testSELECTWithFilter() {
+        SPARQLString sparqlString = new SPARQLString(
+                createQuery(x, age, TestContext.y, SPARQLFilter.build("?y > 23")),
+                EMPTY
+        );
+        assertEquals(sparqlString.getFilters(),
+                     singleton(SPARQLFilter.build("?y > 23")));
+        assertEquals(sparqlString.getType(), SPARQLString.Type.SELECT);
+
+        Model model = ModelFactory.createDefaultModel();
+        model.add(toJena(Alice), FOAF.age, createTypedLiteral(24));
+        model.add(toJena(Bob), FOAF.age, createTypedLiteral(22));
+
+        String sparql = sparqlString.getString();
+        try (QueryExecution execution = QueryExecutionFactory.create(sparql, model)) {
+            ResultSet results = execution.execSelect();
+            assertTrue(results.hasNext());
+            QuerySolution solution = results.next();
+            assertEquals(solution.get("x"), toJena(Alice));
+            assertEquals(solution.get("y"), createTypedLiteral(24));
+            assertFalse(results.hasNext());
+        }
     }
 
     @Test

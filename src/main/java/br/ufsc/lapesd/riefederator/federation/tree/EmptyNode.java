@@ -28,7 +28,14 @@ public class EmptyNode extends AbstractPlanNode {
 
     public EmptyNode(@Nonnull Collection<String> resultVars,
                      @Nonnull Collection<String> inputVars) {
-        super(resultVars, false, inputVars, emptyList(), Cardinality.EMPTY);
+        this(resultVars, resultVars, inputVars);
+    }
+
+    public EmptyNode(@Nonnull Collection<String> allVars,
+                     @Nonnull Collection<String> resultVars,
+                     @Nonnull Collection<String> inputVars) {
+        super(allVars, resultVars, resultVars.size() < allVars.size(),
+              inputVars, emptyList(), Cardinality.EMPTY);
     }
 
     public EmptyNode(@Nonnull CQuery query) {

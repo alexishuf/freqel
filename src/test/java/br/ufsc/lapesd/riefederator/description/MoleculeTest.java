@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.description;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

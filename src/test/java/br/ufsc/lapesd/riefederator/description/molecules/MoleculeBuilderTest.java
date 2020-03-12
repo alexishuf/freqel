@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
 import br.ufsc.lapesd.riefederator.TestContext;
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;

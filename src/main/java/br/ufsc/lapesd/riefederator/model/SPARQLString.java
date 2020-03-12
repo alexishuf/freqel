@@ -7,9 +7,13 @@ import br.ufsc.lapesd.riefederator.query.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.SetMultimap;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -26,7 +30,8 @@ public class SPARQLString {
     static final @Nonnull Pattern SPARQL_VAR_NAME = Pattern.compile("^[a-zA-Z_0-9\\-]+$");
     private final @Nonnull Type type;
     private final @Nonnull String string;
-    private final @Nonnull Set<String> varNames;
+    private final @Nonnull ImmutableSet<String> varNames;
+    private final @Nonnull ImmutableSet<SPARQLFilter> filters;
 
     private static @Nonnull Collection<Triple>
     removePureDescriptive(@Nonnull Collection<Triple> triples) {
@@ -44,7 +49,8 @@ public class SPARQLString {
     }
 
     public SPARQLString(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict) {
-        this(triples, dict, ImmutableList.of());
+        this(triples, dict,
+             triples instanceof CQuery ? ((CQuery)triples).getModifiers() : ImmutableList.of());
     }
 
     public SPARQLString(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict,
@@ -52,20 +58,22 @@ public class SPARQLString {
         triples = removePureDescriptive(triples);
         Preconditions.checkArgument(!triples.isEmpty(), "triples cannot be empty");
         // find var names
-        varNames = new HashSet<>(triples.size() * 2);
+        Set<String> varNames = new HashSet<>(triples.size() * 2);
         for (Triple triple : triples)
             triple.forEach(t -> {if (t.isVar()) varNames.add(t.asVar().getName());});
+        this.varNames = ImmutableSet.copyOf(varNames);
+        filters = getFilters(triples);
 
         // add prefixes
         StringBuilder b = new StringBuilder(triples.size()*32);
         dict.forEach((name, uri) -> {
             if (SPARQL_VAR_NAME.matcher(name).matches())
-                b.append("@prefix ").append(name).append(": <").append(uri).append("> .\n");
+                b.append("PREFIX ").append(name).append(": <").append(uri).append("> \n");
         });
         if (b.length() > 0) b.append('\n');
 
         // add query command
-        type = varNames.isEmpty() || ModifierUtils.getFirst(ASK, modifiers) != null
+        type = this.varNames.isEmpty() || ModifierUtils.getFirst(ASK, modifiers) != null
                 ? Type.ASK : Type.SELECT;
         if (type == Type.ASK) {
             b.append("ASK {\n");
@@ -76,23 +84,59 @@ public class SPARQLString {
             Projection project = (Projection)ModifierUtils.getFirst(PROJECTION, modifiers);
             if (project != null) {
                 for (String name : project.getVarNames()) {
-                    if (varNames.contains(name))
+                    if (this.varNames.contains(name))
                         b.append(" ?").append(name);
                 }
             } else {
-                for (String name : varNames) b.append(" ?").append(name);
+                for (String name : this.varNames) b.append(" ?").append(name);
             }
             b.append(" WHERE {\n");
         }
 
         // add BGP
-        for (Triple triple : triples) {
-            triple.forEach(t -> b.append(term2SPARQL(t, dict)).append(" "));
-            b.append(".\n");
-        }
+        writeBGP(triples, dict, b);
         this.string = b.append("}\n").toString();
     }
 
+    private void writeBGP(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict,
+                          @Nonnull StringBuilder b) {
+        SetMultimap<Term, SPARQLFilter> term2filter = HashMultimap.create();
+        for (SPARQLFilter filter : filters)
+            filter.getTerms().forEach(t -> term2filter.put(t, filter));
+        Map<SPARQLFilter, Integer> filter2triple = new HashMap<>();
+        if (triples instanceof CQuery) {
+            CQuery query = (CQuery)triples;
+            int idx = -1;
+            for (Triple triple : query) {
+                int finalIdx = ++idx;
+                triple.forEach(t -> {
+                    for (SPARQLFilter filter : term2filter.get(t))
+                        filter2triple.put(filter, finalIdx);
+                });
+            }
+        }
+        List<List<SPARQLFilter>> annotations = new ArrayList<>(triples.size());
+        for (int i = 0; i < triples.size(); i++) annotations.add(new ArrayList<>());
+        for (Map.Entry<SPARQLFilter, Integer> e : filter2triple.entrySet())
+            annotations.get(e.getValue()).add(e.getKey());
+
+        Iterator<List<SPARQLFilter>> aIt = annotations.iterator();
+        for (Triple triple : triples) {
+            assert  aIt.hasNext();
+            triple.forEach(t -> b.append(term2SPARQL(t, dict)).append(" "));
+            aIt.next().forEach(ann -> b.append(ann.getSparqlFilter()).append('\n'));
+            b.append(".\n");
+        }
+    }
+
+    static @Nonnull ImmutableSet<SPARQLFilter> getFilters(Collection<Triple> triples) {
+        if (!(triples instanceof CQuery)) return ImmutableSet.of();
+        Set<SPARQLFilter> set = new HashSet<>();
+        for (Modifier modifier : ((CQuery) triples).getModifiers()) {
+            if (modifier instanceof SPARQLFilter) set.add((SPARQLFilter)modifier);
+        }
+        return ImmutableSet.copyOf(set);
+    }
 
     static @Nonnull String term2SPARQL(@Nonnull Term t, @Nonnull PrefixDict dict) {
         if (t.isBlank()) {
@@ -117,8 +161,11 @@ public class SPARQLString {
     public @Nonnull String getString() {
         return string;
     }
-    public @Nonnull Set<String> getVarNames() {
+    public @Nonnull ImmutableSet<String> getVarNames() {
         return varNames;
+    }
+    public @Nonnull ImmutableSet<SPARQLFilter> getFilters() {
+        return filters;
     }
 
     @Override

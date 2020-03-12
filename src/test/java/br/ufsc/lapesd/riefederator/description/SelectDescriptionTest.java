@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
@@ -19,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import static br.ufsc.lapesd.riefederator.model.term.std.StdLit.fromUnescaped;
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -112,5 +114,22 @@ public class SelectDescriptionTest implements TestContext {
         assertEquals(match.getQuery(), CQuery.from(query));
         assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), new HashSet<>(expected));
         assertEquals(match.getKnownExclusiveGroups(), Collections.emptySet());
+    }
+
+    @DataProvider
+    public static @Nonnull Object[][] fetchClassesData() {
+        return new Object[][] { new Object[]{true}, new Object[]{false} };
+    }
+
+    @Test(dataProvider = "fetchClassesData")
+    public void testMatchWithFilter(boolean fetchClasses) {
+        CQuery query = createQuery(
+                Alice, knows, x,
+                x, age, TestContext.y,
+                SPARQLFilter.build("?y >= 23"));
+        SelectDescription description = new SelectDescription(rdf1, fetchClasses);
+        CQueryMatch match = description.match(query);
+        assertEquals(match.getKnownExclusiveGroups(), emptyList());
+        assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.getSet());
     }
 }

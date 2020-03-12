@@ -99,7 +99,15 @@ public interface TPEndpoint extends AutoCloseable {
     /**
      * Indicates whether this endpoint supports the capability in queries given to query().
      */
-    boolean hasCapability(@Nonnull Capability capability);
+    default boolean hasCapability(@Nonnull Capability capability) {
+        return hasRemoteCapability(capability);
+    }
+
+    /**
+     * Same as hasCapability(), but will only return true if the capability is provided by the
+     * remote source.
+     */
+    boolean hasRemoteCapability(@Nonnull Capability capability);
 
     /**
      * Some endpoint implementations may hold resources that should be released once the

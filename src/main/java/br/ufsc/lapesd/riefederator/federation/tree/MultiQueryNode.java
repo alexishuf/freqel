@@ -13,7 +13,6 @@ import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 
 /**
  * This node represents multiple independent queries that output the same projection.
@@ -132,20 +131,30 @@ public class MultiQueryNode extends AbstractPlanNode {
                              boolean projecting,
                              @Nonnull Collection<String> inputVars,
                              @Nonnull Cardinality cardinality) {
-        super(resultVars, projecting, inputVars, children, cardinality);
+        this(children, unionVars(children), resultVars, projecting, inputVars, cardinality);
     }
+
+    protected MultiQueryNode(@Nonnull List<PlanNode> children,
+                             @Nonnull Collection<String> allVars,
+                             @Nonnull Collection<String> resultVars,
+                             boolean projecting,
+                             @Nonnull Collection<String> inputVars,
+                             @Nonnull Cardinality cardinality) {
+        super(allVars, resultVars, projecting, inputVars, children, cardinality);
+    }
+
 
     @Override
     public @Nonnull MultiQueryNode createBound(@Nonnull Solution solution) {
         List<PlanNode> children = getChildren().stream().map(n -> n.createBound(solution))
                                                         .collect(toList());
-        Set<String> all = children.stream().flatMap(n -> getResultVars().stream()).collect(toSet());
-        HashSet<String> names = new HashSet<>(getResultVars());
-        names.retainAll(all);
-        boolean projecting = names.size() < all.size();
+        Set<String> all = unionVars(children);
+        HashSet<String> results = new HashSet<>(getResultVars());
+        results.retainAll(all);
+        boolean projecting = results.size() < all.size();
         HashSet<String> inputs = new HashSet<>(getInputVars());
         inputs.removeAll(solution.getVarNames());
-        return new MultiQueryNode(children, names, projecting, inputs, getCardinality());
+        return new MultiQueryNode(children, all, results, projecting, inputs, getCardinality());
     }
 
     @Override

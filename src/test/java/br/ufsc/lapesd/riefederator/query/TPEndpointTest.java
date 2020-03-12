@@ -5,11 +5,9 @@ import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
-import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.apache.jena.fuseki.main.FusekiServer;
 import org.apache.jena.query.Dataset;
@@ -111,7 +109,7 @@ public class TPEndpointTest extends EndpointTestBase {
             Set<Solution> ac = new HashSet<>();
             if (modifiers.length > 0) {
                 CQuery cQuery = new CQuery(ImmutableList.of(query),
-                                           ImmutableList.copyOf(modifiers));
+                                           ImmutableSet.copyOf(modifiers));
                 boolean repeated = false;
                 try (Results results = fixture.endpoint.query(cQuery)) {
                     while (results.hasNext()) repeated |= !ac.add(results.next());
@@ -312,5 +310,13 @@ public class TPEndpointTest extends EndpointTestBase {
             assertTrue(fix.endpoint.getAlternatives().stream()
                     .allMatch(fix.endpoint::isAlternative));
         }
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testFilter(Function<InputStream, Fixture<TPEndpoint>> f) {
+        queryResourceTest(f, "../rdf-1.nt", new Triple(s, age, x),
+                newHashSet(MapSolution.builder().put(s, Alice).put(x, lit(23)).build()));
+        queryResourceTest(f, "../rdf-1.nt", new Triple(s, age, x),
+                Collections.emptySet(), SPARQLFilter.build("?x > 23"));
     }
 }

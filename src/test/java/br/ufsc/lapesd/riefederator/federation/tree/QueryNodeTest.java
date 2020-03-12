@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.TestContext;
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
@@ -20,6 +20,7 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 
+import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -143,7 +144,7 @@ public class QueryNodeTest implements TestContext {
     public void testBindingNoChangePreservesAnnotations() {
         CQuery query = CQuery.with(new Triple(Alice, knows, y))
                 .annotate(Alice, AtomAnnotation.of(atom1))
-                .annotate(y, AtomAnnotation.asRequired(atom2)).build();
+                .annotate(y, asRequired(atom2, "atom2")).build();
         QueryNode node = new QueryNode(empty, query);
         QueryNode bound = node.createBound(MapSolution.build(x, Bob));
 
@@ -158,8 +159,8 @@ public class QueryNodeTest implements TestContext {
     @Test
     public void testBindingPreservesAnnotations() {
         CQuery query = CQuery.with(new Triple(x, knows, y), new Triple(Alice, knows, x))
-                .annotate(x, AtomAnnotation.asRequired(atom1))
-                .annotate(y, AtomAnnotation.asRequired(atom2))
+                .annotate(x, asRequired(atom1, "atom1"))
+                .annotate(y, asRequired(atom2, "atom2"))
                 .annotate(Alice, AtomAnnotation.of(atom3))
                 .build();
         QueryNode node = new QueryNode(empty, query);
@@ -170,8 +171,8 @@ public class QueryNodeTest implements TestContext {
         assertEquals(bound.getInputVars(), singleton("y"));
 
         CQuery expected = CQuery.with(new Triple(Bob, knows, y), new Triple(Alice, knows, Bob))
-                .annotate(Bob, AtomAnnotation.asRequired(atom1))
-                .annotate(y, AtomAnnotation.asRequired(atom2))
+                .annotate(Bob, asRequired(atom1, "atom1"))
+                .annotate(y, asRequired(atom2, "atom2"))
                 .annotate(Alice, AtomAnnotation.of(atom3))
                 .build();
         assertEquals(bound.getQuery(), expected);

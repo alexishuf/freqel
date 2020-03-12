@@ -8,10 +8,10 @@
 : a owl:Ontology .
 
 :Person a owl:Class .
-:Employee a owl:Class; rdfs:subClassOf :Person.
-:Manager a owl:Class; rdfs:subClassOf :Employee.
+:Employee a owl:Class; rdfs:subClassOf :Person .
+:Manager a owl:Class; rdfs:subClassOf :Employee .
 
-:knows a owl:ObjectProperty.
-:advises a owl:ObjectProperty; rdfs:subPropertyOf :knows.
-:mentors a owl:ObjectProperty; rdfs:subPropertyOf :advises.
-:manages a owl:ObjectProperty; rdfs:subPropertyOf :knows.
+:knows a owl:ObjectProperty .
+:advises a owl:ObjectProperty; rdfs:subPropertyOf :knows .
+:mentors a owl:ObjectProperty; rdfs:subPropertyOf :advises .
+:manages a owl:ObjectProperty; rdfs:subPropertyOf :knows .

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator;
 
+import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -7,6 +8,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
@@ -24,14 +26,19 @@ public interface TestContext {
 
     @Nonnull URI subPropertyOf = new StdURI(RDFS.subPropertyOf.getURI());
 
-    @Nonnull URI xsdInt    = new StdURI(XSDDatatype.XSDint.getURI());
-    @Nonnull URI xsdString = new StdURI(XSDDatatype.XSDstring.getURI());
+    @Nonnull URI xsdInt     = new StdURI(XSDDatatype.XSDint.getURI());
+    @Nonnull URI xsdInteger = new StdURI(XSDDatatype.XSDinteger.getURI());
+    @Nonnull URI xsdString  = new StdURI(XSDDatatype.XSDstring.getURI());
+    @Nonnull URI xsdDate  = new StdURI(XSDDatatype.XSDdate.getURI());
 
     default @Nonnull Lit lit(int value) {
         return StdLit.fromUnescaped(String.valueOf(value), xsdInt);
     }
     default @Nonnull Lit lit(String value) {
         return StdLit.fromUnescaped(String.valueOf(value), xsdString);
+    }
+    default @Nonnull Lit date(String iso) {
+        return JenaWrappers.fromJena(ResourceFactory.createTypedLiteral(iso, XSDDatatype.XSDdate));
     }
 
     @Nonnull URI Person   = new StdURI(FOAF.Person.getURI());

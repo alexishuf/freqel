@@ -12,7 +12,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.apache.commons.collections4.iterators.TransformIterator;
 import org.apache.http.client.HttpClient;
 import org.apache.http.protocol.HttpContext;
@@ -101,10 +101,11 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     @Override
-    public boolean hasCapability(@Nonnull Capability capability) {
+    public boolean hasRemoteCapability(@Nonnull Capability capability) {
         switch (capability) {
             case PROJECTION:
             case DISTINCT:
+            case SPARQL_FILTER:
             case ASK:
                 return true;
             default:
@@ -115,7 +116,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         ModifierUtils.check(this, query.getModifiers());
-        PrefixDict dict = query.getPrefixDict(StdPrefixDict.EMPTY);
+        PrefixDict dict = query.getPrefixDict(StdPrefixDict.STANDARD);
         SPARQLString sparql = new SPARQLString(query, dict, query.getModifiers());
         if (sparql.getType() == SPARQLString.Type.ASK) {
             try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
@@ -153,9 +154,9 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             return Cardinality.UNSUPPORTED;
 
         PrefixDict dict = query.getPrefixDict(StdPrefixDict.EMPTY);
-        ImmutableList<Modifier> mods = query.getModifiers();
+        ImmutableSet<Modifier> mods = query.getModifiers();
         if ((isLocal() && !canQueryLocal(policy)) || (!isLocal() && !canQueryRemote(policy)))
-            mods = ImmutableList.<Modifier>builder().addAll(mods).add(Ask.ADVISED).build();
+            mods = ImmutableSet.<Modifier>builder().addAll(mods).add(Ask.ADVISED).build();
 
         SPARQLString sparql = new SPARQLString(query, dict, mods);
         if (sparql.getType() == SPARQLString.Type.ASK) {

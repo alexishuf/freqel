@@ -51,7 +51,8 @@ public class QueryNode extends AbstractPlanNode {
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
                      @Nonnull Collection<String> varNames, boolean projecting,
                      @Nonnull Cardinality cardinality) {
-        super(varNames, projecting, getInputVars(query), Collections.emptyList(), cardinality);
+        super(query.getVars().stream().map(Var::getName).collect(toSet()),
+              varNames, projecting, getInputVars(query), Collections.emptyList(), cardinality);
         if (QueryNode.class.desiredAssertionStatus()) { //expensive checks
             Set<String> all = query.streamTerms(Var.class).map(Var::getName).collect(toSet());
             Preconditions.checkArgument(all.containsAll(varNames), "There are extra varNames");

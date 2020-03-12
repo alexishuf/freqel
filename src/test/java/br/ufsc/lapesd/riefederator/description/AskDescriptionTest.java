@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -22,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.function.Function;
 
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -161,5 +163,17 @@ public class AskDescriptionTest implements TestContext {
         match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, o))));
         assertEquals(ep.calls, 2); // no new ASK
         assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, o)));
+    }
+
+    @Test
+    public void testMatchWithFilter() {
+        CountingARQEndpoint ep = createEndpoint();
+        AskDescription d = new AskDescription(ep);
+        CQuery query = createQuery(x, age,   y,
+                                   x, knows, Bob,
+                                   SPARQLFilter.build("?y > 23"));
+        CQueryMatch match = d.match(query);
+        assertEquals(match.getKnownExclusiveGroups(), emptyList());
+        assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.getSet());
     }
 }

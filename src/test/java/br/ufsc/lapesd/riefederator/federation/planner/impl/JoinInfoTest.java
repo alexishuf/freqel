@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMultiJoinability;
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
+import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.*;
@@ -43,9 +44,9 @@ public class JoinInfoTest implements TestContext {
 
     private static final CQuery xpyi = CQuery.with(new Triple(x, p1, y))
             .annotate(x, AtomAnnotation.of(X))
-            .annotate(y, AtomAnnotation.asRequired(Y)).build();
+            .annotate(y, asRequired(Y, "Y")).build();
     private static final CQuery yipz = CQuery.with(new Triple(y, p1, z))
-            .annotate(y, AtomAnnotation.asRequired(Y))
+            .annotate(y, asRequired(Y, "Y"))
             .annotate(z, AtomAnnotation.of(Z)).build();
 
 

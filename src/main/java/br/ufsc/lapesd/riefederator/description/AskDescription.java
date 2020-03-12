@@ -33,7 +33,7 @@ public class AskDescription implements Description {
 
     public AskDescription(@Nonnull TPEndpoint endpoint, int cacheSize) {
         this.endpoint = endpoint;
-        if (!endpoint.hasCapability(Capability.ASK))
+        if (!endpoint.hasRemoteCapability(Capability.ASK))
             logger.warn("{} has no ASK capability. Will fetch first result instead", endpoint);
         this.cache = CacheBuilder.newBuilder().initialCapacity(max(256, cacheSize))
                 .maximumSize(cacheSize)

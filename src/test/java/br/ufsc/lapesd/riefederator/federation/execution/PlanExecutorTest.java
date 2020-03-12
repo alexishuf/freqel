@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.execution;
 
 import br.ufsc.lapesd.riefederator.TestContext;
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleCartesianNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleEmptyNodeExecutor;
@@ -631,7 +631,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     public void testQueryApi(@Nonnull Module module) {
         StdURI consumer1 = ex("consumer/1");
         QueryNode node = new QueryNode(typeEp,
-                createQuery(consumer1, asRequired(typedThing),
+                createQuery(consumer1, asRequired(typedThing, "uri"),
                             type, x, AtomAnnotation.of(typeAtom)));
         test(module, node, singleton(MapSolution.build(x, ex("Consumer"))));
     }
@@ -640,7 +640,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     public void testBindJoinServiceAndTriple(@Nonnull Module module) {
         QueryNode q1 = new QueryNode(joinsEp, createQuery(ex("order/1"), ex("hasConsumer"), x));
         QueryNode q2 = new QueryNode(typeEp,
-                createQuery(x, asRequired(typedThing), type, y, AtomAnnotation.of(typeAtom)));
+                createQuery(x, asRequired(typedThing, "uri"), type, y, AtomAnnotation.of(typeAtom)));
         test(module, JoinNode.builder(q1, q2).build(), singleton(
                 MapSolution.builder().put(x, ex("consumer/1")).put(y, ex("Consumer")).build()
         ));
@@ -653,11 +653,11 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     @Test(dataProvider = "bindJoinModulesData")
     public void testSinglePathQueryWithThreeServices(@Nonnull Module module) {
         QueryNode n1 = new QueryNode(poEP, createQuery(
-                ex("h1"), asRequired(poThing), knows, x, AtomAnnotation.of(knowsAtom)));
+                ex("h1"), asRequired(poThing, "uri"), knows, x, AtomAnnotation.of(knowsAtom)));
         QueryNode n2 = new QueryNode(poEP,
-                createQuery(x, asRequired(poThing), knows, y, AtomAnnotation.of(knowsAtom)));
+                createQuery(x, asRequired(poThing, "uri"), knows, y, AtomAnnotation.of(knowsAtom)));
         QueryNode n3 = new QueryNode(poEP, createQuery(
-                y, asRequired(poThing), knows, z, AtomAnnotation.of(knowsAtom)));
+                y, asRequired(poThing, "uri"), knows, z, AtomAnnotation.of(knowsAtom)));
         JoinNode j1 = JoinNode.builder(n1, n2).build();
         JoinNode j2 = JoinNode.builder(j1, n3).build();
         test(module, j2, singleton(
@@ -671,13 +671,13 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     @Test(dataProvider = "bindJoinModulesData")
     public void testMultiPathQueryWithFourServices(@Nonnull Module module) {
         QueryNode n1 = new QueryNode(poEP, createQuery(
-                ex("src"), asRequired(poThing), knows, x, AtomAnnotation.of(knowsAtom)));
+                ex("src"), asRequired(poThing, "uri"), knows, x, AtomAnnotation.of(knowsAtom)));
         QueryNode n2 = new QueryNode(poEP, createQuery(
-                x, asRequired(poThing), knows, y, AtomAnnotation.of(knowsAtom)));
+                x, asRequired(poThing, "uri"), knows, y, AtomAnnotation.of(knowsAtom)));
         QueryNode n3 = new QueryNode(poEP, createQuery(
-                y, asRequired(poThing), knows, z, AtomAnnotation.of(knowsAtom)));
+                y, asRequired(poThing, "uri"), knows, z, AtomAnnotation.of(knowsAtom)));
         QueryNode n4 = new QueryNode(poEP, createQuery(
-                z, asRequired(poThing), knows, w, AtomAnnotation.of(knowsAtom)));
+                z, asRequired(poThing, "uri"), knows, w, AtomAnnotation.of(knowsAtom)));
         JoinNode j1 = JoinNode.builder(n1, n2).build();
         JoinNode j2 = JoinNode.builder(n3, n4).build();
         JoinNode j3 = JoinNode.builder(j1, j2).addResultVars(asList("x", "w")).build();

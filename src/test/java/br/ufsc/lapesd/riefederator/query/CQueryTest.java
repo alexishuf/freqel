@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
+import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
@@ -9,8 +10,11 @@ import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.Sets;
 import com.google.errorprone.annotations.Immutable;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,6 +24,7 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.query.JoinType.OBJ_SUBJ;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -539,6 +544,36 @@ public class CQueryTest implements TestContext {
         CQuery cQuery = CQuery.from(query);
         Set<URI> actual = cQuery.streamTerms(URI.class).collect(toSet());
         assertEquals(actual, new HashSet<>(expected));
+    }
+
+    @Test
+    public void testUnionPreservesAnnotationsAndModifiers() {
+        Atom a1 = new Atom("a1"), a2 = new Atom("a2");
+        CQuery left = createQuery(
+                Alice, knows, x, AtomAnnotation.of(a1),
+                x,     age,   u, SPARQLFilter.build("?u > 23"),
+                x,     knows, y);
+        CQuery right = createQuery(
+                x, AtomAnnotation.of(a1), knows, y,
+                y, AtomAnnotation.of(a2), age,   v, SPARQLFilter.build("?v < 23"),
+                y,                        knows, Bob);
+        CQuery actual = CQuery.union(left, right);
+        CQuery expected = createQuery(
+                Alice, knows, x, AtomAnnotation.of(a1),
+                x, age, u, SPARQLFilter.build("?u > 23"),
+                x, knows, y, AtomAnnotation.of(a2),
+                y, age, v, SPARQLFilter.build("?v < 23"),
+                y, knows, Bob);
+        assertEquals(actual, expected);
+        //noinspection SimplifiedTestNGAssertion
+        assertTrue(actual.equals(expected));
+        assertEquals(actual.getModifiers(), expected.getModifiers());
+
+        Set<ImmutablePair<Term, TermAnnotation>>  leftAnnotations = new HashSet<>();
+        Set<ImmutablePair<Term, TermAnnotation>> rightAnnotations = new HashSet<>();
+        actual.forEachTermAnnotation((t, a) ->  leftAnnotations.add(ImmutablePair.of(t, a)));
+        actual.forEachTermAnnotation((t, a) -> rightAnnotations.add(ImmutablePair.of(t, a)));
+        assertEquals(leftAnnotations, rightAnnotations);
     }
 
 }

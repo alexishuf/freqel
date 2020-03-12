@@ -222,7 +222,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                         pager.notifyResponse(response[0]);
                         obj[0] = response[0].readEntity(parser.getDesiredClass());
                         info.setRequestMs(sw);
-                        info.setContentType(response[0].getMediaType().toString());
+                        if (response[0].getMediaType() != null)
+                            info.setContentType(response[0].getMediaType().toString());
                         info.setResponseBytes(response[0].getLength());
                     } catch (RuntimeException e) {
                         info.setException(e);

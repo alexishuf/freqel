@@ -1,10 +1,9 @@
-package br.ufsc.lapesd.riefederator.description;
+package br.ufsc.lapesd.riefederator.description.molecules;
 
-import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.description.molecules.MoleculeBuilder;
-import br.ufsc.lapesd.riefederator.description.molecules.MoleculeLink;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.SetMultimap;
 import com.google.errorprone.annotations.Immutable;
@@ -23,23 +22,59 @@ import static java.util.stream.Stream.concat;
 public class Molecule {
     private @Nonnull final Atom core;
     private @LazyInit int atomCount;
+    private @Nonnull final ImmutableSet<AtomFilter> filters;
+    private @Nonnull final ImmutableSetMultimap<String, AtomFilter> atom2Filters;
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<Map<String, Atom>> atomMap
             = new SoftReference<>(null);
+    @SuppressWarnings("Immutable")
+    private @LazyInit @Nonnull SoftReference<Map<String, AtomFilter>> filterMap
+            = new SoftReference<>(null);
     private @LazyInit @SuppressWarnings("Immutable") @Nonnull SoftReference<Index> index
             = new SoftReference<>(null);
+
+
+    /* --- ---- --- Constructor & builder --- --- --- */
 
     public static @Nonnull MoleculeBuilder builder(@Nonnull String name) {
         return new MoleculeBuilder(name);
     }
 
-    public Molecule(@Nonnull Atom core, int atomCount) {
-        this(core);
-        this.atomCount = atomCount;
-    }
-    public Molecule(@Nonnull Atom core) {
+    Molecule(@Nonnull Atom core, int atomCount,
+             @Nonnull Collection<AtomFilter> filters) {
         this.core = core;
+        this.atomCount = atomCount;
+        this.filters = filters instanceof ImmutableSet ? (ImmutableSet<AtomFilter>)filters
+                                                       : ImmutableSet.copyOf(filters);
+        ImmutableSetMultimap.Builder<String, AtomFilter> b = ImmutableSetMultimap.builder();
+        for (AtomFilter filter : filters)
+            filter.getAtomNames().forEach(atom -> b.put(atom, filter));
+        this.atom2Filters = b.build();
     }
+
+    public Molecule(@Nonnull Atom core) {
+        this(core, -1, Collections.emptySet());
+    }
+
+    /**
+     * Create a builder that already contains this whole {@link Molecule} instance.
+     *
+     * @return a <code>builder</code> such that <code>builder.build().equals(this)</code>.
+     */
+    public @Nonnull MoleculeBuilder toBuilder() {
+        MoleculeBuilder b = builder(core.getName())
+                .exclusive(core.isExclusive())
+                .closed(core.isClosed())
+                .disjoint(core.isDisjoint());
+        for (MoleculeLink link : core.getIn())
+            b.in(link.getEdge(), link.getAtom(), link.isAuthoritative());
+        for (MoleculeLink link : core.getOut())
+            b.out(link.getEdge(), link.getAtom(), link.isAuthoritative());
+        getFilters().forEach(b::filter);
+        return b;
+    }
+
+    /* --- --- --- Getters --- --- --- */
 
     public int getAtomCount() {
         int local = this.atomCount;
@@ -74,6 +109,47 @@ public class Molecule {
         }
         return strong;
     }
+    public @Nullable Atom getAtom(@Nonnull String name) {
+        return getAtomMap().get(name);
+    }
+
+    public @Nonnull Map<String, AtomFilter> getAtomFilterMap() {
+        Map<String, AtomFilter> strong = filterMap.get();
+        if (strong == null) {
+            strong = new HashMap<>();
+            for (AtomFilter filter : filters)
+                strong.put(filter.getName(), filter);
+            filterMap = new SoftReference<>(strong);
+        }
+        return strong;
+    }
+
+    public @Nullable AtomFilter getAtomFilter(@Nonnull String name) {
+        return getAtomFilterMap().get(name);
+    }
+
+    public @Nullable MoleculeElement getElement(@Nonnull String name) {
+        Atom atom = getAtomMap().get(name);
+        //noinspection AssertWithSideEffects
+        assert atom == null || !getAtomFilterMap().containsKey(name);
+        if (atom != null) return atom;
+        return getAtomFilterMap().get(name);
+    }
+
+    /* --- --- --- Filters --- --- --- */
+
+    public @Nonnull ImmutableSet<AtomFilter> getFilters() {
+        return filters;
+    }
+
+    public @Nonnull ImmutableSet<AtomFilter> getFiltersWithAtom(@Nonnull String atomName) {
+        return atom2Filters.get(atomName);
+    }
+    public @Nonnull ImmutableSet<AtomFilter> getFiltersWithAtom(@Nonnull Atom atom) {
+        return getFiltersWithAtom(atom.getName());
+    }
+
+    /* --- --- --- Index --- --- --- */
 
     @Immutable
     public class Triple {
@@ -197,6 +273,8 @@ public class Molecule {
             this.index = new SoftReference<>(strong = new Index());
         return strong;
     }
+
+    /* --- --- --- Object methods --- --- --- */
 
     @Override
     public @Nonnull String toString() {

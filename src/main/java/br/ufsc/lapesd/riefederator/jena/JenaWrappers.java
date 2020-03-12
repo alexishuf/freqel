@@ -5,13 +5,18 @@ import br.ufsc.lapesd.riefederator.jena.model.term.*;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.*;
 import org.apache.jena.datatypes.RDFDatatype;
+import org.apache.jena.enhanced.EnhGraph;
+import org.apache.jena.graph.Node;
 import org.apache.jena.rdf.model.*;
+import org.apache.jena.rdf.model.impl.LiteralImpl;
+import org.apache.jena.rdf.model.impl.ResourceImpl;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.shared.impl.PrefixMappingImpl;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.util.Map;
 
 import static org.apache.jena.datatypes.TypeMapper.getInstance;
@@ -50,6 +55,19 @@ public class JenaWrappers {
     @Contract(value = "null -> null; !null -> new", pure = true)
     public static JenaLit fromJena(Literal literal) {
         return literal == null ? null : new JenaLit(literal);
+    }
+
+    public static JenaTerm fromJena(@Nonnull Node node) {
+        if (node.isBlank())
+            return fromJena(new ResourceImpl(new AnonId(node.getBlankNodeId())));
+        else if (node.isURI())
+            return fromJena(new ResourceImpl(node, (EnhGraph)null));
+        else if (node.isLiteral())
+            return fromJena(new LiteralImpl(node, null));
+        else if (node.isVariable())
+            return new JenaVar(node);
+        else
+            throw new IllegalArgumentException("Cannot convert Node "+node+" to a Term");
     }
 
     /* ~~~~~~~~~ toJena(JenaTerm) ~~~~~~~~~ */

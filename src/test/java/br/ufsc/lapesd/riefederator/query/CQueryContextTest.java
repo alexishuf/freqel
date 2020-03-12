@@ -2,13 +2,18 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import com.google.errorprone.annotations.Immutable;
 import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
 
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static com.google.common.collect.Sets.newHashSet;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.expectThrows;
 
@@ -134,5 +139,29 @@ public class CQueryContextTest implements TestContext {
         CQuery expected = CQuery.with(triple, new Triple(x, p2, Bob))
                 .annotate(triple, a).annotate(Bob, a).build();
         assertEquals(actual, expected);
+    }
+
+    @Test
+    public void testAddDistinctModifier() {
+        CQuery query;
+        query = createQuery(Alice, p1, x, Distinct.REQUIRED);
+        assertEquals(query.getModifiers(), singletonList(Distinct.REQUIRED));
+
+        query = createQuery(Distinct.REQUIRED, Alice, p1, x);
+        assertEquals(query.getModifiers(), singletonList(Distinct.REQUIRED));
+
+        query = createQuery(Alice, Distinct.REQUIRED, p1, x);
+        assertEquals(query.getModifiers(), singletonList(Distinct.REQUIRED));
+    }
+
+    @Test
+    public void testAddFilters() {
+        CQuery query = createQuery(
+                Alice, p1, x,
+                x, p2, u, SPARQLFilter.build("?u > 23"),
+                x, p3, v, SPARQLFilter.build("?v < 23"));
+        assertEquals(query.getModifiers(),
+                     asList(SPARQLFilter.build("?u > 23"),
+                            SPARQLFilter.build("?v < 23")));
     }
 }

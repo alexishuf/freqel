@@ -103,7 +103,7 @@ public class JoinPathsPlannerTest implements TestContext {
 //        QueryNode n2 = node(e1, x, p2, y), n2Alt = node(e2, x, p2, y);
 //        QueryNode n3 = node(e1, y, p3, z);
 //        QueryNode n4 = new QueryNode(e2, CQuery.with(new Triple(z, p4, Bob))
-//                .annotate(z, asRequired(Atom1))
+//                .annotate(z, asRequired(Atom1, "Atom1"))
 //                .annotate(Bob, AtomAnnotation.of(Person)).build());
 //
 //        IndexedSet<Triple> allTriples = IndexedSet.fromDistinct(
@@ -147,7 +147,7 @@ public class JoinPathsPlannerTest implements TestContext {
         QueryNode n1 = node(e1, Alice, p1, x);
         QueryNode n2 = node(e1, x, p2, y);
         QueryNode n3 = new QueryNode(e2, CQuery.with(new Triple(y, p3, Bob))
-                .annotate(y, asRequired(Atom1))
+                .annotate(y, asRequired(Atom1, "Atom1"))
                 .annotate(Bob, AtomAnnotation.of(Person)).build());
         IndexedSet<PlanNode> nodes = IndexedSet.fromDistinct(asList(n1, n2, n3));
 
@@ -170,7 +170,7 @@ public class JoinPathsPlannerTest implements TestContext {
 //        QueryNode n1 = node(e1, Alice, p1, x);
 //        QueryNode n2 = node(e1, x, p2, y);
 //        QueryNode n3 = new QueryNode(e2, CQuery.with(new Triple(y, p3, Bob))
-//                .annotate(y, asRequired(Atom1))
+//                .annotate(y, asRequired(Atom1, "Atom1"))
 //                .annotate(Bob, AtomAnnotation.of(Person)).build());
 //
 //        IndexedSet<Triple> allTriples = IndexedSet.fromDistinct(
@@ -212,7 +212,7 @@ public class JoinPathsPlannerTest implements TestContext {
         QueryNode n1 = node(e1, Alice, p1, x), n2 = node(e1, x, p2, y), n3 = node(e1, y, p3, Bob);
         QueryNode o1 = node(e2, Alice, p1, x), o2 = node(e2, x, p2, y), o3 = node(e2, y, p3, Bob);
         QueryNode i2 = new QueryNode(e2, CQuery.with(new Triple(x, p2, y))
-                .annotate(x, asRequired(Atom1))
+                .annotate(x, asRequired(Atom1, "Atom1"))
                 .annotate(y, AtomAnnotation.of(Atom1)).build());
         QueryNode aliceKnowsX = node(e1, Alice, knows, x), yKnowsBob = node(e1, y, knows, Bob);
 
@@ -255,28 +255,28 @@ public class JoinPathsPlannerTest implements TestContext {
 
         // n*i :: SUBJ is input
         QueryNode n1i = new QueryNode(e2, CQuery.with(new Triple(Alice, p1, x))
-                .annotate(Alice, asRequired(Person))
+                .annotate(Alice, asRequired(Person, "Person"))
                 .annotate(x, AtomAnnotation.of(Atom1)).build());
         QueryNode n2i = new QueryNode(e2, CQuery.with(new Triple(x, p1, y))
-                .annotate(x, asRequired(Atom1))
+                .annotate(x, asRequired(Atom1, "Atom1"))
                 .annotate(y, AtomAnnotation.of(Atom1)).build());
         QueryNode n4i = new QueryNode(e2, CQuery.with(new Triple(y, p1, Bob))
-                .annotate(y, asRequired(Atom1))
+                .annotate(y, asRequired(Atom1, "Atom1"))
                 .annotate(Bob, AtomAnnotation.of(Person)).build());
         QueryNode n5i = new QueryNode(e2, CQuery.with(new Triple(y, p2, Bob))
-                .annotate(y, asRequired(Atom1))
+                .annotate(y, asRequired(Atom1, "Atom1"))
                 .annotate(Bob, AtomAnnotation.of(Person)).build());
 
         // n*j :: OBJ is input
         QueryNode n1j = new QueryNode(e3, CQuery.with(new Triple(Alice, p1, x))
                 .annotate(Alice, AtomAnnotation.of(Person))
-                .annotate(x, asRequired(Atom1)).build());
+                .annotate(x, asRequired(Atom1, "Atom1")).build());
         QueryNode n2j = new QueryNode(e3, CQuery.with(new Triple(x, p1, y))
                 .annotate(x, AtomAnnotation.of(Atom1))
-                .annotate(y, asRequired(Atom1)).build());
+                .annotate(y, asRequired(Atom1, "Atom1")).build());
         QueryNode n5j = new QueryNode(e3, CQuery.with(new Triple(y, p2, Bob))
                 .annotate(y, AtomAnnotation.of(Atom1))
-                .annotate(Bob, asRequired(Person)).build());
+                .annotate(Bob, asRequired(Person, "Person")).build());
 
         // mXi == M(nX, nXi)
         MultiQueryNode m1i = m(n1, n1i);
@@ -449,10 +449,10 @@ public class JoinPathsPlannerTest implements TestContext {
         QueryNode n3 = node(e1, y,     p3, z  ), n3a = node(e1a, y,     p3, z  );
         QueryNode n4 = node(e1, z,     p4, Bob), n4a = node(e1a, z,     p4, Bob);
 
-        QueryNode n1i = node(e1, b -> b.annotate(Alice, asRequired(Person)), Alice, p1, x);
-        QueryNode n2i = node(e1, b -> b.annotate(x, asRequired(Person)), x, p2, y);
-        QueryNode n3i = node(e1, b -> b.annotate(y, asRequired(Person)), y, p3, z);
-        QueryNode n4i = node(e1, b -> b.annotate(z, asRequired(Person)), z, p4, Bob);
+        QueryNode n1i = node(e1, b -> b.annotate(Alice, asRequired(Person, "Person")), Alice, p1, x);
+        QueryNode n2i = node(e1, b -> b.annotate(x, asRequired(Person, "Person")), x, p2, y);
+        QueryNode n3i = node(e1, b -> b.annotate(y, asRequired(Person, "Person")), y, p3, z);
+        QueryNode n4i = node(e1, b -> b.annotate(z, asRequired(Person, "Person")), z, p4, Bob);
 
         IndexedSet<PlanNode> all = IndexedSet.from(asList(n1 , n2 , n3 , n4 ,
                                                           n1a, n2a, n3a, n4a,
@@ -527,16 +527,16 @@ public class JoinPathsPlannerTest implements TestContext {
         QueryNode n1   = node(e1,  Alice, knows, x);
         QueryNode n1a  = node(e1a, Alice, knows, x);
         QueryNode n1b  = node(e2,  Alice, knows, x);
-        QueryNode n1i  = node(e1,  b -> b.annotate(x, asRequired(Person)),
+        QueryNode n1i  = node(e1,  b -> b.annotate(x, asRequired(Person, "Person")),
                                    Alice, knows, x);
-        QueryNode n1ai = node(e1a, b -> b.annotate(x, asRequired(Person)),
+        QueryNode n1ai = node(e1a, b -> b.annotate(x, asRequired(Person, "Person")),
                                    Alice, knows, x);
 
         QueryNode n2   = node(e1,  x, knows, y);
         QueryNode n2a  = node(e1a, x, knows, y);
-        QueryNode n2i  = node(e1a, b -> b.annotate(x, asRequired(Person)),
+        QueryNode n2i  = node(e1a, b -> b.annotate(x, asRequired(Person, "Person")),
                                    x, knows, y);
-        QueryNode n2ai = node(e1a, b -> b.annotate(x, asRequired(Person)),
+        QueryNode n2ai = node(e1a, b -> b.annotate(x, asRequired(Person, "Person")),
                                    x, knows, y);
 
 

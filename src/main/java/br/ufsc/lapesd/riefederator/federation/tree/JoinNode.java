@@ -138,7 +138,8 @@ public class JoinNode extends AbstractPlanNode {
                        @Nonnull Set<String> joinVars,
                        @Nonnull Set<String> resultVars, boolean projecting,
                        @Nonnull Set<String> inputVars, @Nonnull Cardinality cardinality) {
-        super(resultVars, projecting, inputVars, asList(left, right), cardinality);
+        super(unionResults(asList(left, right)), resultVars, projecting, inputVars,
+              asList(left, right), cardinality);
         this.joinVars = joinVars;
     }
 

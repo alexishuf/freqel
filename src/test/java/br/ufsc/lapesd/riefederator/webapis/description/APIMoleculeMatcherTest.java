@@ -3,8 +3,10 @@ package br.ufsc.lapesd.riefederator.webapis.description;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.description.molecules.AtomFilter;
+import br.ufsc.lapesd.riefederator.description.molecules.AtomRole;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
@@ -12,6 +14,7 @@ import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
@@ -25,7 +28,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.reason.tbox.OWLAPITBoxReasoner.structural;
+import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.*;
@@ -39,8 +44,10 @@ public class APIMoleculeMatcherTest implements TestContext {
     public static final @Nonnull Lit crime = StdLit.fromUnescaped("Crime");
     public static final @Nonnull Lit authorName1 = StdLit.fromEscaped("name1", "en");
 
-    public static final @Nonnull APIMolecule BOOKS_BY_AUTHOR, BOOK_CITATIONS, AM_BOOK_CITATIONS;
-    public static final @Nonnull Atom AUTHOR, AUTHOR_NAME, BOOK_TITLE, CITED_BOOK,
+    public static final @Nonnull APIMolecule BOOKS_BY_AUTHOR, BOOKS_BY_AUTHOR_AGE,
+                                             BOOKS_BY_AUTHOR_AGE_INT,
+                                             BOOK_CITATIONS, AM_BOOK_CITATIONS;
+    public static final @Nonnull Atom AUTHOR, AUTHOR_NAME, AUTHOR_AGE, BOOK_TITLE, CITED_BOOK,
                                       AM_CITED_BOOK, CITED_BOOK_TITLE;
 
     public static final @Nonnull APIMolecule BOOKS_BY_MAIN_AUTHOR;
@@ -48,9 +55,13 @@ public class APIMoleculeMatcherTest implements TestContext {
 
     static {
         AUTHOR_NAME = Molecule.builder("authorName").buildAtom();
+        AUTHOR_AGE = Molecule.builder("authorAge").buildAtom();
         BOOK_TITLE = Molecule.builder("bookTitle").buildAtom();
         CITED_BOOK_TITLE = Molecule.builder("citedBookTitle").buildAtom();
-        AUTHOR = Molecule.builder("Author").out(authorName, AUTHOR_NAME).exclusive().buildAtom();
+        AUTHOR = Molecule.builder("Author")
+                .out(authorName, AUTHOR_NAME)
+                .out(age, AUTHOR_AGE)
+                .exclusive().buildAtom();
         Molecule molecule = Molecule.builder("Book")
                 .out(title, BOOK_TITLE)
                 .out(author, AUTHOR)
@@ -60,6 +71,36 @@ public class APIMoleculeMatcherTest implements TestContext {
         atom2var.put("authorName", "hasAuthorName");
         UriTemplateExecutor exec = createExecutor("/books/{?hasAuthorName}");
         BOOKS_BY_AUTHOR = new APIMolecule(molecule, exec, atom2var);
+
+        molecule = Molecule.builder("Book")
+                .out(title, BOOK_TITLE)
+                .out(author, AUTHOR)
+                .filter(AtomFilter.builder("?ac >= ?in").name("authorAgeGEFilter")
+                        .map(AtomRole.OUTPUT.wrap(AUTHOR_AGE), "ac")
+                        .map(AtomRole. INPUT.wrap(AUTHOR_AGE), "in").buildFilter())
+                .exclusive()
+                .build();
+        atom2var.clear();
+        atom2var.put(AUTHOR_AGE.getName(), "hasAuthorAge");
+        exec = createExecutor("/books/{?hasAuthorAge}");
+        BOOKS_BY_AUTHOR_AGE = new APIMolecule(molecule, exec, atom2var);
+
+        molecule = Molecule.builder("Book")
+                .out(title, BOOK_TITLE)
+                .out(author, AUTHOR)
+                .filter(AtomFilter.builder("?ac >= ?in").name("authorAgeGEFilter")
+                        .map(AtomRole.OUTPUT.wrap(AUTHOR_AGE), "ac")
+                        .map(AtomRole. INPUT.wrap(AUTHOR_AGE), "in").buildFilter())
+                .filter(AtomFilter.builder("?ac <= ?in").name("authorAgeLEFilter")
+                        .map(AtomRole.OUTPUT.wrap(AUTHOR_AGE), "ac")
+                        .map(AtomRole. INPUT.wrap(AUTHOR_AGE), "in").buildFilter())
+                .exclusive()
+                .build();
+        atom2var.clear();
+        atom2var.put("authorAgeGEFilter", "minAuthorAge");
+        atom2var.put("authorAgeLEFilter", "maxAuthorAge");
+        exec = createExecutor("/books/{?minAuthorAge,maxAuthorAge}");
+        BOOKS_BY_AUTHOR_AGE_INT = new APIMolecule(molecule, exec, atom2var);
 
         CITED_BOOK = Molecule.builder("CitedBook")
                 .out(title, CITED_BOOK_TITLE)
@@ -114,6 +155,8 @@ public class APIMoleculeMatcherTest implements TestContext {
 
     @DataProvider
     public static Object[][] matchData() {
+        StdLit i23 = StdLit.fromUnescaped("23", xsdInteger);
+        StdLit i19 = StdLit.fromUnescaped("19", xsdInteger);
         List<CQuery> e = emptyList();
         return Stream.of(
                 asList(BOOKS_BY_AUTHOR, singleton(new Triple(x, author, author1)), e),
@@ -122,7 +165,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                        singleton(CQuery.builder()
                                .add(new Triple(x, authorName, authorName1))
                                .annotate(x, AtomAnnotation.of(AUTHOR))
-                               .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                               .annotate(authorName1, asRequired(AUTHOR_NAME, "hasAuthorName"))
                                .build())),
                 asList(BOOKS_BY_AUTHOR,
                        asList(new Triple(x, author, y), new Triple(y, authorName, authorName1)),
@@ -131,7 +174,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                                      new Triple(y, authorName, authorName1))
                                 .annotate(x, AtomAnnotation.of(BOOKS_BY_AUTHOR.getMolecule().getCore()))
                                 .annotate(y, AtomAnnotation.of(AUTHOR))
-                                .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                                .annotate(authorName1, asRequired(AUTHOR_NAME, "hasAuthorName"))
                                 .build())),
                 asList(BOOKS_BY_AUTHOR,
                        asList(new Triple(x, bornIn, city1),
@@ -142,13 +185,13 @@ public class APIMoleculeMatcherTest implements TestContext {
                                                     new Triple(w, authorName, y)))
                                        .annotate(z, AtomAnnotation.of(BOOKS_BY_AUTHOR.getMolecule().getCore()))
                                        .annotate(w, AtomAnnotation.of(AUTHOR))
-                                       .annotate(y, AtomAnnotation.asRequired(AUTHOR_NAME))
+                                       .annotate(y, asRequired(AUTHOR_NAME, "hasAuthorName"))
                                        .build()
                                )),
                 asList(BOOK_CITATIONS, singleton(new Triple(x, title, title1)),
                         singleton(CQuery.with(new Triple(x, title, title1))
                                 .annotate(x, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
-                                .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
+                                .annotate(title1, asRequired(BOOK_TITLE, "hasTitle"))
                                 .build())),
                 asList(BOOK_CITATIONS, asList(new Triple(x, title, title1),
                                               new Triple(x, cites, y),
@@ -157,7 +200,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                                               new Triple(x, cites, y),
                                               new Triple(y, author, author1))
                                 .annotate(x, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
-                                .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
+                                .annotate(title1, asRequired(BOOK_TITLE, "hasTitle"))
                                 .annotate(y, AtomAnnotation.of(CITED_BOOK))
                                 .annotate(author1, AtomAnnotation.of(AUTHOR))
                                 .build())),
@@ -168,50 +211,90 @@ public class APIMoleculeMatcherTest implements TestContext {
                                            new Triple(x, cites, y),
                                            new Triple(y, title, z))
                                         .annotate(x, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
-                                        .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
+                                        .annotate(title1, asRequired(BOOK_TITLE, "hasTitle"))
                                         .annotate(y, AtomAnnotation.of(CITED_BOOK))
                                         .annotate(z, AtomAnnotation.of(CITED_BOOK_TITLE))
                                         .build(),
                                CQuery.with(new Triple(y, title, z))
                                        .annotate(y, AtomAnnotation.of(BOOK_CITATIONS.getMolecule().getCore()))
-                                       .annotate(z, AtomAnnotation.asRequired(BOOK_TITLE))
+                                       .annotate(z, asRequired(BOOK_TITLE, "hasTitle"))
                                        .build())),
                 asList(AM_BOOK_CITATIONS, asList(new Triple(x, title, title1),
                                                  new Triple(x, cites, y),
                                                  new Triple(y, title, title2)),
                        asList(CQuery.with(new Triple(x, title, title1), new Triple(x, cites, y))
                                     .annotate(x, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
-                                    .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
+                                    .annotate(title1, asRequired(BOOK_TITLE, "hasTitle"))
                                     .annotate(y, AtomAnnotation.of(AM_CITED_BOOK)).build(),
                               CQuery.with(new Triple(x, cites, y), new Triple(y, title, title2))
                                     .annotate(x, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
                                     .annotate(y, AtomAnnotation.of(AM_CITED_BOOK))
-                                    .annotate(title2, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
+                                    .annotate(title2, asRequired(BOOK_TITLE, "hasTitle")).build(),
                               CQuery.with(new Triple(x, title, title1))
                                     .annotate(x, AtomAnnotation.of(AM_CITED_BOOK))
-                                    .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
+                                    .annotate(title1, asRequired(BOOK_TITLE, "hasTitle")).build(),
                               CQuery.with(new Triple(y, title, title2))
                                     .annotate(y, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
-                                    .annotate(title2, AtomAnnotation.asRequired(BOOK_TITLE)).build()
+                                    .annotate(title2, asRequired(BOOK_TITLE, "hasTitle")).build()
                        )), // ambiguity does not allow a single EG
                 asList(AM_BOOK_CITATIONS, asList(new Triple(x, title, title1),
                                                  new Triple(x, cites, y),
                                                  new Triple(y, title, z)),
                         asList(CQuery.with(new Triple(x, title, title1), new Triple(x, cites, y))
                                         .annotate(x, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
-                                        .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE))
+                                        .annotate(title1, asRequired(BOOK_TITLE, "hasTitle"))
                                         .annotate(y, AtomAnnotation.of(AM_CITED_BOOK)).build(),
                                CQuery.with(new Triple(x, cites, y), new Triple(y, title, z))
                                         .annotate(x, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
                                         .annotate(y, AtomAnnotation.of(AM_CITED_BOOK))
-                                        .annotate(z, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
+                                        .annotate(z, asRequired(BOOK_TITLE, "hasTitle")).build(),
                                CQuery.with(new Triple(x, title, title1))
                                         .annotate(x, AtomAnnotation.of(AM_CITED_BOOK))
-                                        .annotate(title1, AtomAnnotation.asRequired(BOOK_TITLE)).build(),
+                                        .annotate(title1, asRequired(BOOK_TITLE, "hasTitle")).build(),
                                CQuery.with(new Triple(y, title, z))
                                         .annotate(y, AtomAnnotation.of(AM_BOOK_CITATIONS.getMolecule().getCore()))
-                                        .annotate(z, AtomAnnotation.asRequired(BOOK_TITLE)).build()
-                        )) // ambiguity does not allow a single EG
+                                        .annotate(z, asRequired(BOOK_TITLE, "hasTitle")).build()
+                        )), // ambiguity does not allow a single EG
+                // exact match for filter
+                asList(BOOKS_BY_AUTHOR_AGE,
+                       createQuery(x, author, y, y, age, u, SPARQLFilter.build("?u >= 23")),
+                       singleton(createQuery(
+                               x, AtomAnnotation.of(BOOKS_BY_AUTHOR_AGE.getMolecule().getCore()),
+                                   author, y, AtomAnnotation.of(AUTHOR),
+                               y, age, u, asRequired(AUTHOR_AGE, "hasAuthorAge", i23),
+                                          SPARQLFilter.build("?u >= 23")))),
+                // the query filter is subsumed by the molecule 's filter
+                asList(BOOKS_BY_AUTHOR_AGE,
+                        createQuery(x, author, y, y, age, u, SPARQLFilter.build("?u > 23")),
+                        singleton(createQuery(
+                                x, AtomAnnotation.of(BOOKS_BY_AUTHOR_AGE.getMolecule().getCore()),
+                                    author, y, AtomAnnotation.of(AUTHOR),
+                                y, age, u, asRequired(AUTHOR_AGE, "hasAuthorAge", i23),
+                                           SPARQLFilter.build("?u > 23")))),
+                // test an interval query (two inputs to the same atom via two filters)
+                asList(BOOKS_BY_AUTHOR_AGE_INT,
+                       createQuery(x, author, y, y, age, u,
+                               SPARQLFilter.build("?u >= 19"), SPARQLFilter.build("?u <= 23")),
+                       singleton(createQuery(
+                               x, AtomAnnotation.of(BOOKS_BY_AUTHOR_AGE_INT.getMolecule().getCore()),
+                                   author, y, AtomAnnotation.of(AUTHOR),
+                               y, age, u, asRequired(AUTHOR_AGE, "minAuthorAge", i19),
+                                          asRequired(AUTHOR_AGE, "maxAuthorAge", i23),
+                                          SPARQLFilter.build("?u >= 19"),
+                                          SPARQLFilter.build("?u <= 23")
+                               ))),
+                // above still works with filter subsumption
+                asList(BOOKS_BY_AUTHOR_AGE_INT,
+                        createQuery(x, author, y, y, age, u,
+                                SPARQLFilter.build("?u > 19"), SPARQLFilter.build("?u < 23")),
+                        singleton(createQuery(
+                                x, AtomAnnotation.of(BOOKS_BY_AUTHOR_AGE_INT.getMolecule().getCore()),
+                                    author, y, AtomAnnotation.of(AUTHOR),
+                                y, age, u, asRequired(AUTHOR_AGE, "minAuthorAge", i19),
+                                           asRequired(AUTHOR_AGE, "maxAuthorAge", i23),
+                                           SPARQLFilter.build("?u > 19"),
+                                           SPARQLFilter.build("?u < 23")
+                        )))
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
@@ -241,7 +324,8 @@ public class APIMoleculeMatcherTest implements TestContext {
                     if (!a.getTripleAnnotations(triple).contains(ann))
                         annOk[0] = false;
                 });
-                return annOk[0];
+                boolean hasMods = a.getModifiers().containsAll(eg.getModifiers());
+                return annOk[0] && hasMods;
             });
             assertTrue(ok, "Expected EG "+eg+" missing in actual");
         }
@@ -266,7 +350,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                                          new Triple(y, authorName, authorName1))
                            .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                            .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
-                           .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                           .annotate(authorName1, asRequired(AUTHOR_NAME, "hasMainAuthorName"))
                            .build()),
                     singletonList(null)),
             asList(BOOKS_BY_MAIN_AUTHOR, asList(new Triple(x, author, y),
@@ -275,13 +359,13 @@ public class APIMoleculeMatcherTest implements TestContext {
                                               new Triple(y, authorName, authorName1))
                             .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
-                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                            .annotate(authorName1, asRequired(AUTHOR_NAME, "hasMainAuthorName"))
                             .build()),
                     singletonList(singleton(CQuery.with(new Triple(x, mainAuthor, y),
                                                         new Triple(y, authorName, authorName1))
                             .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
-                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                            .annotate(authorName1, asRequired(AUTHOR_NAME, "hasMainAuthorName"))
                             .annotate(new Triple(x, mainAuthor, y),
                                       new MatchAnnotation(new Triple(x, author, y)))
                             .build()))),
@@ -294,7 +378,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                             .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(z, AtomAnnotation.of(BOOK_TITLE))
                             .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
-                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                            .annotate(authorName1, asRequired(AUTHOR_NAME, "hasMainAuthorName"))
                             .build()),
                     singletonList(singleton(CQuery.with(new Triple(x, title, z),
                                                         new Triple(x, mainAuthor, y),
@@ -302,7 +386,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                             .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(z, AtomAnnotation.of(BOOK_TITLE))
                             .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
-                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                            .annotate(authorName1, asRequired(AUTHOR_NAME, "hasMainAuthorName"))
                             .annotate(new Triple(x, mainAuthor, y),
                                       new MatchAnnotation(new Triple(x, author, y)))
                             .build()))),
@@ -315,7 +399,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                             .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(title1, AtomAnnotation.of(BOOK_TITLE))
                             .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
-                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                            .annotate(authorName1, asRequired(AUTHOR_NAME, "hasMainAuthorName"))
                             .build()),
                     singletonList(singleton(CQuery.with(new Triple(x, title,  title1),
                                                         new Triple(x, mainAuthor, y),
@@ -323,7 +407,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                             .annotate(x, AtomAnnotation.of(BOOKS_BY_MAIN_AUTHOR.getMolecule().getCore()))
                             .annotate(title1, AtomAnnotation.of(BOOK_TITLE))
                             .annotate(y, AtomAnnotation.of(MAIN_AUTHOR))
-                            .annotate(authorName1, AtomAnnotation.asRequired(AUTHOR_NAME))
+                            .annotate(authorName1, asRequired(AUTHOR_NAME, "hasMainAuthorName"))
                             .annotate(new Triple(x, mainAuthor, y),
                                       new MatchAnnotation(new Triple(x, author, y)))
                             .build()))),

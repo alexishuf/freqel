@@ -33,7 +33,7 @@ public class CartesianNode extends AbstractPlanNode {
     }
 
     public CartesianNode(@Nonnull List<PlanNode> children, @Nonnull Cardinality cardinality) {
-        super(unionResults(children), false, unionInputs(children),
+        super(unionResults(children), unionResults(children), false, unionInputs(children),
               children, cardinality);
     }
 

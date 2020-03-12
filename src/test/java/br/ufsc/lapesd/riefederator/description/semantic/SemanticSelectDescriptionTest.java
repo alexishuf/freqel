@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasonerTest;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
@@ -20,8 +21,10 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Supplier;
 
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;
@@ -189,5 +192,35 @@ public class SemanticSelectDescriptionTest implements TestContext {
                 CQuery.from(qry),
                 CQuery.with(qManager).annotate(qManager, new MatchAnnotation(qry)).build()));
     }
+
+
+    @Test(dataProvider = "reasonerData")
+    public void testMatchSubPropertyWithFilter(Supplier<TBoxReasoner> supplier) {
+        reasoner = supplier.get();
+        reasoner.load(tBoxSpec);
+        SemanticSelectDescription description;
+        description = new SemanticSelectDescription(ep, true, reasoner);
+
+        SPARQLFilter ann = SPARQLFilter.build("regex(iri(?x), \"Bob$\")");
+        CQuery query = createQuery(
+                Alice, knows, TestContext.x, ann,
+                TestContext.x, age, lit(23));
+        SemanticCQueryMatch match = description.semanticMatch(query);
+
+        assertEquals(match.getKnownExclusiveGroups(), emptyList());
+        assertEquals(match.getNonExclusiveRelevant(), singletonList(query.get(0)));
+
+        Set<CQuery> expected = new HashSet<>();
+        Triple altAdvises = query.get(0).withPredicate(advises);
+        Triple altMentors = query.get(0).withPredicate(mentors);
+        Triple altManages = query.get(0).withPredicate(manages);
+        MatchAnnotation matchAnnotation = new MatchAnnotation(query.get(0));
+        expected.add(CQuery.with(altAdvises).annotate(altAdvises, matchAnnotation).build());
+        expected.add(CQuery.with(altMentors).annotate(altMentors, matchAnnotation).build());
+        expected.add(CQuery.with(altManages).annotate(altManages, matchAnnotation).build());
+
+        assertEquals(match.getAlternatives(query.get(0)), expected);
+    }
+
 
 }

@@ -1,13 +1,15 @@
 package br.ufsc.lapesd.riefederator.webapis.parser;
 
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.description.molecules.AtomFilter;
+import br.ufsc.lapesd.riefederator.description.molecules.AtomRole;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.jena.query.QueryException;
-import org.apache.jena.query.QueryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,17 +28,20 @@ public class ParameterPath {
     private final @Nonnull List<Term> path;
     private final boolean in;
     private final boolean missing;
-    private final @Nullable String sparqlFilter;
+    private final @Nullable AtomFilter atomFilter;
+
+    private static final @Nonnull String inVar = "input", acVar = "actual";
+    private static final @Nonnull Set<String> FILTER_VARS = Sets.newHashSet(inVar, acVar);
 
     public ParameterPath(@Nonnull Atom atom, @Nonnull List<Term> path, boolean in,
-                         boolean missing, @Nullable String sparqlFilter) {
+                         boolean missing, @Nullable AtomFilter filter) {
         checkArgument(!path.isEmpty(), "Path cannot be empty");
         checkArgument(path.stream().noneMatch(Objects::isNull), "Path cannot have null steps");
         this.atom = atom;
         this.path = path;
         this.in = in;
         this.missing = missing;
-        this.sparqlFilter = sparqlFilter;
+        this.atomFilter = filter;
     }
 
     public @Nonnull Atom getAtom() {
@@ -55,8 +60,8 @@ public class ParameterPath {
         return missing;
     }
 
-    public @Nullable String getSparqlFilter() {
-        return sparqlFilter;
+    public @Nullable AtomFilter getAtomFilter() {
+        return atomFilter;
     }
 
     @Override
@@ -68,12 +73,12 @@ public class ParameterPath {
                 missing == that.missing &&
                 atom.equals(that.atom) &&
                 path.equals(that.path) &&
-                Objects.equals(sparqlFilter, that.sparqlFilter);
+                Objects.equals(atomFilter, that.atomFilter);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(atom, path, in, missing, sparqlFilter);
+        return Objects.hash(atom, path, in, missing, atomFilter);
     }
 
     public static @Nonnull ParameterPath parse(@Nonnull DictTree xPath,
@@ -122,8 +127,17 @@ public class ParameterPath {
                 errorMsg.append("Path ").append(path).append(" not present in molecule");
             return null;
         }
-        String filter = xPath.containsKey("filter") ? parseFilter(xPath, errorMsg) : null;
-        return new ParameterPath(atom, path, in, missing, filter);
+        SPARQLFilter filter = xPath.containsKey("filter") ? parseFilter(xPath, errorMsg) : null;
+        AtomFilter mappedFilter = null;
+        if (filter != null) {
+            AtomFilter.WithBuilder builder = AtomFilter.with(filter);
+            if (filter.getVars().contains(inVar))
+                builder.map(AtomRole.INPUT.wrap(atom), inVar);
+            if (filter.getVars().contains(acVar))
+                builder.map(AtomRole.OUTPUT.wrap(atom), acVar);
+            mappedFilter = builder.build();
+        }
+        return new ParameterPath(atom, path, in, missing, mappedFilter);
     }
 
     @VisibleForTesting
@@ -140,7 +154,9 @@ public class ParameterPath {
         while (!stack.isEmpty()) {
             ImmutablePair<String, Integer> s = stack.pop();
             if (s.right == path.size()) {
-                atoms.add(molecule.getAtomMap().get(s.left));
+                Atom atom = molecule.getAtom(s.left);
+                assert atom != null;
+                atoms.add(atom);
                 continue;
             }
             assert s.right < path.size();
@@ -159,7 +175,8 @@ public class ParameterPath {
     }
 
     @VisibleForTesting
-    static @Nullable String parseFilter(@Nonnull DictTree xPath, @Nullable StringBuilder errorMsg) {
+    static @Nullable SPARQLFilter parseFilter(@Nonnull DictTree xPath,
+                                              @Nullable StringBuilder errorMsg) {
         if (!xPath.containsKey("filter")) return null;
         DictTree map = xPath.getMapNN("filter");
         String string;
@@ -180,18 +197,18 @@ public class ParameterPath {
             }
             string = (String) sparql;
         }
+        if (string == null)
+            return null; // no value
 
-        String sparql = String.format("SELECT * WHERE { ?s ?p $actual. ?s ?p $input %s.}", string);
-        try {
-            QueryFactory.create(sparql);
-        } catch (QueryException e) {
+        SPARQLFilter filter = SPARQLFilter.build(string);
+        if (!filter.getVars().equals(FILTER_VARS)) {
             if (errorMsg != null) {
-                errorMsg.append("Syntax of ").append(string).append(" is invalid: ")
-                        .append(e.getMessage());
+                errorMsg.append("Filter has unexpected vars. Expected input and actual. Found: ")
+                        .append(filter.getVars());
             }
             return null;
         }
-        return string;
+        return filter;
     }
 
 }

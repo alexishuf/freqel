@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.webapis.parser;
 
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeBuilder;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeLink;
 import br.ufsc.lapesd.riefederator.model.term.Term;

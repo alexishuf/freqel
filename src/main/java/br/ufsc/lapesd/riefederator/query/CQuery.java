@@ -29,6 +29,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.lang.ref.SoftReference;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -57,7 +58,7 @@ public class CQuery implements  List<Triple> {
     public static final @Nonnull CQuery EMPTY = from(Collections.emptyList());
 
     private final @Nonnull ImmutableList<Triple> list;
-    private final @Nonnull ImmutableList<Modifier> modifiers;
+    private final @Nonnull ImmutableSet<Modifier> modifiers;
     @SuppressWarnings("Immutable") // PrefixDict is not immutable
     private final @Nullable PrefixDict prefixDict;
 
@@ -82,7 +83,7 @@ public class CQuery implements  List<Triple> {
 
     /* ~~~ constructor, builder & factories ~~~ */
 
-    public CQuery(@Nonnull ImmutableList<Triple> query, @Nonnull ImmutableList<Modifier> modifiers,
+    public CQuery(@Nonnull ImmutableList<Triple> query, @Nonnull ImmutableSet<Modifier> modifiers,
                   @Nullable PrefixDict prefixDict,
                   @Nullable ImmutableSetMultimap<Term, TermAnnotation> termAnn,
                   @Nullable ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnn) {
@@ -111,12 +112,12 @@ public class CQuery implements  List<Triple> {
     }
 
     public CQuery(@Nonnull ImmutableList<Triple> query,
-                  @Nonnull ImmutableList<Modifier> modifiers, @Nullable PrefixDict prefixDict) {
+                  @Nonnull ImmutableSet<Modifier> modifiers, @Nullable PrefixDict prefixDict) {
         this(query, modifiers, prefixDict, null, null);
     }
 
     public CQuery(@Nonnull ImmutableList<Triple> query,
-                  @Nonnull ImmutableList<Modifier> modifiers) {
+                  @Nonnull ImmutableSet<Modifier> modifiers) {
         this(query, modifiers, null);
     }
 
@@ -125,9 +126,10 @@ public class CQuery implements  List<Triple> {
         private Projection.Builder projection = null;
         private boolean distinct = false, ask = false;
         private boolean distinctRequired = false, askRequired = false;
+        private Set<Modifier> modifiers = new LinkedHashSet<>();
         private @Nullable PrefixDict prefixDict = null;
-        private @Nullable ImmutableSetMultimap.Builder<Term, TermAnnotation> termAnnBuilder;
-        private @Nullable ImmutableSetMultimap.Builder<Triple, TripleAnnotation> tripleAnnBuilder;
+        private @Nullable SetMultimap<Term, TermAnnotation> termAnn;
+        private @Nullable SetMultimap<Triple, TripleAnnotation> tripleAnn;
 
         protected WithBuilder() {
             this.list = null;
@@ -203,18 +205,24 @@ public class CQuery implements  List<Triple> {
         }
 
         @CanIgnoreReturnValue
+        public @Contract("_ -> this") @Nonnull WithBuilder modifier(@Nonnull Modifier modifier) {
+            modifiers.add(modifier);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
         public @Contract("_, _ -> this") @Nonnull
         WithBuilder annotate(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
-            if (termAnnBuilder == null) termAnnBuilder = ImmutableSetMultimap.builder();
-            termAnnBuilder.put(term, annotation);
+            if (termAnn == null) termAnn = HashMultimap.create();
+            termAnn.put(term, annotation);
             return this;
         }
 
         @CanIgnoreReturnValue
         public @Contract("_, _ -> this") @Nonnull
         WithBuilder annotate(@Nonnull Triple triple, @Nonnull TripleAnnotation annotation) {
-            if (tripleAnnBuilder == null) tripleAnnBuilder = ImmutableSetMultimap.builder();
-            tripleAnnBuilder.put(triple, annotation);
+            if (tripleAnn == null) tripleAnn = HashMultimap.create();
+            tripleAnn.put(triple, annotation);
             return this;
         }
         @CanIgnoreReturnValue
@@ -225,11 +233,73 @@ public class CQuery implements  List<Triple> {
         }
 
         @CanIgnoreReturnValue
+        public @Contract("_, _ -> this") @Nonnull
+        WithBuilder deannotate(@Nonnull Term term, @Nonnull TermAnnotation termAnnotation) {
+            if (termAnn != null) termAnn.remove(term, termAnnotation);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_, _ -> this") @Nonnull
+        WithBuilder deannotate(@Nonnull Triple triple, @Nonnull TripleAnnotation annotation) {
+            if (tripleAnn != null) tripleAnn.remove(triple, annotation);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_ -> this") @Nonnull
+        WithBuilder deannotate(@Nonnull TermAnnotation a) {
+            if (termAnn != null) termAnn.entries().removeIf(e -> e.getValue().equals(a));
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_ -> this") @Nonnull
+        WithBuilder deannotate(@Nonnull TripleAnnotation a) {
+            if (tripleAnn != null) tripleAnn.entries().removeIf(e -> e.getValue().equals(a));
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_, _, _ -> this") @Nonnull WithBuilder
+        reannotate(@Nonnull Term term, @Nonnull Predicate<TermAnnotation> predicate,
+                   @Nonnull TermAnnotation annotation) {
+            if (termAnn != null)
+                termAnn.get(term).removeIf(predicate);
+            else
+                termAnn = HashMultimap.create();
+            termAnn.put(term, annotation);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_, _, _ -> this") @Nonnull WithBuilder
+        reannotate(@Nonnull Triple triple, @Nonnull Predicate<TripleAnnotation> predicate,
+                   @Nonnull TripleAnnotation annotation) {
+            if (tripleAnn != null)
+                tripleAnn.get(triple).removeIf(predicate);
+            else
+                tripleAnn = HashMultimap.create();
+            tripleAnn.put(triple, annotation);
+            return this;
+        }
+
+        @CheckReturnValue
+        public @Nonnull Set<TermAnnotation> getAnnotations(@Nonnull Term term) {
+            return termAnn == null ? emptySet() : termAnn.get(term);
+        }
+
+        @CheckReturnValue
+        public @Nonnull Set<TripleAnnotation> getAnnotations(@Nonnull Triple triple) {
+            return tripleAnn == null ? emptySet() : tripleAnn.get(triple);
+        }
+
+        @CanIgnoreReturnValue
         public @Contract("_ -> this") @Nonnull
         WithBuilder annotateAllTerms(@Nullable Multimap<Term, TermAnnotation> multimap) {
             if (multimap == null) return this;
-            if (termAnnBuilder == null) termAnnBuilder = ImmutableSetMultimap.builder();
-            termAnnBuilder.putAll(multimap);
+            if (termAnn == null) termAnn = HashMultimap.create();
+            termAnn.putAll(multimap);
             return this;
         }
 
@@ -237,8 +307,8 @@ public class CQuery implements  List<Triple> {
         public @Contract("_ -> this") @Nonnull
         WithBuilder annotateAllTriples(@Nullable Multimap<Triple, TripleAnnotation> multimap) {
             if (multimap == null) return this;
-            if (tripleAnnBuilder == null) tripleAnnBuilder = ImmutableSetMultimap.builder();
-            tripleAnnBuilder.putAll(multimap);
+            if (tripleAnn == null) tripleAnn = HashMultimap.create();
+            tripleAnn.putAll(multimap);
             return this;
         }
 
@@ -259,18 +329,18 @@ public class CQuery implements  List<Triple> {
 
         @CheckReturnValue
         public @Nonnull CQuery build() {
-            @SuppressWarnings("UnstableApiUsage")
-            ImmutableList.Builder<Modifier> b = builderWithExpectedSize(4);
+            ImmutableSet.Builder<Modifier> b = ImmutableSet.builder();
             if (projection != null)
                 b.add(projection.build());
             if (distinct)
                 b.add(distinctRequired ? Distinct.REQUIRED : Distinct.ADVISED);
             if (ask)
                 b.add(askRequired ? Ask.REQUIRED : Ask.ADVISED);
+            b.addAll(modifiers);
             ImmutableSetMultimap<Term, TermAnnotation> termAnn =
-                    termAnnBuilder == null ? null : termAnnBuilder.build();
+                    this.termAnn == null ? null : ImmutableSetMultimap.copyOf(this.termAnn);
             ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnn =
-                    tripleAnnBuilder == null ? null : tripleAnnBuilder.build();
+                    this.tripleAnn == null ? null : ImmutableSetMultimap.copyOf(this.tripleAnn);
             assert list != null;
             return new CQuery(list, b.build(), prefixDict, termAnn, tripleAnn);
         }
@@ -370,6 +440,12 @@ public class CQuery implements  List<Triple> {
         }
 
         @Override
+        public @Contract("_ -> this") @Nonnull Builder modifier(@Nonnull Modifier modifier) {
+            super.modifier(modifier);
+            return this;
+        }
+
+        @Override
         public @Contract("_ -> this") @Nonnull Builder prefixDict(@Nonnull PrefixDict dict) {
             super.prefixDict(dict);
             return this;
@@ -379,6 +455,50 @@ public class CQuery implements  List<Triple> {
         public @Contract("_, _ -> this") @Nonnull
         Builder annotate(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
             super.annotate(term, annotation);
+            return this;
+        }
+
+        @Override
+        public @Contract("_, _ -> this") @Nonnull
+        Builder deannotate(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
+            super.deannotate(term, annotation);
+            return this;
+        }
+
+        @Override
+        public @Contract("_, _ -> this") @Nonnull
+        Builder deannotate(@Nonnull Triple term, @Nonnull TripleAnnotation annotation) {
+            super.deannotate(term, annotation);
+            return this;
+        }
+
+        @Override
+        public @Contract("_ -> this") @Nonnull
+        Builder deannotate(@Nonnull TermAnnotation annotation) {
+            super.deannotate(annotation);
+            return this;
+        }
+
+        @Override
+        public @Contract("_ -> this") @Nonnull
+        Builder deannotate(@Nonnull TripleAnnotation annotation) {
+            super.deannotate(annotation);
+            return this;
+        }
+
+        @Override @CanIgnoreReturnValue
+        public @Contract("_, _, _ -> this") @Nonnull
+        Builder reannotate(@Nonnull Term term, @Nonnull Predicate<TermAnnotation> predicate,
+                           @Nonnull TermAnnotation annotation) {
+            super.reannotate(term, predicate, annotation);
+            return this;
+        }
+
+        @Override @CanIgnoreReturnValue
+        public @Contract("_, _, _ -> this") @Nonnull
+        Builder reannotate(@Nonnull Triple triple, @Nonnull Predicate<TripleAnnotation> predicate,
+                           @Nonnull TripleAnnotation annotation) {
+            super.reannotate(triple, predicate, annotation);
             return this;
         }
 
@@ -421,8 +541,10 @@ public class CQuery implements  List<Triple> {
 
     @CheckReturnValue
     public static @Nonnull WithBuilder with(@Nonnull Collection<Triple> query) {
-        if (query instanceof CQuery)
-            return new WithBuilder(((CQuery)query).getList());
+        if (query instanceof CQuery) {
+            CQuery cQuery = (CQuery) query;
+            return new WithBuilder(cQuery.getList()).copyAnnotations(cQuery);
+        }
         if (query instanceof ImmutableList)
             return new WithBuilder(((ImmutableList<Triple>)query));
         return new WithBuilder(ImmutableList.copyOf(query));
@@ -440,7 +562,7 @@ public class CQuery implements  List<Triple> {
 
     @CheckReturnValue
     public static @Contract("_ -> new") @Nonnull CQuery from(@Nonnull Triple... triples) {
-        return new CQuery(ImmutableList.copyOf(triples), ImmutableList.of());
+        return new CQuery(ImmutableList.copyOf(triples), ImmutableSet.of());
     }
 
     public static @Contract("-> new") @Nonnull Builder builder() {
@@ -489,10 +611,12 @@ public class CQuery implements  List<Triple> {
         if (l instanceof CQuery) {
             b.annotateAllTerms(((CQuery) l).termAnnotations);
             b.annotateAllTriples(((CQuery) l).tripleAnnotations);
+            ((CQuery) l).getModifiers().forEach(b::modifier);
         }
         if (r instanceof CQuery) {
             b.annotateAllTerms(((CQuery) r).termAnnotations);
             b.annotateAllTriples(((CQuery) r).tripleAnnotations);
+            ((CQuery) r).getModifiers().forEach(b::modifier);
         }
         return b.build();
     }
@@ -513,7 +637,7 @@ public class CQuery implements  List<Triple> {
     }
 
     /** Gets the modifiers of this query. */
-    public @Nonnull ImmutableList<Modifier> getModifiers() { return modifiers; }
+    public @Nonnull ImmutableSet<Modifier> getModifiers() { return modifiers; }
 
     /** Indicates if there is any triple annotation. */
     public boolean hasTripleAnnotations() { return tripleAnnotations != null; }
@@ -629,17 +753,20 @@ public class CQuery implements  List<Triple> {
 
     @SuppressWarnings("unchecked")
     public <T extends Term> Stream<T> streamTerms(@Nonnull Class<T> cls) {
-        if (cls == Var.class) {
-            Set<Var> strong = varsCache.get();
-            if (strong == null) {
-                strong = list.stream().flatMap(Triple::stream)
-                        .filter(t -> t instanceof Var).map(t -> (Var) t)
-                        .collect(toSet());
-            }
-            return (Stream<T>)strong.stream();
-        }
+        if (cls == Var.class)
+            return (Stream<T>) getVars().stream();
         return list.stream().flatMap(Triple::stream)
                 .filter(t -> cls.isAssignableFrom(t.getClass())).map(t -> (T)t).distinct();
+    }
+
+    public @Nonnull Set<Var> getVars() {
+        Set<Var> strong = varsCache.get();
+        if (strong == null) {
+            strong = list.stream().flatMap(Triple::stream)
+                    .filter(t -> t instanceof Var).map(t -> (Var) t)
+                    .collect(toSet());
+        }
+        return strong;
     }
 
     /**

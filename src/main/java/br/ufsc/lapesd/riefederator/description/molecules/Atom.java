@@ -9,12 +9,13 @@ import com.google.errorprone.annotations.concurrent.LazyInit;
 import javax.annotation.Nonnull;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static java.util.Collections.emptySet;
 
 
 @Immutable
-public class Atom {
+public class Atom implements MoleculeElement {
     private final @Nonnull String name;
     private final boolean exclusive, closed, disjoint;
     private final @Nonnull ImmutableSet<MoleculeLink> in, out;
@@ -40,6 +41,7 @@ public class Atom {
         this(name, false, false, false, emptySet(), emptySet());
     }
 
+    @Override
     public @Nonnull String getName() {
         return name;
     }
@@ -85,6 +87,15 @@ public class Atom {
     public @Nonnull Set<MoleculeLink> getOut() {
         return out;
     }
+
+    public @Nonnull Stream<MoleculeLink> streamLinks() {
+        return Stream.concat(getIn().stream(), getOut().stream());
+    }
+
+    public @Nonnull Stream<Atom> streamNeighbors() {
+        return streamLinks().map(MoleculeLink::getAtom).distinct();
+    }
+
     /** The number of incoming and outgoing edges. */
     public int edgesCount() {
         return getIn().size() + getOut().size();

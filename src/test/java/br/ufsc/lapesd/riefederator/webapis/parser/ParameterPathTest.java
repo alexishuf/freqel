@@ -1,9 +1,10 @@
 package br.ufsc.lapesd.riefederator.webapis.parser;
 
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -48,7 +49,7 @@ public class ParameterPathTest {
         assertNotNull(parameterPath);
         assertEquals(parameterPath.getPath(), singletonList(property2term("x")));
         assertEquals(parameterPath.getAtom().getName(), "X");
-        assertNull(parameterPath.getSparqlFilter());
+        assertNull(parameterPath.getAtomFilter());
         assertFalse(parameterPath.isIn());
         assertFalse(parameterPath.isMissing());
     }
@@ -60,7 +61,7 @@ public class ParameterPathTest {
         assertNotNull(parameterPath);
         assertEquals(parameterPath.getPath(), asList(property2term("x"), property2term("y")));
         assertEquals(parameterPath.getAtom().getName(), "Y");
-        assertNull(parameterPath.getSparqlFilter());
+        assertNull(parameterPath.getAtomFilter());
         assertFalse(parameterPath.isIn());
         assertFalse(parameterPath.isMissing());
     }
@@ -72,7 +73,7 @@ public class ParameterPathTest {
         assertNotNull(parameterPath);
         assertEquals(parameterPath.getPath(), asList(property2term("x"), property2term("y")));
         assertEquals(parameterPath.getAtom().getName(), "Xin");
-        assertNull(parameterPath.getSparqlFilter());
+        assertNull(parameterPath.getAtomFilter());
         assertTrue(parameterPath.isIn());
         assertTrue(parameterPath.isMissing());
     }
@@ -84,7 +85,9 @@ public class ParameterPathTest {
         assertNotNull(parameterPath);
         assertEquals(parameterPath.getPath(), singletonList(property2term("date")));
         assertEquals(parameterPath.getAtom().getName(), "Date");
-        assertEquals(parameterPath.getSparqlFilter(), "FILTER($actual >= $input)");
+        assertNotNull(parameterPath.getAtomFilter());
+        assertEquals(parameterPath.getAtomFilter().getSPARQLFilter(),
+                     SPARQLFilter.build("FILTER($actual >= $input)"));
         assertFalse(parameterPath.isIn());
         assertFalse(parameterPath.isMissing());
     }
@@ -94,7 +97,9 @@ public class ParameterPathTest {
         DictTree dict = tree.getMapNN("start-date-assume-sparql");
         ParameterPath parameterPath = ParameterPath.parse(dict, molecule, this::property2term);
         assertNotNull(parameterPath);
-        assertEquals(parameterPath.getSparqlFilter(), "FILTER($actual >= $input)");
+        assertNotNull(parameterPath.getAtomFilter());
+        assertEquals(parameterPath.getAtomFilter().getSPARQLFilter(),
+                     SPARQLFilter.build("FILTER($actual >= $input)"));
     }
 
     @DataProvider

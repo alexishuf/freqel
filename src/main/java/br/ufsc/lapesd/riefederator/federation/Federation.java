@@ -65,6 +65,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     public @Nonnull Results query(@Nonnull CQuery query) {
         PlanNode plan = plan(query);
         Results results = executor.executePlan(plan);
+
         results = ProjectingResults.applyIf(results, query);
         results = HashDistinctResults.applyIf(results, query);
         return results;
@@ -79,10 +80,16 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     public boolean hasCapability(@Nonnull Capability capability) {
         switch (capability){
             case DISTINCT:
+            case SPARQL_FILTER:
             case PROJECTION:
                 return true;
             default:
                 return false;
         }
+    }
+
+    @Override
+    public boolean hasRemoteCapability(@Nonnull Capability capability) {
+        return false;
     }
 }

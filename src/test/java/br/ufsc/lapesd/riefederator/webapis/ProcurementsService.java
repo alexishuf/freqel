@@ -5,6 +5,8 @@ import br.ufsc.lapesd.riefederator.util.ResourceOpener;
 import br.ufsc.lapesd.riefederator.webapis.parser.SwaggerParser;
 import com.google.common.base.Preconditions;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +20,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -68,7 +71,8 @@ public class ProcurementsService {
     public @Nonnull Response
     getProcurements(@QueryParam("dataInicial") String startDateString,
                     @QueryParam("dataFinal") String endDateString,
-                    @QueryParam("codigoOrgao") String code) throws IOException {
+                    @QueryParam("codigoOrgao") String code,
+                    @QueryParam("pagina") int page) throws IOException {
         String codePath = "unidadeGestora/orgaoVinculado/codigoSIAFI";
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
         Date startDate = null, endDate;
@@ -81,25 +85,30 @@ public class ProcurementsService {
             return Response.noContent().status(500, "Bad date, should be dd/MM/yyyy").build();
         }
         List<Map<String, Object>> selected = new ArrayList<>();
-        for (String id : IDS) {
-            String path = "procurements/" + id + ".json";
-            DictTree tree;
-            tree = DictTree.load().fromResource(getClass(), path);
-            if (!tree.getPrimitive(codePath, "").equals(code))
-                continue;
-            String openDateString = tree.getPrimitive("dataAbertura", "").toString();
-            try {
-                Date openDate = dateFormat.parse(openDateString);
-                if (openDate.before(startDate) || openDate.after(endDate))
+        if (page <= 1) {
+            for (String id : IDS) {
+                String path = "procurements/" + id + ".json";
+                DictTree tree;
+                tree = DictTree.load().fromResource(getClass(), path);
+                if (!tree.getPrimitive(codePath, "").equals(code))
                     continue;
-            } catch (ParseException e) {
-                logger.error("Ignoring badly formatted dataAbertura={} for procurement {}",
-                             openDateString, id, e);
-                continue;
+                String openDateString = tree.getPrimitive("dataAbertura", "").toString();
+                try {
+                    Date openDate = dateFormat.parse(openDateString);
+                    if (openDate.before(startDate) || openDate.after(endDate))
+                        continue;
+                } catch (ParseException e) {
+                    logger.error("Ignoring badly formatted dataAbertura={} for procurement {}",
+                                 openDateString, id, e);
+                    continue;
+                }
+                selected.add(tree.asMap());
             }
-            selected.add(tree.asMap());
         }
-        String json = new GsonBuilder().setPrettyPrinting().create().toJson(selected);
+        String json = new GsonBuilder().registerTypeAdapter(Double.class,
+                (JsonSerializer<Double>) (src, typeOfSrc, c)
+                        -> new JsonPrimitive(BigDecimal.valueOf(src))
+        ).setPrettyPrinting().create().toJson(selected);
         return Response.ok(json, APPLICATION_JSON).build();
     }
 

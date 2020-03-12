@@ -15,7 +15,7 @@ import br.ufsc.lapesd.riefederator.query.impl.*;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
-import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
 import br.ufsc.lapesd.riefederator.webapis.requests.MismatchingQueryException;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.APIRequestExecutorException;
@@ -27,6 +27,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.lang.ref.SoftReference;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Set;
 
 import static java.util.stream.Collectors.toSet;
@@ -62,17 +63,17 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         MapSolution.Builder b = MapSolution.builder();
-        boolean hasAtomAnnotations = query.forEachTermAnnotation(AtomAnnotation.class, (t, a) -> {
-            if (!a.isInput()) return;
-            String atomName = a.getAtomName();
-            String input = molecule.getAtom2input().get(atomName);
-            if (input != null) {
-                if (t.isGround()) {
-                    b.put(input, t);
-                } else if (molecule.getExecutor().getRequiredInputs().contains(input)) {
-                    logger.error("Required input {} (Atom={}) is not ground!", input, atomName);
-                }
-            }
+        boolean hasAtomAnnotations =
+                query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
+                    String input = a.getInputName();
+                    if (a.isOverride()) {
+                        b.put(input, Objects.requireNonNull(a.getOverrideValue()));
+                    } else if (t.isGround()) {
+                        b.put(input, t);
+                    } else if (molecule.getExecutor().getRequiredInputs().contains(input)) {
+                        logger.error("Required input {} (Atom={}) is not ground!",
+                                     input, a.getAtomName());
+                    }
         });
         if (!hasAtomAnnotations && molecule.getExecutor().hasInputs()) {
             logger.info("No AtomAnnotations in {}. Will call matchAndQuery()", query);
@@ -89,6 +90,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
             return CollectionResults.empty(names);
         }
         Results results = new EndpointIteratorResults(it, query);
+        results = SPARQLFilterResults.applyIf(results, query);
         results = ProjectingResults.applyIf(results, query);
         results = HashDistinctResults.applyIf(results, query);
         return results;
@@ -154,6 +156,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
         switch (capability) {
             case PROJECTION:
             case DISTINCT:
+            case SPARQL_FILTER:
                 return true;
             default:
                 return false;
@@ -161,8 +164,13 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     }
 
     @Override
+    public boolean hasRemoteCapability(@Nonnull Capability capability) {
+        return false;
+    }
+
+    @Override
     public @Nonnull String toString() {
         return String.format("WebAPICQEndpoint(%s, %s, %s)", getMolecule().getMolecule(),
-                getMolecule().getExecutor(), getMolecule().getAtom2input());
+                getMolecule().getExecutor(), getMolecule().getElement2Input());
     }
 }

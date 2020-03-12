@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.riefederator.webapis.parser;
 
-import br.ufsc.lapesd.riefederator.description.Molecule;
+import br.ufsc.lapesd.riefederator.description.molecules.AtomFilter;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
+import br.ufsc.lapesd.riefederator.description.molecules.MoleculeBuilder;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.util.DictTree;
@@ -16,6 +18,7 @@ import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.OnlyNumbersTerm
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.SimpleDateSerializer;
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimitsRegistry;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.FormatMethod;
@@ -29,6 +32,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
@@ -86,6 +90,7 @@ public class SwaggerParser implements APIDescriptionParser {
 
     class Parameters {
         @Nonnull JsonSchemaMoleculeParser parser;
+        @Nonnull String endpointKey;
         @Nullable PagingStrategy pagingStrategy;
         @Nonnull Set<String> required, optional;
         @Nonnull Map<String, DictTree> paramObjMap;
@@ -93,6 +98,7 @@ public class SwaggerParser implements APIDescriptionParser {
 
         public Parameters(@Nonnull String endpoint, @Nullable APIDescriptionContext ctx,
                           @Nonnull JsonSchemaMoleculeParser parser) {
+            this.endpointKey = endpoint;
             this.parser = parser;
             this.pagingStrategy = getPagingStrategy(endpoint, ctx);
             this.paramObjMap = new HashMap<>();
@@ -115,6 +121,35 @@ public class SwaggerParser implements APIDescriptionParser {
                 throw ex("Some required inputs of endpoint %s have no atom mapped", endpoint);
         }
 
+        private boolean containsParam(@Nonnull String tpl, @Nonnull String name) {
+            name = name.replaceAll("\\.", "\\.");
+            Pattern pattern = Pattern.compile("\\{[?&]?([^}]+,)?" + name + "(,[^}]+)?}");
+            return pattern.matcher(tpl).find();
+        }
+
+        private @Nonnull String addQueryParam(@Nonnull String tpl, @Nonnull String name) {
+            Preconditions.checkState(!containsParam(tpl, name));
+            String tpl2 = tpl.replaceAll("\\{([&?][^}]+)}(?!\\{[&?])", "{$1," + name + "}");
+            if (tpl2.equals(tpl))
+                tpl2 = tpl.replaceAll("(#|$)", "{?"+name+"}$1");
+            assert containsParam(tpl2, name);
+            return tpl2;
+        }
+
+        @Nonnull UriTemplate getTemplate() {
+            String template = getTemplateBase(endpointKey);
+            for (DictTree d : paramObjMap.values()) {
+                String name = d.getPrimitive("name", "").toString();
+                if (name.isEmpty())
+                    continue; // no name!
+                if (containsParam(template, name))
+                    continue; // no work to do
+                if (d.getPrimitive("in", "query").toString().equals("query"))
+                    template = addQueryParam(template, name);
+            }
+            return new UriTemplate(template);
+        }
+
         @Nonnull DictTree getParamObj(@Nonnull String name) {
             if (!paramObjMap.containsKey(name)) throw new NoSuchElementException(name);
             return paramObjMap.get(name);
@@ -125,11 +160,21 @@ public class SwaggerParser implements APIDescriptionParser {
             return parameterPathMap.get(name);
         }
 
-        @Nonnull Map<String, String> getAtom2Input() {
-            Map<String, String> atom2Input = new HashMap<>(parameterPathMap.size());
-            for (Map.Entry<String, ParameterPath> e : parameterPathMap.entrySet())
-                atom2Input.put(e.getValue().getAtom().getName(), e.getKey());
-            return atom2Input;
+        @Nonnull Collection<ParameterPath> getParamPaths() {
+            assert new HashSet<>(parameterPathMap.values()).size() == parameterPathMap.size();
+            return parameterPathMap.values();
+        }
+
+        @Nonnull Map<String, String> getElement2Input() {
+            Map<String, String> element2Input = new HashMap<>(parameterPathMap.size());
+            for (Map.Entry<String, ParameterPath> e : parameterPathMap.entrySet()) {
+                AtomFilter atomFilter = e.getValue().getAtomFilter();
+                if (atomFilter != null)
+                    element2Input.put(atomFilter.getName(), e.getKey());
+                else
+                    element2Input.put(e.getValue().getAtom().getName(), e.getKey());
+            }
+            return element2Input;
         }
     }
 
@@ -147,7 +192,7 @@ public class SwaggerParser implements APIDescriptionParser {
         if (responseParser == null)
             throw new NoSuchElementException("Could not get ResponseParser for endpoint "+endpoint);
 
-        UriTemplateExecutor.Builder builder = UriTemplateExecutor.from(getTemplate(endpoint))
+        UriTemplateExecutor.Builder builder = UriTemplateExecutor.from(p.getTemplate())
                 .withOptional(p.optional).withRequired(p.required)
                 .withResponseParser(responseParser);
 
@@ -165,11 +210,12 @@ public class SwaggerParser implements APIDescriptionParser {
                 builder.withSerializer(e.getKey(), serializer);
         }
 
-        return new APIMolecule(p.parser.getMolecule(), builder.build(), p.getAtom2Input(),
+        MoleculeBuilder moleculeBuilder = p.parser.getMolecule().toBuilder();
+        p.getParamPaths().stream().map(ParameterPath::getAtomFilter).filter(Objects::nonNull)
+                                  .forEach(moleculeBuilder::filter);
+        return new APIMolecule(moleculeBuilder.build(), builder.build(), p.getElement2Input(),
                                getCardinality(endpoint, p.parser.getCardinality()));
     }
-
-
 
     @Override
     public @Nonnull WebAPICQEndpoint getEndpoint(@Nonnull String endpoint,
@@ -325,9 +371,9 @@ public class SwaggerParser implements APIDescriptionParser {
         return cardinality != null ? cardinality : fallback;
     }
 
-    private @Nullable SimpleDateSerializer parseDateSerializer(@Nonnull DictTree paramObj) {
-        if (!paramObj.contains("serializer", "date")) return null;
-        String dateFmt = paramObj.getPrimitive("date-format", "").toString();
+    private @Nullable SimpleDateSerializer parseDateSerializer(@Nonnull DictTree serializerObj) {
+        if (!serializerObj.contains("serializer", "date")) return null;
+        String dateFmt = serializerObj.getPrimitive("date-format", "").toString();
         if (!dateFmt.isEmpty()) {
             if (!SimpleDateSerializer.isValidFormat(dateFmt)) {
                 logger.warn("The given date format {} is not valid. " +
@@ -340,15 +386,15 @@ public class SwaggerParser implements APIDescriptionParser {
     }
 
     private @Nullable OnlyNumbersTermSerializer
-    parseOnlyNumbersSerializer(@Nonnull DictTree paramObj) {
-        if (!paramObj.contains("serializer", "only-numbers"))
+    parseOnlyNumbersSerializer(@Nonnull DictTree serializerObj) {
+        if (!serializerObj.contains("serializer", "only-numbers"))
             return null;
-        long width = paramObj.getLong("width", Long.MIN_VALUE);
+        long width = serializerObj.getLong("width", Long.MIN_VALUE);
         if (width != Long.MIN_VALUE && width < 1) {
             logger.warn("Ignoring invalid width {} for OnlyNumbersTermSerializer", width);
             width = Long.MIN_VALUE;
         }
-        String fill = paramObj.getPrimitive("fill", "0").toString();
+        String fill = serializerObj.getPrimitive("fill", "0").toString();
         if (fill.length() != 1) {
             fill = fill.trim();
             if (fill.length() != 1) {
@@ -367,10 +413,10 @@ public class SwaggerParser implements APIDescriptionParser {
         DictTree map = paramObj.getMapNN("x-serializer");
         if (map.isEmpty())
             return null; //nothing to parse
-        TermSerializer serializer = parseDateSerializer(paramObj);
+        TermSerializer serializer = parseDateSerializer(map);
         if (serializer != null)
             return serializer;
-        serializer = parseOnlyNumbersSerializer(paramObj);
+        serializer = parseOnlyNumbersSerializer(map);
         return serializer;
     }
 
@@ -417,13 +463,13 @@ public class SwaggerParser implements APIDescriptionParser {
         return "http"; // fallback if schemes empty
     }
 
-    private @Nonnull UriTemplate getTemplate(@Nonnull String endpoint) {
+    private @Nonnull String getTemplateBase(@Nonnull String endpoint) {
         String builder = String.valueOf(swagger.getOrDefault("host", "")) + '/' +
                 swagger.getOrDefault("basePath", "") + '/' + endpoint;
         String proto = builder.replaceAll("//+", "/");
         if (!proto.matches("^https?://"))
             proto = getScheme().replaceAll("://$", "") + "://" + proto;
-        return new UriTemplate(proto);
+        return proto;
     }
 
     private @Nonnull

@@ -22,7 +22,7 @@ public class EmptyEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     @Override
-    public boolean hasCapability(@Nonnull Capability capability) {
+    public boolean hasRemoteCapability(@Nonnull Capability capability) {
         return true;
     }
 

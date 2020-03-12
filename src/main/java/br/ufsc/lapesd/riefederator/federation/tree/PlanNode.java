@@ -2,9 +2,11 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
 
@@ -15,11 +17,36 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 
 public interface PlanNode {
+    /**
+     * Names of variables that will be results of this node.
+     *
+     * @return a subset of {@link PlanNode#getAllVars()}
+     */
     @Nonnull Set<String> getResultVars();
+
+    /**
+     * All variables in this, no be them inputs, results, or internal (projected-out) variables.
+     */
+    @Nonnull Set<String> getAllVars();
+
+    /**
+     * Result variables that are not inputs.
+     *
+     * @return A subset of {@link PlanNode#getResultVars()} that does not intersect with
+     *         {@link PlanNode#getInputVars()}.
+     */
     @Nonnull Set<String> getStrictResultVars();
 
+    /**
+     * Variables wich must receive a value (e.g., bind) before the node is executable.
+     * @return A subset of {@link PlanNode#getAllVars()}.
+     */
     @Nonnull Set<String> getInputVars();
 
+    /**
+     * Get the set of matched triples. This is a subset of the original {@link CQuery}
+     * that yielded this plan (even when the plan includes rewritten triples).
+     */
     @Nonnull Set<Triple> getMatchedTriples();
 
     boolean hasInputs();
@@ -29,6 +56,25 @@ public interface PlanNode {
     boolean isProjecting();
 
     @Nonnull Cardinality getCardinality();
+
+    /**
+     * Add a filter to this node.
+     *
+     * @param filter filter to add
+     * @return true if the filter was added, false if filter was already present
+     */
+    @CanIgnoreReturnValue
+    boolean addFilter(@Nonnull SPARQLFilter filter);
+
+    /**
+     * Remove a filter from this node
+     * @param filter filter to remove
+     * @return true if the filter was removed (was present), false otherwise
+     */
+    @CanIgnoreReturnValue
+    boolean removeFilter(@Nonnull SPARQLFilter filter);
+
+    @Nonnull Set<SPARQLFilter> getFilers();
 
     <T extends TermAnnotation>
     boolean forEachTermAnnotation(@Nonnull Class<T> cls, @Nonnull BiConsumer<Term, T> consumer);

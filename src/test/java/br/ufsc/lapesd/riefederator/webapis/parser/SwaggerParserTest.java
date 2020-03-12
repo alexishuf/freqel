@@ -2,13 +2,15 @@ package br.ufsc.lapesd.riefederator.webapis.parser;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
-import br.ufsc.lapesd.riefederator.description.Molecule;
+import br.ufsc.lapesd.riefederator.description.molecules.AtomFilter;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeLink;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.Results;
 import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import br.ufsc.lapesd.riefederator.webapis.ProcurementsService;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
@@ -42,6 +44,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
     private static final String ptExtYaml = RESOURCES_BASE + "/portal_transparencia-ext.yaml";
 
     private static final StdPlain id             = new StdPlain("id");
+    private static final StdPlain dataAbertura = new StdPlain("dataAbertura");
     private static final StdPlain unidadeGestora = new StdPlain("unidadeGestora");
     private static final StdPlain orgaoVinculado = new StdPlain("orgaoVinculado");
     private static final StdPlain orgaoMaximo    = new StdPlain("orgaoMaximo");
@@ -144,7 +147,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertFalse(parameters.getParamPath("id").isIn());
         assertEquals(parameters.getParamPath("id").getPath(),
                      singletonList(new StdPlain("id")));
-        assertNull(parameters.getParamPath("id").getSparqlFilter());
+        assertNull(parameters.getParamPath("id").getAtomFilter());
     }
 
     @Test
@@ -170,8 +173,10 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
 
         assertEquals(parameters.parameterPathMap.keySet(),
                      newHashSet("dataInicial", "dataFinal", "codigoOrgao"));
-        assertEquals(parameters.getParamPath("dataInicial").getSparqlFilter(),
-                     "FILTER($actual >= $input)");
+        AtomFilter filter = parameters.getParamPath("dataInicial").getAtomFilter();
+        assertNotNull(filter);
+        assertEquals(filter.getSPARQLFilter(), SPARQLFilter.build("FILTER($actual >= $input)"));
+        assertEquals(filter.getSPARQLFilter().getFilterString(), "$actual >= $input");
         assertEquals(parameters.getParamPath("codigoOrgao").getPath(),
                 asList(new StdPlain("unidadeGestora"),
                        new StdPlain("orgaoVinculado"),
@@ -252,5 +257,36 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
             assertEquals(solution.get(v), lit("26000"));
             assertFalse(results.hasNext());
         }
+    }
+
+    @Test
+    public void testCreateEndpointListProcurements() throws IOException {
+        SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
+        URI rootUri = target().getUri();
+        assertEquals(parser.setHost(rootUri.getHost() + ":" + rootUri.getPort()),
+                     "www.transparencia.gov.br");
+
+        WebAPICQEndpoint endpoint = parser.getEndpoint("/api-de-dados/licitacoes");
+        CQuery query = createQuery(
+                x, dataAbertura, u, SPARQLFilter.build("?u >= \"2019-12-01\"^^xsd:date"),
+                                    SPARQLFilter.build("?u <= \"2019-12-31\"^^xsd:date"),
+                x, id,           v,
+                x, unidadeGestora, y,
+                y, orgaoVinculado, z,
+                z, codigoSIAFI, lit("26246")
+        );
+
+        CQueryMatch match = endpoint.getMatcher().match(query);
+        assertFalse(match.isEmpty());
+        assertEquals(match.getKnownExclusiveGroups().size(), 1);
+        assertEquals(match.getNonExclusiveRelevant().size(), 0);
+        CQuery eg = match.getKnownExclusiveGroups().iterator().next();
+        assertEquals(query.getSet(), eg.getSet());
+        assertEquals(query.getModifiers(), eg.getModifiers());
+
+        Set<String> ids = new HashSet<>();
+        endpoint.query(query).forEachRemainingThenClose(s ->
+                ids.add(Objects.requireNonNull(s.get(v)).asLiteral().getLexicalForm()));
+        assertEquals(ids, Sets.newHashSet("267291791", "278614622"));
     }
 }

@@ -6,6 +6,8 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.impl.IteratorResults;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.impl.SPARQLFilterResults;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -32,12 +34,16 @@ public class ResultsTest implements TestContext {
         expectedOne = unmodifiableList(singletonList(MapSolution.build("x", Alice)));
         expectedTWo = unmodifiableList(asList(MapSolution.build("x", Alice),
                                               MapSolution.build("x", Bob)));
+        SPARQLFilter tautology = SPARQLFilter.build("regex(str(?x), \"^http.*\")");
 
         factories = new ArrayList<>();
         factories.add(new NamedFunction<>("CollectionSolutionIterator",
                 coll -> new CollectionResults(coll, xSet)));
         factories.add(new NamedFunction<>("IteratorResults",
                 coll -> new IteratorResults(coll.iterator(), xSet)));
+        factories.add(new NamedFunction<>("Tautology SPARQLFilterResults",
+                coll -> new SPARQLFilterResults(new CollectionResults(coll, xSet),
+                                                singleton(tautology))));
     }
 
     @DataProvider

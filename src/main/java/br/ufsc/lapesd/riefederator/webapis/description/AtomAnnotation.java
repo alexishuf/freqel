@@ -1,35 +1,43 @@
 package br.ufsc.lapesd.riefederator.webapis.description;
 
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.query.InputAnnotation;
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.TermAnnotation;
-import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Objects;
 
 @Immutable
-public class AtomAnnotation implements TermAnnotation, InputAnnotation {
-    protected final boolean input, required;
-    private final  @Nonnull Atom atom;
+public class AtomAnnotation implements TermAnnotation {
+    private final @Nonnull Atom atom;
 
-    public AtomAnnotation(@Nonnull Atom atom, boolean input, boolean required) {
-        Preconditions.checkArgument(!required || input, "If it is required, it must be a input");
+    public AtomAnnotation(@Nonnull Atom atom) {
         this.atom = atom;
-        this.input = input;
-        this.required = required;
     }
 
     public static @Nonnull AtomAnnotation of(@Nonnull Atom atom) {
-        return new AtomAnnotation(atom, false, false);
+        return new AtomAnnotation(atom);
     }
 
-    public static @Nonnull AtomInputAnnotation asOptional(@Nonnull Atom atom) {
-        return AtomInputAnnotation.asOptional(atom);
+    public static @Nonnull AtomInputAnnotation asOptional(@Nonnull Atom atom,
+                                                          @Nonnull String inputName) {
+        return AtomInputAnnotation.asOptional(atom, inputName);
     }
-    public static @Nonnull AtomInputAnnotation asRequired(@Nonnull Atom atom) {
-        return AtomInputAnnotation.asRequired(atom);
+    public static @Nonnull AtomInputAnnotation asOptional(@Nonnull Atom atom,
+                                                          @Nonnull String inputName,
+                                                          @Nullable Term overrideValue) {
+        return AtomInputAnnotation.asOptional(atom, inputName, overrideValue);
+    }
+    public static @Nonnull AtomInputAnnotation asRequired(@Nonnull Atom atom,
+                                                          @Nonnull String inputName) {
+        return AtomInputAnnotation.asRequired(atom, inputName);
+    }
+    public static @Nonnull AtomInputAnnotation asRequired(@Nonnull Atom atom,
+                                                          @Nonnull String inputName,
+                                                          @Nullable Term overrideValue) {
+        return AtomInputAnnotation.asRequired(atom, inputName, overrideValue);
     }
 
     public @Nonnull Atom getAtom() {
@@ -41,19 +49,7 @@ public class AtomAnnotation implements TermAnnotation, InputAnnotation {
     }
 
     @Override
-    public boolean isInput() {
-        return input;
-    }
-
-    @Override
-    public boolean isRequired() {
-        return required;
-    }
-
-    @Override
     public String toString() {
-        if (isInput())
-            return String.format("%s(%s)", isRequired() ? "REQUIRED" : "OPTIONAL", getAtomName());
         return getAtomName();
     }
 
@@ -62,13 +58,11 @@ public class AtomAnnotation implements TermAnnotation, InputAnnotation {
         if (this == o) return true;
         if (!(o instanceof AtomAnnotation)) return false;
         AtomAnnotation that = (AtomAnnotation) o;
-        return isInput() == that.isInput() &&
-                isRequired() == that.isRequired() &&
-                getAtom().equals(that.getAtom());
+        return getAtom().equals(that.getAtom());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(isInput(), isRequired(), getAtom());
+        return Objects.hash(getAtom());
     }
 }

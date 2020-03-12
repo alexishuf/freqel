@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.webapis.description;
 
-import br.ufsc.lapesd.riefederator.description.Molecule;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import com.google.common.collect.ImmutableMap;
@@ -18,28 +18,28 @@ import static java.lang.String.format;
 public class APIMolecule  {
     private final @Nonnull Molecule molecule;
     private final @Nonnull APIRequestExecutor executor;
-    private final @Nonnull ImmutableMap<String, String> atom2input;
+    private final @Nonnull ImmutableMap<String, String> element2input;
     private final @Nonnull Cardinality cardinality;
 
     public APIMolecule(@Nonnull Molecule molecule, @Nonnull APIRequestExecutor executor,
-                       @Nonnull Map<String, String> atom2input,
+                       @Nonnull Map<String, String> element2input,
                        @Nonnull Cardinality cardinality) {
-        checkArgument(atom2input.values().containsAll(executor.getRequiredInputs()),
-                "There are some requiredInputs in executor which are not mapped to in atom2input");
+        checkArgument(element2input.values().containsAll(executor.getRequiredInputs()),
+                "There are some requiredInputs in executor which are not mapped to in element2input");
         if (APIMolecule.class.desiredAssertionStatus()) {
-            HashSet<String> set = new HashSet<>(atom2input.values());
-            checkArgument(set.size() == atom2input.values().size(),
+            HashSet<String> set = new HashSet<>(element2input.values());
+            checkArgument(set.size() == element2input.values().size(),
                     "There are some inputs mapped to more than once in atom2input");
         }
         this.molecule = molecule;
         this.executor = executor;
-        this.atom2input = ImmutableMap.copyOf(atom2input);
+        this.element2input = ImmutableMap.copyOf(element2input);
         this.cardinality = cardinality;
     }
 
     public APIMolecule(@Nonnull Molecule molecule, @Nonnull APIRequestExecutor executor,
-                       @Nonnull Map<String, String> atom2input) {
-        this(molecule, executor, atom2input, Cardinality.UNSUPPORTED);
+                       @Nonnull Map<String, String> element2input) {
+        this(molecule, executor, element2input, Cardinality.UNSUPPORTED);
     }
 
     public @Nonnull Molecule getMolecule() {
@@ -50,8 +50,8 @@ public class APIMolecule  {
         return executor;
     }
 
-    public @Nonnull ImmutableMap<String, String> getAtom2input() {
-        return atom2input;
+    public @Nonnull ImmutableMap<String, String> getElement2Input() {
+        return element2input;
     }
 
     public @Nonnull Cardinality getCardinality() {
@@ -61,7 +61,7 @@ public class APIMolecule  {
     @Override
     public @Nonnull String toString() {
         return format("APIMolecule(%s, |%s|, %s, %s)", getMolecule(), getCardinality(),
-                                                       getAtom2input(), getExecutor());
+                                                       getElement2Input(), getExecutor());
     }
 
     @Override
@@ -71,11 +71,11 @@ public class APIMolecule  {
         APIMolecule that = (APIMolecule) o;
         return getMolecule().equals(that.getMolecule()) &&
                 getExecutor().equals(that.getExecutor()) &&
-                getAtom2input().equals(that.getAtom2input());
+                getElement2Input().equals(that.getElement2Input());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getMolecule(), getExecutor(), getAtom2input());
+        return Objects.hash(getMolecule(), getExecutor(), getElement2Input());
     }
 }

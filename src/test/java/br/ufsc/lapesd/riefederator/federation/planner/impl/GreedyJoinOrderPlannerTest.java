@@ -62,7 +62,7 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
             b.add(new Triple(terms[i], terms[i+1], terms[i+2]));
         int i = 0;
         for (Var input : inputs)
-            b.annotate(input, AtomAnnotation.asRequired(new Atom("Atom-" + i)));
+            b.annotate(input, AtomAnnotation.asRequired(new Atom("Atom-" + i), "Atom-" + i));
         return new QueryNode(ep, b.build(), cardinality);
     }
     private static @Nonnull QueryNode n(@Nonnull CQEndpoint ep, Cardinality cardinality,

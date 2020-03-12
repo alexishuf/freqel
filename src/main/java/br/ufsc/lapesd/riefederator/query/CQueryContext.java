@@ -1,7 +1,10 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +31,7 @@ public abstract class CQueryContext {
 
     public static @Nonnull CQuery createQuery(Object... termAndAnnotations) {
         CQuery.Builder builder = CQuery.builder(termAndAnnotations.length / 3);
+        PrefixDict prefixDict = null;
         List<Term> window = new ArrayList<>();
         for (Object next : termAndAnnotations) {
             if (next instanceof Term) {
@@ -64,8 +68,16 @@ public abstract class CQueryContext {
                                 "TripleAnnotation but is positioned after a subject or predicate");
                     }
                 }
+                if (next instanceof Modifier)
+                    builder.modifier((Modifier) next);
+                if (next instanceof PrefixDict) {
+                    if (prefixDict != null)
+                        logger.warn("Will overwrite PrefixDict {} with {}", prefixDict, next);
+                    prefixDict = (PrefixDict) next;
+                }
             }
         }
+        builder.prefixDict(prefixDict == null ? StdPrefixDict.STANDARD : prefixDict);
         return builder.build();
     }
 }

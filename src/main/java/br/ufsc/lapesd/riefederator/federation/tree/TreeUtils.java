@@ -168,6 +168,10 @@ public class TreeUtils {
         return union(collection, PlanNode::getResultVars);
     }
 
+    public static @Nonnull Set<String> unionVars(@Nonnull Collection<PlanNode> collection) {
+        return union(collection, PlanNode::getAllVars);
+    }
+
     public static @Nonnull <T> Set<T> intersect(@Nonnull Collection<T> left, Collection<T> right) {
         Set<T> result = new HashSet<>(left.size() < right.size() ? left : right);
         result.retainAll(left.size() < right.size() ? right : left);

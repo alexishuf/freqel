@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.TestContext;
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
@@ -13,6 +13,7 @@ import org.testng.annotations.Test;
 import java.util.HashMap;
 import java.util.Map;
 
+import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -31,7 +32,7 @@ public class JoinNodeTest implements TestContext {
         xKnowsY = new QueryNode(empty, CQuery.from(new Triple(x, knows, y)));
         xKnowsYInput = new QueryNode(empty, CQuery.with(new Triple(x, knows, y))
                 .annotate(x, AtomAnnotation.of(Person))
-                .annotate(y, AtomAnnotation.asRequired(KnownPerson))
+                .annotate(y, asRequired(KnownPerson, "knownPerson"))
                 .build());
         yKnown = new QueryNode(empty, CQuery.from(new Triple(x, knows, y)), singleton("y"));
     }

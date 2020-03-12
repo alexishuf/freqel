@@ -18,6 +18,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
@@ -188,11 +189,11 @@ public class HeuristicPlannerTest implements TestContext {
     public void testJoinGraphWithServices() {
         QueryNode xKnowsBob = new QueryNode(empty, createQuery(x, knows, Bob));
         QueryNode xNameY = new QueryNode(empty, CQuery.with(new Triple(x, name, y))
-                .annotate(x, AtomAnnotation.asRequired(Person))
+                .annotate(x, asRequired(Person, "Person"))
                 .annotate(y, AtomAnnotation.of(PersonName))
                 .build());
         QueryNode xLikesZ = new QueryNode(empty, CQuery.with(new Triple(x, likes, z))
-                .annotate(x, AtomAnnotation.asRequired(Person))
+                .annotate(x, asRequired(Person, "Person"))
                 .annotate(z, AtomAnnotation.of(LikedPerson))
                 .build());
         List<QueryNode> nodes = asList(xKnowsBob, xNameY, xLikesZ);
@@ -208,13 +209,13 @@ public class HeuristicPlannerTest implements TestContext {
     @Test
     public void testBuildTreeForServiceChain() {
         QueryNode q1 = new QueryNode(empty, CQuery.with(new Triple(Alice, knows, x))
-                .annotate(Alice, AtomAnnotation.asRequired(Person))
+                .annotate(Alice, asRequired(Person, "Person"))
                 .annotate(x, AtomAnnotation.of(Person)).build());
         QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(x, knows, y))
-                .annotate(x, AtomAnnotation.asRequired(Person))
+                .annotate(x, asRequired(Person, "Person"))
                 .annotate(y, AtomAnnotation.of(Person)).build());
         QueryNode q3 = new QueryNode(empty, CQuery.with(new Triple(y, knows, z))
-                .annotate(y, AtomAnnotation.asRequired(Person))
+                .annotate(y, asRequired(Person, "Person"))
                 .annotate(z, AtomAnnotation.of(Person)).build());
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
 
@@ -241,10 +242,10 @@ public class HeuristicPlannerTest implements TestContext {
     @Test
     public void testBuildTreeWithInputsAtRoot() {
         QueryNode q1 = new QueryNode(empty, CQuery.with(new Triple(x, knows, y))
-                .annotate(x, AtomAnnotation.asRequired(Person))
+                .annotate(x, asRequired(Person, "Person"))
                 .annotate(y, AtomAnnotation.of(Person)).build());
         QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(y, knows, z))
-                .annotate(y, AtomAnnotation.asRequired(Person))
+                .annotate(y, asRequired(Person, "Person"))
                 .annotate(z, AtomAnnotation.of(Person)).build());
 
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2));
@@ -258,16 +259,16 @@ public class HeuristicPlannerTest implements TestContext {
     public void testStartFromBoundNotFromBest() {
         QueryNode q1 = new QueryNode(empty, CQuery.with(new Triple(x, knows, y),
                                                         new Triple(y, likes, u))
-                .annotate(x, AtomAnnotation.asRequired(Person))
+                .annotate(x, asRequired(Person, "Person"))
                 .annotate(y, AtomAnnotation.of(Person))
                 .annotate(u, AtomAnnotation.of(Person)).build());
         QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(u, knows, y),
                                                         new Triple(y, likes, v))
-                .annotate(u, AtomAnnotation.asRequired(Person))
-                .annotate(y, AtomAnnotation.asRequired(Person))
+                .annotate(u, asRequired(Person, "Person"))
+                .annotate(y, asRequired(Person, "Person"))
                 .annotate(v, AtomAnnotation.of(Person)).build());
         QueryNode q3 = new QueryNode(empty, CQuery.with(new Triple(Alice, knows, x))
-                .annotate(Alice, AtomAnnotation.asRequired(Person))
+                .annotate(Alice, asRequired(Person, "Person"))
                 .annotate(x, AtomAnnotation.of(Person)).build());
 
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
@@ -289,11 +290,11 @@ public class HeuristicPlannerTest implements TestContext {
     public void testAlternativeInterfacesNotJoinable() {
         QueryNode q1 = new QueryNode(empty, createQuery(y, name, author1));
         QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(x, author, y))
-                .annotate(x, AtomAnnotation.asRequired(Book))
+                .annotate(x, asRequired(Book, "Book"))
                 .annotate(y, AtomAnnotation.of(Person)).build());
         QueryNode q3 = new QueryNode(empty, CQuery.with(new Triple(x, author, y))
                 .annotate(x, AtomAnnotation.of(Book))
-                .annotate(y, AtomAnnotation.asRequired(Person)).build());
+                .annotate(y, asRequired(Person, "Person")).build());
 
         HeuristicPlanner.JoinGraph g = new HeuristicPlanner.JoinGraph(asList(q1, q2, q3));
         assertEquals(g.getWeights(), new Float[]{
@@ -307,11 +308,11 @@ public class HeuristicPlannerTest implements TestContext {
     public void testUselessService() {
         QueryNode q1 = new QueryNode(empty, createQuery(y, name, author1));
         QueryNode q2 = new QueryNode(empty, CQuery.with(new Triple(x, author, y))
-                .annotate(x, AtomAnnotation.asRequired(Book))
+                .annotate(x, asRequired(Book, "Book"))
                 .annotate(y, AtomAnnotation.of(Person)).build());
         QueryNode q3 = new QueryNode(empty, CQuery.with(new Triple(x, author, y))
                 .annotate(x, AtomAnnotation.of(Book))
-                .annotate(y, AtomAnnotation.asRequired(Person)).build());
+                .annotate(y, asRequired(Person, "Person")).build());
         MultiQueryNode mq = MultiQueryNode.builder().add(q2).add(q3).intersectInputs().build();
 
         for (List<? extends PlanNode> ordering : asList(asList(q1, mq), asList(mq, q1))) {

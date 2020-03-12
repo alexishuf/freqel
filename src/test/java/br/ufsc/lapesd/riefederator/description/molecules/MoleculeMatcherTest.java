@@ -3,12 +3,12 @@ package br.ufsc.lapesd.riefederator.description.molecules;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.Description;
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import com.google.common.collect.Sets;
@@ -19,6 +19,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Function;
 
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -91,6 +92,26 @@ public class MoleculeMatcherTest implements TestContext {
             .in(primaryTopic, new Atom("Document"))
             .out(name, new Atom("name")).out(age, new Atom("age"))
             .exclusive().closed().disjoint().build();
+
+    public static @Nonnull Molecule person2oe1f = Molecule.builder("Person2oe1f")
+            .out(name, new Atom("name"))
+            .out(age, new Atom("age"))
+            .filter(AtomFilter.builder("?ac >= ?in")
+                    .map(AtomRole.INPUT.wrap("age"), "in")
+                    .map(AtomRole.OUTPUT.wrap("age"), "ac").buildFilter())
+            .exclusive().closed().build();
+
+    public static @Nonnull Molecule person1i2oe1f = Molecule.builder("Person2oe1f")
+            .in(primaryTopic,
+                    Molecule.builder("Document")
+                            .out(title, new Atom("title"))
+                            .exclusive().closed().buildAtom())
+            .out(name, new Atom("name"))
+            .out(age, new Atom("age"))
+            .filter(AtomFilter.builder("?ac >= ?in")
+                    .map(AtomRole.INPUT.wrap("age"), "in")
+                    .map(AtomRole.OUTPUT.wrap("age"), "ac").buildFilter())
+            .exclusive().closed().build();
 
     /* ~~~ large molecule ~~~ */
     private static StdURI worksFor = new StdURI("http://example.org/uni/worksFor");
@@ -403,6 +424,82 @@ public class MoleculeMatcherTest implements TestContext {
         );
     }
 
+    private static List<List<Object>> exclusiveMatchDataWithFilters() {
+        return asList(
+                // exact match with the description
+                asList(person2oe1f,
+                       createQuery(x, name, y,
+                                   x, age, z, SPARQLFilter.build("?z >= 23")),
+                       singleton(createQuery(x, name, y,
+                                             x, age, z,
+                                             SPARQLFilter.build("?z >= 23"))),
+                       emptyList()),
+                // match only age, leave name out ...
+                asList(person2oe1f,
+                       createQuery(x, age, z, SPARQLFilter.build("?z >= 23")),
+                       singleton(createQuery(x, age, z, SPARQLFilter.build("?z >= 23"))),
+                       emptyList()),
+                // match all output links with molecule that has input...
+                asList(person1i2oe1f,
+                       createQuery(x, name, y,
+                                   x, age, z, SPARQLFilter.build("?z >= 23")),
+                       singleton(createQuery(x, name, y,
+                                             x, age, z, SPARQLFilter.build("?z >= 23"))),
+                       emptyList()),
+                // complete match with  molecule that has input...
+                asList(person1i2oe1f,
+                        createQuery(x, name, y,
+                                    w, primaryTopic, x,
+                                    w, title, u,
+                                    x, age, z, SPARQLFilter.build("?z >= 23")),
+                        singleton(createQuery(x, name, y,
+                                              w, primaryTopic, x,
+                                              w, title, u,
+                                              x, age, z, SPARQLFilter.build("?z >= 23"))),
+                        emptyList()),
+                // match only age on simple molecule but provide subsuming filter
+                asList(person2oe1f,
+                        createQuery(x, age, z, SPARQLFilter.build("?z > 23")),
+                        singleton(createQuery(x, age, z, SPARQLFilter.build("?z > 23"))),
+                        emptyList()),
+                // complete match with  molecule that has input and susuming filter
+                asList(person1i2oe1f,
+                        createQuery(x, name, y,
+                                w, primaryTopic, x,
+                                w, title, u,
+                                x, age, z, SPARQLFilter.build("?z > 23")),
+                        singleton(createQuery(x, name, y,
+                                w, primaryTopic, x,
+                                w, title, u,
+                                x, age, z, SPARQLFilter.build("?z > 23"))),
+                        emptyList()),
+                // query without filter against simple molecule with filter
+                asList(person2oe1f,
+                        createQuery(x, age, z),
+                        singleton(createQuery(x, age, z)),
+                        emptyList()),
+                // conjunctive query without filter against simple molecule
+                asList(person2oe1f,
+                        createQuery(x, name, y,
+                                    x, age, z),
+                        singleton(createQuery(x, name, y,
+                                              x, age, z)),
+                        emptyList()),
+                // query with incompatible filter
+                asList(person2oe1f,
+                        createQuery(x, age, z, SPARQLFilter.build("?x < 23")),
+                        singleton(createQuery(x, age, z)),
+                        emptyList()),
+                // conjunctive query with incompatible filter
+                asList(person2oe1f,
+                        createQuery(x, name, y,
+                                    x, age, z, SPARQLFilter.build("?z < 23")),
+                        singleton(createQuery(x, name, y,
+                                              x, age, z)),
+                        emptyList())
+        );
+    }
+
     @Nonnull
     private static List<List<Object>> allMatchData() {
         List<List<Object>> list = new ArrayList<>();
@@ -412,6 +509,7 @@ public class MoleculeMatcherTest implements TestContext {
 //        list.addAll(exclusiveDisjointMatchData());
         list.addAll(nonExclusiveMatchDataOnLargeMolecules());
         list.addAll(exclusiveMatchDataOnLargeMolecules());
+        list.addAll(exclusiveMatchDataWithFilters());
         return list;
     }
 
@@ -449,17 +547,28 @@ public class MoleculeMatcherTest implements TestContext {
 
     /* ~~~ actual test methods ~~~ */
 
+    @SuppressWarnings("unchecked")
     @Test(dataProvider = "matchData")
-    public void testMatch(@Nonnull Description description, @Nonnull List<Triple> queryAsList,
-                          @Nonnull Collection<Collection<Triple>> exclusiveGroups,
+    public void testMatch(@Nonnull Description description, @Nonnull Object queryOrList,
+                          @Nonnull Collection<?> exclusiveGroups,
                           @Nonnull Collection<Triple> nonExclusive) {
-        CQuery query = CQuery.from(queryAsList);
+        /* treat test inputs */
+        CQuery query = queryOrList instanceof CQuery ? (CQuery) queryOrList
+                                                     : CQuery.from((List<Triple>)queryOrList);
+        List<Collection<Triple>> exclusiveGroupsAsTriples = new ArrayList<>();
+        for (Object eg : exclusiveGroups) {
+            if (eg instanceof CQuery)
+                exclusiveGroupsAsTriples.add(((CQuery)eg).getSet());
+            else
+                exclusiveGroupsAsTriples.add((Collection<Triple>)eg);
+        }
+
         CQueryMatch match = description.match(query);
         assertEquals(match.getQuery(), query);
 
         // compare relevant & irrelevant triple patterns
         assertEquals(newHashSet(match.getAllRelevant()), concat(nonExclusive.stream(),
-                exclusiveGroups.stream().flatMap(Collection::stream)).collect(toSet()));
+                exclusiveGroupsAsTriples.stream().flatMap(Collection::stream)).collect(toSet()));
         HashSet<Triple> irrelevant = newHashSet(match.getAllRelevant());
         irrelevant.retainAll(match.getIrrelevant());
         assertEquals(irrelevant, emptySet());
@@ -468,15 +577,38 @@ public class MoleculeMatcherTest implements TestContext {
         Set<Set<Triple>> actualGroups = match.getKnownExclusiveGroups().stream()
                 .map(Sets::newHashSet).collect(toSet());
         try {
-            assertEquals(actualGroups, exclusiveGroups.stream().map(Sets::newHashSet)
+            assertEquals(actualGroups, exclusiveGroupsAsTriples.stream().map(Sets::newHashSet)
                                                       .collect(toSet()));
         } catch (AssertionError e) {
             if (description instanceof MoleculeMatcherWithDisjointness) {
-                Set<Triple> set = exclusiveGroups.stream().flatMap(Collection::stream)
+                Set<Triple> set = exclusiveGroupsAsTriples.stream().flatMap(Collection::stream)
                                                           .collect(toSet());
                 assertEquals(actualGroups, singleton(set));
             } else {
                 throw e;
+            }
+        }
+
+        if (!(description instanceof MoleculeMatcherWithDisjointness)) {
+            for (Object eg : exclusiveGroups) {
+                if (!(eg instanceof CQuery)) continue;
+                CQuery expected = (CQuery) eg;
+                Set<CQuery> matchingGroups = match.getKnownExclusiveGroups().stream()
+                        .filter(a -> a.getSet().equals(expected.getSet()))
+                        .filter(a -> a.getModifiers().containsAll(expected.getModifiers()))
+                        .filter(a -> {
+                            boolean[] ok = {true};
+                            expected.forEachTermAnnotation((t, ann)
+                                    -> ok[0] &= a.getTermAnnotations(t).contains(ann));
+                            return ok[0];
+                        })
+                        .filter(a -> {
+                            boolean[] ok = {true};
+                            expected.forEachTripleAnnotation((t, ann)
+                                    -> ok[0] &= a.getTripleAnnotations(t).contains(ann));
+                            return ok[0];
+                        }).collect(toSet());
+                assertEquals(matchingGroups.size(), 1);
             }
         }
     }

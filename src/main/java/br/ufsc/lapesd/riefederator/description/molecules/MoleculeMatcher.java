@@ -2,13 +2,14 @@ package br.ufsc.lapesd.riefederator.description.molecules;
 
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
-import br.ufsc.lapesd.riefederator.description.Molecule;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.base.Preconditions;
@@ -16,6 +17,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.*;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import javax.annotation.Nonnull;
@@ -27,6 +29,7 @@ import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 public class MoleculeMatcher implements SemanticDescription {
     private final @Nonnull Molecule molecule;
@@ -263,7 +266,7 @@ public class MoleculeMatcher implements SemanticDescription {
         protected  @Nonnull Map<Term, CQuery> subQueries;
         protected  @Nonnull Map<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> visited;
         protected  @Nonnull Multimap<ImmutablePair<Term, Atom>, LinkMatch>  incoming;
-        protected  @Nonnull SemanticCQueryMatch.Builder builder;
+        protected  @Nonnull SemanticCQueryMatch.Builder matchBuilder;
         protected  @Nonnull Index idx;
         protected boolean reuseParentForEG = true;
 
@@ -271,7 +274,7 @@ public class MoleculeMatcher implements SemanticDescription {
             this.parentQuery = query;
             this.reason = reason;
             this.idx = getIndex();
-            this.builder = SemanticCQueryMatch.builder(query);
+            this.matchBuilder = SemanticCQueryMatch.builder(query);
             int count = query.size();
             HashSet<Term> sos = Sets.newHashSetWithExpectedSize(count * 2);
             for (Triple t : query) {
@@ -289,19 +292,19 @@ public class MoleculeMatcher implements SemanticDescription {
         }
 
         public @Nonnull SemanticCQueryMatch build() {
-            return builder.build();
+            return matchBuilder.build();
         }
 
         public @Nonnull State matchNonExclusive() {
             for (Triple t : parentQuery) {
                 if (t.getPredicate().isVar()) {
-                    builder.addTriple(t).addAlternative(t, t);
+                    matchBuilder.addTriple(t).addAlternative(t, t);
                 } else {
                     Iterator<Link> it = idx.streamNE(t.getPredicate(), reason).iterator();
                     if (it.hasNext())
-                        builder.addTriple(t);
+                        matchBuilder.addTriple(t);
                     while (it.hasNext())
-                        builder.addAlternative(t, t.withPredicate(it.next().p));
+                        matchBuilder.addAlternative(t, t.withPredicate(it.next().p));
                 }
             }
             return this;
@@ -468,6 +471,10 @@ public class MoleculeMatcher implements SemanticDescription {
 
         protected class EGQueryBuilder {
             protected CQuery.Builder builder;
+            protected Set<Var> allVars = new HashSet<>();
+            protected SetMultimap<Term, String> term2atom = HashMultimap.create();
+            protected Map<SPARQLFilter.SubsumptionResult, AtomFilter> subsumption2matched
+                    = new HashMap<>();
 
             public EGQueryBuilder(int sizeHint) {
                 builder = CQuery.builder(sizeHint);
@@ -475,12 +482,53 @@ public class MoleculeMatcher implements SemanticDescription {
 
             public void add(@Nonnull Triple triple, @Nonnull Collection<LinkMatch> matches) {
                 assert parentQuery.contains(triple);
+                triple.forEach(t -> {
+                    if (t.isVar()) allVars.add(t.asVar());
+                });
                 builder.add(triple);
                 parentQuery.getTripleAnnotations(triple).forEach(a -> builder.annotate(triple, a));
+                if (!molecule.getFilters().isEmpty()) {
+                    for (LinkMatch match : matches) {
+                        term2atom.put(triple.getSubject(), match.l.s.getName());
+                        term2atom.put(triple.getObject(), match.l.o.getName());
+                    }
+                }
+            }
+
+            @CanIgnoreReturnValue
+            public boolean tryAdd(@Nonnull SPARQLFilter filter) {
+                if (!allVars.containsAll(filter.getVarTerms()))
+                    return false;
+                Set<AtomFilter> candidates = null;
+                for (Var var : filter.getVarTerms()) {
+                    Set<AtomFilter> set = term2atom.get(var).stream()
+                            .flatMap(a -> molecule.getFiltersWithAtom(a).stream()).collect(toSet());
+                    if (candidates == null) {
+                        candidates = set;
+                    } else {
+                        if (candidates.isEmpty())
+                            return false;
+                        candidates = TreeUtils.intersect(candidates, set);
+                    }
+                }
+                if (candidates == null) candidates = Collections.emptySet();
+                for (AtomFilter candidate : candidates) {
+                    SPARQLFilter.SubsumptionResult result;
+                    result = filter.areResultsSubsumedBy(candidate.getSPARQLFilter());
+                    if (result.getValue()) {
+                        builder.modifier(filter);
+                        subsumption2matched.put(result, candidate);
+                        return true;
+                    }
+                }
+                return false;
             }
 
             public void addAlternative(@Nonnull Triple triple, @Nonnull Triple alt) {
                 assert parentQuery.contains(triple);
+                alt.forEach(t -> {
+                    if (t.isVar()) allVars.add(t.asVar());
+                });
                 builder.add(alt);
                 parentQuery.getTripleAnnotations(triple).forEach(a -> builder.annotate(alt, a));
                 if (!alt.equals(triple))
@@ -495,11 +543,20 @@ public class MoleculeMatcher implements SemanticDescription {
                 return builder.size();
             }
 
-            public CQuery build() {
+            public void addParentModifiers() {
+                parentQuery.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
+                        .forEach(m -> tryAdd((SPARQLFilter)m));
+            }
+
+            protected void prepareBuild() {
                 //copy all term annotations
                 builder.getList().stream().flatMap(Triple::stream).distinct()
                         .forEach(t -> parentQuery.getTermAnnotations(t)
                                 .forEach(a -> builder.annotate(t, a)));
+            }
+
+            public CQuery build() {
+                prepareBuild();
                 return builder.build();
             }
         }
@@ -507,7 +564,8 @@ public class MoleculeMatcher implements SemanticDescription {
         protected @Nonnull EGQueryBuilder createEGQueryBuilder(int sizeHint) {
             return new EGQueryBuilder(sizeHint);
         }
-        protected @Nonnull EGQueryBuilder createEGQueryBuilder(@Nonnull CQuery parent) {
+        protected @Nonnull EGQueryBuilder
+        createEGQueryBuilder(@Nonnull CQuery parent, @Nonnull EGQueryBuilder parentBuilder) {
             return new EGQueryBuilder(parent.size());
         }
 
@@ -527,20 +585,22 @@ public class MoleculeMatcher implements SemanticDescription {
             }
             if (subQuery.isEmpty())
                 return; //nothing to do
+            subQuery.addParentModifiers();
             if (!reuseParentForEG || subQuery.size() != query.size()) {//avoid new instance creation
                 assert subQuery.size() <= query.size();
                 query = subQuery.build();
             }
             if (query.isEmpty())
                 return; // builder rejected the exclusive group during build
-            builder.addExclusiveGroup(query);
+            matchBuilder.addExclusiveGroup(query);
             for (List<Term> ps : Lists.cartesianProduct(predicatesList)) {
-                EGQueryBuilder b = createEGQueryBuilder(query);
+                EGQueryBuilder b = createEGQueryBuilder(query, subQuery);
                 assert ps.size() == query.size();
                 Iterator<Term> it = ps.iterator();
                 for (Triple triple : query)
                     b.addAlternative(triple, triple.withPredicate(it.next()));
-                builder.addAlternative(query, b.build());
+                b.addParentModifiers();
+                matchBuilder.addAlternative(query, b.build());
             }
         }
 

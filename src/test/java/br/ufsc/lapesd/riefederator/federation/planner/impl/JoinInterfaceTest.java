@@ -46,21 +46,21 @@ public class JoinInterfaceTest implements TestContext {
 
     private static QueryNode n1 = node(Alice, p1, x), n2 = node(x, p1, y), n3 = node(y, p2, Bob);
     private static QueryNode n4 = node(Alice, p1, x, x, p2, y);
-    private static QueryNode n1i = node(b -> b.annotate(Alice, AtomAnnotation.asRequired(Person))
+    private static QueryNode n1i = node(b -> b.annotate(Alice, AtomAnnotation.asRequired(Person, "Person"))
                                               .annotate(x, AtomAnnotation.of(Atom1)),
             Alice, p1, x);
-    private static QueryNode n2i = node(b -> b.annotate(x, AtomAnnotation.asRequired(Atom1))
+    private static QueryNode n2i = node(b -> b.annotate(x, AtomAnnotation.asRequired(Atom1, "Atom1"))
                                               .annotate(y, AtomAnnotation.of(Atom1)),
             x, p1, y);
-    private static QueryNode n4i = node(b -> b.annotate(x, AtomAnnotation.asRequired(Atom1))
+    private static QueryNode n4i = node(b -> b.annotate(x, AtomAnnotation.asRequired(Atom1, "Atom1"))
                                               .annotate(y, AtomAnnotation.of(Atom1)),
             Alice, p1, x, x, p2, y);
     private static JoinNode n4j = JoinNode.builder(
             node(b -> b.annotate(Alice, AtomAnnotation.of(Person))
-                       .annotate(x,     AtomAnnotation.asRequired(Atom1)),
+                       .annotate(x,     AtomAnnotation.asRequired(Atom1, "Atom1")),
                  Alice, p1, x),
             node(b -> b.annotate(x, AtomAnnotation.of(Atom1))
-                       .annotate(y, AtomAnnotation.asRequired(Atom1)),
+                       .annotate(y, AtomAnnotation.asRequired(Atom1, "Atom1")),
                  x, p2, y)).build();
     private static JoinNode n12j = JoinNode.builder(n1, n2).build();
     private static JoinNode n12ij = JoinNode.builder(n1, n2).build();
