@@ -9,15 +9,15 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.util.DictTree;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.PrimitiveParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.PrimitiveParserParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.PrimitiveParsersRegistry;
 import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
@@ -37,6 +37,8 @@ public class JsonSchemaMoleculeParser {
 
     private @Nonnull Cardinality cardinality = Cardinality.UNSUPPORTED;
     private @Nullable Molecule molecule;
+    private @Nonnull PrimitiveParsersRegistry parsersRegistry = new PrimitiveParsersRegistry();
+    private @Nullable PrimitiveParser globalDateParser;
 
     /* --- --- --- --- configuration --- --- --- ---  */
 
@@ -100,6 +102,10 @@ public class JsonSchemaMoleculeParser {
         return molecule;
     }
 
+    public @Nonnull PrimitiveParsersRegistry getParsersRegistry() {
+        return parsersRegistry;
+    }
+
     public @Nullable Atom getAtomForSchemaPath(List<String> path, boolean in) {
         Preconditions.checkState(molecule != null, "parse() must be called before!");
         Atom atom = molecule.getCore();
@@ -114,6 +120,14 @@ public class JsonSchemaMoleculeParser {
 
     /* --- --- --- --- parsing --- --- --- ---  */
 
+    public void setGlobalDateParser(@Nullable PrimitiveParser parser) {
+        globalDateParser = parser;
+    }
+
+    public @Nullable PrimitiveParser getGlobalDateParser() {
+        return globalDateParser;
+    }
+
     public @Nonnull Molecule parse(@Nonnull DictTree schemaRoot) {
         if (!schemaRoot.contains("type", "array")) {
             cardinality = Cardinality.upperBound(1);
@@ -123,14 +137,15 @@ public class JsonSchemaMoleculeParser {
                 minItems = schemaRoot.getLong("maxItems", 0);
             cardinality = Cardinality.lowerBound((int)Math.max(2, minItems));
         }
+        parsersRegistry = new PrimitiveParsersRegistry();
         MoleculeBuilder builder = new MoleculeBuilder(nameForSchema(schemaRoot));
-        molecule = feed(builder, schemaRoot).build();
+        molecule = feed(builder, schemaRoot, new ArrayList<>()).build();
         return molecule;
     }
 
-    @Contract("_, _ -> param1")
+    @Contract("_, _, _ -> param1")
     private @Nonnull MoleculeBuilder feed(@Nonnull MoleculeBuilder builder,
-                                          @Nonnull DictTree schema) {
+                                          @Nonnull DictTree schema, @Nonnull List<String> path) {
         DictTree map = schema.getMapNN("properties");
         // if an array, use the properties of the items
         if (map.isEmpty() && schema.contains("type", "array"))
@@ -140,7 +155,14 @@ public class JsonSchemaMoleculeParser {
             DictTree childSchema = map.getMapNN(prop);
             String childName = requireNonNull(childSchema.getName());
             MoleculeBuilder childBuilder = new MoleculeBuilder(childName);
-            builder.out(prop2Term(prop), feed(childBuilder, childSchema).buildAtom());
+            path.add(prop);
+            builder.out(prop2Term(prop), feed(childBuilder, childSchema, path).buildAtom());
+            PrimitiveParser parser = PrimitiveParserParser.parse(childSchema.getMap("x-parser"));
+            if (parser != null)
+                parsersRegistry.add(path, parser);
+            else if (globalDateParser != null && childSchema.contains("format", "date"))
+                parsersRegistry.add(path, globalDateParser);
+            path.remove(path.size()-1);
         }
         // apply closed and exclusive
         builder.exclusive(isExclusive());

@@ -17,6 +17,11 @@ import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.impl.ParamPagingStrategy;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.PrimitiveParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.ResponseParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.DatePrimitiveParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.MappedJsonResponseParser;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.PrimitiveParsersRegistry;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -127,6 +132,34 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
                 .filter(l -> l.getEdge().equals(valor)).findFirst().orElse(null);
         assertNotNull(link);
         assertTrue(link.getAtom().getName().contains("valor"));
+    }
+
+    @Test
+    public void testDateParser() throws IOException {
+        SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
+        JsonSchemaMoleculeParser schemaParser = parser.parseSchema("/api-de-dados/licitacoes");
+
+        PrimitiveParser global = schemaParser.getGlobalDateParser();
+        assertNotNull(global);
+        assertTrue(global instanceof DatePrimitiveParser);
+        assertEquals(((DatePrimitiveParser) global).getFormat(),
+                     "dd/MM/yyyy");
+
+        assertSame(schemaParser.getParsersRegistry().get(singletonList("dataAbertura")), global);
+    }
+
+    @Test
+    public void testMappedJsonResponseParserParsesDate() throws IOException {
+        SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
+        String endpoint = "/api-de-dados/licitacoes";
+        JsonSchemaMoleculeParser schemaParser = parser.parseSchema(endpoint);
+        ResponseParser responseParser = parser.getResponseParser(endpoint, schemaParser, null);
+        assertTrue(responseParser instanceof MappedJsonResponseParser);
+
+        MappedJsonResponseParser jsonResponseParser = (MappedJsonResponseParser) responseParser;
+        PrimitiveParsersRegistry registry = jsonResponseParser.getPrimitiveParsers();
+        assertNotNull(registry);
+        assertTrue(registry.get(singletonList("dataAbertura")) instanceof DatePrimitiveParser);
     }
 
     @Test

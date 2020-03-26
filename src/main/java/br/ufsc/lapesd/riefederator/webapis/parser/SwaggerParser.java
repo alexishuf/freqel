@@ -11,11 +11,10 @@ import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.impl.ParamPagingStrategy;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.PrimitiveParser;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.ResponseParser;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.TermSerializer;
-import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.MappedJsonResponseParser;
-import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.OnlyNumbersTermSerializer;
-import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.SimpleDateSerializer;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.*;
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimitsRegistry;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
@@ -188,7 +187,7 @@ public class SwaggerParser implements APIDescriptionParser {
     public @Nonnull APIMolecule getAPIMolecule(@Nonnull String endpoint,
                                                @Nullable APIDescriptionContext ctx) {
         Parameters p = getParameters(endpoint, ctx);
-        ResponseParser responseParser = getResponseParser(endpoint, ctx);
+        ResponseParser responseParser = getResponseParser(endpoint, p.parser, ctx);
         if (responseParser == null)
             throw new NoSuchElementException("Could not get ResponseParser for endpoint "+endpoint);
 
@@ -283,8 +282,10 @@ public class SwaggerParser implements APIDescriptionParser {
         return strategy;
     }
 
-    private @Nullable ResponseParser getResponseParser(@Nonnull String endpoint,
-                                                       @Nullable APIDescriptionContext context) {
+    @VisibleForTesting
+    @Nullable ResponseParser getResponseParser(@Nonnull String endpoint,
+                                               @Nonnull JsonSchemaMoleculeParser schemaParser,
+                                               @Nullable APIDescriptionContext context) {
         ResponseParser parser = null;
         List<Object> mediaTypes;
         mediaTypes = new ArrayList<>(getPathObj(endpoint).getListNN("get/produces"));
@@ -303,8 +304,10 @@ public class SwaggerParser implements APIDescriptionParser {
             if (parser != null)
                 return parser;
         }
-        if (mediaTypes.contains("application/json")) // fallback to urn:plain
-            return new MappedJsonResponseParser(Collections.emptyMap(), StdPlain.URI_PREFIX);
+        if (mediaTypes.contains("application/json")) {// fallback to urn:plain
+            return new MappedJsonResponseParser(Collections.emptyMap(), StdPlain.URI_PREFIX,
+                                                schemaParser.getParsersRegistry());
+        }
         return null;
     }
 
@@ -481,11 +484,27 @@ public class SwaggerParser implements APIDescriptionParser {
         return map;
     }
 
-    private @Nonnull JsonSchemaMoleculeParser parseSchema(@Nonnull String endpoint) {
+    private @Nonnull List<PrimitiveParser> getGlobalParsers() {
+        List<PrimitiveParser> list = new ArrayList<>();
+        for (Object elem : swagger.getListNN("x-parser")) {
+            if (!(elem instanceof DictTree)) continue;
+            PrimitiveParser parser = PrimitiveParserParser.parse((DictTree) elem);
+            if (parser != null)
+                list.add(parser);
+        }
+        return list;
+    }
+
+    @VisibleForTesting
+    @Nonnull JsonSchemaMoleculeParser parseSchema(@Nonnull String endpoint) {
         DictTree schema = getPathObj(endpoint).getMapNN("get/responses/200/schema");
         if (schema.isEmpty())
             throw ex("API path %s has no schema on operation", endpoint);
         JsonSchemaMoleculeParser parser = new JsonSchemaMoleculeParser();
+        for (PrimitiveParser pp : getGlobalParsers()) {
+            if (pp instanceof DatePrimitiveParser)
+                parser.setGlobalDateParser(pp);
+        }
         parser.parse(schema);
         return parser;
     }

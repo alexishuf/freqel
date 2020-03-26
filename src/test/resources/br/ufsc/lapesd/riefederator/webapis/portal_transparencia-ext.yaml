@@ -1,6 +1,9 @@
 baseSwagger:
   $ref: "/portal_transparencia.json"
 overlay:
+  x-parser:
+    - parser: "date"
+      date-format: "dd/MM/yyyy"
   x-paging:
     param: pagina
     start: 1

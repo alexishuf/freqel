@@ -282,4 +282,37 @@ and a `fill` character. If width is not given, `fill` has no effect and the
 serializer merely strips non-numeric characters. If `width` is given, 
 it must be at least 1 and and when the input has less than `width` numbers, 
 the `fill` character will be inserted on left side repeatedly until the 
-resulting string has with characters. The default value for fill is `0`.  
+resulting string has with characters. The default value for fill is `0`.
+
+Controlling parsing of JSON elements
+------------------------------------  
+
+Some JSON elements, specially those that contain strings require further 
+parsing before being transformed into RDF literals. These extensions define 
+how such parsing is done. All extensions can be attached to the root (meaning 
+they will apply to all json elements that the schema declares being of the 
+relevant format -- e.g., `date`) or the schema elements themselves. 
+
+### Date
+
+Interprets the string as a date formated using the 
+[SimpleDateFormat](https://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html)
+format string.
+
+- **Location**: Swagger root or JSON schema element (alongside `format`)
+- **Property**: `x-parser`
+- **Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "parser": {
+      "type": "string",
+      "pattern": "date"
+    },
+    "date-format": {
+      "type": "string"
+    }
+  }
+}
+```

@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestInfo;
+import br.ufsc.lapesd.riefederator.webapis.requests.parsers.PrimitiveParser;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.ResponseParser;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -18,6 +19,8 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.ws.rs.client.Client;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -29,6 +32,8 @@ import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 public class MappedJsonResponseParser implements ResponseParser {
     private final @Nonnull ImmutableMap<String, String> context;
     private final @Nullable String prefixForNotMapped;
+    @SuppressWarnings("Immutable")
+    private final @Nullable PrimitiveParsersRegistry primitiveParsers;
 
     private static final String[] SELF_NAMES = {"@id", "_self", "_id", "self", "id"};
     private static final ImmutableSet<String> TRANSPARENT = ImmutableSet.of("_embedded");
@@ -44,9 +49,20 @@ public class MappedJsonResponseParser implements ResponseParser {
     }
 
     public MappedJsonResponseParser(@Nonnull Map<String, String> context,
-                                    @Nullable String prefixForNotMapped) {
+                                @Nullable String prefixForNotMapped) {
+        this(context, prefixForNotMapped, null);
+    }
+
+    public MappedJsonResponseParser(@Nonnull Map<String, String> context,
+                                    @Nullable String prefixForNotMapped,
+                                    @Nullable PrimitiveParsersRegistry primitiveParsers) {
         this.context = ImmutableMap.copyOf(context);
         this.prefixForNotMapped = prefixForNotMapped;
+        this.primitiveParsers = primitiveParsers;
+    }
+
+    public @Nullable PrimitiveParsersRegistry getPrimitiveParsers() {
+        return primitiveParsers;
     }
 
     @Override
@@ -90,26 +106,33 @@ public class MappedJsonResponseParser implements ResponseParser {
             if (element.isJsonObject())
                 info.setJsonRootObjectMembers(element.getAsJsonObject().size());
         }
-        parseInto(model, element, uriHint);
+        parseInto(model, element, new ArrayList<>(), uriHint);
         return model;
     }
 
     protected RDFNode parseInto(@Nonnull Model model, @Nonnull JsonElement element,
+                                @Nonnull List<String> path,
                                 @Nullable String subjectHint) {
         if (element.isJsonArray()) {
             for (JsonElement e : element.getAsJsonArray())
-                parseInto(model, e, null);
+                parseInto(model, e, path, null);
         } else if (element.isJsonObject()) {
             JsonObject jsonObj = element.getAsJsonObject();
             Resource subj =  createResource(model, jsonObj, subjectHint);
             for (String name : TRANSPARENT) {
                 JsonElement value = jsonObj.get(name);
-                if (value != null) addProperties(model, value, subj);
+                if (value != null) addProperties(model, value, subj, path);
             }
-            addProperties(model, jsonObj, subj); //only handles non-transparent
+            addProperties(model, jsonObj, subj, path); //only handles non-transparent
             return subj;
         } else if (element.isJsonPrimitive()) {
             JsonPrimitive primitive = element.getAsJsonPrimitive();
+            String primitiveString = primitive.getAsString();
+            if (primitiveParsers != null) {
+                PrimitiveParser parser = primitiveParsers.get(path);
+                if (parser != null)
+                    return parser.parse(primitiveString);
+            }
             if (primitive.isBoolean()) {
                 return createTypedLiteral(primitive.getAsBoolean());
             } else if (primitive.isNumber()) {
@@ -121,8 +144,8 @@ public class MappedJsonResponseParser implements ResponseParser {
                 }
                 return createTypedLiteral(value);
             } else if (primitive.isString()) {
-                Resource resource = tryParseURI(primitive.getAsString());
-                return resource == null ? createPlainLiteral(primitive.getAsString()) : resource;
+                Resource resource = tryParseURI(primitiveString);
+                return resource == null ? createPlainLiteral(primitiveString) : resource;
             }
         }
         return null;
@@ -139,14 +162,16 @@ public class MappedJsonResponseParser implements ResponseParser {
     }
 
     private void addProperties(@Nonnull Model model, @Nonnull JsonElement element,
-                               @Nonnull Resource subj) {
+                               @Nonnull Resource subj, @Nonnull List<String> path) {
         if (!element.isJsonObject()) return;
         for (Map.Entry<String, JsonElement> e : element.getAsJsonObject().entrySet()) {
             if (BLACKLIST.contains(e.getKey()))
                 continue; // there are handled elsewhere
             Property prop = getProperty(model, e.getKey());
             if (prop == null) continue;
-            RDFNode obj = parseInto(model, e.getValue(), null);
+            path.add(e.getKey());
+            RDFNode obj = parseInto(model, e.getValue(), path, null);
+            path.remove(path.size()-1);
             if (obj != null)
                 model.add(subj, prop, obj);
         }
