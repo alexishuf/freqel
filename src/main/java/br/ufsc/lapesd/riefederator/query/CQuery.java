@@ -7,10 +7,7 @@ import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
-import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -38,6 +35,7 @@ import static br.ufsc.lapesd.riefederator.query.JoinType.Position.SUBJ;
 import static com.google.common.collect.ImmutableList.builderWithExpectedSize;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Stream.concat;
 
 /**
  * A {@link CQuery} is essentially a list of {@link Triple} instances which MAY contain variables.
@@ -70,6 +68,9 @@ public class CQuery implements  List<Triple> {
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<Multimap<Term, Integer>> t2triple, s2triple, o2triple;
     @SuppressWarnings("Immutable")
+    private @LazyInit @Nonnull SoftReference<Set<Var>> termVarsCache
+            = new SoftReference<>(null);
+    @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<Set<Var>> varsCache
             = new SoftReference<>(null);
     @SuppressWarnings("Immutable")
@@ -93,7 +94,11 @@ public class CQuery implements  List<Triple> {
         this.termAnnotations = termAnn != null && termAnn.isEmpty() ? null : termAnn;
         this.tripleAnnotations = tripleAnn != null && tripleAnn.isEmpty() ? null : tripleAnn;
         if (CQuery.class.desiredAssertionStatus()) {
-            Set<Term> terms = streamTerms(Term.class).collect(toSet());
+            Set<Term> terms = concat(
+                    streamTerms(Term.class),
+                    modifiers.stream().filter(SPARQLFilter.class::isInstance)
+                                      .flatMap(m -> ((SPARQLFilter)m).getTerms().stream())
+            ).collect(toSet());
             boolean[] fail = {false};
             forEachTermAnnotation((t, a) -> {
                 if ((fail[0] |= !terms.contains(t)))
@@ -206,7 +211,25 @@ public class CQuery implements  List<Triple> {
 
         @CanIgnoreReturnValue
         public @Contract("_ -> this") @Nonnull WithBuilder modifier(@Nonnull Modifier modifier) {
-            modifiers.add(modifier);
+            switch (modifier.getCapability()) {
+                case DISTINCT:
+                    distinct(modifier.isRequired());
+                    break;
+                case ASK:
+                    ask(modifier.isRequired());
+                    break;
+                case PROJECTION:
+                    projection = null;
+                    if (modifier.isRequired())
+                        requireProjection();
+                    else
+                        adviseProjection();
+                    ((Projection)modifier).getVarNames().forEach(projection::add);
+                    break;
+                default:
+                    modifiers.add(modifier);
+                    break;
+            }
             return this;
         }
 
@@ -324,6 +347,12 @@ public class CQuery implements  List<Triple> {
                     if (terms.contains(t)) annotate(t, a);
                 });
             }
+            return this;
+        }
+
+        public @Nonnull WithBuilder copyModifiers(@Nullable CQuery other) {
+            for (Modifier modifier : other.getModifiers())
+                modifier(modifier);
             return this;
         }
 
@@ -543,7 +572,7 @@ public class CQuery implements  List<Triple> {
     public static @Nonnull WithBuilder with(@Nonnull Collection<Triple> query) {
         if (query instanceof CQuery) {
             CQuery cQuery = (CQuery) query;
-            return new WithBuilder(cQuery.getList()).copyAnnotations(cQuery);
+            return new WithBuilder(cQuery.getList()).copyAnnotations(cQuery).copyModifiers(cQuery);
         }
         if (query instanceof ImmutableList)
             return new WithBuilder(((ImmutableList<Triple>)query));
@@ -762,9 +791,20 @@ public class CQuery implements  List<Triple> {
     public @Nonnull Set<Var> getVars() {
         Set<Var> strong = varsCache.get();
         if (strong == null) {
-            strong = list.stream().flatMap(Triple::stream)
-                    .filter(t -> t instanceof Var).map(t -> (Var) t)
-                    .collect(toSet());
+            Set<Var> set = new HashSet<>(getTermVars());
+            getModifiers().stream().filter(SPARQLFilter.class::isInstance)
+                    .forEach(m -> set.addAll(((SPARQLFilter)m).getVarTerms()));
+            varsCache = new SoftReference<>(strong = set);
+        }
+        return strong;
+    }
+
+    public @Nonnull Set<Var> getTermVars() {
+        Set<Var> strong = termVarsCache.get();
+        if (strong == null) {
+            strong = list.stream().flatMap(Triple::stream).filter(Term::isVar)
+                                  .map(Term::asVar).collect(toSet());
+            termVarsCache = new SoftReference<>(strong);
         }
         return strong;
     }

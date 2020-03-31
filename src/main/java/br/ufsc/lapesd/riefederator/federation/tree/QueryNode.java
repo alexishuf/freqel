@@ -6,32 +6,23 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.*;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSet;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toSet;
 
 public class QueryNode extends AbstractPlanNode {
     private final @Nonnull TPEndpoint endpoint;
     private final @Nonnull CQuery query;
-
-    protected static @Nonnull Set<String> getInputVars(@Nonnull CQuery query) {
-        if (!query.hasTermAnnotations())
-            return Collections.emptySet();
-        ImmutableSet.Builder<String> b = ImmutableSet.builder();
-        boolean got = query.forEachTermAnnotation(InputAnnotation.class, (t, a) -> {
-            if (t.isVar() && a.isInput()) b.add(t.asVar().getName());
-        });
-        return got ? b.build() : Collections.emptySet();
-    }
+    private @Nullable Set<String> allVars, resultVars, reqInputs, optInputs;
 
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
         this(endpoint, query, Cardinality.UNSUPPORTED);
@@ -39,28 +30,31 @@ public class QueryNode extends AbstractPlanNode {
 
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
                      @Nonnull Cardinality cardinality) {
-        this(endpoint, query, query.streamTerms(Var.class).map(Var::getName)
-                        .collect(Collectors.toList()), false, cardinality);
-    }
-
-    public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
-                     @Nonnull Collection<String> varNames) {
-        this(endpoint, query, varNames, true, Cardinality.UNSUPPORTED);
-    }
-
-    public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
-                     @Nonnull Collection<String> varNames, boolean projecting,
-                     @Nonnull Cardinality cardinality) {
-        super(query.getVars().stream().map(Var::getName).collect(toSet()),
-              varNames, projecting, getInputVars(query), Collections.emptyList(), cardinality);
-        if (QueryNode.class.desiredAssertionStatus()) { //expensive checks
-            Set<String> all = query.streamTerms(Var.class).map(Var::getName).collect(toSet());
-            Preconditions.checkArgument(all.containsAll(varNames), "There are extra varNames");
-            Preconditions.checkArgument(projecting == !varNames.containsAll(all),
-                    "Mismatch between projecting and varNames");
-        }
+        super(cardinality, null);
         this.endpoint = endpoint;
         this.query = query;
+        assertAllInvariants();
+    }
+
+    public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
+                     @Nonnull Set<String> projection) {
+        this(endpoint, query, projection, Cardinality.UNSUPPORTED);
+    }
+
+    public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery q,
+                     @Nonnull Set<String> projection,
+                     @Nonnull Cardinality cardinality) {
+        super(cardinality, projection);
+
+        Set<Var> termVars = q.getTermVars();
+        checkArgument(projection.size() <= termVars.size(),
+                      "Some projected variables are not result variables");
+        assert termVars.stream().map(Var::getName).collect(toSet()).containsAll(projection);
+        assert projection.size() < termVars.size() : "Projecting all result variables is useless";
+
+        this.endpoint = endpoint;
+        this.query = q;
+        assertAllInvariants();
     }
 
     public @Nonnull TPEndpoint getEndpoint() {
@@ -71,73 +65,112 @@ public class QueryNode extends AbstractPlanNode {
         return query;
     }
 
+    @Override
+    public @Nonnull Set<String> getAllVars() {
+        if (allVars == null)
+            allVars = query.getVars().stream().map(Var::getName).collect(toSet());
+        return allVars;
+    }
+
+    @Override
+    public @Nonnull Set<String> getResultVars() {
+        if (projection != null)
+            return projection;
+        if (resultVars == null)
+            resultVars = query.getTermVars().stream().map(Var::getName).collect(toSet());
+        return resultVars;
+    }
+
+    private Set<String> scanInputs(boolean required) {
+        if (query.hasTermAnnotations()) {
+            Set<String> set = new HashSet<>(getResultVars().size());
+            boolean has = query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
+                if (t.isVar() && a.isRequired() == required)
+                    set.add(t.asVar().getName());
+            });
+            return has ? set : Collections.emptySet();
+        }
+        return Collections.emptySet();
+    }
+
+    @Override
+    public @Nonnull Set<String> getRequiredInputVars() {
+        if (reqInputs == null)
+            reqInputs = scanInputs(true);
+        return reqInputs;
+    }
+
+    @Override
+    public @Nonnull Set<String> getOptionalInputVars() {
+        if (optInputs == null)
+            optInputs = scanInputs(false);
+        assert TreeUtils.intersect(optInputs, getRequiredInputVars()).isEmpty();
+        return optInputs;
+    }
+
     @Contract("_, _, !null -> !null")
     private Term bind(@Nonnull Term term, @Nonnull Solution solution, Term fallback) {
         return term.isVar() ? solution.get(term.asVar().getName(), fallback) : fallback;
     }
 
-    private @Nonnull Triple bind(@Nonnull Triple t, @Nonnull Solution solution,
-                                 @Nullable AtomicBoolean changed) {
+    private @Nonnull Triple bind(@Nonnull Triple t, @Nonnull Solution solution) {
         Term s = bind(t.getSubject(), solution, null);
         Term p = bind(t.getPredicate(), solution, null);
         Term o = bind(t.getObject(), solution, null);
         if (s == null && p == null && o == null)
             return t;
-        if (changed != null)
-            changed.set(true);
         return new Triple(s == null ? t.getSubject()   : s,
                           p == null ? t.getPredicate() : p,
                           o == null ? t.getObject()    : o);
     }
 
-    private @Nonnull Triple bind(@Nonnull Triple t, @Nonnull Solution solution) {
-        return bind(t, solution, null);
-    }
-
     @Override
-    public @Nonnull QueryNode createBound(@Nonnull Solution solution) {
+    public @Nonnull QueryNode createBound(@Nonnull Solution s) {
         CQuery q = getQuery();
         ArrayList<Triple> bound = new ArrayList<>(q.size());
-        AtomicBoolean changed = new AtomicBoolean(false);
         for (Triple t : q)
-            bound.add(bind(t, solution, changed));
+            bound.add(bind(t, s));
 
-        if (changed.get()) {
-            CQuery.WithBuilder builder = CQuery.with(bound);
-            q.forEachTermAnnotation((t, a) -> builder.annotate(bind(t, solution, t), a));
-            q.forEachTripleAnnotation((t, a) -> builder.annotate(bind(t, solution), a));
-            for (Modifier m : q.getModifiers()) {
-                switch (m.getCapability()) {
-                    case PROJECTION:
-                        for (String n : ((Projection) m).getVarNames()) {
-                            if (!solution.has(n)) builder.project(n);
-                        }
-                        break;
-                    case ASK:
-                        builder.ask(m.isRequired());
-                        break;
-                    case DISTINCT:
-                        builder.distinct(m.isRequired());
-                        break;
-                    default:
-                        throw new UnsupportedOperationException("Can't handle "+m.getCapability());
-                }
+        CQuery.WithBuilder builder = CQuery.with(bound);
+        q.forEachTermAnnotation((t, a) -> {
+            if (!t.isVar() || !s.has(t.asVar().getName()))
+                builder.annotate(bind(t, s, t), a);
+        });
+        q.forEachTripleAnnotation((t, a) -> builder.annotate(bind(t, s), a));
+        for (Modifier m : q.getModifiers()) {
+            switch (m.getCapability()) {
+                case PROJECTION:
+                    for (String n : ((Projection) m).getVarNames()) {
+                        if (!s.has(n)) builder.project(n);
+                    }
+                    break;
+                case SPARQL_FILTER:
+                    builder.modifier(((SPARQLFilter)m).bind(s));
+                    break;
+                default:
+                    builder.modifier(m);
             }
-            q = builder.build();
         }
+        q = builder.build();
 
-        Set<String> all = q.streamTerms(Var.class).map(Var::getName).collect(toSet());
-        Set<String> projection = new HashSet<>(all);
-        projection.retainAll(getResultVars());
-        boolean projecting = projection.size() < all.size();
 
-        return new QueryNode(getEndpoint(), q, projection, projecting, getCardinality());
+        Cardinality card = getCardinality();
+        Set<String> projection = this.projection;
+        if (this.projection != null) {
+            projection = setMinus(this.projection, s.getVarNames());
+            if (q.getTermVars().size() == projection.size())
+                projection = null;
+        }
+        QueryNode boundNode = projection == null ? new QueryNode(endpoint, q, card)
+                                                 : new QueryNode(endpoint, q, projection, card);
+        boundNode.addBoundFiltersFrom(getFilers(), s);
+        return boundNode;
     }
 
     @Override
     public @Nonnull QueryNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
             throws IllegalArgumentException {
-        Preconditions.checkArgument(map.isEmpty());
+        checkArgument(map.isEmpty());
         return this;
     }
 

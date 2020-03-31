@@ -1,13 +1,13 @@
 package br.ufsc.lapesd.riefederator.federation.planner;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
-import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.ArbitraryJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.GreedyJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.HeuristicPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinPathsPlanner;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
+import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -17,15 +17,24 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.webapis.ProcurementServiceTestContext;
+import br.ufsc.lapesd.riefederator.webapis.ProcurementsService;
+import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -40,9 +49,10 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static org.apache.jena.rdf.model.ResourceFactory.*;
 import static org.testng.Assert.*;
 
-public class PlannerTest implements TestContext {
+public class PlannerTest implements ProcurementServiceTestContext {
     public static final @Nonnull StdLit title1 = StdLit.fromEscaped("title 1", "en");
     public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author 1", "en");
 
@@ -55,7 +65,6 @@ public class PlannerTest implements TestContext {
     private static final Var t = new StdVar("t");
 
     public static @Nonnull List<NamedSupplier<Planner>> suppliers = asList(
-            new NamedSupplier<>(HeuristicPlanner.class),
             new NamedSupplier<>("JoinPathsPlanner+ArbitraryJoinOrderPlanner",
                     () -> new JoinPathsPlanner(new ArbitraryJoinOrderPlanner())),
             new NamedSupplier<>("JoinPathsPlanner+GreedyJoinOrderPlanner",
@@ -438,7 +447,7 @@ public class PlannerTest implements TestContext {
             PlanNode plan = planner.plan(query, nodes);
             assertTrue(plan instanceof EmptyNode);
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
-            assertEquals(plan.getInputVars(), emptySet());
+            assertEquals(plan.getRequiredInputVars(), emptySet());
             assertPlanAnswers(plan, query, true);
         }
     }
@@ -449,6 +458,7 @@ public class PlannerTest implements TestContext {
         CQEndpoint e3 = markAsAlternatives ? empty3b : empty4;
 
         QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
+        assertEquals(q1.getStrictResultVars(), singleton("y"));
         QueryNode q2 = new QueryNode(e2, CQuery.with(new Triple(x, author, y))
                 .annotate(x, asRequired(Book, "Book"))
                 .annotate(y, AtomAnnotation.of(Person)).build());
@@ -598,7 +608,7 @@ public class PlannerTest implements TestContext {
         for (List<QueryNode> permutation : permutations(nodes)) {
             PlanNode plan = planner.plan(f.query, permutation);
             assertTrue(plan instanceof EmptyNode);
-            assertEquals(plan.getInputVars(), emptySet());
+            assertEquals(plan.getRequiredInputVars(), emptySet());
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertPlanAnswers(plan, f.query, true);
         }
@@ -649,5 +659,52 @@ public class PlannerTest implements TestContext {
 
         PlanNode plan = planner.plan(query, nodes);
         assertPlanAnswers(plan, query);
+    }
+
+    @DataProvider
+    public static Object[][] optionalQueriesData() {
+        List<Object[]> list = new ArrayList<>();
+        for (Object[] row : suppliersData()) {
+            list.add(new Object[]{row[0], createQuery(
+                    y, valor, v, SPARQLFilter.build("?v <= ?u"),
+                    y, id, z
+            )});
+            list.add(new Object[]{row[0], createQuery(
+                    y, valor, v, SPARQLFilter.build("?v <= ?u"),
+                    y, id, z,
+                    y, dataAbertura, w //filter optionals, atom is used as output
+            )});
+            list.add(new Object[]{row[0], createQuery(
+                    y, valor, v, SPARQLFilter.build("?v <= ?u"),
+                    y, id, z,
+                    y, unidadeGestora, y1,
+                    y1, orgaoVinculado, y2,
+                    y2, codigoSIAFI, y3 // optional being used as output
+            )});
+        }
+        return list.toArray(new Object[0][]);
+    }
+
+    @Test(dataProvider = "optionalQueriesData")
+    public void testJoinArqWithOptionalInputs(@Nonnull Supplier<Planner> supplier,
+                                              @Nonnull CQuery webQuery) throws IOException {
+        Model model = ModelFactory.createDefaultModel();
+        model.add(createResource(EX+"Dummy"), createProperty(EX+"p1"), createTypedLiteral(20000));
+        ARQEndpoint arqEp = ARQEndpoint.forModel(model);
+
+        WebTarget fakeTarget = ClientBuilder.newClient().target("https://localhost:22/");
+        WebAPICQEndpoint webEp = ProcurementsService.getProcurementsOptClient(fakeTarget);
+
+        CQuery arqQuery = createQuery(x, p1, v);
+        QueryNode n1 = new QueryNode(arqEp, arqQuery);
+        QueryNode n2 = new QueryNode(webEp, webQuery);
+
+        JoinInfo info = getPlainJoinability(n1, n2);
+        assertTrue(info.isValid());
+
+        Planner planner = supplier.get();
+        CQuery wholeQuery = CQuery.union(arqQuery, webQuery);
+        PlanNode plan = planner.plan(wholeQuery, asList(n1, n2));
+        assertPlanAnswers(plan, wholeQuery);
     }
 }

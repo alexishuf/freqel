@@ -7,28 +7,31 @@ import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.UndirectedIrreflexiveArrayGraph;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMultiJoinability;
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
+import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 public class JoinInfoTest implements TestContext {
@@ -41,6 +44,7 @@ public class JoinInfoTest implements TestContext {
     private static final CQuery ypz = CQuery.from(new Triple(y, p1, z));
     private static final CQuery zpw = CQuery.from(new Triple(z, p1, w));
     private static final CQuery zpx = CQuery.from(new Triple(z, p1, x));
+    private static final CQuery xpyfz = createQuery(x, p1, y, SPARQLFilter.build("?y < ?z"));
 
     private static final CQuery xpyi = CQuery.with(new Triple(x, p1, y))
             .annotate(x, AtomAnnotation.of(X))
@@ -54,6 +58,29 @@ public class JoinInfoTest implements TestContext {
         return node(1, queries);
     }
 
+    private static @Nonnull QueryNode node(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
+        int oldModifiersCount = query.getModifiers().size();
+        Set<Var> termVars = query.getTermVars();
+        Set<Var> filterVars = query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
+                .flatMap(m -> ((SPARQLFilter) m).getVarTerms().stream())
+                .filter(v -> !termVars.contains(v))
+                .collect(toSet());
+        if (!filterVars.isEmpty()) {
+            CQuery.WithBuilder builder = CQuery.with(query);
+            int idx = 1;
+            for (Var var : filterVars) {
+                builder.annotate(var, asRequired(new Atom("A" + idx), "a"+idx));
+                ++idx;
+            }
+            query = builder.build();
+            assert query.getModifiers().size() == oldModifiersCount : "Lost modifiers";
+        }
+        QueryNode node = new QueryNode(endpoint, query);
+        query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
+                .forEach(m -> node.addFilter((SPARQLFilter)m));
+        return node;
+    }
+
     private static @Nonnull PlanNode node(int endpoints, @Nonnull CQuery... queries) {
         Preconditions.checkArgument(queries.length > 0);
         Preconditions.checkArgument(endpoints > 0);
@@ -62,11 +89,11 @@ public class JoinInfoTest implements TestContext {
             endpointList.add(new EmptyEndpoint());
         }
         if (queries.length == 1 && endpoints == 1)
-            return new QueryNode(endpointList.get(0), queries[0]);
+            return  node(endpointList.get(0), queries[0]);
         MultiQueryNode.Builder builder = MultiQueryNode.builder();
         for (int i = 0; i < endpoints; i++) {
             for (CQuery query : queries)
-                builder.add(new QueryNode(endpointList.get(i), query));
+                builder.add(node(endpointList.get(i), query));
         }
         return builder.build();
     }
@@ -76,6 +103,7 @@ public class JoinInfoTest implements TestContext {
     public static Object[][] plainData() {
         List<List<Object>> data = asList(
                 asList(node(xpy), node(ypz), singleton("y"), emptySet(), false),
+                asList(node(xpyfz), node(ypz), Sets.newHashSet("y", "z"), emptySet(), false),
                 asList(node(xpy), node(zpw), emptySet(), emptySet(), false),
                 asList(node(xpy), node(xpy), emptySet(), emptySet(), true),
                 asList(node(xpyi), node(ypz), singleton("y"), emptySet(), false),
@@ -117,7 +145,7 @@ public class JoinInfoTest implements TestContext {
         for (JoinInfo j : asList(getPlainJoinability(l, r), getPlainJoinability(r, l))) {
             assertEquals(j.isValid(), !joinVars.isEmpty());
             assertEquals(j.getJoinVars(), new HashSet<>(joinVars));
-            assertEquals(j.getPendingInputs(), new HashSet<>(pendingInputs));
+            assertEquals(j.getPendingRequiredInputs(), new HashSet<>(pendingInputs));
             assertEquals(j.isSubsumed(), subsumed);
 
             if (j.getLeftNodes().equals(singletonList(l))) {
@@ -127,6 +155,44 @@ public class JoinInfoTest implements TestContext {
                 assertEquals(j.getRightNodes(), singletonList(l));
             }
         }
+    }
+
+    @Test
+    public void testPlainSubJoin() {
+        PlanNode n1 = node(createQuery(x, p1, y, y, p1, z));
+        PlanNode n2 = node(createQuery(x, p2, z));
+        assertEquals(JoinInfo.getPlainJoinability(n1, n2).getJoinVars(), Sets.newHashSet("x", "z"));
+
+        JoinInfo info = getPlainJoinability(n1, n2, singleton("x"));
+        assertTrue(info.isValid());
+        assertEquals(info.getJoinVars(), singleton("x"));
+        assertEquals(info.getPendingRequiredInputs(), emptySet());
+
+        info = getPlainJoinability(n1, n2, Sets.newHashSet("x", "z"));
+        assertTrue(info.isValid());
+        assertEquals(info.getJoinVars(), Sets.newHashSet("x", "z"));
+        assertEquals(info.getPendingRequiredInputs(), emptySet());
+
+        info = getPlainJoinability(n1, n2, Sets.newHashSet("x", "y"));
+        assertFalse(info.isValid());
+    }
+
+    @Test
+    public void testPlainSubJoinWithInput() {
+        PlanNode n1 = node(createQuery(x, p2, y, y, p2, z));
+        PlanNode n2 = node(xpyi);
+        JoinInfo info = getPlainJoinability(n1, n2);
+        assertTrue(info.isValid());
+
+        info = getPlainJoinability(n1, n2, singleton("y"));
+        assertTrue(info.isValid());
+        assertEquals(info.getJoinVars(), singleton("y"));
+        assertEquals(info.getPendingRequiredInputs(), emptySet());
+
+        info = getPlainJoinability(n1, n2, singleton("x"));
+        assertTrue(info.isValid());
+        assertEquals(info.getJoinVars(), singleton("x"));
+        assertEquals(info.getPendingRequiredInputs(), singleton("y"));
     }
 
     @Test(dataProvider = "plainData")
@@ -139,7 +205,7 @@ public class JoinInfoTest implements TestContext {
         assertEquals(to, to);
         assertEquals(from.isValid(), to.isValid());
         assertEquals(from.getJoinVars(), to.getJoinVars());
-        assertEquals(from.getPendingInputs(), to.getPendingInputs());
+        assertEquals(from.getPendingRequiredInputs(), to.getPendingRequiredInputs());
         assertEquals(from.isSubsumed(), to.isSubsumed());
         assertEquals(from.getChildJoins(), to.getChildJoins());
         assertEquals(from.getLeftNodes(), to.getRightNodes());
@@ -180,7 +246,7 @@ public class JoinInfoTest implements TestContext {
         for (JoinInfo j : asList(getMultiJoinability(l, r), getMultiJoinability(r, l))) {
             assertEquals(j.isValid(), !joinVars.isEmpty());
             assertEquals(j.getJoinVars(), new HashSet<>(joinVars));
-            assertEquals(j.getPendingInputs(), new HashSet<>(pendingInputs));
+            assertEquals(j.getPendingRequiredInputs(), new HashSet<>(pendingInputs));
             assertEquals(j.isSubsumed(), subsumed);
 
             List<PlanNode> lns = l instanceof MultiQueryNode ? l.getChildren() : singletonList(l);
@@ -231,9 +297,9 @@ public class JoinInfoTest implements TestContext {
             }
         }
         assertEquals(g.getWeight(0, 5).getJoinVars(), singleton("y"));
-        assertEquals(g.getWeight(0, 5).getPendingInputs(), emptySet());
+        assertEquals(g.getWeight(0, 5).getPendingRequiredInputs(), emptySet());
         assertEquals(g.getWeight(3, 4).getJoinVars(), singleton("x"));
-        assertEquals(g.getWeight(3, 4).getPendingInputs(), singleton("y"));
+        assertEquals(g.getWeight(3, 4).getPendingRequiredInputs(), singleton("y"));
 
         List<ImmutablePair<JoinInfo, PlanNode>> actual = new ArrayList<>();
         g.forEachNeighbor(0, (w, n) -> actual.add(ImmutablePair.of(w, n)));

@@ -9,8 +9,11 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 
 import static com.google.common.collect.Lists.cartesianProduct;
@@ -19,7 +22,9 @@ import static java.util.stream.Stream.concat;
 
 @Immutable
 public class JoinInfo {
-    private final @Nonnull ImmutableSet<String> joinVars, pendingInputs;
+    private static final Logger logger = LoggerFactory.getLogger(JoinInfo.class);
+
+    private final @Nonnull ImmutableSet<String> joinVars, pendingReqInputs, pendingOptInputs;
     @SuppressWarnings("Immutable")
     private final @Nonnull ImmutableMap<ImmutablePair<PlanNode, PlanNode>, JoinInfo> childJoins;
     @SuppressWarnings("Immutable")
@@ -29,20 +34,22 @@ public class JoinInfo {
     private final @Nonnull PlanNode left, right;
 
     protected JoinInfo(@Nonnull PlanNode left, @Nonnull PlanNode right,
-                       boolean expandMultiNodes) {
+                       boolean expandMultiNodes, @Nullable Set<String> allowedJoinVars) {
         this.left = left;
         this.right = right;
         this.expandMultiNodes = expandMultiNodes;
         Set<Triple> lm = left.getMatchedTriples(), rm = right.getMatchedTriples();
         if (lm.containsAll(rm) || rm.containsAll(lm)) {
-            joinVars = pendingInputs = ImmutableSet.of();
+            joinVars = pendingReqInputs = pendingOptInputs = ImmutableSet.of();
             childJoins = ImmutableMap.of();
             leftDead = rightDead = ImmutableList.of();
             subsumed = true;
         } else if (!expandMultiNodes) {
-            ImmutableSet.Builder<String> pendingInputsBuilder = ImmutableSet.builder();
-            joinVars = joinVars(left, right, pendingInputsBuilder);
-            pendingInputs = pendingInputsBuilder.build();
+            ImmutableSet.Builder<String> pendingReqB = ImmutableSet.builder();
+            ImmutableSet.Builder<String> pendingOptB = ImmutableSet.builder();
+            joinVars = joinVars(left, right, pendingReqB, pendingOptB, allowedJoinVars);
+            pendingReqInputs = pendingReqB.build();
+            pendingOptInputs = pendingOptB.build();
             childJoins = ImmutableMap.of();
             leftDead = rightDead = ImmutableList.of();
             subsumed = false;
@@ -50,7 +57,7 @@ public class JoinInfo {
             List<PlanNode> lns, rns;
             lns = (left instanceof MultiQueryNode) ? left.getChildren() : singletonList(left);
             rns = (right instanceof MultiQueryNode) ? right.getChildren() : singletonList(right);
-            childJoins = fillChildJoins(lns, rns);
+            childJoins = fillChildJoins(lns, rns, allowedJoinVars);
 
             Set<PlanNode> ld = new HashSet<>(lns), rd = new HashSet<>(rns);
             for (ImmutablePair<PlanNode, PlanNode> pair : childJoins.keySet()) {
@@ -61,35 +68,54 @@ public class JoinInfo {
             rightDead = ImmutableList.copyOf(rd);
             subsumed = false;
             if (!childJoins.isEmpty()) {
-                ImmutableSet.Builder<String> pendingInputsBuilder = ImmutableSet.builder();
-                joinVars = joinVars(left, right, pendingInputsBuilder);
-                pendingInputs = pendingInputsBuilder.build();
+                ImmutableSet.Builder<String> pendingReqB = ImmutableSet.builder();
+                ImmutableSet.Builder<String> pendingOptB = ImmutableSet.builder();
+                joinVars = joinVars(left, right, pendingReqB, pendingOptB, allowedJoinVars);
+                pendingReqInputs = pendingReqB.build();
+                pendingOptInputs = pendingOptB.build();
             } else {
-                joinVars = pendingInputs = ImmutableSet.of();
+                joinVars = pendingReqInputs = pendingOptInputs = ImmutableSet.of();
             }
         }
     }
 
     private static @Nonnull ImmutableSet<String>
     joinVars(@Nonnull PlanNode l, @Nonnull PlanNode r,
-             @Nonnull ImmutableSet.Builder<String> pendingIns){
-        Set<String> s = TreeUtils.intersect(l.getResultVars(), r.getResultVars());
-        Set<String> lIn = l.getInputVars();
-        Set<String> rIn = r.getInputVars();
-        if (l.hasInputs() && r.hasInputs())
+             @Nonnull ImmutableSet.Builder<String> pendingReqIns,
+             @Nonnull ImmutableSet.Builder<String> pendingOptIns,
+             @Nullable Set<String> allowed) {
+        Set<String> set = TreeUtils.intersect(l.getPublicVars(), r.getPublicVars());
+
+        if (allowed != null) {
+            if (!set.containsAll(allowed)) {
+                logger.warn("Join will fail because allowed={} has variables not contained " +
+                            "in {}, shared by l and r nodes.", allowed, set);
+                return ImmutableSet.of(); //deliberate fail
+            }
+            set.retainAll(allowed);
+        }
+        final Set<String> s = set; //final for lambda usage
+
+        Set<String> lIn = l.getRequiredInputVars();
+        Set<String> rIn = r.getRequiredInputVars();
+        if (!lIn.isEmpty() && !rIn.isEmpty())
             s.removeIf(n -> lIn.contains(n) && rIn.contains(n));
-        concat(lIn.stream(), rIn.stream()).filter(n -> !s.contains(n)).forEach(pendingIns::add);
+        concat(lIn.stream(), rIn.stream()).filter(n -> !s.contains(n)).forEach(pendingReqIns::add);
+        concat(l.getOptionalInputVars().stream(),
+               r.getOptionalInputVars().stream()).filter(n -> !s.contains(n))
+                                                 .forEach(pendingOptIns::add);
         return ImmutableSet.copyOf(s);
     }
 
     private ImmutableMap<ImmutablePair<PlanNode, PlanNode>, JoinInfo>
-    fillChildJoins(List<PlanNode> lns, List<PlanNode> rns) {
+    fillChildJoins(List<PlanNode> lns, List<PlanNode> rns,
+                   @Nullable Set<String> allowedJoinVars) {
         ImmutableMap.Builder<ImmutablePair<PlanNode, PlanNode>, JoinInfo> builder;
         //noinspection UnstableApiUsage
         builder = ImmutableMap.builderWithExpectedSize(lns.size() * rns.size());
 
         for (List<PlanNode> pair : cartesianProduct(lns, rns)) {
-            JoinInfo joinInfo = getPlainJoinability(pair.get(0), pair.get(1));
+            JoinInfo joinInfo = getPlainJoinability(pair.get(0), pair.get(1), allowedJoinVars);
             if (joinInfo.isValid())
                 builder.put(ImmutablePair.of(pair.get(0), pair.get(1)), joinInfo);
         }
@@ -102,12 +128,24 @@ public class JoinInfo {
 
     public static @Nonnull
     JoinInfo getPlainJoinability(@Nonnull PlanNode left, @Nonnull PlanNode right) {
-        return new JoinInfo(left, right, false);
+        return getPlainJoinability(left, right, null);
+    }
+
+    public static @Nonnull
+    JoinInfo getPlainJoinability(@Nonnull PlanNode left, @Nonnull PlanNode right,
+                                 @Nullable Set<String> allowedJoinVars) {
+        return new JoinInfo(left, right, false, allowedJoinVars);
     }
 
     public static @Nonnull
     JoinInfo getMultiJoinability(@Nonnull PlanNode left, @Nonnull PlanNode right) {
-        return new JoinInfo(left, right, true);
+        return getMultiJoinability(left, right, null);
+    }
+
+    public static @Nonnull
+    JoinInfo getMultiJoinability(@Nonnull PlanNode left, @Nonnull PlanNode right, 
+                                 @Nullable Set<String> allowedJoinVars) {
+        return new JoinInfo(left, right, true, allowedJoinVars);
     }
 
     public boolean isValid() {
@@ -135,8 +173,12 @@ public class JoinInfo {
         return joinVars;
     }
 
-    public @Nonnull Set<String> getPendingInputs() {
-        return pendingInputs;
+    public @Nonnull Set<String> getPendingRequiredInputs() {
+        return pendingReqInputs;
+    }
+
+    public @Nonnull ImmutableSet<String> getPendingOptionalInputs() {
+        return pendingOptInputs;
     }
 
     public @Nonnull PlanNode getLeft() {
@@ -208,8 +250,10 @@ public class JoinInfo {
             builder.setLength(builder.length()-2);
             builder.append('}');
         }
-        if (!pendingInputs.isEmpty())
-            builder.append("+Inputs(").append(String.join(comma, pendingInputs)).append(")");
+        if (!pendingReqInputs.isEmpty())
+            builder.append("+ReqInputs(").append(String.join(comma, pendingReqInputs)).append(")");
+        if (!pendingOptInputs.isEmpty())
+            builder.append("+OptInputs(").append(String.join(comma, pendingOptInputs)).append(")");
         return builder;
     }
 
@@ -223,15 +267,17 @@ public class JoinInfo {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof JoinInfo)) return false;
-        JoinInfo that = (JoinInfo) o;
-        return  isSubsumed() == that.isSubsumed() &&
-                getJoinVars().equals(that.getJoinVars()) &&
-                getPendingInputs().equals(that.getPendingInputs()) &&
-                getChildJoins().equals(that.getChildJoins());
+        JoinInfo joinInfo = (JoinInfo) o;
+        return isSubsumed() == joinInfo.isSubsumed() &&
+                getJoinVars().equals(joinInfo.getJoinVars()) &&
+                getPendingRequiredInputs().equals(joinInfo.getPendingRequiredInputs()) &&
+                getPendingOptionalInputs().equals(joinInfo.getPendingOptionalInputs()) &&
+                getChildJoins().equals(joinInfo.getChildJoins());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getJoinVars(), getPendingInputs(), getChildJoins(), isSubsumed());
+        return Objects.hash(isSubsumed(), getJoinVars(), getPendingRequiredInputs(),
+                            getPendingOptionalInputs(), getChildJoins());
     }
 }

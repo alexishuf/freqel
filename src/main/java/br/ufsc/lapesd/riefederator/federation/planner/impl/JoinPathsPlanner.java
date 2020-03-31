@@ -346,7 +346,7 @@ public class JoinPathsPlanner implements Planner {
                     assert state.matched.equals(full); // size() works bcs full is shared as parent
                     Set<String> nonIn = state.nodes.stream()
                             .flatMap(n -> n.getStrictResultVars().stream()).collect(toSet());
-                    if (state.nodes.stream().allMatch(n -> nonIn.containsAll(n.getInputVars()))) {
+                    if (state.nodes.stream().allMatch(n -> nonIn.containsAll(n.getRequiredInputVars()))) {
                         JoinComponent component = state.toJoinComponent();
                         assert component.getNodes().getParent().equals(g.getNodes());
                         result.add(component);

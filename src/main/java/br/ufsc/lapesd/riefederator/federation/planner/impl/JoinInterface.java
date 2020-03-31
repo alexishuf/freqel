@@ -23,7 +23,7 @@ public class JoinInterface {
     public JoinInterface(@Nonnull PlanNode node) {
         Preconditions.checkArgument(!node.getMatchedTriples().isEmpty());
         this.resultVars = node.getResultVars();
-        this.inputVars = node.getInputVars();
+        this.inputVars = node.getRequiredInputVars();
         this.matchedTriples = node.getMatchedTriples();
         if (!resultVars.containsAll(inputVars)) {
             logger.warn("There are input variables ({}) that are not result variables ({})",

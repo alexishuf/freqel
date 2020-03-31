@@ -12,6 +12,7 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -27,6 +28,48 @@ public abstract class CQueryContext {
     public @Nonnull CQuery build() {
         List<Object> list = queryData();
         return createQuery(list.toArray());
+    }
+
+    public static class TermAnnotationPair {
+        private final @Nonnull Term term;
+        private final @Nonnull TermAnnotation annotation;
+
+        public TermAnnotationPair(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
+            this.term = term;
+            this.annotation = annotation;
+        }
+
+        public @Nonnull Term getTerm() {
+            return term;
+        }
+
+        public @Nonnull TermAnnotation getAnnotation() {
+            return annotation;
+        }
+
+        @Override
+        public @Nonnull String toString() {
+            return String.format("TermAnnotationPair(%s, %s)", term, annotation);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof TermAnnotationPair)) return false;
+            TermAnnotationPair that = (TermAnnotationPair) o;
+            return getTerm().equals(that.getTerm()) &&
+                    getAnnotation().equals(that.getAnnotation());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(getTerm(), getAnnotation());
+        }
+    }
+
+    public static @Nonnull TermAnnotationPair
+    annotateTerm(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
+        return new TermAnnotationPair(term, annotation);
     }
 
     public static @Nonnull CQuery createQuery(Object... termAndAnnotations) {
@@ -74,6 +117,10 @@ public abstract class CQueryContext {
                     if (prefixDict != null)
                         logger.warn("Will overwrite PrefixDict {} with {}", prefixDict, next);
                     prefixDict = (PrefixDict) next;
+                }
+                if (next instanceof TermAnnotationPair) {
+                    TermAnnotationPair pair = (TermAnnotationPair) next;
+                    builder.annotate(pair.getTerm(), pair.getAnnotation());
                 }
             }
         }

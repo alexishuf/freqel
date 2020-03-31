@@ -30,18 +30,40 @@ public interface PlanNode {
     @Nonnull Set<String> getAllVars();
 
     /**
+     * All variables that are either inputs or results.
+     * Variables used only within filters never appear as result variables, but may appear
+     * as inputs and here.
+     *
+     * @return union of {@link PlanNode#getResultVars()} and {@link PlanNode#getInputVars()}.
+     */
+    @Nonnull Set<String> getPublicVars();
+
+    /**
      * Result variables that are not inputs.
      *
      * @return A subset of {@link PlanNode#getResultVars()} that does not intersect with
-     *         {@link PlanNode#getInputVars()}.
+     *         {@link PlanNode#getRequiredInputVars()}.
      */
     @Nonnull Set<String> getStrictResultVars();
 
     /**
-     * Variables wich must receive a value (e.g., bind) before the node is executable.
-     * @return A subset of {@link PlanNode#getAllVars()}.
+     * Variables that are either required or optional inputs.
+     * @return The union of {@link PlanNode#getRequiredInputVars()}
+     *         and {@link PlanNode#getOptionalInputVars()}.
      */
     @Nonnull Set<String> getInputVars();
+
+    /**
+     * Variables which must receive a value (e.g., bind) before the node is executable.
+     * @return A subset of {@link PlanNode#getAllVars()}.
+     */
+    @Nonnull Set<String> getRequiredInputVars();
+
+    /**
+     * Variables that may act as either inputs or outputs.
+     * @return A subset of {@link PlanNode#getAllVars}.
+     */
+    @Nonnull Set<String> getOptionalInputVars();
 
     /**
      * Get the set of matched triples. This is a subset of the original {@link CQuery}
@@ -50,6 +72,8 @@ public interface PlanNode {
     @Nonnull Set<Triple> getMatchedTriples();
 
     boolean hasInputs();
+
+    boolean hasRequiredInputs();
 
     @Nonnull List<PlanNode> getChildren();
 

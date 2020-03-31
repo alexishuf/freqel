@@ -11,11 +11,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionInputs;
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.unionResults;
 import static java.util.stream.Collectors.toList;
 
-public class CartesianNode extends AbstractPlanNode {
+public class CartesianNode extends AbstractInnerPlanNode {
     public CartesianNode(@Nonnull List<PlanNode> children) {
         this(children, computeCardinality(children));
     }
@@ -33,15 +31,16 @@ public class CartesianNode extends AbstractPlanNode {
     }
 
     public CartesianNode(@Nonnull List<PlanNode> children, @Nonnull Cardinality cardinality) {
-        super(unionResults(children), unionResults(children), false, unionInputs(children),
-              children, cardinality);
+        super(children, cardinality, null);
+        assertAllInvariants();
     }
 
     @Override
-    public @Nonnull
-    PlanNode createBound(@Nonnull Solution solution) {
-        return new CartesianNode(getChildren().stream()
+    public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
+        CartesianNode bound = new CartesianNode(getChildren().stream()
                 .map(n -> n.createBound(solution)).collect(toList()));
+        bound.addBoundFiltersFrom(getFilers(), solution);
+        return bound;
     }
 
     @Override
@@ -68,7 +67,7 @@ public class CartesianNode extends AbstractPlanNode {
 
     @Override
     public @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
-                                                 @Nonnull String indent) {
+                                              @Nonnull String indent) {
         String indent2 = indent + "  ";
         builder.append(indent);
         if (isProjecting())

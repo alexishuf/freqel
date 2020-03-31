@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.*;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.enhanced.EnhGraph;
-import org.apache.jena.graph.Node;
+import org.apache.jena.graph.*;
 import org.apache.jena.rdf.model.*;
 import org.apache.jena.rdf.model.impl.LiteralImpl;
 import org.apache.jena.rdf.model.impl.ResourceImpl;
@@ -137,6 +137,61 @@ public class JenaWrappers {
         else if (!(t instanceof URI))
             throw new UnsupportedOperationException("Cannot convert non-URI to jena Property");
         return ResourceFactory.createProperty(((URI)t).getURI());
+    }
+
+    /* ~~~~~~~~~ toJenaNode(Term) ~~~~~~~~~ */
+
+    @Contract(value = "null -> null; !null -> new", pure = true)
+    public static Node_Variable toJenaNode(Var var) {
+        if (var == null) return null;
+        if (var instanceof JenaVar)
+            return (Node_Variable) ((JenaVar) var).getGraphNode();
+        return (Node_Variable) NodeFactory.createVariable(var.getName());
+    }
+
+    @Contract(value = "null -> null; !null -> new", pure = true)
+    public static Node_Blank toJenaNode(JenaBlank term) {
+        if (term == null) return null;
+        return (Node_Blank) term.getGraphNode();
+    }
+
+    @Contract(value = "null -> null; !null -> new", pure = true)
+    public static Node_URI toJenaNode(URI term) {
+        if (term == null) return null;
+        if (term instanceof JenaURI)
+            return (Node_URI) ((JenaURI) term).getGraphNode();
+        return  (Node_URI) NodeFactory.createURI(term.getURI());
+    }
+
+    @Contract(value = "null -> null; !null -> new", pure = true)
+    public static Node_Literal toJenaNode(Lit term) {
+        if (term == null) return null;
+        if (term instanceof JenaLit)
+            return (Node_Literal) ((JenaLit) term).getGraphNode();
+
+        String langTag = term.getLangTag();
+        if (langTag != null)
+            return (Node_Literal) NodeFactory.createLiteral(term.getLexicalForm(), langTag);
+
+        String dtURI = term.getDatatype().getURI();
+        RDFDatatype datatype = getInstance().getTypeByName(dtURI);
+        if (datatype == null) {
+            throw new IllegalArgumentException("Cannot convert "+term+" to Jena Node, " +
+                                               "since datatype "+dtURI+" is unknown to Jena");
+        }
+        return (Node_Literal) NodeFactory.createLiteral(term.getLexicalForm(), datatype);
+    }
+
+    @Contract(value = "null -> null; !null -> new", pure = true)
+    public static Node toJenaNode(Term term) {
+        if (term == null) return null;
+        else if (term instanceof JenaBlank) return toJenaNode((JenaBlank)term);
+        else if (term.isVar()) return toJenaNode(term.asVar());
+        else if (term.isURI()) return toJenaNode(term.asURI());
+        else if (term.isLiteral()) return toJenaNode(term.asLiteral());
+
+        String msg = "Cannot convert Term of class " + term.getClass() + " to Jena";
+        throw new UnsupportedOperationException(msg);
     }
 
     /* ~~~~~~~~~ fromJena(PrefixMapping) ~~~~~~~~~ */

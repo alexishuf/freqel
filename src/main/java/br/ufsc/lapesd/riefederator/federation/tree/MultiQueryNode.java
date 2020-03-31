@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
 
@@ -11,19 +12,21 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
-import static java.util.stream.Collectors.toList;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.union;
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * This node represents multiple independent queries that output the same projection.
  *
  * There is no need to perform duplicate removals at this stage (hence it is not a Union).
  */
-public class MultiQueryNode extends AbstractPlanNode {
+public class MultiQueryNode extends AbstractInnerPlanNode {
+    private final boolean intersectInputs;
+
     public static class Builder {
         private List<PlanNode> list = new ArrayList<>();
         private Set<String> resultVars = null;
-        private boolean project = false;
         private boolean intersect = false;
         private boolean intersectInputs = true;
         private Cardinality cardinality = null;
@@ -48,22 +51,19 @@ public class MultiQueryNode extends AbstractPlanNode {
         }
 
         @CanIgnoreReturnValue
-        public @Nonnull Builder setResultVarsNoProjection(@Nonnull Collection<String> varNames) {
+        public @Nonnull Builder setResultVars(@Nonnull Collection<String> varNames) {
             resultVars = varNames instanceof Set? (Set<String>)varNames : new HashSet<>(varNames);
-            project = false;
             return this;
         }
 
         @CanIgnoreReturnValue
         public @Nonnull Builder intersect() {
             intersect = true;
-            project = true;
             return this;
         }
         @CanIgnoreReturnValue
         public @Nonnull Builder allVars() {
             intersect = false;
-            project = false;
             return this;
         }
 
@@ -98,27 +98,22 @@ public class MultiQueryNode extends AbstractPlanNode {
         @CheckReturnValue
         public @Nonnull MultiQueryNode build() {
             Preconditions.checkState(!isEmpty(), "Builder is empty");
+            Set<String> all = TreeUtils.union(list, PlanNode::getResultVars);
             if (resultVars == null) {
-                if (intersect) {
-                    resultVars = intersectResults(list);
-                } else {
-                    project = false;
-                    resultVars = unionResults(list);
-                }
-            } else if (MultiQueryNode.class.desiredAssertionStatus()) {
-                Set<String> all = unionResults(list);
-                Preconditions.checkArgument(all.containsAll(resultVars),
-                        "There are extra result vars");
-                Preconditions.checkArgument(intersect || project == !resultVars.equals(all),
-                        "Mismatch between project and resultVars");
+                if (intersect)
+                    resultVars = TreeUtils.intersect(list, PlanNode::getResultVars);
+                else
+                    resultVars = all;
+            } else {
+                checkArgument(all.containsAll(resultVars), "There are extra result vars");
             }
             if (cardinality == null) {
                 cardinality = list.stream().map(PlanNode::getCardinality)
                         .min(CardinalityComparator.DEFAULT).orElse(Cardinality.UNSUPPORTED);
             }
-            Set<String> inputs = intersectInputs ? TreeUtils.intersectInputs(list)
-                                                 : TreeUtils.unionInputs(list);
-            return new MultiQueryNode(list, resultVars, project, inputs, cardinality);
+            return new MultiQueryNode(list, ImmutableSet.copyOf(resultVars),
+                            resultVars.size() != all.size(),
+                                      intersectInputs, cardinality);
         }
     }
 
@@ -127,49 +122,71 @@ public class MultiQueryNode extends AbstractPlanNode {
     }
 
     protected MultiQueryNode(@Nonnull List<PlanNode> children,
-                             @Nonnull Collection<String> resultVars,
+                             @Nonnull ImmutableSet<String> resultVars,
                              boolean projecting,
-                             @Nonnull Collection<String> inputVars,
+                             boolean intersectInputs,
                              @Nonnull Cardinality cardinality) {
-        this(children, unionVars(children), resultVars, projecting, inputVars, cardinality);
+        super(children, cardinality, projecting ? resultVars : null);
+        this.intersectInputs = intersectInputs;
+        this.resultVarsCache = resultVars;
     }
 
-    protected MultiQueryNode(@Nonnull List<PlanNode> children,
-                             @Nonnull Collection<String> allVars,
-                             @Nonnull Collection<String> resultVars,
-                             boolean projecting,
-                             @Nonnull Collection<String> inputVars,
-                             @Nonnull Cardinality cardinality) {
-        super(allVars, resultVars, projecting, inputVars, children, cardinality);
+    @Override
+    public @Nonnull Set<String> getInputVars() {
+        if (!intersectInputs)
+            return super.getInputVars();
+        if (allInputVarsCache == null)
+            allInputVarsCache = TreeUtils.intersect(getChildren(), PlanNode::getInputVars);
+        return allInputVarsCache;
     }
 
+    @Override
+    public @Nonnull Set<String> getRequiredInputVars() {
+        if (!intersectInputs)
+            return super.getRequiredInputVars();
+        if (reqInputsCache == null)
+            reqInputsCache = TreeUtils.intersect(super.getRequiredInputVars(), getInputVars());
+        return reqInputsCache;
+    }
+
+    @Override
+    public @Nonnull Set<String> getOptionalInputVars() {
+        if (!intersectInputs)
+            return super.getOptionalInputVars();
+        if (optInputsCache == null)
+            optInputsCache = TreeUtils.intersect(getInputVars(), super.getOptionalInputVars());
+        return optInputsCache;
+    }
 
     @Override
     public @Nonnull MultiQueryNode createBound(@Nonnull Solution solution) {
-        List<PlanNode> children = getChildren().stream().map(n -> n.createBound(solution))
-                                                        .collect(toList());
-        Set<String> all = unionVars(children);
-        HashSet<String> results = new HashSet<>(getResultVars());
-        results.retainAll(all);
-        boolean projecting = results.size() < all.size();
-        HashSet<String> inputs = new HashSet<>(getInputVars());
-        inputs.removeAll(solution.getVarNames());
-        return new MultiQueryNode(children, all, results, projecting, inputs, getCardinality());
+        Builder builder = builder();
+        getChildren().stream().map(child -> child.createBound(solution)).forEach(builder::add);
+        if (intersectInputs) builder.intersectInputs();
+        builder.setResultVars(setMinus(getResultVars(), solution.getVarNames()));
+        MultiQueryNode bound = builder.build();
+        bound.addBoundFiltersFrom(getFilers(), solution);
+        return bound;
     }
 
     @Override
     public @Nonnull MultiQueryNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
             throws IllegalArgumentException {
-        Preconditions.checkArgument(getChildren().containsAll(map.keySet()));
-        if (map.isEmpty()) return this;
+        checkArgument(union(getChildren(), PlanNode::getResultVars).containsAll(getResultVars()),
+                      "Replacement removes resultVariables of the MultiQueryNode");
 
-        List<PlanNode> list = new ArrayList<>();
+        Builder builder = builder();
+        boolean change = false;
         for (PlanNode child : getChildren()) {
-            PlanNode replacement = map.getOrDefault(child, child);
-            if (replacement != null)
-                list.add(replacement);
+            PlanNode replacement = map.getOrDefault(child, null);
+            change |= replacement != null;
+            builder.add(replacement == null ? child : replacement);
         }
-        return (MultiQueryNode) with(list);
+        if (!change)
+            return this;
+        if (intersectInputs) builder.intersectInputs();
+        builder.setResultVars(getResultVars());
+        return builder.build();
     }
 
     public @Nonnull PlanNode  with(@Nonnull List<PlanNode> list) {
@@ -177,33 +194,32 @@ public class MultiQueryNode extends AbstractPlanNode {
             return list.get(0);
         if (list.equals(getChildren()))
             return this;
-        Set<String> allResults = unionResults(list);
-        Set<String> results = intersect(getResultVars(), allResults);
-        Set<String> inputs  = intersect(getInputVars(),  unionInputs(list));
-        boolean projecting = results.size() != allResults.size();
-        return new MultiQueryNode(list, results, projecting, inputs, getCardinality());
+        Builder builder = builder();
+        builder.addAll(list);
+        if (intersectInputs) builder.intersectInputs();
+        builder.setResultVars(getResultVars());
+        return builder.build();
     }
 
     public @Nullable PlanNode without(@Nonnull PlanNode node) {
-        if (!getChildren().contains(node))
-            return this;
-        List<PlanNode> left = new ArrayList<>(getChildren().size());
-        for (PlanNode child : getChildren()) {
-            if (!node.equals(child)) left.add(child);
-        }
-        return left.isEmpty() ? null : with(left);
+        return without(Collections.singleton(node));
     }
 
     public @Nullable PlanNode without(@Nonnull Collection<PlanNode> nodes) {
         if (nodes.isEmpty()) return this;
-        int size = getChildren().size();
-        List<PlanNode> list = new ArrayList<>(size);
-        for (PlanNode child : getChildren()) {
-            if (!nodes.contains(child)) list.add(child);
-        }
-        if (list.isEmpty())      return null;
-        if (list.size() == size) return this;
-        else                     return with(list);
+
+        Builder builder = builder();
+        getChildren().stream().filter(n -> !nodes.contains(n)).forEach(builder::add);
+        if (builder.isEmpty())
+            return null; // no children
+        if (builder.list.size() == getChildren().size())
+            return this; // no change
+        if (intersectInputs)
+            builder.intersectInputs();
+        checkArgument(union(builder.list, PlanNode::getResultVars).containsAll(getResultVars()),
+                      "without("+nodes+") removes some of the result variables");
+        builder.setResultVars(getResultVars());
+        return builder.buildIfMulti();
     }
 
     @Override

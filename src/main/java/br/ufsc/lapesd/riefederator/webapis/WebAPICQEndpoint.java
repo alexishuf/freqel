@@ -7,7 +7,7 @@ import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.EvenDecomposer;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.HeuristicPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinPathsPlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.*;
@@ -122,7 +122,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(Planner.class).to(HeuristicPlanner.class);
+                    bind(Planner.class).to(JoinPathsPlanner.class);
                     bind(DecompositionStrategy.class).to(EvenDecomposer.class);
                 }
             }).getInstance(Federation.class);

@@ -78,6 +78,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         Collection<String> endpoints = parser.getEndpoints();
         assertTrue(endpoints.contains("/api-de-dados/licitacoes"));
+        assertTrue(endpoints.contains("/api-de-dados/licitacoes-opt"));
         assertTrue(endpoints.contains("/api-de-dados/licitacoes/{id}"));
     }
 

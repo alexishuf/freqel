@@ -79,7 +79,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
                 int cardDiff = OrderTuple.compareCardinality(lCard, rCard);
                 Cardinality bestCard = cardDiff <= 0 ? lCard : rCard;
                 boolean isWebApi = hasWebApi[i] || hasWebApi[j];
-                int pendingInputs = info.getPendingInputs().size();
+                int pendingInputs = info.getPendingRequiredInputs().size();
                 OrderTuple tuple = new OrderTuple(bestCard, pendingInputs, isWebApi);
                 if (tuple.compareTo(best) < 0) {
                     bestI = i;
@@ -115,7 +115,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
             JoinInfo i = JoinInfo.getPlainJoinability(root, node);
             if (!i.isValid()) return OrderTuple.MAX;
 
-            int pendingInputs = i.getPendingInputs().size();
+            int pendingInputs = i.getPendingRequiredInputs().size();
             Cardinality cardinality = node.getCardinality();
 
             // if the join leaves pending inputs, node (and possibly other nodes under root)

@@ -16,11 +16,13 @@ import org.apache.jena.vocabulary.RDFS;
 import javax.annotation.Nonnull;
 
 public interface TestContext {
-    @Nonnull URI Alice   = new StdURI("http://example.org/Alice");
-    @Nonnull URI Alice2   = new StdURI("http://example.org/Alice-2");
-    @Nonnull URI Bob     = new StdURI("http://example.org/Bob");
-    @Nonnull URI Charlie = new StdURI("http://example.org/Charlie");
-    @Nonnull URI Dave    = new StdURI("http://example.org/Dave");
+    @Nonnull String EX = "http://example.org/";
+
+    @Nonnull URI Alice   = new StdURI(EX+"Alice");
+    @Nonnull URI Alice2  = new StdURI(EX+"Alice-2");
+    @Nonnull URI Bob     = new StdURI(EX+"Bob");
+    @Nonnull URI Charlie = new StdURI(EX+"Charlie");
+    @Nonnull URI Dave    = new StdURI(EX+"Dave");
 
     @Nonnull URI type = new StdURI(RDF.type.getURI());
 
@@ -33,6 +35,9 @@ public interface TestContext {
 
     default @Nonnull Lit lit(int value) {
         return StdLit.fromUnescaped(String.valueOf(value), xsdInt);
+    }
+    default @Nonnull Lit lit(double value) {
+        return JenaWrappers.fromJena(ResourceFactory.createTypedLiteral(value));
     }
     default @Nonnull Lit lit(String value) {
         return StdLit.fromUnescaped(String.valueOf(value), xsdString);
@@ -84,5 +89,15 @@ public interface TestContext {
     @Nonnull Var s = new StdVar("s");
     @Nonnull Var p = new StdVar("p");
     @Nonnull Var o = new StdVar("o");
+
+    @Nonnull Var x1 = new StdVar("x1");
+    @Nonnull Var x2 = new StdVar("x2");
+    @Nonnull Var x3 = new StdVar("x3");
+    @Nonnull Var x4 = new StdVar("x4");
+
+    @Nonnull Var y1 = new StdVar("y1");
+    @Nonnull Var y2 = new StdVar("y2");
+    @Nonnull Var y3 = new StdVar("y3");
+    @Nonnull Var y4 = new StdVar("y4");
 
 }

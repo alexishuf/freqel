@@ -5,6 +5,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.google.gson.internal.LinkedTreeMap;
 import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.Contract;
@@ -38,10 +40,13 @@ public class DictTree {
 
     private @Nullable String name;
     private @Nonnull Map<String, Object> backend;
-    private @Nullable
-    DictTree root;
+    private @Nullable DictTree root;
 
     /* --- --- --- --- Constructors --- --- --- --- */
+
+    public DictTree() {
+        this(new HashMap<>());
+    }
 
     public DictTree(@Nonnull Map<String, Object> map) {
         this(map, null);
@@ -141,30 +146,33 @@ public class DictTree {
         }
 
         @SuppressWarnings("unchecked")
-        @WillNotClose
-        public @Nonnull
-        DictTree fromYaml(@Nonnull Reader plainReader) throws IOException {
+        public @WillNotClose @Nonnull @CheckReturnValue List<DictTree>
+        fromYamlList(@Nonnull Reader plainReader) throws IOException {
             YamlReader reader = new YamlReader(plainReader);
+            List<DictTree> list = new ArrayList<>();
             for (Object read = reader.read(); read != null; read = reader.read()) {
                 if (read instanceof Map) {
                     resolveRefs((Map<String, Object>)read);
-                    return new DictTree((Map<String, Object>)read, name);
+                    list.add(new DictTree((Map<String, Object>)read, name));
                 }
             }
-            throw new NoSuchElementException("No document in YAML input"+
-                    (name == null ? "" : "Name: "+name));
+            return list;
+        }
+
+        @WillNotClose @CheckReturnValue
+        public @Nonnull DictTree fromYaml(@Nonnull Reader plainReader) throws IOException {
+            List<DictTree> list = fromYamlList(plainReader);
+            return list.isEmpty() ? new DictTree() : list.get(0);
         }
 
         @CheckReturnValue
-        public @Nonnull
-        DictTree fromYamlString(@Nonnull String yaml) throws IOException {
+        public @Nonnull DictTree fromYamlString(@Nonnull String yaml) throws IOException {
             if (name == null)
                 name = yaml.length() < 20 ? yaml : (yaml.substring(0, 17) + "...");
             return fromYaml(new StringReader(yaml));
         }
 
-        public @Nonnull
-        DictTree fromJsonFile(@Nonnull File file) throws IOException {
+        public @Nonnull DictTree fromJsonFile(@Nonnull File file) throws IOException {
             if (name == null) name = file.getAbsolutePath();
             try (FileInputStream in = new FileInputStream(file)) {
                 return fromJson(in);
@@ -173,20 +181,37 @@ public class DictTree {
 
         @WillNotClose @CheckReturnValue @Nonnull
         public DictTree fromJson(@Nonnull InputStream inputStream) throws IOException {
+            List<DictTree> list = fromJsonList(inputStream);
+            return list.isEmpty() ? new DictTree() : list.get(0);
+        }
+
+        @WillNotClose @CheckReturnValue @Nonnull
+        public List<DictTree> fromJsonList(@Nonnull InputStream inputStream) throws IOException {
             try (Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
-                //noinspection unchecked
-                Map<String, Object> map = new Gson().fromJson(reader, LinkedTreeMap.class);
-                resolveRefs(map);
-                return new DictTree(map, name);
+                List<DictTree> list = new ArrayList<>();
+                JsonElement r = new JsonParser().parse(reader);
+                for (JsonElement e : (r.isJsonArray() ? r.getAsJsonArray() : singletonList(r))) {
+                    //noinspection unchecked
+                    Map<String, Object> map = new Gson().fromJson(e, LinkedTreeMap.class);
+                    resolveRefs(map);
+                    list.add(new DictTree(map, name));
+                }
+                return list;
             }
         }
 
         @CheckReturnValue
-        public @Nonnull
-        DictTree fromJsonString(@Nonnull String json) throws IOException {
+        public @Nonnull DictTree fromJsonString(@Nonnull String json) throws IOException {
             if (name == null)
                 name = json.length() <= 20 ? json : (json.substring(0, 17) + "...");
             return fromJson(IOUtils.toInputStream(json, StandardCharsets.UTF_8));
+        }
+
+        @CheckReturnValue
+        public @Nonnull List<DictTree> fromJsonStringList(@Nonnull String json) throws IOException {
+            if (name == null)
+                name = json.length() <= 20 ? json : (json.substring(0, 17) + "...");
+            return fromJsonList(IOUtils.toInputStream(json, StandardCharsets.UTF_8));
         }
 
         @CheckReturnValue @Nonnull
@@ -200,14 +225,16 @@ public class DictTree {
             private @Nullable UriResolver fallback;
 
             public ResourceResolver(@Nonnull String resourcePath, @Nullable UriResolver fallback) {
-                this.basePath = resourcePath.replaceAll("/[^/]+$", "").replaceAll("^/+", "");
+                this.basePath = resourcePath.replaceAll("/?[^/]+$", "").replaceAll("^/+", "")
+                                            .replaceAll("/+$", "");
                 this.fallback = fallback;
             }
             public ResourceResolver(@Nonnull Class<?> cls, @Nonnull String relativePath,
                                     @Nullable UriResolver fallback) {
-                basePath = cls.getName().replaceAll("\\.[^.]+$", "")
+                basePath = (cls.getName().replaceAll("\\.[^.]+$", "")
                                         .replace('.', '/')
-                         + "/" + relativePath.replaceAll("/[^/]+$", "").replaceAll("^/+", "");
+                         + "/" + relativePath.replaceAll("/?[^/]+$", "").replaceAll("^/+", "")
+                ).replaceAll("/+$", "");
                 this.fallback = fallback;
             }
 

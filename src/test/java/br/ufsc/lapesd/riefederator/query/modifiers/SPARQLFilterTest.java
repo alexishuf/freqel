@@ -1,12 +1,15 @@
-package br.ufsc.lapesd.riefederator.query.filter;
+package br.ufsc.lapesd.riefederator.query.modifiers;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
+import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
-import br.ufsc.lapesd.riefederator.query.modifiers.FilterParsingException;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import org.apache.jena.rdf.model.ResourceFactory;
+import org.apache.jena.sparql.core.Var;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -15,11 +18,13 @@ import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 public class SPARQLFilterTest implements TestContext {
@@ -255,5 +260,44 @@ public class SPARQLFilterTest implements TestContext {
                         "expected "+rightTerm+"->"+leftTerm);
             }
         }
+    }
+
+    @DataProvider
+    public static @Nonnull Object[][] bindData() {
+        Lit i23 = JenaWrappers.fromJena(ResourceFactory.createTypedLiteral(23));
+        return Stream.of(
+                asList(SPARQLFilter.build("?x < ?y"), MapSolution.build(y, i23),
+                       SPARQLFilter.build("?x < 23")),
+                asList(SPARQLFilter.build("?x < ?y && ?x > 0"), MapSolution.build(y, i23),
+                       SPARQLFilter.build("?x < 23 && ?x > 0")),
+                asList(SPARQLFilter.build("?x < ?y && ?x >= 0"), MapSolution.build(y, i23),
+                       SPARQLFilter.build("?x < 23 && ?x >= 0")),
+                asList(SPARQLFilter.build("?x < ?y"), MapSolution.build(z, i23),
+                       SPARQLFilter.build("?x < ?y")),
+                asList(SPARQLFilter.builder("?x < ?y").map("y", z).build(),
+                       MapSolution.build(z, i23),
+                       SPARQLFilter.build("?x < 23")),
+                asList(SPARQLFilter.builder("?z < ?y").map("z", y)
+                                                            .map("y", z).build(),
+                       MapSolution.build(z, i23),
+                       SPARQLFilter.builder("?z < 23").map("z", y).build())
+        ).map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "bindData")
+    public void testBind(@Nonnull SPARQLFilter filter, @Nonnull Solution solution,
+                         @Nonnull SPARQLFilter bound) {
+        assertEquals(filter.bind(solution), bound);
+        Set<String> vars = bound.getExpr().getVarsMentioned().stream().map(Var::getVarName)
+                                                                      .collect(toSet());
+        assertEquals(bound.getVar2Term().keySet(), vars);
+        assertEquals(bound.getVarTerms().size(), vars.size());
+        assertEquals(bound.getTerms().size(), vars.size());
+        assertEquals(bound.getTerms(), bound.getVarTerms());
+
+        Set<String> expectedVarNames;
+        expectedVarNames = vars.stream().map(v -> bound.getVar2Term().get(v).asVar().getName())
+                                        .collect(toSet());
+        assertEquals(bound.getVarTermNames(), expectedVarNames);
     }
 }

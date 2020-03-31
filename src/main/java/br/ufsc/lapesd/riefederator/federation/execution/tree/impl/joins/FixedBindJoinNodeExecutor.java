@@ -5,11 +5,12 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.Bin
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.Results;
-import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Provider;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class FixedBindJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
     private final @Nonnull BindJoinResultsFactory factory;
@@ -33,13 +34,15 @@ public class FixedBindJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
         Results leftResults = null;
         PlanNode left = node.getLeft();
         PlanNode right = node.getRight();
-        if (left.hasInputs()) {
+        int leftWeight  = ( left.hasInputs() ? 1 : 0) + ( left.hasRequiredInputs() ? 1 : 0);
+        int rightWeight = (right.hasInputs() ? 1 : 0) + (right.hasRequiredInputs() ? 1 : 0);
+        if (leftWeight > rightWeight) {
             PlanNode tmp = left;
             left = right;
             right = tmp;
         }
-        Preconditions.checkArgument(!left.hasInputs(),
-                "Both left and right children have inputs. Cannot bind join "+node);
+        checkArgument(!left.hasInputs(), "Both left and right children have required inputs. " +
+                                         "Cannot bind join "+node);
         try {
             leftResults = planExecutor.executeNode(left);
             Results results = factory.createResults(leftResults, right,

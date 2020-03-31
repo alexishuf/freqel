@@ -7,12 +7,14 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import com.google.common.collect.Sets;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptySet;
@@ -22,7 +24,7 @@ import static org.testng.Assert.*;
 public class JoinNodeTest implements TestContext {
     private static final EmptyEndpoint empty = new EmptyEndpoint();
 
-    public QueryNode aliceKnowsX, xKnowsY, yKnown, xKnowsYInput;
+    public QueryNode aliceKnowsX, xKnowsY, yKnown, xKnowsYInput, yInputKnowsAlice;
     private static final Atom Person = Molecule.builder("Person").buildAtom();
     private static final Atom KnownPerson = Molecule.builder("KnownPerson").buildAtom();
 
@@ -35,6 +37,9 @@ public class JoinNodeTest implements TestContext {
                 .annotate(y, asRequired(KnownPerson, "knownPerson"))
                 .build());
         yKnown = new QueryNode(empty, CQuery.from(new Triple(x, knows, y)), singleton("y"));
+        yInputKnowsAlice = new QueryNode(empty, createQuery(
+                y, AtomAnnotation.asRequired(Person, "person"), knows, Alice
+        ));
     }
 
     @Test
@@ -43,29 +48,37 @@ public class JoinNodeTest implements TestContext {
         assertEquals(node.getResultVars(), newHashSet("x", "y"));
         assertEquals(node.getJoinVars(), singleton("x"));
         assertFalse(node.isProjecting());
+        assertEquals(node.getInputVars(), emptySet());
+        assertFalse(node.hasInputs());
 
         // order shouldn't change the result
         node = JoinNode.builder(xKnowsY, aliceKnowsX).build();
         assertEquals(node.getResultVars(), newHashSet("x", "y"));
         assertEquals(node.getJoinVars(), singleton("x"));
         assertFalse(node.isProjecting());
+        assertEquals(node.getInputVars(), emptySet());
+        assertFalse(node.hasInputs());
     }
 
     @Test
     public void testManuallySetResultVarsNotProjecting() {
         JoinNode node = JoinNode.builder(aliceKnowsX, xKnowsY)
-                .setResultVarsNoProjection(newHashSet("x", "y")).build();
+                .setResultVars(newHashSet("x", "y")).build();
         assertEquals(node.getResultVars(), newHashSet("x", "y"));
         assertEquals(node.getJoinVars(), singleton("x"));
         assertFalse(node.isProjecting());
         assertFalse(node.toString().contains("π"));
+        assertEquals(node.getInputVars(), emptySet());
+        assertFalse(node.hasInputs());
 
         // order shouldn't change the result
         node = JoinNode.builder(xKnowsY, aliceKnowsX)
-                .setResultVarsNoProjection(newHashSet("x", "y")).build();
+                .setResultVars(newHashSet("x", "y")).build();
         assertEquals(node.getResultVars(), newHashSet("x", "y"));
         assertEquals(node.getJoinVars(), singleton("x"));
         assertFalse(node.isProjecting());
+        assertEquals(node.getInputVars(), emptySet());
+        assertFalse(node.hasInputs());
     }
 
     @Test
@@ -75,12 +88,16 @@ public class JoinNodeTest implements TestContext {
         assertEquals(node.getJoinVars(), singleton("x"));
         assertTrue(node.isProjecting());
         assertTrue(node.toString().startsWith("π[y]("));
+        assertEquals(node.getInputVars(), emptySet());
+        assertFalse(node.hasInputs());
 
         node = JoinNode.builder(xKnowsY, aliceKnowsX).addResultVar("y").build();
         assertEquals(node.getResultVars(), newHashSet("y"));
         assertEquals(node.getJoinVars(), singleton("x"));
         assertTrue(node.isProjecting());
         assertTrue(node.toString().startsWith("π[y]("));
+        assertEquals(node.getInputVars(), emptySet());
+        assertFalse(node.hasInputs());
     }
 
     @SuppressWarnings("SuspiciousNameCombination")
@@ -108,8 +125,30 @@ public class JoinNodeTest implements TestContext {
         JoinNode replaced = join.replacingChildren(replacement);
 
         assertEquals(replaced.getResultVars(), join.getResultVars());
-        assertEquals(replaced.getInputVars(), emptySet());
+        assertEquals(replaced.getRequiredInputVars(), emptySet());
         assertFalse(replaced.hasInputs());
         assertEquals(replaced.getJoinVars(), join.getJoinVars());
+    }
+
+    @SuppressWarnings("SuspiciousNameCombination")
+    @Test
+    public void testJoinNodeResolvesInput() {
+        JoinNode node = JoinNode.builder(xKnowsY, yInputKnowsAlice).build();
+
+        assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
+        assertEquals(node.getStrictResultVars(), Sets.newHashSet("x", "y"));
+        assertEquals(node.getRequiredInputVars(), emptySet());
+        assertEquals(node.getOptionalInputVars(), emptySet());
+        assertEquals(node.getInputVars(), emptySet());
+        assertFalse(node.hasInputs());
+
+        node = JoinNode.builder(yInputKnowsAlice, xKnowsY).build();
+        assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
+        assertEquals(node.getStrictResultVars(), Sets.newHashSet("x", "y"));
+        assertEquals(node.getRequiredInputVars(), emptySet());
+        assertEquals(node.getOptionalInputVars(), emptySet());
+        assertEquals(node.getInputVars(), emptySet());
+        assertFalse(node.hasInputs());
+
     }
 }

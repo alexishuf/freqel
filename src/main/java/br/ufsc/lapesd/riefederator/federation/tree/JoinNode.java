@@ -11,19 +11,22 @@ import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
-public class JoinNode extends AbstractPlanNode {
-    private @Nonnull Set<String> joinVars;
+public class JoinNode extends AbstractInnerPlanNode {
+    private @Nonnull ImmutableSet<String> joinVars;
+    private @Nonnull ImmutableSet<String> reqInputs, optInputs;
 
     public static class Builder {
         private @Nonnull PlanNode left, right;
-        private @Nullable Set<String> joinVars = null, resultVars = null, inputVars = null;
-        private boolean projecting = true;
+        private @Nullable Set<String> joinVars = null, resultVars = null;
         private Cardinality cardinality = null;
 
         public Builder(@Nonnull PlanNode left, @Nonnull PlanNode right) {
@@ -45,27 +48,26 @@ public class JoinNode extends AbstractPlanNode {
         }
 
         @Contract("_ -> this")  @CanIgnoreReturnValue
+        public @Nonnull Builder setJoinVars(@Nonnull Collection<String> names) {
+            joinVars = names instanceof Set ? (Set<String>)names : new HashSet<>(names);
+            return this;
+        }
+
+        @Contract("_ -> this")  @CanIgnoreReturnValue
         public @Nonnull Builder addResultVar(@Nonnull String name) {
             if (resultVars == null) resultVars = new HashSet<>();
             resultVars.add(name);
             return this;
         }
         @Contract("_ -> this")  @CanIgnoreReturnValue
-        public @Nonnull Builder addResultVars(@Nonnull List<String> names) {
+        public @Nonnull Builder addResultVars(@Nonnull Collection<String> names) {
             if (resultVars == null) resultVars = new HashSet<>();
             resultVars.addAll(names);
             return this;
         }
         @Contract("_ -> this") @CanIgnoreReturnValue
-        public @Nonnull Builder setResultVarsNoProjection(@Nonnull Collection<String> names) {
+        public @Nonnull Builder setResultVars(@Nonnull Collection<String> names) {
             resultVars = names instanceof Set ? (Set<String>) names : ImmutableSet.copyOf(names);
-            projecting = false;
-            return this;
-        }
-
-        @Contract("_ -> this") @CanIgnoreReturnValue
-        public @Nonnull Builder setInputVars(@Nonnull Collection<String> names) {
-            inputVars = names instanceof Set ? (Set<String>)names : ImmutableSet.copyOf(names);
             return this;
         }
 
@@ -76,57 +78,21 @@ public class JoinNode extends AbstractPlanNode {
         }
 
         public JoinNode build() {
-            if (joinVars == null) {
-                JoinInfo info = JoinInfo.getPlainJoinability(left, right);
-                if (inputVars == null) {
-                    inputVars = info.getPendingInputs();
-                    joinVars = info.getJoinVars();
-                } else {
-                    joinVars = info.getJoinVars();
-                    if (getClass().desiredAssertionStatus()) {
-                        Set<String> all = unionInputs(asList(left, right));
-                        checkArgument(all.containsAll(inputVars),
-                                "Every inputVar must be a input from left or right or both");
-                        checkArgument(inputVars.stream().noneMatch(joinVars::contains),
-                                "An inputVar of the join node cannot also be a joinVar");
-                    }
-                }
+            JoinInfo info = JoinInfo.getPlainJoinability(left, right, joinVars);
+            checkArgument(info.isValid(), "Nodes cannot be joined! joinVars="+joinVars);
+            Set<String> allVars = union(left.getResultVars(), right.getResultVars());
+            if (resultVars != null) {
+                Set<String> m = setMinus(resultVars, allVars);
+                checkArgument(m.isEmpty(), "Some of the selected resultVars are missing: " + m);
             } else {
-                if (getClass().desiredAssertionStatus()) {
-                    checkArgument(joinVars.stream().allMatch(n -> left.getResultVars().contains(n)
-                                    && right.getResultVars().contains(n)),
-                            "There are join vars which do not occur in some side");
-                }
-                if (inputVars == null) {
-                    inputVars = TreeUtils.unionInputs(asList(left, right));
-                    inputVars.removeIf(n -> !joinVars.contains(n));
-                }
+                resultVars = allVars;
             }
-            checkArgument(!joinVars.isEmpty(),
-                    "Cannot build a JoinNode with no Join vars. Use CartesianNode or EmptyNode");
-
-            Set<String> all;
-            if (JoinNode.class.desiredAssertionStatus() || resultVars == null) {
-                all = unionResults(asList(left, right));
-                checkArgument(all.containsAll(joinVars), "There are extra joinVars");
-                if (resultVars != null) {
-                    checkArgument(all.containsAll(resultVars), "There are extra resultVars");
-                    checkArgument(projecting == !resultVars.containsAll(all),
-                            "Mismatch between projecting and resultVars");
-                }
-            } else {
-                all = null;
-            }
-            if (resultVars == null) {
-                resultVars = all;
-                projecting = false;
-            }
-            if (inputVars == null)
-                inputVars = unionInputs(asList(left, right));
+            boolean projecting = resultVars.size() != allVars.size();
             if (cardinality == null)
                 cardinality = getCardinality(left, right);
-            return new JoinNode(left, right, joinVars, resultVars, projecting,
-                                inputVars, cardinality);
+            return new JoinNode(left, right, info.getJoinVars(), resultVars, projecting,
+                                info.getPendingRequiredInputs(), info.getPendingOptionalInputs(),
+                                cardinality);
         }
     }
 
@@ -137,10 +103,15 @@ public class JoinNode extends AbstractPlanNode {
     protected JoinNode(@Nonnull PlanNode left, @Nonnull PlanNode right,
                        @Nonnull Set<String> joinVars,
                        @Nonnull Set<String> resultVars, boolean projecting,
-                       @Nonnull Set<String> inputVars, @Nonnull Cardinality cardinality) {
-        super(unionResults(asList(left, right)), resultVars, projecting, inputVars,
-              asList(left, right), cardinality);
-        this.joinVars = joinVars;
+                       @Nonnull Set<String> reqInputVars,
+                       @Nonnull Set<String> optInputVars,
+                       @Nonnull Cardinality cardinality) {
+        super(asList(left, right), cardinality, projecting ? resultVars : null,
+                !reqInputVars.isEmpty() || !optInputVars.isEmpty());
+        this.joinVars = ImmutableSet.copyOf(joinVars);
+        this.resultVarsCache = ImmutableSet.copyOf(resultVars);
+        this.reqInputs = ImmutableSet.copyOf(reqInputVars);
+        this.optInputs = ImmutableSet.copyOf(optInputVars);
     }
 
     public @Nonnull Set<String> getJoinVars() {
@@ -156,17 +127,25 @@ public class JoinNode extends AbstractPlanNode {
     }
 
     @Override
+    public @Nonnull Set<String> getRequiredInputVars() {
+        return reqInputs;
+    }
+
+    @Override
+    public @Nonnull Set<String> getOptionalInputVars() {
+        return optInputs;
+    }
+
+    @Override
     public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
         PlanNode left = getLeft().createBound(solution);
         PlanNode right = getRight().createBound(solution);
-        Set<String> all = unionResults(asList(left, right));
-        Set<String> joinVars = TreeUtils.intersect(getJoinVars(), all);
-        Set<String> resultVars = TreeUtils.intersect(getResultVars(), all);
-        Set<String> inputVars = TreeUtils.intersect(getInputVars(), all);
 
-        boolean projecting = resultVars.size() < all.size();
-        return new JoinNode(left, right, joinVars, resultVars, projecting, inputVars,
-                            getCardinality(left, right));
+        Set<String> results = setMinus(getResultVars(), solution.getVarNames());
+        Set<String> joinVars = setMinus(getJoinVars(), solution.getVarNames());
+        JoinNode bound = builder(left, right).setJoinVars(joinVars).setResultVars(results).build();
+        bound.addBoundFiltersFrom(getFilers(), solution);
+        return bound;
     }
 
     @Override
@@ -178,14 +157,8 @@ public class JoinNode extends AbstractPlanNode {
         PlanNode l = map.getOrDefault(getLeft(), getLeft());
         PlanNode r = map.getOrDefault(getRight(), getRight());
 
-        List<PlanNode> list = asList(l, r);
-        Set<String> joinVars = intersect(this.joinVars, intersectResults(list));
-        Set<String> allResults = unionResults(list);
-        Set<String> results = intersect(getResultVars(), allResults);
-        boolean projecting = results.size() != allResults.size();
-        Set<String> inputs = intersect(getInputVars(), unionInputs(list));
-
-        return new JoinNode(l, r, joinVars, results, projecting, inputs, getCardinality(l, r));
+        Set<String> joinVars = intersect(l.getPublicVars(), r.getPublicVars(), getJoinVars());
+        return builder(l, r).addJoinVars(joinVars).build();
     }
 
     private static @Nonnull Cardinality getCardinality(@Nonnull PlanNode l, @Nonnull PlanNode r) {

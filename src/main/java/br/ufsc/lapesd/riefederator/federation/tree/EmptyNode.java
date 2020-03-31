@@ -6,63 +6,95 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.Solution;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.lang.ref.SoftReference;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 public class EmptyNode extends AbstractPlanNode {
     private @Nullable CQuery query;
+    private Set<String> allVars, resultVars, reqInputs, optInputs;
 
     public EmptyNode(@Nonnull Collection<String> resultVars) {
-        this(resultVars, emptySet());
+        this(resultVars, emptySet(), emptySet());
     }
 
-    public EmptyNode(@Nonnull Collection<String> resultVars,
-                     @Nonnull Collection<String> inputVars) {
-        this(resultVars, resultVars, inputVars);
+    public EmptyNode(@Nonnull Collection<String> allVars,
+                     @Nonnull Collection<String> reqInputVars,
+                     @Nonnull Collection<String> optInputVars) {
+        this(allVars, allVars, reqInputVars, optInputVars);
     }
 
     public EmptyNode(@Nonnull Collection<String> allVars,
                      @Nonnull Collection<String> resultVars,
-                     @Nonnull Collection<String> inputVars) {
-        super(allVars, resultVars, resultVars.size() < allVars.size(),
-              inputVars, emptyList(), Cardinality.EMPTY);
+                     @Nonnull Collection<String> reqInputVars,
+                     @Nonnull Collection<String> optInputVars) {
+        super(Cardinality.EMPTY, null);
+        this.allVars = ImmutableSet.copyOf(allVars);
+        this.resultVars = ImmutableSet.copyOf(resultVars);
+        this.reqInputs = ImmutableSet.copyOf(reqInputVars);
+        this.optInputs = ImmutableSet.copyOf(optInputVars);
+        assert resultVars.size() <= allVars.size();
+        assert reqInputVars.size() <= allVars.size();
+        assert optInputVars.size() <= allVars.size();
+        assert allVars.containsAll(resultVars);
+        assert allVars.containsAll(reqInputVars);
+        assert allVars.containsAll(optInputVars);
+        assertAllInvariants();
     }
 
     public EmptyNode(@Nonnull CQuery query) {
-        this(query.streamTerms(Var.class).map(Var::getName).collect(toSet()));
+        this(query.getVars().stream().map(Var::getName).collect(toSet()));
         this.query = query;
     }
 
     @Override
+    public @Nonnull Set<String> getAllVars() {
+        return allVars;
+    }
+
+    @Override
+    public @Nonnull Set<String> getResultVars() {
+        return resultVars;
+    }
+
+    @Override
+    public @Nonnull Set<String> getRequiredInputVars() {
+        return reqInputs;
+    }
+
+    @Override
+    public @Nonnull Set<String> getOptionalInputVars() {
+        return optInputs;
+    }
+
+    @Override
     public @Nonnull Set<Triple> getMatchedTriples() {
-        Set<Triple> strong = matchedTriples.get();
-        if (strong == null) {
-            strong = query != null ? query.getMatchedTriples() : emptySet();
-            matchedTriples = new SoftReference<>(strong);
-        }
-        return strong;
+        return query == null ? emptySet() : query.getMatchedTriples();
     }
 
     @Override
     public @Nonnull
     AbstractPlanNode createBound(@Nonnull Solution solution) {
         Collection<String> names = solution.getVarNames();
-        return new EmptyNode(setMinus(getResultVars(), names), setMinus(getInputVars(), names));
+        Set<String> resultVars = setMinus(getResultVars(), names);
+        Set<String> reqInputs = setMinus(getRequiredInputVars(), names);
+        Set<String> optInputs = setMinus(getOptionalInputVars(), names);
+        EmptyNode bound = new EmptyNode(resultVars, reqInputs, optInputs);
+        bound.addBoundFiltersFrom(getFilers(), solution);
+        return bound;
     }
 
     @Override
-    public @Nonnull EmptyNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
-            throws IllegalArgumentException {
+    public @Nonnull EmptyNode
+    replacingChildren(@Nonnull Map<PlanNode, PlanNode> map) throws IllegalArgumentException {
         Preconditions.checkArgument(map.isEmpty());
         return this;
     }

@@ -146,7 +146,7 @@ public class TreeUtilsTest implements TestContext {
     public void testIntersectResults(@Nonnull Collection<PlanNode> list,
                                      @Nonnull Collection<String> expected, boolean dropExpected) {
         AtomicBoolean dropped = new AtomicBoolean();
-        Set<String> actual = TreeUtils.intersectResults(list, dropped);
+        Set<String> actual = TreeUtils.intersect(list, PlanNode::getResultVars, dropped);
         assertEquals(actual, new HashSet<>(expected));
         assertEquals(dropped.get(), dropExpected);
     }
@@ -174,7 +174,8 @@ public class TreeUtilsTest implements TestContext {
     @Test(dataProvider = "unionResultsData")
     public void testUnionResults(@Nonnull Collection<PlanNode> list,
                                  @Nonnull Collection<String> expected) {
-        assertEquals(TreeUtils.unionResults(list), new HashSet<>(expected));
+
+        assertEquals(TreeUtils.union(list, PlanNode::getResultVars), new HashSet<>(expected));
     }
 
     @Test
@@ -217,19 +218,4 @@ public class TreeUtilsTest implements TestContext {
                 new Object[]{xInYZOut, xyInZOut, emptySet(), emptyList()},
         };
     }
-
-    @Test(dataProvider = "joinVarsData")
-    public void testJoinVars(@Nonnull PlanNode l, @Nonnull PlanNode r,
-                             @Nonnull Collection<String> join, @Nonnull Collection<String> pending){
-        assertEquals(TreeUtils.joinVars(l, r), new HashSet<>(join));
-        assertEquals(TreeUtils.joinVars(r, l), new HashSet<>(join));
-
-        Set<String> actualPending = new HashSet<>();
-        assertEquals(TreeUtils.joinVars(l, r, actualPending), new HashSet<>(join));
-        assertEquals(actualPending, new HashSet<>(pending));
-
-        assertEquals(TreeUtils.joinVars(r, l, actualPending), new HashSet<>(join));
-        assertEquals(actualPending, new HashSet<>(pending));
-    }
-
 }

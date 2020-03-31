@@ -19,7 +19,6 @@ import static java.util.Collections.singletonList;
 import static java.util.Spliterator.DISTINCT;
 import static java.util.Spliterator.NONNULL;
 import static java.util.Spliterators.spliteratorUnknownSize;
-import static java.util.stream.Stream.concat;
 
 public class TreeUtils {
     public static boolean isTree(@Nonnull PlanNode node) {
@@ -144,38 +143,40 @@ public class TreeUtils {
         return set;
     }
 
-    public static @Nonnull Set<String> intersectInputs(@Nonnull Collection<PlanNode> collection) {
-        return intersect(collection, PlanNode::getInputVars, null);
-    }
-    public static @Nonnull Set<String> intersectResults(@Nonnull Collection<PlanNode> collection) {
-        return intersect(collection, PlanNode::getResultVars, null);
-    }
-
-    public static @Nonnull Set<String> intersectInputs(@Nonnull Collection<PlanNode> collection,
-                                                @Nonnull AtomicBoolean dropped) {
-        return intersect(collection, PlanNode::getInputVars, dropped);
-    }
-    public static @Nonnull Set<String> intersectResults(@Nonnull Collection<PlanNode> collection,
-                                                 @Nonnull AtomicBoolean dropped) {
-        return intersect(collection, PlanNode::getResultVars, dropped);
+    public static @Nonnull <T> Set<T> union(@Nonnull Collection<T> a, @Nonnull Collection<T> b,
+                                            @Nonnull Collection<T> c) {
+        HashSet<T> set = new HashSet<>(a.size() + b.size() + c.size());
+        set.addAll(a);
+        set.addAll(b);
+        set.addAll(c);
+        return set;
     }
 
-    public static @Nonnull Set<String> unionInputs(@Nonnull Collection<PlanNode> collection) {
-        return union(collection, PlanNode::getInputVars);
-    }
-
-    public static @Nonnull Set<String> unionResults(@Nonnull Collection<PlanNode> collection) {
-        return union(collection, PlanNode::getResultVars);
-    }
-
-    public static @Nonnull Set<String> unionVars(@Nonnull Collection<PlanNode> collection) {
-        return union(collection, PlanNode::getAllVars);
-    }
 
     public static @Nonnull <T> Set<T> intersect(@Nonnull Collection<T> left, Collection<T> right) {
         Set<T> result = new HashSet<>(left.size() < right.size() ? left : right);
         result.retainAll(left.size() < right.size() ? right : left);
         return result;
+    }
+    public static @Nonnull <T> Set<T> intersect(@Nonnull Collection<T> a,
+                                                @Nonnull Collection<T> b,
+                                                @Nonnull Collection<T> c) {
+        Set<T> result = new HashSet<>(a);
+        result.retainAll(b);
+        result.retainAll(c);
+        return result;
+    }
+
+    public static @Nonnull <T, I>
+    Set<T> intersect(@Nonnull Collection<I> input,
+                     @Nonnull Function<I, ? extends Collection<T>> getter) {
+        if (input.isEmpty())
+            return emptySet();
+        Iterator<I> it = input.iterator();
+        Set<T> set = new HashSet<>(getter.apply(it.next()));
+        while (it.hasNext())
+            set.retainAll(getter.apply(it.next()));
+        return set;
     }
 
     public static @Nonnull <T> Set<T> setMinus(@Nonnull Collection<T> left,
@@ -183,30 +184,6 @@ public class TreeUtils {
         HashSet<T> set = new HashSet<>(left);
         set.removeAll(right);
         return set;
-    }
-
-    public static @Nonnull Set<String> joinVars(@Nonnull PlanNode l, @Nonnull PlanNode r) {
-        return joinVars(l, r, null);
-    }
-
-    public static @Nonnull Set<String> joinVars(@Nonnull PlanNode l, @Nonnull PlanNode r,
-                                                @Nullable Set<String> pendingIns) {
-        Set<String> s = intersect(l.getResultVars(), r.getResultVars());
-        Set<String> lIn = l.getInputVars();
-        Set<String> rIn = r.getInputVars();
-        if (pendingIns != null)
-            pendingIns.clear();
-        if (l.hasInputs() && r.hasInputs()) {
-            if (s.stream().anyMatch(n -> lIn.contains(n) == rIn.contains(n)))
-                return emptySet();
-        } else if (l.hasInputs()) {
-            s.removeIf(n -> !lIn.contains(n));
-        } else if (r.hasInputs()) {
-            s.removeIf(n -> !rIn.contains(n));
-        }
-        if (pendingIns != null)
-            concat(lIn.stream(), rIn.stream()).filter(n -> !s.contains(n)).forEach(pendingIns::add);
-        return s;
     }
 
     public static @Nonnull List<PlanNode> childrenIfMulti(@Nonnull PlanNode node) {

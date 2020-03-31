@@ -8,18 +8,18 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.Capability;
 import br.ufsc.lapesd.riefederator.query.Solution;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.*;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
+import org.apache.jena.graph.Node;
 import org.apache.jena.query.*;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.engine.binding.Binding;
 import org.apache.jena.sparql.engine.binding.BindingHashMap;
 import org.apache.jena.sparql.expr.*;
 import org.apache.jena.sparql.function.FunctionEnvBase;
+import org.apache.jena.sparql.serializer.SerializationContext;
 import org.apache.jena.sparql.syntax.ElementFilter;
 import org.apache.jena.sparql.syntax.ElementGroup;
 import org.apache.jena.sparql.syntax.ElementVisitorBase;
@@ -31,13 +31,11 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.lang.ref.SoftReference;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJenaNode;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
@@ -48,6 +46,10 @@ public class SPARQLFilter implements Modifier {
     private static final Logger logger = LoggerFactory.getLogger(SPARQLFilter.class);
     private static final Pattern varNameRx =
             Pattern.compile("(?:^|\\s|[,(.])[$?]([^ \t.),\n]+)(?:\\s|[,.)]|$)");
+    private static final Set<String> biOps = Sets.newHashSet("<", "<=", "==", "!=", ">=", ">",
+                                                             "+", "-", "*", "/",
+                                                             "&&", "||");
+    private static final Set<String> unOps = Sets.newHashSet("!", "-", "+");
 
     private final boolean required;
     private final @Nonnull String filter;
@@ -76,6 +78,38 @@ public class SPARQLFilter implements Modifier {
 
     /* --- --- --- Constructor & builder --- --- --- */
 
+    protected SPARQLFilter(@Nonnull String filter, @Nonnull Expr expr,
+                           @NotNull ImmutableBiMap<String, Term> var2term, boolean required) {
+        this.filter = innerExpression(filter);
+        this.expr = parseFilterExpr(this.filter);
+        //noinspection Convert2MethodRef
+        Set<String> actualNames = this.expr.getVarsMentioned().stream()
+                .map(v -> v.getVarName()).collect(toSet());
+        if (var2term.isEmpty()) {
+            HashBiMap<String, Term> v2t = HashBiMap.create();
+            for (String name : actualNames)
+                v2t.put(name, new StdVar(name));
+            var2term = ImmutableBiMap.copyOf(v2t);
+        } else if (!var2term.keySet().equals(actualNames)) {
+            if (!actualNames.containsAll(var2term.keySet())) {
+                logger.warn("var2term map mentions variables not appearing in the expression: {}",
+                        TreeUtils.setMinus(actualNames, var2term.keySet()));
+            }
+            if (!var2term.keySet().containsAll(actualNames)) {
+                logger.info("var2term misses some variables in query. Will map to homonyms: {}",
+                        TreeUtils.setMinus(var2term.keySet(), actualNames));
+            }
+            HashBiMap<String, Term> v2t = HashBiMap.create(var2term);
+            for (String name : actualNames) {
+                if (!v2t.containsKey(name))
+                    v2t.put(name, new StdVar(name));
+            }
+            var2term = ImmutableBiMap.copyOf(v2t);
+        }
+        this.var2term = var2term;
+        this.required = required;
+    }
+
     /**
      * Create a new instance from the filter expression (e.g., "x" in "FILTER(x)")
      * mapping variable names (not including the $ and ? markers) to {@link Term}s.
@@ -90,34 +124,7 @@ public class SPARQLFilter implements Modifier {
      */
     public SPARQLFilter(@Nonnull String filter,
                         @NotNull ImmutableBiMap<String, Term> var2term, boolean required) {
-        this.filter = innerExpression(filter);
-        this.expr = parseFilterExpr(this.filter);
-        //noinspection Convert2MethodRef
-        Set<String> actualNames = this.expr.getVarsMentioned().stream()
-                                            .map(v -> v.getVarName()).collect(toSet());
-        if (var2term.isEmpty()) {
-            HashBiMap<String, Term> v2t = HashBiMap.create();
-            for (String name : actualNames)
-                v2t.put(name, new StdVar(name));
-            var2term = ImmutableBiMap.copyOf(v2t);
-        } else if (!var2term.keySet().equals(actualNames)) {
-            if (!actualNames.containsAll(var2term.keySet())) {
-                logger.warn("var2term map mentions variables not appearing in the expression: {}",
-                            TreeUtils.setMinus(actualNames, var2term.keySet()));
-            }
-            if (!var2term.keySet().containsAll(actualNames)) {
-                logger.info("var2term misses some variables in query. Will map to homonyms: {}",
-                            TreeUtils.setMinus(var2term.keySet(), actualNames));
-            }
-            HashBiMap<String, Term> v2t = HashBiMap.create(var2term);
-            for (String name : actualNames) {
-                if (!v2t.containsKey(name))
-                    v2t.put(name, new StdVar(name));
-            }
-            var2term = ImmutableBiMap.copyOf(v2t);
-        }
-        this.var2term = var2term;
-        this.required = required;
+        this(innerExpression(filter), parseFilterExpr(innerExpression(filter)), var2term, required);
     }
 
     public SPARQLFilter(@Nonnull String filter,
@@ -218,6 +225,11 @@ public class SPARQLFilter implements Modifier {
 
     /* --- --- --- Getters --- --- --- */
 
+    @VisibleForTesting
+    @Nonnull Expr getExpr() {
+        return expr;
+    }
+
     public @Nonnull String getFilterString() {
         return filter;
     }
@@ -226,7 +238,7 @@ public class SPARQLFilter implements Modifier {
         return "FILTER(" + getFilterString() + ")";
     }
 
-    public @Nonnull ImmutableBiMap<String, Term> getVar2term() {
+    public @Nonnull ImmutableBiMap<String, Term> getVar2Term() {
         return var2term;
     }
 
@@ -260,6 +272,8 @@ public class SPARQLFilter implements Modifier {
         }
         return strong;
     }
+
+    /* --- --- --- Subsummption --- --- --- */
 
     private static class SubsumedVisitor implements ExprVisitor {
         private static final @Nonnull ImmutableSet<String> REL_SYMBOLS
@@ -581,6 +595,80 @@ public class SPARQLFilter implements Modifier {
     public boolean evaluate(@Nonnull Solution solution) {
         ExecutionContext context = getExecutionContext();
         return expr.isSatisfied(toJenaBinding(solution), context.functionEnv);
+    }
+
+    /* --- --- --- Variable Binding --- --- --- */
+
+    private @Nonnull StringBuilder toSPARQLSyntax(@Nonnull Expr expr,
+                                                  @Nonnull StringBuilder builder) {
+        if      (expr instanceof NodeValue) return builder.append(expr.toString());
+        else if (expr instanceof   ExprVar) return builder.append(expr.toString());
+        else if (expr instanceof  ExprNone) return builder;
+        else if (expr instanceof ExprAggregator) {
+            logger.warn("Did not expect aggregator {} within a FILTER()s!", expr);
+            return builder;
+        }
+
+        assert expr instanceof ExprFunction;
+        ExprFunction function = (ExprFunction) expr;
+        String name = function.getOpName();
+        if (name == null)
+            name = function.getFunctionName(new SerializationContext());
+
+        if (function.numArgs() == 2 && biOps.contains(name)) {
+            toSPARQLSyntax(function.getArg(1), builder).append(' ').append(name).append(' ');
+            return toSPARQLSyntax(function.getArg(2), builder);
+        } else if (function.numArgs() == 1 && unOps.contains(name)) {
+            builder.append(name).append('(');
+            return toSPARQLSyntax(function.getArg(1), builder).append(')');
+        } else {
+            builder.append(name).append('(');
+            for (int i = 1; i <= function.numArgs(); i++) {
+                builder.append(function.getArg(i)).append(", ");
+            }
+            if (function.numArgs() > 0)
+                builder.setLength(builder.length()-2);
+            return builder.append(')');
+        }
+    }
+
+    private @Nonnull String toSPARQLSyntax(@Nonnull Expr expr) {
+        return toSPARQLSyntax(expr, new StringBuilder()).toString();
+    }
+
+    public @Nonnull SPARQLFilter bind(@Nonnull Solution solution) {
+        if (getVarTerms().stream().noneMatch(v -> solution.getVarNames().contains(v.getName())))
+            return this; // no change
+
+        ImmutableBiMap<String, Term> v2t = getVar2Term();
+        Set<String> victims = new HashSet<>(v2t.keySet().size());
+        Expr boundExpr = this.expr.applyNodeTransform(n -> {
+            if (!n.isVariable())
+                return n;
+
+            Term term = v2t.get(n.getName());
+            assert term != null;
+            if (!term.isVar()) {
+                victims.add(n.getName());
+                return toJenaNode(term);
+            }
+
+            Node node = toJenaNode(solution.get(term.asVar().getName()));
+            if (node != null) {
+                victims.add(n.getName());
+                return node;
+            }
+            return n;
+        });
+
+        ImmutableBiMap.Builder<String, Term> builder = ImmutableBiMap.builder();
+        for (Map.Entry<String, Term> e : v2t.entrySet()) {
+            String varName = e.getKey();
+            if (!victims.contains(varName))
+                builder.put(varName, e.getValue());
+        }
+        String filterString = toSPARQLSyntax(boundExpr);
+        return new SPARQLFilter(filterString, boundExpr, builder.build(), isRequired());
     }
 
     /* --- --- --- Object methods --- --- --- */

@@ -1,102 +1,98 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
-import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import com.google.common.collect.ImmutableSet;
-import com.google.errorprone.annotations.concurrent.LazyInit;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.lang.ref.SoftReference;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public abstract class AbstractPlanNode implements PlanNode {
-    private @Nonnull Set<String> allVars, resultVars, inputVars;
-    private @Nullable @LazyInit Set<String> strictResultVars = null;
-    private boolean projecting;
-    private @Nonnull List<PlanNode> children;
+    protected @Nullable Set<String> projection;
+    protected @Nullable Set<String> strictResultVarsCache, publicVarsCache, allInputVarsCache;
     private @Nonnull Cardinality cardinality;
     private @Nonnull HashSet<SPARQLFilter> filters = new HashSet<>();
-    protected @Nonnull SoftReference<Set<Triple>> matchedTriples
-            = new SoftReference<>(null);
 
-    protected AbstractPlanNode(@Nonnull Collection<String> allVars,
-                               @Nonnull Collection<String> resultVars, boolean projecting,
-                               @Nonnull Collection<String> inputVars,
-                               @Nonnull List<PlanNode> children,
-                               @Nonnull Cardinality cardinality) {
-        this.allVars = allVars instanceof Set ? (Set<String>)allVars
-                                              : ImmutableSet.copyOf(allVars);
-        this.resultVars = resultVars instanceof Set ? (Set<String>)resultVars
-                                                    : ImmutableSet.copyOf(resultVars);
-        this.inputVars = inputVars instanceof Set ? (Set<String>)inputVars
-                                                  : ImmutableSet.copyOf(inputVars);
-        assert projecting || this.allVars.equals(this.resultVars)
-                : "When not projecting, allVars and resultVars must be equal";
-        checkArgument(allVars.containsAll(resultVars), "There are resultVars not in allVars");
-        checkArgument(allVars.containsAll(inputVars), "There are inputVars not in allVars");
-        this.projecting = projecting;
-        this.children = children;
+    protected AbstractPlanNode(@Nonnull Cardinality cardinality, @Nullable Set<String> projection) {
+        this.projection = projection == null ? null : ImmutableSet.copyOf(projection);
         this.cardinality = cardinality;
     }
 
     @Override
-    public @Nonnull Set<String> getAllVars() {
-        return allVars;
+    public boolean isProjecting() {
+        return projection != null;
     }
 
-    @Override
-    public @Nonnull Set<String> getResultVars() {
-        return resultVars;
+    protected void assertAllInvariants() {
+        if (!getClass().desiredAssertionStatus())
+            return;
+        if (projection != null) {
+            assert isProjecting();
+            assert projection.equals(getResultVars());
+        }
+        assert getPublicVars().containsAll(getResultVars());
+        assert getPublicVars().containsAll(getInputVars());
+        assert getInputVars().containsAll(getRequiredInputVars());
+        assert getInputVars().containsAll(getOptionalInputVars());
+        assert getResultVars().containsAll(getStrictResultVars());
+        assert getStrictResultVars().stream().noneMatch(getInputVars()::contains);
     }
 
     @Override
     public @Nonnull Set<String> getStrictResultVars() {
-        if (inputVars.isEmpty()) return resultVars;
-        if (strictResultVars == null)
-            strictResultVars = TreeUtils.setMinus(resultVars, inputVars);
-        return strictResultVars;
+        if (strictResultVarsCache == null) {
+            if (hasInputs())
+                strictResultVarsCache = TreeUtils.setMinus(getResultVars(), getInputVars());
+            else
+                strictResultVarsCache = getResultVars();
+            assert projection == null || projection.containsAll(strictResultVarsCache);
+        }
+        return strictResultVarsCache;
+    }
+
+    @Override
+    public @Nonnull Set<String> getPublicVars() {
+        if (publicVarsCache == null)
+            publicVarsCache = TreeUtils.union(getResultVars(), getInputVars());
+        return publicVarsCache;
     }
 
     @Override
     public @Nonnull Set<String> getInputVars() {
-        return inputVars;
-    }
-
-    @Override
-    public @Nonnull Set<Triple> getMatchedTriples() {
-        Set<Triple> strong = matchedTriples.get();
-        if (strong == null) {
-            strong = new HashSet<>();
-            for (PlanNode child : getChildren())
-                strong.addAll(child.getMatchedTriples());
-            matchedTriples = new SoftReference<>(strong);
-        }
-        return strong;
+        if (allInputVarsCache == null)
+            allInputVarsCache = TreeUtils.union(getRequiredInputVars(), getOptionalInputVars());
+        return allInputVarsCache;
     }
 
     @Override
     public boolean hasInputs() {
-        return !inputVars.isEmpty();
+        return !getOptionalInputVars().isEmpty() || !getRequiredInputVars().isEmpty();
+    }
+
+    @Override
+    public boolean hasRequiredInputs() {
+        return !getRequiredInputVars().isEmpty();
+    }
+
+    @Override
+    public @Nonnull Set<String> getRequiredInputVars() {
+        return Collections.emptySet();
+    }
+
+    @Override
+    public @Nonnull Set<String> getOptionalInputVars() {
+        return Collections.emptySet();
     }
 
     @Override
     public @Nonnull List<PlanNode> getChildren() {
-        return children;
-    }
-
-    @Override
-    public boolean isProjecting() {
-        return projecting;
+        return Collections.emptyList();
     }
 
     @Override
@@ -119,6 +115,15 @@ public abstract class AbstractPlanNode implements PlanNode {
         return filters;
     }
 
+    @CanIgnoreReturnValue
+    protected boolean addBoundFiltersFrom(@Nonnull Collection<SPARQLFilter> collection,
+                                          @Nonnull Solution solution) {
+        boolean change = false;
+        for (SPARQLFilter filter : collection)
+            change |= addFilter(filter.bind(solution));
+        return change;
+    }
+
     @Override
     public <T extends TermAnnotation>
     boolean forEachTermAnnotation(@Nonnull Class<T> cls, @Nonnull BiConsumer<Term, T> consumer) {
@@ -129,7 +134,7 @@ public abstract class AbstractPlanNode implements PlanNode {
     }
 
     private @Nonnull String getVarNamesStringContent() {
-        Set<String> results = getResultVars(), inputs = getInputVars();
+        Set<String> results = getResultVars(), inputs = getRequiredInputVars();
         if (results.isEmpty() && inputs.isEmpty()) return "";
         StringBuilder builder = new StringBuilder();
         for (String out : results) {
