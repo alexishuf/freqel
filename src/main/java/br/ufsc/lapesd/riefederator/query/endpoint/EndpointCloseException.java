@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.query.error;
+package br.ufsc.lapesd.riefederator.query.endpoint;
 
 public class EndpointCloseException extends RuntimeException {
     public EndpointCloseException(String message) {

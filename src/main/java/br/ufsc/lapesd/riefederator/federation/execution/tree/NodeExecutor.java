@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree;
 
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.results.Results;
 
 import javax.annotation.Nonnull;
 

@@ -1,6 +1,6 @@
-package br.ufsc.lapesd.riefederator.query.impl;
+package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.errorprone.annotations.OverridingMethodsMustInvokeSuper;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.commons.lang3.builder.EqualsBuilder;

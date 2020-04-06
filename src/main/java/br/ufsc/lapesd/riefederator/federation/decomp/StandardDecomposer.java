@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import org.apache.commons.lang3.tuple.ImmutablePair;

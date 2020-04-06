@@ -4,7 +4,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 

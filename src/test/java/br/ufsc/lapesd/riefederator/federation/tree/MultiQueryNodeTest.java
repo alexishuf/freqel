@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import com.google.common.collect.Sets;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;

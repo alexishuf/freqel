@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
 

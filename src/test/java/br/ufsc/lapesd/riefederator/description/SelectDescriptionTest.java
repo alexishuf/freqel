@@ -20,7 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import static br.ufsc.lapesd.riefederator.model.term.std.StdLit.fromUnescaped;
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;

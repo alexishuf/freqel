@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.modifiers;
 
-import br.ufsc.lapesd.riefederator.query.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;

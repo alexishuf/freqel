@@ -1,9 +1,12 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.parse;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,14 +28,16 @@ public abstract class CQueryContext {
         return Arrays.asList(objects);
     }
 
-    public @Nonnull CQuery build() {
+    public @Nonnull
+    CQuery build() {
         List<Object> list = queryData();
         return createQuery(list.toArray());
     }
 
     public static class TermAnnotationPair {
         private final @Nonnull Term term;
-        private final @Nonnull TermAnnotation annotation;
+        private final @Nonnull
+        TermAnnotation annotation;
 
         public TermAnnotationPair(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
             this.term = term;

@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import com.google.common.collect.Sets;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.isAcyclic;
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;

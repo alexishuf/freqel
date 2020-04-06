@@ -1,10 +1,10 @@
-package br.ufsc.lapesd.riefederator.query.impl;
+package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
-import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.ResultsList;
-import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.ResultsList;
 
 import javax.annotation.Nonnull;
 import java.util.Set;

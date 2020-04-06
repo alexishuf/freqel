@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.endpoint;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

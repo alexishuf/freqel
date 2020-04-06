@@ -2,10 +2,10 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.HashJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.Solution;
-import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
-import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

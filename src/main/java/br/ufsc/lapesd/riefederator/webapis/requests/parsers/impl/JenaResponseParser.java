@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl;
 
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
-import br.ufsc.lapesd.riefederator.query.CQEndpoint;
-import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestInfo;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyReader;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.ResponseParser;

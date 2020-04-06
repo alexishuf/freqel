@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.modifiers;
 
-import br.ufsc.lapesd.riefederator.query.Capability;
-import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

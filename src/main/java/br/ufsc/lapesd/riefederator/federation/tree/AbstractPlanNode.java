@@ -2,9 +2,9 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 

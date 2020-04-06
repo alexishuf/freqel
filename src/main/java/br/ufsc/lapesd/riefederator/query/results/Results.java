@@ -1,6 +1,6 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.results;
 
-import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.NotThreadSafe;
@@ -21,7 +21,8 @@ public interface Results extends Iterator<Solution>, AutoCloseable {
     /**
      * Get the cardinality of this iterator.
      */
-    @Nonnull Cardinality getCardinality();
+    @Nonnull
+    Cardinality getCardinality();
 
     /**
      * Set of variable names (the x in ?x) that {@link Solution}s from next() may contain.

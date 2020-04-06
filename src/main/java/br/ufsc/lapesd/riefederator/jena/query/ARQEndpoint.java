@@ -3,14 +3,19 @@ package br.ufsc.lapesd.riefederator.jena.query;
 import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
-import br.ufsc.lapesd.riefederator.query.*;
-import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
-import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
-import br.ufsc.lapesd.riefederator.query.impl.IteratorResults;
-import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.IteratorResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.collections4.iterators.TransformIterator;
@@ -114,7 +119,8 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     @Override
-    public @Nonnull Results query(@Nonnull CQuery query) {
+    public @Nonnull
+    Results query(@Nonnull CQuery query) {
         ModifierUtils.check(this, query.getModifiers());
         PrefixDict dict = query.getPrefixDict(StdPrefixDict.STANDARD);
         SPARQLString sparql = new SPARQLString(query, dict, query.getModifiers());

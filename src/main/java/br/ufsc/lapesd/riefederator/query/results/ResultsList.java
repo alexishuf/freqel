@@ -1,6 +1,5 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.results;
 
-import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

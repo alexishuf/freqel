@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation;
 
 import br.ufsc.lapesd.riefederator.description.Description;
-import br.ufsc.lapesd.riefederator.query.CQEndpoint;
-import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
 

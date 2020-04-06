@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.jena.query;
 
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.query.impl.AbstractSolution;
+import br.ufsc.lapesd.riefederator.query.results.impl.AbstractSolution;
 import org.apache.jena.query.QuerySolution;
 import org.apache.jena.query.QuerySolutionMap;
 import org.apache.jena.rdf.model.RDFNode;

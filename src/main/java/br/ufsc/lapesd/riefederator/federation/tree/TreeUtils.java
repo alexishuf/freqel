@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;

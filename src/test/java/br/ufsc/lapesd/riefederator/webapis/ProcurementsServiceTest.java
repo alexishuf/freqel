@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.webapis;
 
-import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import com.google.common.collect.Sets;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -16,7 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toSet;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;

@@ -10,9 +10,14 @@ import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinPathsPlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.query.*;
-import br.ufsc.lapesd.riefederator.query.impl.*;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
@@ -61,7 +66,8 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     }
 
     @Override
-    public @Nonnull Results query(@Nonnull CQuery query) {
+    public @Nonnull
+    Results query(@Nonnull CQuery query) {
         MapSolution.Builder b = MapSolution.builder();
         boolean hasAtomAnnotations =
                 query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {

@@ -1,7 +1,9 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.endpoint;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.results.Results;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;

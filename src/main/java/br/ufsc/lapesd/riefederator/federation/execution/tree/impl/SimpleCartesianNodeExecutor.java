@@ -4,9 +4,13 @@ import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.query.*;
-import br.ufsc.lapesd.riefederator.query.impl.CartesianResults;
-import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsList;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.CartesianResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -32,7 +36,8 @@ public class SimpleCartesianNodeExecutor extends SimpleNodeExecutor implements C
     }
 
     @Override
-    public @Nonnull Results execute(@Nonnull CartesianNode node) throws IllegalArgumentException {
+    public @Nonnull
+    Results execute(@Nonnull CartesianNode node) throws IllegalArgumentException {
         if (node.getChildren().isEmpty())
             return new CollectionResults(emptyList(), node.getResultVars());
         PlanExecutor executor = getPlanExecutor();

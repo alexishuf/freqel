@@ -2,8 +2,12 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.NamedFunction;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -12,7 +16,7 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.function.Function;
 
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;

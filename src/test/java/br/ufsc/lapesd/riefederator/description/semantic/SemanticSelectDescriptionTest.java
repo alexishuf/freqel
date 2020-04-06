@@ -24,7 +24,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;

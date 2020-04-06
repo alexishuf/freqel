@@ -4,13 +4,14 @@ import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.parse.CQueryContext;
 import com.google.errorprone.annotations.Immutable;
 import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
 
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;

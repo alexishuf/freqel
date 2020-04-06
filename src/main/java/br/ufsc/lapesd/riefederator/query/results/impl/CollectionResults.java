@@ -1,8 +1,8 @@
-package br.ufsc.lapesd.riefederator.query.impl;
+package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 

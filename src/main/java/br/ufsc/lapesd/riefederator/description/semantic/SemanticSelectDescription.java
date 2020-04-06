@@ -3,9 +3,9 @@ package br.ufsc.lapesd.riefederator.description.semantic;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.query.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.MissingCapabilityException;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.MissingCapabilityException;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 
 import javax.annotation.Nonnull;

@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.parsers;
 
-import br.ufsc.lapesd.riefederator.query.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestInfo;
 import com.google.errorprone.annotations.Immutable;
 

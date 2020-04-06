@@ -1,7 +1,13 @@
-package br.ufsc.lapesd.riefederator.query.impl;
+package br.ufsc.lapesd.riefederator.query.endpoint.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.query.*;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 
 import javax.annotation.Nonnull;
 import java.util.Collections;

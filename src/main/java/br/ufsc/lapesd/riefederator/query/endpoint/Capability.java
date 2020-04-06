@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.endpoint;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
@@ -11,7 +11,8 @@ public enum  Capability {
     SPARQL_FILTER;
 
     @CanIgnoreReturnValue
-    public @Nonnull TPEndpoint
+    public @Nonnull
+    TPEndpoint
     requireFrom(@Nonnull TPEndpoint ep) throws MissingCapabilityException {
         if (!ep.hasCapability(this))
             throw new MissingCapabilityException(this, ep);

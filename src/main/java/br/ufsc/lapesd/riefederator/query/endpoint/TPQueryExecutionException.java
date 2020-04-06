@@ -1,7 +1,6 @@
-package br.ufsc.lapesd.riefederator.query.error;
+package br.ufsc.lapesd.riefederator.query.endpoint;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.query.TPEndpoint;
 
 import javax.annotation.Nonnull;
 

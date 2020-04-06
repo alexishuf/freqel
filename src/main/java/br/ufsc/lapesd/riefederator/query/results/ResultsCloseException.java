@@ -1,6 +1,4 @@
-package br.ufsc.lapesd.riefederator.query.error;
-
-import br.ufsc.lapesd.riefederator.query.Results;
+package br.ufsc.lapesd.riefederator.query.results;
 
 import javax.annotation.Nonnull;
 

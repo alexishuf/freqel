@@ -1,10 +1,12 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.endpoint;
 
 import javax.annotation.Nonnull;
 
 public class MissingCapabilityException extends RuntimeException {
-    private @Nonnull Capability capability;
-    private @Nonnull TPEndpoint endpoint;
+    private @Nonnull
+    Capability capability;
+    private @Nonnull
+    TPEndpoint endpoint;
 
     public MissingCapabilityException(@Nonnull Capability cap,
                                       @Nonnull TPEndpoint ep) {

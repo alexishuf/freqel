@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.tree.proto;
 
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;

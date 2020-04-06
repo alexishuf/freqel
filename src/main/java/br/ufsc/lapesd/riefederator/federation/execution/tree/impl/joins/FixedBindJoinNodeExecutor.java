@@ -4,7 +4,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.results.Results;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;

@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.EstimatePolicy;
-import br.ufsc.lapesd.riefederator.query.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 

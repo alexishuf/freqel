@@ -7,13 +7,13 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Capability;
-import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
-import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import com.google.common.collect.Sets;
 import org.apache.jena.vocabulary.XSD;
@@ -21,8 +21,8 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.annotateTerm;
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.annotateTerm;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;

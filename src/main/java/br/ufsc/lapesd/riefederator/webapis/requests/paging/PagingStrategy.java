@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.paging;
 
-import br.ufsc.lapesd.riefederator.query.CQEndpoint;
-import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;

@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.query.error;
+package br.ufsc.lapesd.riefederator.query.endpoint;
 
 public class QueryExecutionException extends RuntimeException {
     public QueryExecutionException(String message) {

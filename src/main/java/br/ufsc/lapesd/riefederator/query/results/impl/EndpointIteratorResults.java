@@ -1,9 +1,14 @@
-package br.ufsc.lapesd.riefederator.query.impl;
+package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.query.*;
-import br.ufsc.lapesd.riefederator.query.error.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +92,8 @@ public class EndpointIteratorResults implements Results {
     }
 
     @Override
-    public @Nonnull Solution next() {
+    public @Nonnull
+    Solution next() {
         if (!hasNext())
             throw new NoSuchElementException();
 

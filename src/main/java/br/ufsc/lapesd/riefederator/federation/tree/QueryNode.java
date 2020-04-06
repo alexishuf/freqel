@@ -3,10 +3,14 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.query.*;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import org.jetbrains.annotations.Contract;
 
@@ -20,7 +24,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toSet;
 
 public class QueryNode extends AbstractPlanNode {
-    private final @Nonnull TPEndpoint endpoint;
+    private final @Nonnull
+    TPEndpoint endpoint;
     private final @Nonnull CQuery query;
     private @Nullable Set<String> allVars, resultVars, reqInputs, optInputs;
 

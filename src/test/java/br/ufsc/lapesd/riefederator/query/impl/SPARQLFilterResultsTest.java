@@ -1,9 +1,13 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.TestContext;
-import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.Solution;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.IteratorResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

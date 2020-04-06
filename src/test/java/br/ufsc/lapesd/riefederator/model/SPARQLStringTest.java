@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJena;
 import static br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict.EMPTY;
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;

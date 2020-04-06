@@ -2,6 +2,9 @@ package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;

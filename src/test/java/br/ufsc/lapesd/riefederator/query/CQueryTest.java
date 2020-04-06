@@ -24,8 +24,8 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static br.ufsc.lapesd.riefederator.query.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.query.JoinType.OBJ_SUBJ;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;

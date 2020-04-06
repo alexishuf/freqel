@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.execution;
 
 import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
-import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.results.Results;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;

@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
-import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import javax.annotation.Nonnull;

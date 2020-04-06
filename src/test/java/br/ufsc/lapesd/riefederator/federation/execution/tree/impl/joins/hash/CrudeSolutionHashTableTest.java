@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.query.Solution;
-import br.ufsc.lapesd.riefederator.query.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import com.google.common.collect.Sets;
 import org.testng.annotations.Test;
 

@@ -1,6 +1,11 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.endpoint;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.EstimatePolicy;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.WebApiEndpoint;
 import org.jetbrains.annotations.Contract;

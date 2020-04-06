@@ -4,7 +4,11 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
-import br.ufsc.lapesd.riefederator.query.*;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.MissingCapabilityException;
+import br.ufsc.lapesd.riefederator.query.results.Results;
 import org.apache.jena.vocabulary.RDF;
 
 import javax.annotation.Nonnull;
@@ -21,7 +25,8 @@ import static java.util.Objects.requireNonNull;
 public class SelectDescription implements Description {
     protected static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
 
-    private final @Nonnull CQEndpoint endpoint;
+    private final @Nonnull
+    CQEndpoint endpoint;
     private final boolean fetchClasses;
     protected @Nullable Set<Term> predicates, classes;
 

@@ -8,10 +8,10 @@ import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
 import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.impl.CollectionResults;
-import br.ufsc.lapesd.riefederator.query.impl.ParallelResults;
-import br.ufsc.lapesd.riefederator.query.impl.ProjectingResults;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.ParallelResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;

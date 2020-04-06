@@ -3,7 +3,14 @@ package br.ufsc.lapesd.riefederator.query.impl;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.query.*;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.EndpointIteratorResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import com.google.common.collect.Sets;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -23,7 +30,8 @@ import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
 public class EndpointIteratorResultsTest implements TestContext {
-    private @Nullable CQEndpoint e1, e2, rdf1, rdf2;
+    private @Nullable
+    CQEndpoint e1, e2, rdf1, rdf2;
 
     private ARQEndpoint createEndpoint(String resourcePath) {
         Model model = ModelFactory.createDefaultModel();

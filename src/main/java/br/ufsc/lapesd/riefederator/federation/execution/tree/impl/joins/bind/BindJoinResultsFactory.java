@@ -2,8 +2,8 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind;
 
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.query.Results;
-import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;

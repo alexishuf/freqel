@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

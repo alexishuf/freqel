@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.model;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
@@ -19,8 +19,8 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import static br.ufsc.lapesd.riefederator.query.Capability.ASK;
-import static br.ufsc.lapesd.riefederator.query.Capability.PROJECTION;
+import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.ASK;
+import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.PROJECTION;
 
 public class SPARQLString {
     public enum Type {

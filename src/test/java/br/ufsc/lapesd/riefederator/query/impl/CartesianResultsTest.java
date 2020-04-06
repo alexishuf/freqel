@@ -2,7 +2,10 @@ package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.Solution;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.CartesianResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import com.google.common.collect.Sets;
 import org.testng.annotations.Test;
 
@@ -17,7 +20,8 @@ import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
 public class CartesianResultsTest {
-    private @Nonnull CollectionResults createResults(int count, String... varNames) {
+    private @Nonnull
+    CollectionResults createResults(int count, String... varNames) {
         return new CollectionResults(createSolutions(count, varNames),
                                      Sets.newHashSet(varNames));
     }

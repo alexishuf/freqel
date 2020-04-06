@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.query.Results;
+import br.ufsc.lapesd.riefederator.query.results.Results;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
