@@ -67,8 +67,9 @@ public class SPARQLFilterTest implements TestContext {
             assertTrue(annotation.getSparqlFilter().matches("^FILTER(.*)$"));
             assertFalse(annotation.getFilterString().matches("^FILTER(.*)$"));
         } else {
+            @SuppressWarnings("MismatchedReadAndWriteOfArray") SPARQLFilter[] dummy = {null};
             expectThrows(FilterParsingException.class,
-                    () -> SPARQLFilter.builder(filter).map(var, term).build());
+                    () -> dummy[0] = SPARQLFilter.builder(filter).map(var, term).build());
         }
     }
 

@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.JoinType.Position.OBJ;
 import static br.ufsc.lapesd.riefederator.query.JoinType.Position.SUBJ;
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.builderWithExpectedSize;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
@@ -109,7 +110,7 @@ public class CQuery implements  List<Triple> {
                 if ((fail[0] |= !triples.contains(t)))
                     logger.error("Foreign Triple {} has annotation {} in {}!", t, a, CQuery.this);
             });
-            Preconditions.checkArgument(!fail[0], "Foreign annotations (see the logger output)");
+            checkArgument(!fail[0], "Foreign annotations (see the logger output)");
         }
         t2triple = new SoftReference<>(null);
         s2triple = new SoftReference<>(null);
@@ -359,8 +360,14 @@ public class CQuery implements  List<Triple> {
         @CheckReturnValue
         public @Nonnull CQuery build() {
             ImmutableSet.Builder<Modifier> b = ImmutableSet.builder();
-            if (projection != null)
-                b.add(projection.build());
+            if (projection != null) {
+                Set<String> allVars = list.stream().flatMap(Triple::stream).filter(Term::isVar)
+                                                   .map(t -> t.asVar().getName()).collect(toSet());
+                checkArgument(allVars.containsAll(projection.getMutableSet()),
+                              "There are projected vars which are not results");
+                if (projection.getMutableSet().size() != allVars.size())
+                    b.add(projection.build()); //only add real projections
+            }
             if (distinct)
                 b.add(distinctRequired ? Distinct.REQUIRED : Distinct.ADVISED);
             if (ask)
@@ -825,9 +832,9 @@ public class CQuery implements  List<Triple> {
         JoinClosureWalker walker = new JoinClosureWalker(policy);
         if (triple != null) {
             int tripleIdx = list.indexOf(triple);
-            Preconditions.checkArgument(tripleIdx >= 0, "triple must be in query");
+            checkArgument(tripleIdx >= 0, "triple must be in query");
             walker.ban(tripleIdx);
-            Preconditions.checkArgument(triple.contains(joinTerm), "joinTerm must be in triple");
+            checkArgument(triple.contains(joinTerm), "joinTerm must be in triple");
         }
 
         walker.visit(joinTerm);
@@ -852,7 +859,7 @@ public class CQuery implements  List<Triple> {
         if (triples.isEmpty()) return CQuery.EMPTY;
         JoinClosureWalker walker = new JoinClosureWalker(policy);
         List<Integer> indices = triples.stream().map(list::indexOf).collect(Collectors.toList());
-        Preconditions.checkArgument(indices.stream().allMatch(i -> i >= 0),
+        checkArgument(indices.stream().allMatch(i -> i >= 0),
                 "There are triples which are not part of this CQuery");
         if (!include)
             indices.forEach(walker::ban);

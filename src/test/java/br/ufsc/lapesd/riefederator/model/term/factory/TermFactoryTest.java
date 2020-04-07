@@ -95,6 +95,30 @@ public class TermFactoryTest {
     }
 
     @Test(dataProvider = "factoriesData")
+    public void testCreateVar(Supplier<TermFactory> supplier) {
+        TermFactory f = supplier.get();
+        if (!f.canCreateVar())
+            return; //silently skip
+        Var x = f.createVar("x");
+        Var y = f.createVar("y");
+        Var x2 = f.createVar("x");
+
+        assertTrue(x.isVar());
+        assertEquals(x.getType(), Term.Type.VAR);
+
+        assertFalse(x.isBlank());
+        assertFalse(x.isURI());
+        assertFalse(x.isRes());
+        assertFalse(x.isLiteral());
+
+        assertSame(x.asVar(), x);
+
+        assertEquals(x, x2);
+        assertNotEquals(x, y);
+        assertEquals(x.getName(), "x");
+    }
+
+    @Test(dataProvider = "factoriesData")
     public void testURIEquality(Supplier<TermFactory> supplier) {
         TermFactory f = supplier.get();
         URI a = f.createURI("http://example.org/ns#1");

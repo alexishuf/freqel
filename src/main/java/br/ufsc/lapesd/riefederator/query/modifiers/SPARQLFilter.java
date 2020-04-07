@@ -10,6 +10,8 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.jena.graph.Node;
@@ -78,8 +80,8 @@ public class SPARQLFilter implements Modifier {
 
     /* --- --- --- Constructor & builder --- --- --- */
 
-    protected SPARQLFilter(@Nonnull String filter, @Nonnull Expr expr,
-                           @NotNull ImmutableBiMap<String, Term> var2term, boolean required) {
+    SPARQLFilter(@Nonnull String filter, @Nonnull Expr expr,
+                 @NotNull ImmutableBiMap<String, Term> var2term, boolean required) {
         this.filter = innerExpression(filter);
         this.expr = parseFilterExpr(this.filter);
         //noinspection Convert2MethodRef
@@ -123,7 +125,7 @@ public class SPARQLFilter implements Modifier {
      *                 then the mediator itself will run the filter over results from the endpoint.
      */
     public SPARQLFilter(@Nonnull String filter,
-                        @NotNull ImmutableBiMap<String, Term> var2term, boolean required) {
+                        @Nonnull ImmutableBiMap<String, Term> var2term, boolean required) {
         this(innerExpression(filter), parseFilterExpr(innerExpression(filter)), var2term, required);
     }
 
@@ -172,13 +174,19 @@ public class SPARQLFilter implements Modifier {
 
     public static class Builder {
         protected boolean required = true;
-        protected @Nonnull String filter;
+        protected @Nullable String filter;
+        protected @Nullable Expr expr;
         protected @Nonnull BiMap<String, Term> var2term = HashBiMap.create();
 
         public Builder(@Nonnull String filter) {
             this.filter = filter;
         }
 
+        public Builder(@Nonnull Expr expr) {
+            this.expr = expr;
+        }
+
+        @CanIgnoreReturnValue
         public @Nonnull Builder map(@Nonnull String var, @Nonnull Term term) {
             Term old = var2term.getOrDefault(var, null);
             if (old != null && old != term)
@@ -186,29 +194,48 @@ public class SPARQLFilter implements Modifier {
             var2term.put(var, term);
             return this;
         }
+
+        @CanIgnoreReturnValue
         public @Nonnull Builder map(@Nonnull Var var) {
             return map(var.getName(), var);
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull Builder setRequired(boolean required) {
             this.required = required;
             return this;
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull Builder advise() {
             return setRequired(true);
         }
 
+        @CheckReturnValue
         public @Nonnull SPARQLFilter build() {
-            return new SPARQLFilter(filter, ImmutableBiMap.copyOf(var2term), required);
+            if (filter != null) {
+                assert expr == null;
+                return new SPARQLFilter(filter, ImmutableBiMap.copyOf(var2term), required);
+            } else if (expr != null) {
+                String sparql = toSPARQLSyntax(expr);
+                return new SPARQLFilter(sparql, expr, ImmutableBiMap.copyOf(var2term), required);
+            } else {
+                throw new IllegalStateException("Builder has neither filter nor expr");
+            }
         }
     }
 
     public static @Nonnull Builder builder(@Nonnull String filter) {
         return new Builder(filter);
     }
+    public static @Nonnull Builder builder(@Nonnull Expr expr) {
+        return new Builder(expr);
+    }
     public static @Nonnull SPARQLFilter build(@Nonnull String filter) {
         return new  SPARQLFilter(filter, ImmutableBiMap.of(), true);
+    }
+    public static @Nonnull SPARQLFilter build(@Nonnull Expr expr) {
+        return new  SPARQLFilter(toSPARQLSyntax(expr), expr, ImmutableBiMap.of(), true);
     }
 
     /* --- --- --- Interface --- --- --- */
@@ -599,8 +626,8 @@ public class SPARQLFilter implements Modifier {
 
     /* --- --- --- Variable Binding --- --- --- */
 
-    private @Nonnull StringBuilder toSPARQLSyntax(@Nonnull Expr expr,
-                                                  @Nonnull StringBuilder builder) {
+    private static  @Nonnull StringBuilder toSPARQLSyntax(@Nonnull Expr expr,
+                                                          @Nonnull StringBuilder builder) {
         if      (expr instanceof NodeValue) return builder.append(expr.toString());
         else if (expr instanceof   ExprVar) return builder.append(expr.toString());
         else if (expr instanceof  ExprNone) return builder;
@@ -632,7 +659,7 @@ public class SPARQLFilter implements Modifier {
         }
     }
 
-    private @Nonnull String toSPARQLSyntax(@Nonnull Expr expr) {
+    private static  @Nonnull String toSPARQLSyntax(@Nonnull Expr expr) {
         return toSPARQLSyntax(expr, new StringBuilder()).toString();
     }
 

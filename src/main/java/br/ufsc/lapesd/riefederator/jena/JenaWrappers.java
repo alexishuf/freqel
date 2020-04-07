@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.jena;
 
 import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import br.ufsc.lapesd.riefederator.jena.model.term.*;
+import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.*;
 import org.apache.jena.datatypes.RDFDatatype;
@@ -192,6 +193,25 @@ public class JenaWrappers {
 
         String msg = "Cannot convert Term of class " + term.getClass() + " to Jena";
         throw new UnsupportedOperationException(msg);
+    }
+
+    /* ~~~~~~~~~ fromJena(Triple) fromJena(Statement) ~~~~~~~~~ */
+
+    @Contract(value = "null -> null; !null -> new", pure = true)
+    public static Triple fromJena(org.apache.jena.graph.Triple t) {
+        if (t == null) return null;
+        JenaTerm s = fromJena(t.getSubject());
+        JenaTerm p = fromJena(t.getPredicate());
+        JenaTerm o = fromJena(t.getObject());
+        return new Triple(s, p, o);
+    }
+
+    @Contract(value = "null -> null; !null -> new", pure = true)
+    public static Triple fromJena(Statement statement) {
+        JenaRes s = fromJena(statement.getSubject());
+        JenaRes p = fromJena(statement.getPredicate());
+        JenaTerm o = fromJena(statement.getObject());
+        return new Triple(s, p, o);
     }
 
     /* ~~~~~~~~~ fromJena(PrefixMapping) ~~~~~~~~~ */

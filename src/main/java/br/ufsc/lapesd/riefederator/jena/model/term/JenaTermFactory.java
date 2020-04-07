@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
+import org.apache.jena.graph.NodeFactory;
 
 import javax.annotation.Nonnull;
 
@@ -45,11 +46,11 @@ public class JenaTermFactory implements TermFactory {
 
     @Override
     public @Nonnull Var createVar(@Nonnull String name) {
-        throw new UnsupportedOperationException("Jena does not allow variables in RDF");
+        return (JenaVar)fromJena(NodeFactory.createVariable(name));
     }
 
     @Override
     public boolean canCreateVar() {
-        return false;
+        return true;
     }
 }

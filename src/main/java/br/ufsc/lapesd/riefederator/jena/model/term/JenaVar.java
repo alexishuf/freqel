@@ -12,13 +12,23 @@ public class JenaVar extends JenaTerm implements Var {
     }
 
     @Override
-    public String getName() {
+    public @Nonnull String getName() {
         return graphNode.getName();
     }
 
     @Override
-    public Type getType() {
+    public @Nonnull Type getType() {
         return Type.VAR;
+    }
+
+    @Override
+    public int hashCode() {
+        return getName().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return (obj instanceof Var) && getName().equals(((Var) obj).getName());
     }
 
     @Override

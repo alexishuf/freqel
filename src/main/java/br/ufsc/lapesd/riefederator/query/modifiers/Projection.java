@@ -7,6 +7,7 @@ import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -26,12 +27,15 @@ public class Projection implements Modifier {
     }
 
     public static class Builder {
-        private ImmutableSet.Builder<String> builder;
+        private HashSet<String> set;
         private boolean required = false;
 
         public Builder(int expected) {
-            //noinspection UnstableApiUsage
-            builder = ImmutableSet.builderWithExpectedSize(expected);
+            set = new HashSet<>(expected);
+        }
+
+        public @Nonnull Set<String> getMutableSet() {
+            return set;
         }
 
         public @Contract("_ -> this") @Nonnull Builder required(boolean value) {
@@ -42,12 +46,12 @@ public class Projection implements Modifier {
         public @Contract("-> this") @Nonnull Builder  advised() { return required(false); }
 
         public @Contract("_ -> this") @Nonnull Builder add(@Nonnull String string) {
-            builder.add(string);
+            set.add(string);
             return this;
         }
 
         public @Contract("-> new") @Nonnull Projection build() {
-            return new Projection(builder.build(), required);
+            return new Projection(ImmutableSet.copyOf(set), required);
         }
     }
 
