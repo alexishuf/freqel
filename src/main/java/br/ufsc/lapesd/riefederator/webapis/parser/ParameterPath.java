@@ -181,8 +181,7 @@ public class ParameterPath {
         DictTree map = xPath.getMapNN("filter");
         String string;
         if (map.isEmpty()) {
-            Object value = xPath.getPrimitive("filter", null);
-            string = value == null ? null : value.toString();
+            string = xPath.getString("filter", null);
         } else {
             if (!map.containsKey("sparql")) {
                 if (errorMsg != null)

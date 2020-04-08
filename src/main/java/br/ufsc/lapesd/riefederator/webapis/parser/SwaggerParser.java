@@ -260,7 +260,7 @@ public class SwaggerParser implements APIDescriptionParser {
                 .withEndOnNull(true);
         DictTree ev = map.getMapNN("endValue");
         if (!ev.isEmpty()) {
-            String path = ev.getPrimitive("path", "").toString();
+            String path = ev.getString("path", "");
             if (path.isEmpty())
                 logger.warn("Ignoring x-paging/endValue with no path for endpoint {}", endpoint);
             else
@@ -272,7 +272,7 @@ public class SwaggerParser implements APIDescriptionParser {
 
     @VisibleForTesting
     @Nullable PagingStrategy getPagingStrategy(@Nonnull String endpoint,
-                                                       @Nullable APIDescriptionContext context) {
+                                               @Nullable APIDescriptionContext context) {
         PagingStrategy strategy = context != null ? context.getPagingStrategy(endpoint) : null;
         if (strategy == null) {
             strategy = parsePagingStrategy(endpoint);
@@ -341,7 +341,7 @@ public class SwaggerParser implements APIDescriptionParser {
         Molecule molecule = parser.getMolecule();
         Map<String, ParameterPath> result = new HashMap<>();
         for (DictTree paramObj : getParams(endpoint)) {
-            String name = paramObj.getPrimitive("name", "").toString();
+            String name = paramObj.getString("name", "");
             if (pagingInputs.contains(name))
                 continue;
             DictTree xPath = paramObj.getMapNN("x-path");
@@ -369,14 +369,14 @@ public class SwaggerParser implements APIDescriptionParser {
     @VisibleForTesting
     @Nonnull Cardinality getCardinality(@Nonnull String endpoint, @Nonnull Cardinality fallback) {
         String string = getPathObj(endpoint)
-                .getPrimitive("get/responses/200/x-cardinality", "").toString();
+                .getString("get/responses/200/x-cardinality", "");
         Cardinality cardinality = Cardinality.parse(string);
         return cardinality != null ? cardinality : fallback;
     }
 
     private @Nullable SimpleDateSerializer parseDateSerializer(@Nonnull DictTree serializerObj) {
         if (!serializerObj.contains("serializer", "date")) return null;
-        String dateFmt = serializerObj.getPrimitive("date-format", "").toString();
+        String dateFmt = serializerObj.getString("date-format", "");
         if (!dateFmt.isEmpty()) {
             if (!SimpleDateSerializer.isValidFormat(dateFmt)) {
                 logger.warn("The given date format {} is not valid. " +
@@ -397,7 +397,7 @@ public class SwaggerParser implements APIDescriptionParser {
             logger.warn("Ignoring invalid width {} for OnlyNumbersTermSerializer", width);
             width = Long.MIN_VALUE;
         }
-        String fill = serializerObj.getPrimitive("fill", "0").toString();
+        String fill = serializerObj.getString("fill", "0");
         if (fill.length() != 1) {
             fill = fill.trim();
             if (fill.length() != 1) {
@@ -426,7 +426,7 @@ public class SwaggerParser implements APIDescriptionParser {
     private @Nullable TermSerializer getTermSerializer(@Nonnull String endpoint,
                                                        @Nonnull DictTree paramObj,
                                                        @Nullable APIDescriptionContext ctx) {
-        String name = paramObj.getPrimitive("name", "").toString();
+        String name = paramObj.getString("name", "");
         TermSerializer serializer = ctx != null ? ctx.getSerializer(endpoint, name) : null;
         if (serializer == null) {
             serializer = parseTermSerializer(paramObj);

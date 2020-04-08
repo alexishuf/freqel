@@ -15,9 +15,9 @@ public class PrimitiveParserParser {
     @Contract("null -> null")
     public static @Nullable PrimitiveParser parse(@Nullable DictTree dict) {
         if (dict == null) return null;
-        String type = dict.getPrimitive("parser", "").toString();
+        String type = dict.getString("parser", "");
         if (type.equals("date"))
-            return DatePrimitiveParser.tryCreate(dict.getPrimitive("date-format", "").toString());
+            return DatePrimitiveParser.tryCreate(dict.getString("date-format", ""));
         logger.warn("Unknown parser type: {}", type);
         return null;
     }

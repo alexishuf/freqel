@@ -667,6 +667,14 @@ public class DictTree {
         return value == null ? fallback : value;
     }
 
+    @Contract("_, !null -> !null")
+    public String getString(@Nonnull String path, String fallback) {
+        Object value = getPrimitive(path, null);
+        if (value == null)
+            return fallback;
+        return value.toString();
+    }
+
     public long getLong(@Nonnull String path, long fallback) {
         Object value = getPrimitive(path, null);
         if (value instanceof String && ((String)value).matches("\\d+"))
