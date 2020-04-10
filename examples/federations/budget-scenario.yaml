@@ -1,0 +1,6 @@
+sources:
+#  - loader: swagger
+#    stop-on-error: false,
+#    file: "portal_da_transparencia/portal_transparencia-ext.yaml"
+  - loader: rdf-file
+    file: "rdf/modalidades.ttl"

@@ -25,6 +25,8 @@ import org.apache.jena.query.Dataset;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.sparql.core.Transactional;
+import org.apache.jena.system.Txn;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -41,15 +43,19 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     @SuppressWarnings("Immutable")
     private final @Nonnull Function<String, QueryExecution> executionFactory;
     @SuppressWarnings("Immutable")
+    private final @Nullable Transactional transactional;
+    @SuppressWarnings("Immutable")
     private final @Nonnull Runnable closer;
     private final @Nullable String name;
     private final boolean local;
 
     protected ARQEndpoint(@Nullable String name,
                           @Nonnull Function<String, QueryExecution> executionFactory,
+                          @Nullable Transactional transactional,
                           @Nonnull Runnable closer, boolean local) {
         this.executionFactory = executionFactory;
         this.name = name;
+        this.transactional = transactional;
         this.closer = closer;
         this.local = local;
     }
@@ -76,26 +82,30 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         return forModel(model, name);
     }
     public static ARQEndpoint forModel(@Nonnull Model model, @Nonnull String name) {
-        return new ARQEndpoint(name, sparql -> create(sparql, model), () -> {}, true);
+        return new ARQEndpoint(name, sparql -> create(sparql, model), null,
+                               () -> {}, true);
     }
     public static ARQEndpoint forDataset(@Nonnull Dataset ds) {
-        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds), () -> {}, true);
+        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds), ds,
+                               () -> {}, true);
     }
     public static ARQEndpoint forCloseableDataset(@Nonnull Dataset ds) {
-        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds), ds::close, true);
+        return new ARQEndpoint(ds.toString(), sparql -> create(sparql, ds),
+                               ds, ds::close, true);
     }
 
     public static ARQEndpoint forService(@Nonnull String uri) {
-        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql), () -> {}, false);
+        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql), null,
+                               () -> {}, false);
     }
     public static ARQEndpoint forService(@Nonnull String uri, @Nonnull HttpClient client) {
-        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql, client),
+        return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql, client), null,
                                () -> {}, false);
     }
     public static ARQEndpoint forService(@Nonnull String uri, @Nonnull HttpClient client,
                                          @Nonnull HttpContext context) {
         return new ARQEndpoint(uri, sparql -> sparqlService(uri, sparql, client, context),
-                               () -> {}, false);
+                               null, () -> {}, false);
     }
 
     /* ~~~ method overloads and implementations  ~~~ */
@@ -119,11 +129,22 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     @Override
-    public @Nonnull
-    Results query(@Nonnull CQuery query) {
+    public @Nonnull Results query(@Nonnull CQuery query) {
         ModifierUtils.check(this, query.getModifiers());
         PrefixDict dict = query.getPrefixDict(StdPrefixDict.STANDARD);
         SPARQLString sparql = new SPARQLString(query, dict, query.getModifiers());
+        if (transactional != null) {
+            Results[] results = {null};
+            Txn.executeRead(transactional,
+                    () -> results[0] = CollectionResults.greedy(doQuery(sparql)));
+            return results[0];
+        } else {
+            return doQuery(sparql);
+        }
+    }
+
+    @Nonnull
+    public Results doQuery(@Nonnull SPARQLString sparql) {
         if (sparql.getType() == SPARQLString.Type.ASK) {
             try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
                 if (exec.execAsk())

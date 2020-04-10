@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.parse;
 
+import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -17,22 +18,24 @@ import org.apache.jena.sparql.expr.E_Exists;
 import org.apache.jena.sparql.expr.E_NotExists;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.syntax.*;
-import org.apache.jena.sparql.vocabulary.FOAF;
-import org.apache.jena.vocabulary.RDF;
-import org.apache.jena.vocabulary.RDFS;
-import org.apache.jena.vocabulary.XSD;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 public class SPARQLQueryParser {
+    private final static Logger logger = LoggerFactory.getLogger(SPARQLQueryParser.class);
+
     public static @Nonnull CQuery parse(@Nonnull String sparql) throws SPARQLParseException {
         try {
             return convert(QueryFactory.create(sparql));
         } catch (QueryParseException e) {
-            throw new SPARQLParseException("SPARQL syntax error", e, sparql);
+            throw new SPARQLParseException("SPARQL syntax error: "+e.getMessage(), e, sparql);
         }
     }
 
@@ -55,6 +58,8 @@ public class SPARQLQueryParser {
 
     public static  @Nonnull CQuery convert(@Nonnull Query q) throws SPARQLParseException {
         CQuery.Builder builder = CQuery.builder();
+        Set<String> allResultVars = new HashSet<>();
+        Set<String> projection = new HashSet<>();
         try {
             q.visit(new QueryVisitor() {
                 @Override
@@ -69,11 +74,7 @@ public class SPARQLQueryParser {
                 public void visitSelectResultForm(Query query) {
                     if (query.isDistinct())
                         builder.distinct(true);
-                    // SELECT * will cause all vars to appear here. We add them as projection and
-                    // CQuery.WithBuilder.build() will forgo the modifier if it detects a
-                    // projection of all variables
-                    query.getProjectVars().stream().map(Var::getVarName).forEach(builder::project);
-                    builder.requireProjection();
+                    query.getProjectVars().stream().map(Var::getVarName).forEach(projection::add);
                 }
                 @Override
                 public void visitConstructResultForm(Query query) {
@@ -91,6 +92,17 @@ public class SPARQLQueryParser {
                 public void visitJsonResultForm(Query query) {}
                 @Override
                 public void visitDatasetDecl(Query query) { }
+
+                private void addTriple(@Nonnull Triple triple) {
+                    br.ufsc.lapesd.riefederator.model.Triple parsed;
+                    parsed = JenaWrappers.fromJena(triple);
+                    parsed.forEach(t -> {
+                        if (t.isVar())
+                            allResultVars.add(t.asVar().getName());
+                    });
+                    builder.add(parsed);
+                }
+
                 @Override
                 public void visitQueryPattern(Query query) {
                     query.getQueryPattern().visit(new ElementVisitorBase() {
@@ -181,7 +193,7 @@ public class SPARQLQueryParser {
                                 TriplePath path = it.next();
                                 Triple triple = path.asTriple();
                                 if (triple != null)
-                                    builder.add(JenaWrappers.fromJena(triple));
+                                    addTriple(triple);
                                 else
                                     throw new FeatureException("SPARQL 1.1 paths are not supported");
                             }
@@ -221,29 +233,22 @@ public class SPARQLQueryParser {
                 @Override
                 public void finishVisit(Query query) {}
             });
+
+            if (!allResultVars.containsAll(projection)) {
+                Set<String> extra = TreeUtils.setMinus(projection, allResultVars);
+                logger.warn("Projected vars {} are not results and will be discarded. Query:\n{}",
+                            extra, q.serialize());
+            }
+            if (projection.size() < allResultVars.size()) {
+                projection.forEach(builder::project);
+                builder.requireProjection();
+            }
+            return builder.build();
         } catch (FeatureException e) {
             throw new UnsupportedSPARQLFeatureException(e.message, q);
+        } catch (RuntimeException e) {
+            throw new SPARQLParseException("RuntimeException while parsing query: "+e.getMessage(),
+                                           e, q.serialize());
         }
-        return builder.build();
-    }
-
-    public static void main(String[] args) {
-        Query select = QueryFactory.create("PREFIX xsd: <" + XSD.NS + ">\n" +
-                "SELECT DISTINCT * WHERE {\n" +
-                "  ?x a xsd:int.\n" +
-                "  ?x ?p ?o.\n" +
-                "}");
-        Query ask = QueryFactory.create("PREFIX xsd: <" + XSD.NS + ">\n" +
-                "ASK WHERE {\n" +
-                "  ?x a xsd:int.\n" +
-                "}");
-        Query path = QueryFactory.create("PREFIX xsd: <" + XSD.NS + ">\n" +
-                "PREFIX foaf: <"+ FOAF.NS+">\n" +
-                "PREFIX  rdf: <"+ RDF.getURI() +">\n" +
-                "PREFIX rdfs: <"+ RDFS.getURI() +">\n" +
-                "SELECT ?x WHERE {\n" +
-                "  ?x rdf:type/rdfs:subClassOf* foaf:Agent.\n" +
-                "}");
-        System.out.println("HELLO");
     }
 }

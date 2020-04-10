@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -20,10 +21,11 @@ public class APIMolecule  {
     private final @Nonnull APIRequestExecutor executor;
     private final @Nonnull ImmutableMap<String, String> element2input;
     private final @Nonnull Cardinality cardinality;
+    private final @Nullable String name;
 
     public APIMolecule(@Nonnull Molecule molecule, @Nonnull APIRequestExecutor executor,
                        @Nonnull Map<String, String> element2input,
-                       @Nonnull Cardinality cardinality) {
+                       @Nonnull Cardinality cardinality, @Nullable String name) {
         checkArgument(element2input.values().containsAll(executor.getRequiredInputs()),
                 "There are some requiredInputs in executor which are not mapped to in element2input");
         if (APIMolecule.class.desiredAssertionStatus()) {
@@ -35,11 +37,16 @@ public class APIMolecule  {
         this.executor = executor;
         this.element2input = ImmutableMap.copyOf(element2input);
         this.cardinality = cardinality;
+        this.name = name;
     }
 
     public APIMolecule(@Nonnull Molecule molecule, @Nonnull APIRequestExecutor executor,
                        @Nonnull Map<String, String> element2input) {
-        this(molecule, executor, element2input, Cardinality.UNSUPPORTED);
+        this(molecule, executor, element2input, Cardinality.UNSUPPORTED, null);
+    }
+
+    public @Nullable String getName() {
+        return name;
     }
 
     public @Nonnull Molecule getMolecule() {

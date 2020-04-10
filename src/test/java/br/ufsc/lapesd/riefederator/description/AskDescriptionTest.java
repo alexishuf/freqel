@@ -41,7 +41,7 @@ public class AskDescriptionTest implements TestContext {
         public CountingARQEndpoint(@Nullable String name,
                                    @Nonnull Function<String, QueryExecution> executionFactory,
                                    @Nonnull Runnable closer, boolean local) {
-            super(name, executionFactory, closer, local);
+            super(name, executionFactory, null, closer, local);
         }
 
         @Override

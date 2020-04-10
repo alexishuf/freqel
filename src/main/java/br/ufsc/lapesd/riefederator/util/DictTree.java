@@ -18,6 +18,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.WillNotClose;
 import java.io.*;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -126,9 +127,15 @@ public class DictTree {
 
         public  @Nonnull
         DictTree fromFile(@Nonnull File file) throws IOException {
-            if (file.getName().toLowerCase().endsWith(".yaml"))
-                return fromYamlFile(file);
-            return fromJsonFile(file);
+            UriResolver fallback = this.uriResolver;
+            this.uriResolver = new FileResolver(file.getParentFile(), fallback);
+            try {
+                if (file.getName().toLowerCase().endsWith(".yaml"))
+                    return fromYamlFile(file);
+                return fromJsonFile(file);
+            } finally {
+                this.uriResolver = fallback;
+            }
         }
 
         public @Nonnull
@@ -220,6 +227,26 @@ public class DictTree {
             return new DictTree(map, name);
         }
 
+        public class FileResolver implements UriResolver {
+            private @Nonnull File referenceDir;
+            private @Nullable final UriResolver fallback;
+
+            public FileResolver(@Nonnull File referenceDir, @Nullable UriResolver fallback) {
+                this.referenceDir = referenceDir;
+                this.fallback = fallback;
+            }
+
+            @Override
+            public @Nonnull DictTree load(@Nonnull String uri) throws IOException {
+                if (uri.matches("^\\w+://.*"))
+                    return fallback != null ? fallback.load(uri) : fromUri(uri);
+                File file = new File(referenceDir, uri.replaceAll("^/+", ""));
+                if (!file.exists() && fallback != null)
+                    return fallback.load(uri);
+                return fromFile(file);
+            }
+        }
+
         public class ResourceResolver implements UriResolver {
             private String basePath;
             private @Nullable UriResolver fallback;
@@ -272,6 +299,14 @@ public class DictTree {
                 return fromInputStream(stream);
             } finally {
                 uriResolver = fallback;
+            }
+        }
+
+        public @Nonnull DictTree fromUri(@Nonnull String uri) throws IOException {
+            if (uri.startsWith("file://"))
+                return fromFile(new File(uri.replaceAll("^file://", "")));
+            try (InputStream in = new URL(uri).openStream()) {
+                return fromInputStream(in);
             }
         }
 
@@ -691,6 +726,10 @@ public class DictTree {
         if (value instanceof Number)
             return ((Number) value).doubleValue();
         return fallback;
+    }
+
+    public boolean getBoolean(@Nonnull String path, boolean fallback) {
+        return Boolean.parseBoolean(getString(path, Boolean.toString(fallback)));
     }
 
     @CanIgnoreReturnValue

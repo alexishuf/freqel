@@ -51,7 +51,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     }
 
     public @Nonnull Source asSource() {
-        return asSource(null);
+        return asSource(molecule.getName());
     }
 
     public @Nonnull Source asSource(@Nullable String name) {

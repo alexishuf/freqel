@@ -9,10 +9,7 @@ import com.google.errorprone.annotations.concurrent.LazyInit;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.EXACT;
 
@@ -32,6 +29,13 @@ public class CollectionResults implements Results {
 
     public static @Nonnull CollectionResults empty(@Nonnull Collection<String> varNames) {
         return new CollectionResults(Collections.emptyList(), varNames);
+    }
+
+    public static @Nonnull CollectionResults greedy(@Nonnull Results other) {
+        Set<String> vars = other.getVarNames();
+        List<Solution> list = new ArrayList<>();
+        other.forEachRemainingThenClose(list::add);
+        return new CollectionResults(list, vars);
     }
 
     @Override

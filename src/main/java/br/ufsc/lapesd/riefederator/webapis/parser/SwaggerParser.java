@@ -191,7 +191,8 @@ public class SwaggerParser implements APIDescriptionParser {
         if (responseParser == null)
             throw new NoSuchElementException("Could not get ResponseParser for endpoint "+endpoint);
 
-        UriTemplateExecutor.Builder builder = UriTemplateExecutor.from(p.getTemplate())
+        UriTemplate template = p.getTemplate();
+        UriTemplateExecutor.Builder builder = UriTemplateExecutor.from(template)
                 .withOptional(p.optional).withRequired(p.required)
                 .withResponseParser(responseParser);
 
@@ -213,7 +214,8 @@ public class SwaggerParser implements APIDescriptionParser {
         p.getParamPaths().stream().map(ParameterPath::getAtomFilter).filter(Objects::nonNull)
                                   .forEach(moleculeBuilder::filter);
         return new APIMolecule(moleculeBuilder.build(), builder.build(), p.getElement2Input(),
-                               getCardinality(endpoint, p.parser.getCardinality()));
+                               getCardinality(endpoint, p.parser.getCardinality()),
+                               template.getTemplate());
     }
 
     @Override

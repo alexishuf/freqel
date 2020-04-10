@@ -766,11 +766,12 @@ public class CQuery implements  List<Triple> {
     }
 
 
-    /** A {@link CQuery} is a ASK-type query iff all its triples are bound
-     * (i.e., no triple has a {@link Var} term). */
+    /** A {@link CQuery} is a ASK-type query iff it has an {@link Ask} modifier or its triples
+     * are all bound (i.e., no triple has a {@link Var} term). */
     public boolean isAsk() {
         if (ask == null)
-            ask = !list.isEmpty() && list.stream().allMatch(Triple::isBound);
+            ask = getModifiers().stream().anyMatch(Ask.class::isInstance)
+                    || (!list.isEmpty() && list.stream().allMatch(Triple::isBound));
         return ask;
     }
 

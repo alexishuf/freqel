@@ -12,6 +12,9 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.owlapi.model.OWLAPITermFactory;
 import com.google.common.collect.Lists;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.vocabulary.OWL;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.testng.Assert;
@@ -138,6 +141,17 @@ public class TermFactoryTest {
         assertEquals(u.getURI(), "http://example.org/ns#" + "1");
 
         assertFalse(u.isAnon());
+    }
+
+    @Test(dataProvider = "factoriesData")
+    public void testURIToNT(Supplier<TermFactory> supplier) {
+        TermFactory f = supplier.get();
+        URI owl = f.createURI(OWL.Class.getURI());
+        assertEquals(owl.toNT(), "<"+OWL.Class.getURI()+">");
+        URI rdfs = f.createURI(RDFS.Class.getURI());
+        assertEquals(rdfs.toNT(), "<"+RDFS.Class.getURI()+">");
+        URI type = f.createURI(RDF.type.getURI());
+        assertEquals(type.toNT(), "<"+RDF.type.getURI()+">");
     }
 
     @Test(dataProvider = "factoriesData")
