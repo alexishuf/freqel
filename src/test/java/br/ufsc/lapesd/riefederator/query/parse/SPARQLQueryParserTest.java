@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser.hidden;
 import static java.util.Arrays.asList;
 import static org.testng.Assert.*;
 
@@ -82,7 +83,50 @@ public class SPARQLQueryParserTest implements TestContext {
                                Alice, knows, x,
                                x, age, y, SPARQLFilter.build("?y < 23"),
                                x, knows, Bob, Projection.required("x"), Distinct.REQUIRED),
-                       null)
+                       null),
+                asList(prolog+"SELECT * WHERE {\n" +
+                              "?x foaf:knows/foaf:age ?u. FILTER(?u > 23)\n}",
+                        createQuery(
+                                x, knows, hidden(0),
+                                hidden(0), age, u,
+                                SPARQLFilter.build("?u > 23"),
+                                Projection.required("x", "u")),
+                        null),
+                asList(prolog+"SELECT * WHERE {\n" +
+                              "?x foaf:name ?y; \n" +
+                              "   foaf:knows/foaf:knows/foaf:age ?u. FILTER(?u > 23)\n}",
+                        createQuery(
+                                x, name, y,
+                                x, knows, hidden(0),
+                                hidden(0), knows, hidden(1),
+                                hidden(1), age, u,
+                                SPARQLFilter.build("?u > 23"),
+                                Projection.required("x", "y", "u")),
+                        null),
+                asList(prolog+"SELECT DISTINCT ?y WHERE {\n" +
+                                "?x foaf:name ?y; \n" +
+                                "   foaf:knows/foaf:knows/foaf:age ?u. FILTER(?u > 23)\n}",
+                        createQuery(
+                                x, name, y,
+                                x, knows, hidden(0),
+                                hidden(0), knows, hidden(1),
+                                hidden(1), age, u,
+                                SPARQLFilter.build("?u > 23"),
+                                Projection.required("y"), Distinct.REQUIRED),
+                        null),
+                asList(prolog+"SELECT * WHERE {\n" +
+                                "?x foaf:name ?y ; \n" +
+                                "   foaf:knows/foaf:knows/foaf:age ?u ;\n" +
+                                "   foaf:isPrimaryTopicOf/foaf:title ?z .\n}",
+                        createQuery(
+                                x, name, y,
+                                x, knows, hidden(0),
+                                hidden(0), knows, hidden(1),
+                                hidden(1), age, u,
+                                x, isPrimaryTopicOf, hidden(2),
+                                hidden(2), foafTitle, z,
+                                Projection.required("x", "y", "u", "z")),
+                        null)
         ).map(List::toArray).toArray(Object[][]::new);
     }
 

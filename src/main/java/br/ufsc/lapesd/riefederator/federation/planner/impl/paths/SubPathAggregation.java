@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl.paths;
 
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
+import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.annotations.VisibleForTesting;
@@ -38,8 +39,14 @@ public class SubPathAggregation {
         state.planComponents(joinOrderPlanner);
         JoinGraph reducedGraph = state.createReducedJoinGraph(pathsList);
         List<JoinComponent> reducedPaths = new ArrayList<>(pathsList.size());
+        outer:
         for (JoinComponent path : pathsList) {
-            reducedPaths.add(state.reducePath(path));
+            JoinComponent reduced = state.reducePath(path);
+            for (JoinComponent old : reducedPaths) {
+                if (old.equals(reduced))
+                    continue outer;
+            }
+            reducedPaths.add(reduced);
         }
         return new SubPathAggregation(reducedGraph, reducedPaths);
     }
@@ -119,8 +126,7 @@ public class SubPathAggregation {
             return reducedGraph;
         }
 
-        public @Nonnull
-        JoinComponent reducePath(@Nonnull JoinComponent path) {
+        public @Nonnull JoinComponent reducePath(@Nonnull JoinComponent path) {
             if (path.isWhole())
                 return path;
             IndexedSubset<PlanNode> nodes = reducedGraph.getNodes().emptySubset();
@@ -135,9 +141,24 @@ public class SubPathAggregation {
             }
             if (needsRebuild) {
                 nodes.addAll(pending);
+                removeSubsumed(nodes);
                 return new JoinComponent(reducedGraph, nodes);
             }
             return path; // no components or only singleton components
+        }
+
+        private void removeSubsumed(IndexedSubset<PlanNode> nodes) {
+            List<PlanNode> victims = new ArrayList<>();
+            for (PlanNode i : nodes) {
+                Set<Triple> iMatched = i.getMatchedTriples();
+                for (PlanNode j : nodes) {
+                    if (i == j) continue;
+                    Set<Triple> jMatched = j.getMatchedTriples();
+                    if (iMatched.containsAll(jMatched))
+                        victims.add(j);
+                }
+            }
+            nodes.removeAll(victims);
         }
 
         public void processPair(@Nonnull JoinComponent left, @Nonnull JoinComponent right) {

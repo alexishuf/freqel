@@ -15,6 +15,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Sets;
 import org.apache.jena.vocabulary.XSD;
 import org.testng.annotations.Test;
@@ -23,7 +24,6 @@ import javax.annotation.Nonnull;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.annotateTerm;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -81,7 +81,7 @@ public class QueryNodeTest implements TestContext {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, SPARQLFilter.build("?y < ?z"),
-                annotateTerm(z, asRequired(atom1, "a1"))
+                annotateTerm(z, AtomInputAnnotation.asRequired(atom1, "a1").get())
         );
         QueryNode node = new QueryNode(empty, query);
         assertFalse(node.isProjecting());
@@ -98,7 +98,7 @@ public class QueryNodeTest implements TestContext {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, SPARQLFilter.build("?y < ?z"),
-                annotateTerm(z, AtomAnnotation.asOptional(atom1, "a1"))
+                annotateTerm(z, AtomInputAnnotation.asOptional(atom1, "a1").get())
         );
         QueryNode node = new QueryNode(empty, query);
         assertFalse(node.isProjecting());
@@ -114,9 +114,9 @@ public class QueryNodeTest implements TestContext {
     public void testStrictResultVars() {
         CQuery query = createQuery(
                 Alice, knows, x,
-                x, age, y, asRequired(atom1, "a2"),
+                x, age, y, AtomInputAnnotation.asRequired(atom1, "a2").get(),
                 SPARQLFilter.build("?y < ?z"),
-                annotateTerm(z, AtomAnnotation.asOptional(atom2, "a2"))
+                annotateTerm(z, AtomInputAnnotation.asOptional(atom2, "a2").get())
         );
         QueryNode node = new QueryNode(empty, query);
         assertFalse(node.isProjecting());
@@ -133,9 +133,9 @@ public class QueryNodeTest implements TestContext {
     public void testProject() {
         CQuery query = createQuery(
                 Alice, knows, x,
-                x, age, y, asRequired(atom1, "a2"),
+                x, age, y, AtomInputAnnotation.asRequired(atom1, "a2").get(),
                 SPARQLFilter.build("?y < ?z"),
-                annotateTerm(z, AtomAnnotation.asOptional(atom2, "a2"))
+                annotateTerm(z, AtomInputAnnotation.asOptional(atom2, "a2").get())
         );
         QueryNode node = new QueryNode(empty, query, singleton("x"));
         assertTrue(node.isProjecting());
@@ -153,7 +153,7 @@ public class QueryNodeTest implements TestContext {
                 Alice, knows, x,
                 x, age, y,
                 SPARQLFilter.build("?y < ?z"),
-                annotateTerm(z, AtomAnnotation.asOptional(atom2, "a2"))
+                annotateTerm(z, AtomInputAnnotation.asOptional(atom2, "a2").get())
         );
         QueryNode node = new QueryNode(empty, query, singleton("x"));
         assertEquals(node.getPublicVars(), Sets.newHashSet("x", "z"));
@@ -182,6 +182,26 @@ public class QueryNodeTest implements TestContext {
         assertEquals(node.getResultVars(), singleton("x"));
         assertTrue(node.isProjecting());
         assertTrue(node.toString().startsWith("π[x]("));
+    }
+
+    @Test
+    public void testVarsInOverriddenInputAnnotation() {
+        CQuery query = createQuery(
+                x, knows, y,
+                x, age, u, AtomInputAnnotation.asRequired(atom1, "a1").get(),
+                x, name, x1,
+                AtomInputAnnotation.asRequired(atom2, "a2").override(lit("Alice")).get(),
+                SPARQLFilter.build("regex(str(?x1), \"Alice.*\")"),
+                y, name, y1,
+                AtomInputAnnotation.asRequired(atom3, "a3").override(lit("Bob")).get(),
+                SPARQLFilter.build("regex(str(?y1), \"Bob.*\")")
+        );
+        QueryNode node = new QueryNode(empty, query);
+        assertEquals(node.getResultVars(), Sets.newHashSet("x", "y", "u", "x1", "y1"));
+        assertEquals(node.getOptionalInputVars(), emptySet());
+        assertEquals(node.getRequiredInputVars(), singleton("u"));
+        assertEquals(node.getPublicVars(), Sets.newHashSet("x", "y", "u", "x1", "y1"));
+        assertEquals(node.getStrictResultVars(), Sets.newHashSet("x", "y", "x1", "y1"));
     }
 
     @Test
@@ -256,7 +276,7 @@ public class QueryNodeTest implements TestContext {
     public void testBindingNoChangePreservesAnnotations() {
         CQuery query = CQuery.with(new Triple(Alice, knows, y))
                 .annotate(Alice, AtomAnnotation.of(atom1))
-                .annotate(y, asRequired(atom2, "atom2")).build();
+                .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get()).build();
         QueryNode node = new QueryNode(empty, query);
         QueryNode bound = node.createBound(MapSolution.build(x, Bob));
 
@@ -271,8 +291,8 @@ public class QueryNodeTest implements TestContext {
     @Test
     public void testBindingPreservesAnnotations() {
         CQuery query = CQuery.with(new Triple(x, knows, y), new Triple(Alice, knows, x))
-                .annotate(x, asRequired(atom1, "atom1"))
-                .annotate(y, asRequired(atom2, "atom2"))
+                .annotate(x, AtomInputAnnotation.asRequired(atom1, "atom1").get())
+                .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get())
                 .annotate(Alice, AtomAnnotation.of(atom3))
                 .build();
         QueryNode node = new QueryNode(empty, query);
@@ -283,11 +303,14 @@ public class QueryNodeTest implements TestContext {
         assertEquals(bound.getRequiredInputVars(), singleton("y"));
 
         CQuery expected = CQuery.with(new Triple(Bob, knows, y), new Triple(Alice, knows, Bob))
-                .annotate(Bob, asRequired(atom1, "atom1"))
-                .annotate(y, asRequired(atom2, "atom2"))
+                .annotate(Bob, AtomInputAnnotation.asRequired(atom1, "atom1").get())
+                .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get())
                 .annotate(Alice, AtomAnnotation.of(atom3))
                 .build();
-        assertEquals(bound.getQuery(), expected);
+        //noinspection SimplifiedTestNGAssertion
+        assertTrue(bound.getQuery().equals(expected));
+        assertTrue(bound.getQuery().getTermAnnotations(Bob)
+                                   .contains(AtomInputAnnotation.asRequired(atom1, "atom1").get()));
     }
 
     @Test
@@ -295,7 +318,7 @@ public class QueryNodeTest implements TestContext {
         CQuery query = createQuery(
                 x, age, y,
                 SPARQLFilter.build("?y < ?u"),
-                annotateTerm(u, asRequired(atom1, "a1"))
+                annotateTerm(u, AtomInputAnnotation.asRequired(atom1, "a1").get())
         );
         QueryNode node = new QueryNode(empty, query);
         assertEquals(node.getInputVars(), singleton("u"));
@@ -318,7 +341,7 @@ public class QueryNodeTest implements TestContext {
                 Alice, knows, x,
                 Alice, age, y, SPARQLFilter.build("?y < ?u"),
                 x, age, z, SPARQLFilter.build("?z < ?y"),
-                annotateTerm(u, asRequired(atom1, "a1"))
+                annotateTerm(u, AtomInputAnnotation.asRequired(atom1, "a1").get())
         );
         QueryNode node = new QueryNode(empty, query);
         assertEquals(node.getInputVars(), singleton("u"));

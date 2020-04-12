@@ -19,7 +19,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.EmptyWebApiEndpoint;
-import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
@@ -62,7 +62,7 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
             b.add(new Triple(terms[i], terms[i+1], terms[i+2]));
         int i = 0;
         for (Var input : inputs)
-            b.annotate(input, AtomAnnotation.asRequired(new Atom("Atom-" + i), "Atom-" + i));
+            b.annotate(input, AtomInputAnnotation.asRequired(new Atom("Atom-" + i), "Atom-" + i).get());
         return new QueryNode(ep, b.build(), cardinality);
     }
     private static @Nonnull QueryNode n(@Nonnull CQEndpoint ep, Cardinality cardinality,

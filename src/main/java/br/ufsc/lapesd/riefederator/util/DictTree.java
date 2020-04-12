@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import static java.lang.String.format;
 import static java.util.Collections.*;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
@@ -702,12 +703,25 @@ public class DictTree {
         return value == null ? fallback : value;
     }
 
+    public @Nullable String getString(@Nonnull String path) {
+        return getString(path, null);
+    }
+
     @Contract("_, !null -> !null")
     public String getString(@Nonnull String path, String fallback) {
         Object value = getPrimitive(path, null);
         if (value == null)
             return fallback;
+        if (value instanceof Double) {
+            double doubleValue = (Double) value;
+            return Math.floor(doubleValue) == doubleValue ? format("%d", (long) doubleValue)
+                                                          : format("%f", doubleValue);
+        }
         return value.toString();
+    }
+
+    public long getLong(@Nonnull String path) {
+        return getLong(path, 0L);
     }
 
     public long getLong(@Nonnull String path, long fallback) {
@@ -719,6 +733,10 @@ public class DictTree {
         return fallback;
     }
 
+    public double getDouble(@Nonnull String path) {
+        return getDouble(path, 0.0);
+    }
+
     public double getDouble(@Nonnull String path, double fallback) {
         Object value = getPrimitive(path, null);
         if (value instanceof String && ((String)value).matches("\\d*(\\.\\d*)?"))
@@ -726,6 +744,10 @@ public class DictTree {
         if (value instanceof Number)
             return ((Number) value).doubleValue();
         return fallback;
+    }
+
+    public boolean getBoolean(@Nonnull String path) {
+        return getBoolean(path, false);
     }
 
     public boolean getBoolean(@Nonnull String path, boolean fallback) {
@@ -736,7 +758,7 @@ public class DictTree {
     public @Nonnull Object getNN(@Nonnull String path) throws NoSuchElementException {
         Object value = get(path);
         if (value == null) {
-            String mes = String.format("No value value for path %s in %s", path, this);
+            String mes = format("No value value for path %s in %s", path, this);
             throw new NoSuchElementException(mes);
         }
         return value;
@@ -832,6 +854,6 @@ public class DictTree {
 
     @Override
     public String toString() {
-        return name == null ? super.toString() : String.format("HierarchicalMap(%s)", name);
+        return name == null ? super.toString() : format("DictTree(%s)", name);
     }
 }

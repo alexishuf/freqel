@@ -27,6 +27,11 @@ public interface APIRequestExecutor {
      */
     @Nonnull Set<String> getOptionalInputs();
 
+    /**
+     * A subset of inputs that may be missing in results.
+     */
+    @Nonnull Set<String> getInputsMissingInResult();
+
     default boolean hasInputs() {
         return !getRequiredInputs().isEmpty() || !getOptionalInputs().isEmpty();
     }

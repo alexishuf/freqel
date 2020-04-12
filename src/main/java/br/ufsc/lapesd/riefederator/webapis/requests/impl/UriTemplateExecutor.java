@@ -34,12 +34,14 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.*;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 @Immutable
 public class UriTemplateExecutor implements APIRequestExecutor {
     private static final Logger logger = LoggerFactory.getLogger(UriTemplateExecutor.class);
 
     protected final @SuppressWarnings("Immutable") @Nonnull UriTemplate template;
-    protected final @Nonnull ImmutableSet<String> required, optional;
+    protected final @Nonnull ImmutableSet<String> required, optional, missing;
     private final @SuppressWarnings("Immutable") @Nonnull ImmutableMap<String, TermSerializer> input2serializer;
     protected final @SuppressWarnings("Immutable") @Nonnull ClientConfig clientConfig;
     private final @Nonnull ResponseParser parser;
@@ -49,6 +51,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
 
     public UriTemplateExecutor(@Nonnull UriTemplate template, @Nonnull ImmutableSet<String> required,
                                @Nonnull ImmutableSet<String> optional,
+                               @Nonnull ImmutableSet<String> missing,
                                @Nonnull Map<String, TermSerializer> input2serializer,
                                @Nonnull ClientConfig clientConfig,
                                @Nonnull ResponseParser parser,
@@ -58,6 +61,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         this.template = template;
         this.required = required;
         this.optional = optional;
+        this.missing = missing;
         this.input2serializer = ImmutableMap.copyOf(input2serializer);
         this.clientConfig = clientConfig;
         this.parser = parser;
@@ -67,7 +71,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
     }
 
     public UriTemplateExecutor(@Nonnull UriTemplate template) {
-        this(template, ImmutableSet.copyOf(template.getTemplateVariables()), ImmutableSet.of(),
+        this(template, ImmutableSet.copyOf(template.getTemplateVariables()),
+                ImmutableSet.of(), ImmutableSet.of(),
                 ImmutableMap.of(), new ClientConfig(),
                 JenaResponseParser.INSTANCE, NoPagingStrategy.INSTANCE,
                 new RateLimitsRegistry(), i -> {});
@@ -77,6 +82,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         private final @Nonnull UriTemplate template;
         private Set<String> required = null;
         private Set<String> optional = null;
+        private Set<String> missing = null;
         private final @Nonnull ImmutableMap.Builder<String, TermSerializer> input2serializer
                 = ImmutableMap.builder();
         private @Nonnull ClientConfig clientConfig = new ClientConfig();
@@ -111,6 +117,18 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         public @Nonnull Builder withOptional(@Nonnull String... names) {
             return withOptional(Arrays.asList(names));
         }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder withMissingInResult(@Nonnull Collection<String> names) {
+            if (missing == null)
+                missing = new HashSet<>();
+            missing.addAll(names);
+            return this;
+        }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder withMissingInResult(@Nonnull String... names) {
+            return withMissingInResult(Arrays.asList(names));
+        }
+
         @CanIgnoreReturnValue
         public @Nonnull Builder withClientConfig(@Nonnull ClientConfig clientConfig) {
             this.clientConfig = clientConfig;
@@ -164,8 +182,16 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                 required = new HashSet<>(template.getTemplateVariables());
                 required.removeAll(optional);
             }
+            if (missing == null)
+                missing = ImmutableSet.of();
+            checkArgument(missing.stream().allMatch(n -> optional.contains(n)
+                                                      || required.contains(n)),
+                          "Some inputs declared missing in results are not optional nor required");
+            checkArgument(required.stream().noneMatch(optional::contains),
+                          "Some required inputs are also declared optional");
             return new UriTemplateExecutor(template, ImmutableSet.copyOf(required),
                                            ImmutableSet.copyOf(optional),
+                                           ImmutableSet.copyOf(missing),
                                            input2serializer.build(), clientConfig,
                                            parser, pagingStrategy, rateLimitsRegistry,
                                            requestObserver);
@@ -184,6 +210,11 @@ public class UriTemplateExecutor implements APIRequestExecutor {
     @Override
     public @Nonnull ImmutableSet<String> getOptionalInputs() {
         return optional;
+    }
+
+    @Override
+    public @Nonnull Set<String> getInputsMissingInResult() {
+        return missing;
     }
 
     @Override

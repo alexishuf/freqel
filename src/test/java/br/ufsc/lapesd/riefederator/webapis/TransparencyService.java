@@ -3,6 +3,9 @@ package br.ufsc.lapesd.riefederator.webapis;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import br.ufsc.lapesd.riefederator.util.ResourceOpener;
 import br.ufsc.lapesd.riefederator.webapis.parser.SwaggerParser;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
@@ -12,10 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -29,27 +29,63 @@ import java.util.function.Predicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
 
 @Path("/")
-public class ProcurementsService {
-    private static final Logger logger = LoggerFactory.getLogger(ProcurementsService.class);
+public class TransparencyService {
+    private static final Logger logger = LoggerFactory.getLogger(TransparencyService.class);
 
-    private static final @Nonnull List<String> IDS = Arrays.asList(
+    private static final @Nonnull List<String> PROCUREMENT_IDS = Arrays.asList(
             "267291791",
             "270989389",
             "271598497",
             "277815533",
-            "278614622"
+            "278614622",
+            "294701928", //procurement for contract 75507145
+            "301718143"  //procurement for contracts 70507179 and 71407155
+
     );
+    private static final @Nonnull List<String> CONTRACT_IDS = Arrays.asList(
+            "75507145",
+            "71407155",
+            "70507179"
+    );
+
+    private static final Map<Integer, String> modalityCode2Description;
+    private static final BiMap<String, String> code2OrgName;
 
     private static final  @Nonnull ThreadLocal<SimpleDateFormat> DATE_FMT
             = ThreadLocal.withInitial(() -> new SimpleDateFormat("dd/MM/yyyy"));
 
-    public static @Nonnull SwaggerParser getSwaggerParser(@Nonnull WebTarget rootUri) throws IOException {
+    static {
+        Map<Integer, String> code2desc = new HashMap<>();
+        code2desc.put(  1, "Convite");
+        code2desc.put(  2, "Tomada de Preços");
+        code2desc.put(  3, "Concorrência");
+        code2desc.put(-97, "Concorrência - Registro de Preço");
+        code2desc.put(  4, "Concorrência Internacional");
+        code2desc.put(-98, "Concorrência Internacional - Registro de Preço");
+        code2desc.put(  5, "Pregão");
+        code2desc.put(-99, "Pregão - Registro de Preço");
+        code2desc.put(  6, "Dispensa de Licitação");
+        code2desc.put(  7, "Inexigibilidade de Licitação");
+        code2desc.put( 20, "Concurso");
+        code2desc.put( 22, "Tomada de Preços por Técnica e Preço");
+        code2desc.put( 33, "Concorrência por Técnica e Preço");
+        code2desc.put( 44, "Concorrência Internacional por Técnica e Preço");
+        modalityCode2Description = code2desc;
+
+        BiMap<String, String> biMap = HashBiMap.create();
+        biMap.put("26246", "Universidade Federal de Santa Catarina");
+        code2OrgName = biMap;
+    }
+
+    public static @Nonnull SwaggerParser
+    getSwaggerParser(@Nonnull WebTarget rootUri) throws IOException {
         String resourcePath = "portal_transparencia-ext.yaml";
-        DictTree tree = DictTree.load().fromResource(ProcurementsService.class, resourcePath);
+        DictTree tree = DictTree.load().fromResource(TransparencyService.class, resourcePath);
 
         String host = rootUri.getUri().getHost();
         if (rootUri.getUri().getPort() > 0)
@@ -70,7 +106,6 @@ public class ProcurementsService {
         return getSwaggerParser(root).getEndpoint("/api-de-dados/licitacoes");
     }
 
-
     public static @Nonnull WebAPICQEndpoint
     getProcurementsOptClient(@Nonnull WebTarget root) throws IOException {
         return getSwaggerParser(root).getEndpoint("/api-de-dados/licitacoes-opt");
@@ -80,6 +115,28 @@ public class ProcurementsService {
     getProcurementsByIdClient(@Nonnull WebTarget root) throws IOException {
         return getSwaggerParser(root).getEndpoint("/api-de-dados/licitacoes/{id}");
     }
+
+    public static @Nonnull WebAPICQEndpoint
+    getProcurementByNumberClient(@Nonnull WebTarget root) throws IOException {
+        return getSwaggerParser(root)
+                .getEndpoint("/api-de-dados/licitacoes/por-uasg-modalidade-numero");
+    }
+
+    public static @Nonnull WebAPICQEndpoint
+    getContractByIdClient(@Nonnull WebTarget root) throws IOException {
+        return getSwaggerParser(root).getEndpoint("/api-de-dados/contratos/id");
+    }
+
+    public static @Nonnull WebAPICQEndpoint
+    getContractsClient(@Nonnull WebTarget root) throws IOException {
+        return getSwaggerParser(root).getEndpoint("/api-de-dados/contratos");
+    }
+
+    public static @Nonnull WebAPICQEndpoint
+    getOrgaosSiafiClient(@Nonnull WebTarget root) throws IOException {
+        return getSwaggerParser(root).getEndpoint("/api-de-dados/orgaos-siafi");
+    }
+
 
     private static @Nullable Date parseDate(@Nullable String string) throws ParseException {
         if (string == null) return null;
@@ -126,12 +183,14 @@ public class ProcurementsService {
     }
 
 
-    private @Nonnull Response getProcurements(@Nonnull Map<String, Object> filter,
-                                              @Nonnull Map<String, Object> min,
-                                              @Nonnull Map<String, Object> max) throws IOException {
+    private @Nonnull Response getObjects(@Nonnull Map<String, Object> filter,
+                                         @Nonnull Map<String, Object> min,
+                                         @Nonnull Map<String, Object> max,
+                                         @Nonnull List<String> idList,
+                                         @Nonnull String dirName) throws IOException {
         List<Map<String, Object>> selected = new ArrayList<>();
-        for (String id : IDS) {
-            String path = "procurements/" + id + ".json";
+        for (String id : idList) {
+            String path = dirName +"/" + id + ".json";
             DictTree tree;
             tree = DictTree.load().fromResource(getClass(), path);
 
@@ -176,7 +235,7 @@ public class ProcurementsService {
             min.put("dataAbertura", startDate);
         if (endDate != null)
             max.put("dataAbertura", endDate);
-        return getProcurements(filter, min, max);
+        return getObjects(filter, min, max, PROCUREMENT_IDS, "procurements");
     }
 
     @GET
@@ -210,7 +269,7 @@ public class ProcurementsService {
         if (minValor != 0) min.put("valor", minValor);
         if (maxValor != 0) max.put("valor", maxValor);
 
-        return getProcurements(filter, min, max);
+        return getObjects(filter, min, max, PROCUREMENT_IDS, "procurements");
     }
 
     @GET
@@ -223,5 +282,94 @@ public class ProcurementsService {
         } catch (IOException e) {
             return Response.noContent().status(Response.Status.NOT_FOUND).build();
         }
+    }
+
+    @GET
+    @Path("/api-de-dados/licitacoes/por-uasg-modalidade-numero")
+    public @Nonnull Response
+    getProcurementByNumber(@QueryParam("codigoUASG") String codigoUASG,
+                           @QueryParam("numero") String numero,
+                           @QueryParam("codigoModalidade") int codigoModalidade) throws IOException {
+        Map<String, Object> filter = new HashMap<>();
+        String modalityDescription = modalityCode2Description.get(codigoModalidade);
+        if (modalityDescription == null)
+            throw new NotFoundException();
+        filter.put("modalidadeLicitacao/descricao", modalityDescription);
+        filter.put("unidadeGestora/codigo", codigoUASG);
+        filter.put("licitacao/numero", numero);
+        return getObjects(filter, emptyMap(), emptyMap(), PROCUREMENT_IDS, "procurements");
+    }
+
+    @GET
+    @Path("/api-de-dados/contratos/id")
+    public @Nonnull Response getContractById(@QueryParam("id") String id) {
+        String path = "contracts/" + id + ".json";
+        try (InputStream stream = ResourceOpener.getStream(getClass(), path)) {
+            String json = IOUtils.toString(stream, StandardCharsets.UTF_8);
+            return Response.ok(json, APPLICATION_JSON_TYPE).build();
+        } catch (IOException e) {
+            return Response.noContent().status(Response.Status.NOT_FOUND).build();
+        }
+    }
+
+    @GET
+    @Path("/api-de-dados/contratos")
+    public @Nonnull Response getContracts(@QueryParam("dataInicial") String dataInicial,
+                                          @QueryParam("dataFinal") String dataFinal,
+                                          @QueryParam("codigoOrgao") String codigoOrgao,
+                                          @QueryParam("pagina") int pagina) throws IOException {
+        if (pagina > 1)
+            return wrapResponse(emptyList());
+        Map<String, Object> filter = new HashMap<>();
+        Map<String, Object> min = new HashMap<>(), max = new HashMap<>();
+        filter.put("unidadeGestora/orgaoVinculado/codigoSIAFI", codigoOrgao);
+
+        Date startDate, endDate;
+        try {
+            startDate = parseDate(dataInicial);
+            endDate = parseDate(dataFinal);
+        } catch (ParseException e) {
+            String reason = "Bad date, should be dd/MM/yyyy";
+            return Response.noContent().status(500, reason).build();
+        }
+        if (startDate  != null)
+            min.put("dataInicioVigencia", startDate);
+        if (endDate != null)
+            max.put("dataFimVigencia", endDate);
+        return getObjects(filter, min, max, CONTRACT_IDS, "contracts");
+    }
+
+    @GET
+    @Path("/api-de-dados/orgaos-siafi")
+    public @Nonnull Response getOrgaosSiafi(@QueryParam("codigo") String codigo,
+                                            @QueryParam("descricao") String descricao,
+                                            @QueryParam("pagina") int pagina) {
+        if (pagina > 1)
+            return wrapResponse(emptyList());
+        Map<String, String> map = new HashMap<>();
+        if (codigo != null) {
+            if (descricao != null)
+                logger.warn("Ignoring descricao={} because codigo={} was given", descricao, codigo);
+            String match = code2OrgName.get(codigo);
+            if (match == null)
+                return wrapResponse(emptyList());
+            map.put("codigo", codigo);
+            map.put("descricao", match);
+            map.put("codigoDescricaoFormatado", codigo + " - " + match);
+        } else if (descricao != null) {
+            if (codigo != null)
+                logger.warn("Ignoring codigo={} because descricao={} was given", codigo, descricao);
+            String match = code2OrgName.inverse().get(descricao);
+            if (match == null)
+                return wrapResponse(emptyList());
+            map.put("codigo", match);
+            map.put("descricao", descricao);
+            map.put("codigoDescricaoFormatado", match + " - "+ descricao);
+        } else {
+            logger.warn("Neither codigo nor descricao given to {}.getOrgaosSiafi(). " +
+                        "Returning empty list", getClass().getSimpleName());
+            return wrapResponse(emptyList());
+        }
+        return Response.ok(new Gson().toJson(map), APPLICATION_JSON_TYPE).build();
     }
 }

@@ -16,6 +16,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -28,7 +29,6 @@ import java.util.stream.Stream;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.OBJ;
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.SUBJ;
-import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static com.google.common.collect.Sets.newHashSet;
 import static com.google.common.collect.Sets.union;
 import static java.util.Arrays.asList;
@@ -50,10 +50,13 @@ public class SubPathAggregationTest implements TestContext {
     QueryNode node(@Nonnull CQEndpoint endpoint, @Nonnull Term s, @Nonnull Term p, @Nonnull Term o,
                    @Nonnull Triple.Position input) {
         CQuery.WithBuilder b = CQuery.with(new Triple(s, p, o));
-        if (input == SUBJ)
-            b.annotate(s, asRequired(A1, "A1")).annotate(o, AtomAnnotation.of(A2));
-        else if (input == OBJ)
-            b.annotate(s, AtomAnnotation.of(A1)).annotate(o, asRequired(A2, "A2"));
+        if (input == SUBJ) {
+            b.annotate(s, AtomInputAnnotation.asRequired(A1, "A1").get())
+             .annotate(o, AtomAnnotation.of(A2));
+        } else if (input == OBJ) {
+            b.annotate(s, AtomAnnotation.of(A1))
+              .annotate(o, AtomInputAnnotation.asRequired(A2, "A2").get());
+        }
         return new QueryNode(endpoint, b.build());
     }
 

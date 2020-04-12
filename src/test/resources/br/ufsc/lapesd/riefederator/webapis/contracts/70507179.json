@@ -1,0 +1,103 @@
+{
+  "id": 70507179,
+  "dimCompra": {
+    "numero": "001792019",
+    "objeto": "Objeto: Pregão Eletrônico -  Registro de Preços para a eventual aquisição de equipamentos hospitalares para atender a Universidade Federal de Santa Catarina (UFSC)",
+    "numeroProcesso": "23080031306201989",
+    "contatoResponsavel": "RICARDO DA SILVEIRA PORTO"
+  },
+  "situacaoContrato": {
+    "descricao": "Publicado"
+  },
+  "modalidadeCompra": {
+    "descricao": "Pregão - Registro de Preço"
+  },
+  "unidadeGestora": {
+    "codigo": "153163",
+    "nome": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+    "nomeSemAcento": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "83899526000182",
+      "sigla": "UFSC",
+      "siglaOriginal": "UFSC",
+      "siglaSemAcento": "UFSC",
+      "nome": "Universidade Federal de Santa Catarina",
+      "nomeOriginal": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+      "nomeSemAcento": "Universidade Federal de Santa Catarina"
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "sigla": "MEC",
+      "nome": "Ministério da Educação"
+    }
+  },
+  "unidadeGestoraCompras": {
+    "codigo": "153163",
+    "nome": "MEC - UNIV. FED. DE SANTA CATARINA - SC",
+    "nomeSemAcento": "MEC - UNIV. FED. DE SANTA CATARINA - SC",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "",
+      "nome": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+      "naturezaJuridica": {
+        "codigo": "0000    ",
+        "descricao": "Sem informação",
+        "codigoTipo": "0 ",
+        "descricaoTipo": "Sem informação"
+      },
+      "sigla": ""
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "nome": "MINISTERIO DA EDUCACAO",
+      "sigla": ""
+    },
+    "existeFatoDespesa": false,
+    "existeFatoReceita": false
+  },
+  "dataAssinatura": "02/12/2019",
+  "dataPublicacaoDOU": "09/12/2019",
+  "dataInicioVigencia": "02/12/2019",
+  "dataFimVigencia": "02/12/2020",
+  "fornecedor": {
+    "numeroInscricaoSocial": "",
+    "nome": "GIGANTE RECEM NASCIDO LTDA.",
+    "razaoSocialReceita": "GIGANTE RECEM NASCIDO LTDA.",
+    "nomeFantasiaReceita": "",
+    "cnae": null,
+    "municipio": {
+      "codigoIBGE": "3543402",
+      "nomeIBGE": "RIBEIRÃO PRETO",
+      "nomeIBGEsemAcento": "RIBEIRAO PRETO",
+      "pais": "BRASIL",
+      "uf": {
+        "sigla": "SP",
+        "nome": "SÃO PAULO"
+      }
+    },
+    "localidadePessoa": null,
+    "naturezaJuridica": null,
+    "dataAbertura": "05/03/1990",
+    "enderecoEletronico": "ERICA@GIGANTE.COM.BR",
+    "numeroTelefone": "16  39691085 ",
+    "descricaoLogradouro": "R MARTINS PENA",
+    "numeroEndereco": "93",
+    "complementoEndereco": "",
+    "numeroCEP": "        ",
+    "nomeBairro": "CAMPOS ELISEOS",
+    "tipoCodigo": "CNPJ",
+    "codigoFormatado": "62.413.869/0001-15",
+    "tipoPessoa": null
+  },
+  "valorInicialCompra": 33780.0000,
+  "valorFinalCompra": 33780.0000,
+  "contrato": {
+    "numero": "3202019",
+    "objeto": "Objeto: Aquisição de equipamentos hospitalares para atender a UFSC.",
+    "numeroProcesso": "",
+    "fundamentoLegal": "Fundamento Legal: Lei 8666/93."
+  }
+}

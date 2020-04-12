@@ -1,0 +1,57 @@
+{
+  "id": 301718143,
+  "dataResultadoCompra": "08/11/2019",
+  "dataAbertura": "17/10/2019",
+  "dataReferencia": "19/07/2019",
+  "dataPublicacao": "19/07/2019",
+  "situacaoCompra": {
+    "codigo": 75,
+    "descricao": "Evento de Resultado de Julgamento Publicado"
+  },
+  "modalidadeLicitacao": {
+    "descricao": "Pregão - Registro de Preço"
+  },
+  "instrumentoLegal": null,
+  "valor": 33780,
+  "municipio": {
+    "codigoIBGE": "4205407",
+    "nomeIBGE": "FLORIANÓPOLIS",
+    "nomeIBGEsemAcento": "FLORIANOPOLIS",
+    "pais": "BRASIL",
+    "uf": {
+      "sigla": "SC",
+      "nome": "SANTA CATARINA"
+    }
+  },
+  "unidadeGestora": {
+    "codigo": "153163",
+    "nome": "MEC - UNIV. FED. DE SANTA CATARINA - SC",
+    "nomeSemAcento": "MEC - UNIV. FED. DE SANTA CATARINA - SC",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "",
+      "nome": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+      "naturezaJuridica": {
+        "codigo": "0000    ",
+        "descricao": "Sem informação",
+        "codigoTipo": "0 ",
+        "descricaoTipo": "Sem informação"
+      },
+      "sigla": ""
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "nome": "MINISTERIO DA EDUCACAO",
+      "sigla": ""
+    },
+    "existeFatoDespesa": false,
+    "existeFatoReceita": false
+  },
+  "licitacao": {
+    "numero": "001792019",
+    "objeto": "Objeto: Pregão Eletrônico -  Registro de Preços para a eventual aquisição de equipamentos hospitalares para atender a Universidade Federal de Santa Catarina (UFSC)",
+    "numeroProcesso": "23080031306201989",
+    "contatoResponsavel": "RICARDO DA SILVEIRA PORTO"
+  }
+}

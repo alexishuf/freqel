@@ -56,7 +56,7 @@ public class ParameterPath {
         return in;
     }
 
-    public boolean isMissing() {
+    public boolean isMissingInResult() {
         return missing;
     }
 

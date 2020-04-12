@@ -114,18 +114,42 @@ public class JoinPathsPlanner implements Planner {
         return components;
     }
 
+    private void assertValidJoinComponents(@Nonnull Collection<JoinComponent> components,
+                                           @Nonnull IndexedSet<Triple> full) {
+        if (!JoinPathsPlanner.class.desiredAssertionStatus())
+            return;
+        for (JoinComponent component : components) {
+            for (PlanNode i : component.getNodes()) {
+                Set<Triple> iMatched = i.getMatchedTriples();
+                for (PlanNode j : component.getNodes()) {
+                    if (i == j) continue;
+                    Set<Triple> jMatched = j.getMatchedTriples();
+                    if (iMatched.containsAll(jMatched)) {
+                        String message = "Node " + j + " in a JoinComponent is subsumed by " + i;
+                        throw new AssertionError(message);
+                    }
+                }
+            }
+            assert satisfiesAll(full, component.getNodes(), null)
+                    : "Not all "+full.size()+" triples are satisfied by JoinComponent"+component;
+        }
+    }
+
     private @Nullable PlanNode plan(@Nonnull Collection<QueryNode> qns,
                                     @Nonnull IndexedSet<Triple> triples) {
         IndexedSet<PlanNode> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
         List<JoinComponent> pathsSet = getPaths(triples, g);
+        assertValidJoinComponents(pathsSet, triples);
         removeAlternativePaths(pathsSet);
+        assertValidJoinComponents(pathsSet, triples);
         if (pathsSet.isEmpty())
             return null;
 
         SubPathAggregation aggregation = SubPathAggregation.aggregate(g, pathsSet, joinOrderPlanner);
         JoinGraph g2 = aggregation.getGraph();
         List<JoinComponent> aggregatedPaths = aggregation.getJoinComponents();
+        assertValidJoinComponents(aggregatedPaths, triples);
         boolean parallel = pathsSet.size() > PATHS_PAR_THRESHOLD;
         MultiQueryNode.Builder builder = MultiQueryNode.builder();
         builder.addAll((parallel ? aggregatedPaths.parallelStream() : aggregatedPaths.stream())
@@ -195,15 +219,20 @@ public class JoinPathsPlanner implements Planner {
     }
 
     private boolean satisfiesAll(@Nonnull IndexedSet<Triple> all,
-                              @Nonnull Collection<QueryNode> qns, @Nonnull CQuery query) {
+                                 @Nonnull Collection<? extends PlanNode> nodes,
+                                 @Nullable CQuery query) {
         IndexedSubset<Triple> subset = all.emptySubset();
-        for (QueryNode qn : qns)
-            subset.union(qn.getMatchedTriples());
+        for (PlanNode node : nodes)
+            subset.union(node.getMatchedTriples());
         if (subset.size() != all.size()) {
             IndexedSubset<Triple> missing = all.fullSubset();
             missing.removeAll(subset);
-            logger.info("QueryNodes miss  triples {}. Full query was {}. Returning EmptyNode",
-                        missing, query);
+            if (query != null) {
+                logger.info("QueryNodes miss  triples {}. Full query was {}. Returning EmptyNode",
+                            missing, query);
+            } else {
+                logger.info("QueryNodes miss  triples {}.", missing);
+            }
             return false;
         }
         return true;

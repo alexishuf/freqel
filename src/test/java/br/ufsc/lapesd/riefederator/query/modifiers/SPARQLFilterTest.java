@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import com.google.common.collect.Sets;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.core.Var;
 import org.testng.annotations.DataProvider;
@@ -23,6 +24,7 @@ import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
@@ -63,7 +65,7 @@ public class SPARQLFilterTest implements TestContext {
             assertEquals(annotation.get(var), term);
             assertNull(annotation.get(var + "~dummy"));
             assertEquals(annotation.getVars(), Collections.singleton(var));
-            assertEquals(annotation.getTerms(), Collections.singleton(term));
+            assertTrue(annotation.getTerms().contains(term));
             assertTrue(annotation.getSparqlFilter().matches("^FILTER(.*)$"));
             assertFalse(annotation.getFilterString().matches("^FILTER(.*)$"));
         } else {
@@ -71,6 +73,26 @@ public class SPARQLFilterTest implements TestContext {
             expectThrows(FilterParsingException.class,
                     () -> dummy[0] = SPARQLFilter.builder(filter).map(var, term).build());
         }
+    }
+
+    @Test
+    public void testBoundTerms() {
+        SPARQLFilter filter = SPARQLFilter.build("?x < 23 && ?x = str(xsd:string)");
+        assertEquals(filter.getVars(), singleton("x"));
+        assertEquals(filter.getVarTerms(), singleton(x));
+        assertEquals(filter.getVarTermNames(), singleton("x"));
+        StdLit i23 = StdLit.fromUnescaped("23", xsdInteger);
+        assertEquals(filter.getTerms(), Sets.newHashSet(x, i23, xsdString));
+    }
+
+    @Test
+    public void tesBoundTermsAfterBind() {
+        SPARQLFilter filter = SPARQLFilter.build("?x < ?u");
+        SPARQLFilter bound = filter.bind(MapSolution.build(u, lit(23)));
+        assertEquals(bound.getVars(), singleton("x"));
+        assertEquals(bound.getVarTerms(), singleton(x));
+        StdLit i23 = StdLit.fromUnescaped("23", xsdInteger); //Jena forces this conversion
+        assertEquals(bound.getTerms(), Sets.newHashSet(x, i23));
     }
 
     @Test
@@ -293,8 +315,6 @@ public class SPARQLFilterTest implements TestContext {
                                                                       .collect(toSet());
         assertEquals(bound.getVar2Term().keySet(), vars);
         assertEquals(bound.getVarTerms().size(), vars.size());
-        assertEquals(bound.getTerms().size(), vars.size());
-        assertEquals(bound.getTerms(), bound.getVarTerms());
 
         Set<String> expectedVarNames;
         expectedVarNames = vars.stream().map(v -> bound.getVar2Term().get(v).asVar().getName())

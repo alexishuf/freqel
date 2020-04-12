@@ -1,0 +1,103 @@
+{
+  "id": 71407155,
+  "dimCompra": {
+    "numero": "001792019",
+    "objeto": "Objeto: Pregão Eletrônico -  Registro de Preços para a eventual aquisição de equipamentos hospitalares para atender a Universidade Federal de Santa Catarina (UFSC)",
+    "numeroProcesso": "23080031306201989",
+    "contatoResponsavel": "RICARDO DA SILVEIRA PORTO"
+  },
+  "situacaoContrato": {
+    "descricao": "Publicado"
+  },
+  "modalidadeCompra": {
+    "descricao": "Pregão - Registro de Preço"
+  },
+  "unidadeGestora": {
+    "codigo": "153163",
+    "nome": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+    "nomeSemAcento": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "83899526000182",
+      "sigla": "UFSC",
+      "siglaOriginal": "UFSC",
+      "siglaSemAcento": "UFSC",
+      "nome": "Universidade Federal de Santa Catarina",
+      "nomeOriginal": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+      "nomeSemAcento": "Universidade Federal de Santa Catarina"
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "sigla": "MEC",
+      "nome": "Ministério da Educação"
+    }
+  },
+  "unidadeGestoraCompras": {
+    "codigo": "153163",
+    "nome": "MEC - UNIV. FED. DE SANTA CATARINA - SC",
+    "nomeSemAcento": "MEC - UNIV. FED. DE SANTA CATARINA - SC",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "",
+      "nome": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+      "naturezaJuridica": {
+        "codigo": "0000    ",
+        "descricao": "Sem informação",
+        "codigoTipo": "0 ",
+        "descricaoTipo": "Sem informação"
+      },
+      "sigla": ""
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "nome": "MINISTERIO DA EDUCACAO",
+      "sigla": ""
+    },
+    "existeFatoDespesa": false,
+    "existeFatoReceita": false
+  },
+  "dataAssinatura": "02/12/2019",
+  "dataPublicacaoDOU": "23/12/2019",
+  "dataInicioVigencia": "02/12/2019",
+  "dataFimVigencia": "02/12/2020",
+  "fornecedor": {
+    "numeroInscricaoSocial": "",
+    "nome": "ELFORT IMPORTACAO E DISTRIBUICAO DE PRODUTOS EIRELI",
+    "razaoSocialReceita": "ELFORT IMPORTACAO E DISTRIBUICAO DE PRODUTOS EIRELI",
+    "nomeFantasiaReceita": "ELFORT",
+    "cnae": null,
+    "municipio": {
+      "codigoIBGE": "4216602",
+      "nomeIBGE": "SÃO JOSÉ",
+      "nomeIBGEsemAcento": "SAO JOSE",
+      "pais": "BRASIL",
+      "uf": {
+        "sigla": "SC",
+        "nome": "SANTA CATARINA"
+      }
+    },
+    "localidadePessoa": null,
+    "naturezaJuridica": null,
+    "dataAbertura": "26/11/2007",
+    "enderecoEletronico": "ELFORTIMPORTADORA@HOTMAIL.COM",
+    "numeroTelefone": "48  33430002 ",
+    "descricaoLogradouro": "R JOAO GUALBERTO DE OLIVEIRA",
+    "numeroEndereco": "200",
+    "complementoEndereco": "SALA 2",
+    "numeroCEP": "        ",
+    "nomeBairro": "PICADAS DO NORTE",
+    "codigoFormatado": "09.213.849/0001-18",
+    "tipoCodigo": "CNPJ",
+    "tipoPessoa": null
+  },
+  "valorInicialCompra": 88733.3400,
+  "valorFinalCompra": 88733.3400,
+  "contrato": {
+    "numero": "3542019",
+    "objeto": "Objeto: Aquisição de equipamentos hospitalares para atender a UFSC.",
+    "numeroProcesso": "",
+    "fundamentoLegal": "Fundamento Legal: Lei 8666/93."
+  }
+}

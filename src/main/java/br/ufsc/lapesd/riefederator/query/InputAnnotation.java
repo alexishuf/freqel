@@ -17,4 +17,9 @@ public interface InputAnnotation extends TermAnnotation {
 
     /** Not all inputs are required. */
     boolean isRequired();
+
+    /**
+     * If true, the result may miss the term annotaed with this {@link InputAnnotation}.
+     */
+    boolean isMissingInResult();
 }

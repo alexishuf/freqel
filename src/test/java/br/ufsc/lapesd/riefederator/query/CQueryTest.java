@@ -10,8 +10,11 @@ import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import com.google.common.collect.Sets;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -27,8 +30,7 @@ import java.util.concurrent.*;
 import static br.ufsc.lapesd.riefederator.query.JoinType.OBJ_SUBJ;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
@@ -37,6 +39,9 @@ public class CQueryTest implements TestContext {
     public static final @Nonnull StdURI ageEx = new StdURI("http://example.org/age");
     public static final @Nonnull StdLit AGE_1 =
             StdLit.fromUnescaped("23", new StdURI(XSDDatatype.XSDint.getURI()));
+
+    private static final Atom A1 = new Atom("A1");
+    private static final Atom A2 = new Atom("A2");
 
     /* ~~~ data methods ~~~ */
 
@@ -574,6 +579,30 @@ public class CQueryTest implements TestContext {
         actual.forEachTermAnnotation((t, a) ->  leftAnnotations.add(ImmutablePair.of(t, a)));
         actual.forEachTermAnnotation((t, a) -> rightAnnotations.add(ImmutablePair.of(t, a)));
         assertEquals(leftAnnotations, rightAnnotations);
+    }
+
+    @Test
+    public void testContaining() {
+        CQuery query = createQuery(
+                Alice, knows, x, AtomInputAnnotation.asRequired(A1, "a1").get(),
+                                 PureDescriptive.INSTANCE,
+                Alice, name, y, AtomInputAnnotation.asOptional(A2, "a2").get(),
+                    SPARQLFilter.build("regex(str(?y), \"^Alice.*\")"),
+                x, age, u, SPARQLFilter.build("?u > 23"),
+                Projection.required("x", "y"));
+        CQuery sub = query.containing(x, Triple.Position.SUBJ, Triple.Position.OBJ);
+        assertEquals(sub.getSet(), Sets.newHashSet(
+                new Triple(Alice, knows, x),
+                new Triple(x, age, u)
+        ));
+
+        assertEquals(sub.getModifiers(), Sets.newHashSet(
+                SPARQLFilter.build("?u > 23"), Projection.required("x")));
+        assertEquals(sub.getTermAnnotations(x),
+                     singleton(AtomInputAnnotation.asRequired(A1, "a1").get()));
+        assertEquals(sub.getTermAnnotations(y), emptySet());
+        assertEquals(sub.getTripleAnnotations(new Triple(Alice, knows, x)),
+                     singleton(PureDescriptive.INSTANCE));
     }
 
 }

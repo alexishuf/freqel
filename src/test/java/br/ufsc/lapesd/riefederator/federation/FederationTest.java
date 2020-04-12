@@ -25,9 +25,12 @@ import br.ufsc.lapesd.riefederator.model.term.Res;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
@@ -35,6 +38,7 @@ import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
 import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.util.Modules;
+import org.apache.commons.io.IOUtils;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
@@ -53,22 +57,27 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Application;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.*;
+import static br.ufsc.lapesd.riefederator.webapis.TransparencyService.*;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.apache.jena.rdf.model.ResourceFactory.createLangLiteral;
 import static org.apache.jena.rdf.model.ResourceFactory.createResource;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.*;
 
 public class FederationTest extends JerseyTestNg.ContainerPerClassTest implements TestContext {
     public static final @Nonnull StdLit title1 = StdLit.fromUnescaped("title 1", "en");
@@ -157,7 +166,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest implement
 
     @Override
     protected Application configure() {
-        return new ResourceConfig().register(ModelMessageBodyWriter.class).register(Service.class);
+        return new ResourceConfig().register(ModelMessageBodyWriter.class)
+                .register(Service.class)
+                .register(TransparencyService.class);
     }
 
     @Test
@@ -280,6 +291,40 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest implement
                           "SetupBookShop+authorsAPI",
                           "SetupBookShop+booksAPI",
                           "SetupBookShop+genresAPI").get(variantIdx);
+        }
+    }
+
+    private static final class SetupTransparency implements Setup {
+        @Override
+        public boolean requiresBindJoin() {
+            return true;
+        }
+
+        @Override
+        public void accept(Federation federation, String base) {
+            WebTarget target = ClientBuilder.newClient().target(base);
+            try {
+                federation.addSource(getContractsClient(target).asSource());
+                federation.addSource(getContractByIdClient(target).asSource());
+                federation.addSource(getProcurementsClient(target).asSource());
+                federation.addSource(getProcurementsByIdClient(target).asSource());
+                federation.addSource(getProcurementByNumberClient(target).asSource());
+                federation.addSource(getOrgaosSiafiClient(target).asSource());
+                ARQEndpoint ep = createEndpoint("modalidades.ttl");
+                federation.addSource(new Source(new SelectDescription(ep), ep));
+                //some completely unrelated endpoints...
+                ep = createEndpoint("books.nt");
+                federation.addSource(new Source(new SelectDescription(ep), ep));
+                ep = createEndpoint("genres.nt");
+                federation.addSource(new Source(new SelectDescription(ep), ep));
+            } catch (IOException e) {
+                fail("Unexpected exception", e);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "SetupTransparency";
         }
     }
 
@@ -459,12 +504,67 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest implement
         );
     }
 
+
+    public static @Nonnull List<List<Object>> transparencyJoinsData()
+            throws IOException, SPARQLParseException {
+        Class<FederationTest> myClass = FederationTest.class;
+        String[] sparql = new String[3];
+        for (int i = 0; i < 3; i++) {
+            try (InputStream in = myClass.getResourceAsStream("transparency-query-"+i+".sparql")) {
+                sparql[i] = IOUtils.toString(in, StandardCharsets.UTF_8);
+            }
+        }
+        StdLit s267291791 = StdLit.fromUnescaped("267291791", xsdInt);
+        StdLit s278614622 = StdLit.fromUnescaped("278614622", xsdInt);
+        StdLit s70507179 = StdLit.fromUnescaped("70507179", xsdInt);
+        StdLit s71407155 = StdLit.fromUnescaped("71407155", xsdInt);
+        StdLit d20191202 = StdLit.fromUnescaped("2019-12-02", xsdDate);
+        StdLit d20191017 = StdLit.fromUnescaped("2019-10-17", xsdDate);
+        StdLit d20201202 = StdLit.fromUnescaped("2020-12-02", xsdDate);
+        StdLit pregao = StdLit.fromUnescaped("Pregão - Registro de Preço", xsdString);
+
+        return asList(
+                /* match only against getContracts() */
+                asList(new SetupTransparency(),
+                        SPARQLQueryParser.parse(sparql[0]),
+                        newHashSet(MapSolution.build("id", s267291791),
+                                   MapSolution.build("id", s278614622))),
+                /* match only against getProcurements() */
+                asList(new SetupTransparency(),
+                       SPARQLQueryParser.parse(sparql[1]),
+                       newHashSet(MapSolution.builder()
+                                       .put("id", s70507179)
+                                       .put("startDate", d20191202)
+                                       .put("endDate", d20201202)
+                                       .put("modDescr", pregao).build(),
+                                  MapSolution.builder()
+                                       .put("id", s71407155)
+                                       .put("startDate", d20191202)
+                                       .put("endDate", d20201202)
+                                       .put("modDescr", pregao).build())),
+                /* Get procurement of a contract */
+                asList(new SetupTransparency(),
+                       SPARQLQueryParser.parse(sparql[2]),
+                       newHashSet(MapSolution.builder()
+                                       .put("id", s70507179)
+                                       .put("startDate", d20191202)
+                                       .put("openDate", d20191017)
+                                       .put("modDescr", pregao).build(),
+                                  MapSolution.builder()
+                                       .put("id", s71407155)
+                                       .put("startDate", d20191202)
+                                       .put("openDate", d20191017)
+                                       .put("modDescr", pregao).build()))
+                );
+    }
+
     @DataProvider
-    public static Object[][] queryData() {
+    public static Object[][] queryData() throws Exception {
         List<List<Object>> basic = new ArrayList<>();
         basic.addAll(singleTripleData());
         basic.addAll(singleEpQueryData());
         basic.addAll(crossEpJoinsData());
+        basic.addAll(transparencyJoinsData());
 
         List<List<Object>> withVariants = new ArrayList<>();
         for (List<Object> row : basic) {

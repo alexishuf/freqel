@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Sets;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -15,7 +16,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
@@ -34,11 +34,11 @@ public class JoinNodeTest implements TestContext {
         xKnowsY = new QueryNode(empty, CQuery.from(new Triple(x, knows, y)));
         xKnowsYInput = new QueryNode(empty, CQuery.with(new Triple(x, knows, y))
                 .annotate(x, AtomAnnotation.of(Person))
-                .annotate(y, asRequired(KnownPerson, "knownPerson"))
+                .annotate(y, AtomInputAnnotation.asRequired(KnownPerson, "knownPerson").get())
                 .build());
         yKnown = new QueryNode(empty, CQuery.from(new Triple(x, knows, y)), singleton("y"));
         yInputKnowsAlice = new QueryNode(empty, createQuery(
-                y, AtomAnnotation.asRequired(Person, "person"), knows, Alice
+                y, AtomInputAnnotation.asRequired(Person, "person").get(), knows, Alice
         ));
     }
 

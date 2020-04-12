@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.server;
 
 import br.ufsc.lapesd.riefederator.federation.Federation;
+import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
 import br.ufsc.lapesd.riefederator.server.endpoints.Qonfig;
 import br.ufsc.lapesd.riefederator.server.endpoints.SPARQLEndpoint;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import javax.ws.rs.ext.RuntimeDelegate;
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
 
@@ -60,17 +62,20 @@ public class ServerMain {
         }
     }
 
-    public void run() throws Exception {
+    public @Nonnull ResourceConfig getApplication() throws IOException, FederationSpecException {
         Federation federation = new FederationSpecLoader().load(config);
-
-        InetSocketAddress address = new InetSocketAddress(listenAddress, port);
-        HttpServer server = HttpServer.create(address, 0);
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> server.stop(4)));
-        ResourceConfig app = new ResourceConfig()
+        return new ResourceConfig()
                 .property(Federation.class.getName(), federation)
                 .register(SPARQLEndpoint.class)
                 .register(Qonfig.class)
                 .register(UIFiles.class);
+    }
+
+    public void run() throws Exception {
+        InetSocketAddress address = new InetSocketAddress(listenAddress, port);
+        HttpServer server = HttpServer.create(address, 0);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> server.stop(4)));
+        ResourceConfig app = getApplication();
         HttpHandler handler = RuntimeDelegate.getInstance().createEndpoint(app, HttpHandler.class);
         server.createContext("/", handler);
 

@@ -1,0 +1,25 @@
+PREFIX :     <urn:plain:>
+PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX dct:  <http://purl.org/dc/terms/>
+
+SELECT ?id ?startDate ?endDate ?modDescr WHERE {
+    ?x :id ?id ;
+       :unidadeGestora/:orgaoVinculado/:codigoSIAFI "26246" ;
+       :dataInicioVigencia ?startDate ;
+       :dataFimVigencia ?endDate ;
+       :modalidadeCompra/:descricao ?modDescr
+       FILTER(?startDate >= "2019-12-01"^^xsd:date)
+       FILTER(?endDate <= "2020-12-02"^^xsd:date) .
+}
+
+# Expected results:
+# +-------------------------------------------------------------------------------------------+
+# | ?id      | ?startDate             | ?endDate               | ?modDescr                    |
+# +-------------------------------------------------------------------------------------------+
+# | 70507179 | "2019-12-02"^^xsd:date | "2020-12-02"^^xsd:date | "Pregão - Registro de Preço" |
+# | 71407155 | "2019-12-02"^^xsd:date | "2020-12-02"^^xsd:date | "Pregão - Registro de Preço" |
+# +-------------------------------------------------------------------------------------------+

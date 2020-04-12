@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
+import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
@@ -33,6 +34,10 @@ public interface TestContext {
     @Nonnull URI xsdString  = new StdURI(XSDDatatype.XSDstring.getURI());
     @Nonnull URI xsdDate  = new StdURI(XSDDatatype.XSDdate.getURI());
 
+    default @Nonnull StdPlain plain(@Nonnull String local) {
+        return new StdPlain(local);
+    }
+
     default @Nonnull Lit lit(int value) {
         return StdLit.fromUnescaped(String.valueOf(value), xsdInt);
     }
@@ -49,10 +54,12 @@ public interface TestContext {
     @Nonnull URI Person   = new StdURI(FOAF.Person.getURI());
     @Nonnull URI Document = new StdURI(FOAF.Document.getURI());
 
-    @Nonnull URI knows        = new StdURI(FOAF.knows.getURI());
-    @Nonnull URI name         = new StdURI(FOAF.name.getURI());
-    @Nonnull URI primaryTopic = new StdURI(FOAF.primaryTopic.getURI());
-    @Nonnull URI age          = new StdURI(FOAF.age.getURI());
+    @Nonnull URI knows            = new StdURI(FOAF.knows.getURI());
+    @Nonnull URI name             = new StdURI(FOAF.name.getURI());
+    @Nonnull URI primaryTopic     = new StdURI(FOAF.primaryTopic.getURI());
+    @Nonnull URI isPrimaryTopicOf = new StdURI(FOAF.isPrimaryTopicOf.getURI());
+    @Nonnull URI age              = new StdURI(FOAF.age.getURI());
+    @Nonnull URI foafTitle        = new StdURI(FOAF.title.getURI());
 
     @Nonnull URI Consumer = new StdURI("http://example.org/Consumer");
 

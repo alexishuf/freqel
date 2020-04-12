@@ -14,8 +14,18 @@ overlay:
       date-format: "dd/MM/yyyy"
     only-numbers:
       serializer: "only-numbers"
+    only-numbers-9:
+      serializer: "only-numbers"
+      width: 9
   produces: # Original description is bugged and lacks this
     - application/json
+  definitions:
+    # Add a property required by the codigoModalidade input from
+    # /api-de-dados/licitacoes/por-uasg-modalidade-numero
+    ModalidadeCompra:
+      properties:
+        codigo:
+          type: number
   paths:
     /api-de-dados/licitacoes:
       get:
@@ -133,3 +143,53 @@ overlay:
             description: Forbidden
           404:
             description: Not Found
+    /api-de-dados/licitacoes/por-uasg-modalidade-numero:
+      get:
+        parameters:
+          - name: codigoUASG
+            x-path:
+              path: [unidadeGestora, codigo]
+          - name: numero
+            x-path:
+              path: [licitacao, numero]
+            x-serializer:
+              $ref: "#/x-definitions/only-numbers-9"
+          - name: codigoModalidade
+            x-path:
+              missing: true
+              path: [modalidadeLicitacao, codigo]
+    /api-de-dados/contratos:
+      get:
+        parameters:
+          - name: dataInicial
+            x-serializer:
+              $ref: "#/x-definitions/date-serializer"
+            x-path:
+              path: [dataInicioVigencia]
+              filter:
+                sparql: "FILTER($actual >= $input)"
+          - name: dataFinal
+            x-serializer:
+              $ref: "#/x-definitions/date-serializer"
+            x-path:
+              path: [dataFimVigencia]
+              filter:
+                sparql: "FILTER($actual <= $input)"
+          - name: codigoOrgao
+            x-path:
+              path: [unidadeGestora, orgaoVinculado, codigoSIAFI]
+    /api-de-dados/contratos/id:
+      get:
+        parameters:
+          - name: id
+            x-path:
+              path: [id]
+    /api-de-dados/orgaos-siafi:
+      get:
+        parameters:
+          - name: codigo
+            x-path:
+              path: [codigo]
+          - name: descricao
+            x-path:
+              path: [descricao]

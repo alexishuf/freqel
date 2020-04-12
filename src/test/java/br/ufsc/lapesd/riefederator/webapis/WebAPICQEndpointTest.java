@@ -16,7 +16,7 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
-import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
@@ -261,7 +261,7 @@ public class WebAPICQEndpointTest
 
         Atom Total = ep.getMolecule().getMolecule().getAtomMap().get("Total");
         assertEquals(match.getKnownExclusiveGroups().get(0).getTermAnnotations(i3),
-                     singletonList(AtomAnnotation.asRequired(Total, "i")));
+                     singletonList(AtomInputAnnotation.asRequired(Total, "i").get()));
 
         Results results = ep.query(match.getKnownExclusiveGroups().get(0));
         List<Term> values = new ArrayList<>(), expected = asList(i1, i2, i3);

@@ -37,6 +37,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 public class SwaggerParser implements APIDescriptionParser {
     private static final Logger logger = LoggerFactory.getLogger(SwaggerParser.class);
@@ -91,7 +92,7 @@ public class SwaggerParser implements APIDescriptionParser {
         @Nonnull JsonSchemaMoleculeParser parser;
         @Nonnull String endpointKey;
         @Nullable PagingStrategy pagingStrategy;
-        @Nonnull Set<String> required, optional;
+        @Nonnull Set<String> required, optional, missing;
         @Nonnull Map<String, DictTree> paramObjMap;
         @Nonnull Map<String, ParameterPath> parameterPathMap;
 
@@ -113,6 +114,9 @@ public class SwaggerParser implements APIDescriptionParser {
 
             parameterPathMap = getParameterPaths(endpoint, parser, optional,
                     pagingStrategy == null ? emptySet() : pagingStrategy.getParametersUsed());
+            missing = parameterPathMap.entrySet().stream()
+                    .filter(e -> e.getValue().isMissingInResult())
+                    .map(Map.Entry::getKey).collect(toSet());
             Set<String> mappedInputs = new HashSet<>(parameterPathMap.keySet());
             if (pagingStrategy != null)
                 mappedInputs.addAll(pagingStrategy.getParametersUsed());
@@ -193,7 +197,7 @@ public class SwaggerParser implements APIDescriptionParser {
 
         UriTemplate template = p.getTemplate();
         UriTemplateExecutor.Builder builder = UriTemplateExecutor.from(template)
-                .withOptional(p.optional).withRequired(p.required)
+                .withOptional(p.optional).withRequired(p.required).withMissingInResult(p.missing)
                 .withResponseParser(responseParser);
 
         // apply modifiers to executor

@@ -35,6 +35,14 @@ public interface Solution {
         return get(varName) != null;
     }
 
+    default boolean isEmpty() {
+        if (!getVarNames().isEmpty())
+            return true;
+        boolean[] empty = {true};
+        forEach((n, t) -> empty[0] |= t != null);
+        return empty[0];
+    }
+
     /**
      * Gets all var names for which {@link Solution#has(java.lang.String)} returns true.
      */

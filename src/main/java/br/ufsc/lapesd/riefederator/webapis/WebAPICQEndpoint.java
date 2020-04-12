@@ -20,7 +20,9 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
 import br.ufsc.lapesd.riefederator.webapis.requests.MismatchingQueryException;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.APIRequestExecutorException;
@@ -35,6 +37,7 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
 import static java.util.stream.Collectors.toSet;
 
 public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoint {
@@ -69,31 +72,47 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     public @Nonnull
     Results query(@Nonnull CQuery query) {
         MapSolution.Builder b = MapSolution.builder();
+        APIRequestExecutor exec = molecule.getExecutor();
         boolean hasAtomAnnotations =
-                query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
+                query.forEachTermAnnotation(AtomAnnotation.class, (t, ann) -> {
+                    if (!(ann instanceof AtomInputAnnotation))
+                        return;
+                    AtomInputAnnotation a = (AtomInputAnnotation)ann;
                     String input = a.getInputName();
                     if (a.isOverride()) {
                         b.put(input, Objects.requireNonNull(a.getOverrideValue()));
                     } else if (t.isGround()) {
                         b.put(input, t);
-                    } else if (molecule.getExecutor().getRequiredInputs().contains(input)) {
+                    } else if (exec.getRequiredInputs().contains(input)) {
                         logger.error("Required input {} (Atom={}) is not ground!",
                                      input, a.getAtomName());
                     }
         });
-        if (!hasAtomAnnotations && molecule.getExecutor().hasInputs()) {
+        if (!hasAtomAnnotations) {
             logger.info("No AtomAnnotations in {}. Will call matchAndQuery()", query);
             return matchAndQuery(query, false);
+        }
+        MapSolution bound = b.build();
+        Set<String> missingRequired = setMinus(exec.getRequiredInputs(), bound.getVarNames());
+        Set<String> resultVars = query.getTermVars().stream().map(Var::getName).collect(toSet());
+        if (!missingRequired.isEmpty()) {
+            logger.error("The required inputs {} are missing when invoking {}. " +
+                         "Will return no results", missingRequired, this);
+            return CollectionResults.empty(resultVars);
+        }
+        if (bound.getVarNames().isEmpty()) {
+            logger.warn("Calling WebAPI {} without arguments. This may be slow...",
+                        molecule.getName());
         }
         // from here onwards, this class is responsible for modifiers
         ModifierUtils.check(this, query.getModifiers());
         Iterator<? extends CQEndpoint> it;
         try {
-            it = molecule.getExecutor().execute(b.build());
+            it = exec.execute(bound);
         } catch (APIRequestExecutorException e) {
-            logger.error("Exception on execution of query {}. Will return empty results", query, e);
-            Set<String> names = query.streamTerms(Var.class).map(Var::getName).collect(toSet());
-            return CollectionResults.empty(names);
+            logger.error("Exception on execution of query {} against {}. Will return empty results",
+                         query, molecule.getName(), e);
+            return CollectionResults.empty(resultVars);
         }
         Results results = new EndpointIteratorResults(it, query);
         results = SPARQLFilterResults.applyIf(results, query);

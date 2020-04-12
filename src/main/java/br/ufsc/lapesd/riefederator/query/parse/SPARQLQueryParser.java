@@ -1,8 +1,9 @@
 package br.ufsc.lapesd.riefederator.query.parse;
 
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
-import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
+import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import org.apache.commons.io.IOUtils;
@@ -17,6 +18,7 @@ import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.E_Exists;
 import org.apache.jena.sparql.expr.E_NotExists;
 import org.apache.jena.sparql.expr.Expr;
+import org.apache.jena.sparql.path.*;
 import org.apache.jena.sparql.syntax.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,12 +26,21 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
+
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class SPARQLQueryParser {
     private final static Logger logger = LoggerFactory.getLogger(SPARQLQueryParser.class);
+    private final static String HIDDEN_VAR_PREFIX = "parserPathHiddenVar";
+
+    static @Nonnull StdVar hidden(int id) {
+        return new StdVar(HIDDEN_VAR_PREFIX+id);
+    }
+    static boolean isHidden(@Nonnull Term term) {
+        return term.isVar() && term.asVar().getName().matches(HIDDEN_VAR_PREFIX+"\\d+");
+    }
 
     public static @Nonnull CQuery parse(@Nonnull String sparql) throws SPARQLParseException {
         try {
@@ -60,6 +71,7 @@ public class SPARQLQueryParser {
         CQuery.Builder builder = CQuery.builder();
         Set<String> allResultVars = new HashSet<>();
         Set<String> projection = new HashSet<>();
+        int[] lastHidden = {-1};
         try {
             q.visit(new QueryVisitor() {
                 @Override
@@ -94,13 +106,17 @@ public class SPARQLQueryParser {
                 public void visitDatasetDecl(Query query) { }
 
                 private void addTriple(@Nonnull Triple triple) {
-                    br.ufsc.lapesd.riefederator.model.Triple parsed;
-                    parsed = JenaWrappers.fromJena(triple);
-                    parsed.forEach(t -> {
+                    addTriple(fromJena(triple));
+                }
+                private void addTriple(@Nonnull Term s, @Nonnull Term p, @Nonnull Term o) {
+                    addTriple(new br.ufsc.lapesd.riefederator.model.Triple(s, p, o));
+                }
+                private void addTriple(@Nonnull br.ufsc.lapesd.riefederator.model.Triple triple) {
+                    triple.forEach(t -> {
                         if (t.isVar())
                             allResultVars.add(t.asVar().getName());
                     });
-                    builder.add(parsed);
+                    builder.add(triple);
                 }
 
                 @Override
@@ -109,7 +125,7 @@ public class SPARQLQueryParser {
                         @Override
                         public void visit(ElementTriplesBlock el) {
                             el.patternElts().forEachRemaining(t
-                                    -> builder.add(JenaWrappers.fromJena(t)));
+                                    -> builder.add(fromJena(t)));
                         }
 
                         @Override
@@ -192,10 +208,102 @@ public class SPARQLQueryParser {
                             for (Iterator<TriplePath> it = el.patternElts(); it.hasNext(); ) {
                                 TriplePath path = it.next();
                                 Triple triple = path.asTriple();
-                                if (triple != null)
+                                if (triple != null) {
                                     addTriple(triple);
-                                else
-                                    throw new FeatureException("SPARQL 1.1 paths are not supported");
+                                    continue;
+                                }
+                                List<Term> terms = new ArrayList<>();
+                                terms.add(fromJena(path.getSubject()));
+                                path.getPath().visit(new PathVisitor() {
+                                    @Override
+                                    public void visit(P_Link pathNode) {
+                                        terms.add(fromJena(pathNode.getNode()));
+                                    }
+
+                                    @Override
+                                    public void visit(P_Seq pathSeq) {
+                                        pathSeq.getLeft().visit(this);
+                                        StdVar hidden = hidden(++lastHidden[0]);
+                                        terms.add(hidden); //as object ...
+                                        terms.add(hidden); //and subject of next triple
+                                        pathSeq.getRight().visit(this);
+                                    }
+
+                                    @Override
+                                    public void visit(P_ReverseLink pathNode) {
+                                        throw new FeatureException("SPARQL 1.1 paths with ^ are not supported (yet)");
+                                    }
+
+                                    @Override
+                                    public void visit(P_NegPropSet pathNotOneOf) {
+                                        throw new FeatureException("SPARQL 1.1 paths with ! are not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_Inverse inversePath) {
+                                        throw new FeatureException("SPARQL 1.1 paths with ^ are not supported (yet)");
+                                    }
+
+                                    @Override
+                                    public void visit(P_Mod pathMod) {
+                                        throw new FeatureException("Jena {M,N} path extension is not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_FixedLength pFixedLength) {
+                                        throw new FeatureException("Jena {N} path extension is not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_Distinct pathDistinct) {
+                                        throw new FeatureException("Jena P_Distinct path extension is not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_Multi pathMulti) {
+                                        throw new FeatureException("Jena P_Multi path extension is not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_Shortest pathShortest) {
+                                        throw new FeatureException("Jena shortest path extension is not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_ZeroOrOne path) {
+                                        throw new FeatureException("SPARQL 1.1 paths with ? are not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_ZeroOrMore1 path) {
+                                        throw new FeatureException("SPARQL 1.1 paths with * are not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_ZeroOrMoreN path) {
+                                        throw new FeatureException("SPARQL 1.1 paths with * are not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_OneOrMore1 path) {
+                                        throw new FeatureException("SPARQL 1.1 paths with + are not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_OneOrMoreN path) {
+                                        throw new FeatureException("SPARQL 1.1 paths with + are not supported");
+                                    }
+
+                                    @Override
+                                    public void visit(P_Alt pathAlt) {
+                                        throw new FeatureException("SPARQL 1.1 paths with | are not supported");
+                                    }
+                                });
+                                terms.add(fromJena(path.getObject()));
+                                checkArgument((terms.size() % 3) == 0, "SPARQL 1.1 path yielded " +
+                                        "a triple with less than 3 terms. This is likely a bug");
+                                for (int i = 0; i < terms.size(); i += 3)
+                                    addTriple(terms.get(i), terms.get(i+1), terms.get(i+2));
                             }
                         }
                     });
@@ -239,7 +347,7 @@ public class SPARQLQueryParser {
                 logger.warn("Projected vars {} are not results and will be discarded. Query:\n{}",
                             extra, q.serialize());
             }
-            if (projection.size() < allResultVars.size()) {
+            if (!q.isAskType() && projection.size() < allResultVars.size()) {
                 projection.forEach(builder::project);
                 builder.requireProjection();
             }

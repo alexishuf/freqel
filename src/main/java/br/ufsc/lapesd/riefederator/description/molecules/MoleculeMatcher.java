@@ -374,6 +374,7 @@ public class MoleculeMatcher implements SemanticDescription {
         }
 
 
+        @SuppressWarnings("ReferenceEquality")
         private @Nullable EGPrototype tryMerge(@Nonnull EGPrototype l, @Nonnull EGPrototype r) {
             Set<Triple> commonTriples = TreeUtils.intersect(l.query.getSet(), r.query.getSet());
             if (commonTriples.isEmpty())
@@ -381,6 +382,7 @@ public class MoleculeMatcher implements SemanticDescription {
             CQuery union = CQuery.union(l.query, r.query);
             List<List<LinkMatch>> matchLists = new ArrayList<>(union.size());
             Set<Link> lLinks = new HashSet<>(), rLinks = new HashSet<>();
+            SetMultimap<Term, Triple> p2triple = HashMultimap.create(union.size(), 2);
             for (Triple triple : union) {
                 if (commonTriples.contains(triple)) {
                     lLinks.clear();
@@ -395,6 +397,18 @@ public class MoleculeMatcher implements SemanticDescription {
                     matchLists.add(l.matchLists.get(l.query.indexOf(triple)));
                 } else if (r.query.contains(triple)) {
                     matchLists.add(r.matchLists.get(r.query.indexOf(triple)));
+                }
+                p2triple.put(triple.getPredicate(), triple);
+            }
+            for (Term predicate : p2triple.keySet()) {
+                Set<Triple> set = p2triple.get(predicate);
+                for (Triple i : set) {
+                    Term s = i.getSubject(), o = i.getObject();
+                    for (Triple j : set) {
+                        if (i == j) continue;
+                        if (s.equals(j.getSubject()) || o.equals(j.getObject()))
+                            return null; //proceeding with the merge will likely break joins
+                    }
                 }
             }
             if (isAmbiguousEG(union, matchLists))

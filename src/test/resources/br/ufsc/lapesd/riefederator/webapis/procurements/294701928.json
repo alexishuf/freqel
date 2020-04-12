@@ -1,0 +1,57 @@
+{
+  "id": 294701928,
+  "dataResultadoCompra": "25/11/2019",
+  "dataAbertura": "25/10/2019",
+  "dataReferencia": "14/10/2019",
+  "dataPublicacao": "14/10/2019",
+  "situacaoCompra": {
+    "codigo": 75,
+    "descricao": "Evento de Resultado de Julgamento Publicado"
+  },
+  "modalidadeLicitacao": {
+    "descricao": "Pregão - Registro de Preço"
+  },
+  "instrumentoLegal": null,
+  "valor": 0,
+  "municipio": {
+    "codigoIBGE": "4205407",
+    "nomeIBGE": "FLORIANÓPOLIS",
+    "nomeIBGEsemAcento": "FLORIANOPOLIS",
+    "pais": "BRASIL",
+    "uf": {
+      "sigla": "SC",
+      "nome": "SANTA CATARINA"
+    }
+  },
+  "unidadeGestora": {
+    "codigo": "150232",
+    "nome": "HOSPITAL UNIVERSITÁRIO/UFSC",
+    "nomeSemAcento": "HOSPITAL UNIVERSITARIO/UFSC",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "",
+      "nome": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+      "naturezaJuridica": {
+        "codigo": "0000    ",
+        "descricao": "Sem informação",
+        "codigoTipo": "0 ",
+        "descricaoTipo": "Sem informação"
+      },
+      "sigla": ""
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "nome": "MINISTERIO DA EDUCACAO",
+      "sigla": ""
+    },
+    "existeFatoDespesa": false,
+    "existeFatoReceita": false
+  },
+  "licitacao": {
+    "numero": "003042019",
+    "objeto": "Objeto: Pregão Eletrônico -  Registro de Preços para aquisição de Materiais Permanentes Hospitalares, Laboratoriais e de Uso Geral",
+    "numeroProcesso": "23820011545201910",
+    "contatoResponsavel": "ALECIO CARMINATTI JUNIOR"
+  }
+}

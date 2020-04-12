@@ -1,12 +1,10 @@
 package br.ufsc.lapesd.riefederator.webapis.description;
 
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.TermAnnotation;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Objects;
 
 @Immutable
@@ -19,25 +17,6 @@ public class AtomAnnotation implements TermAnnotation {
 
     public static @Nonnull AtomAnnotation of(@Nonnull Atom atom) {
         return new AtomAnnotation(atom);
-    }
-
-    public static @Nonnull AtomInputAnnotation asOptional(@Nonnull Atom atom,
-                                                          @Nonnull String inputName) {
-        return AtomInputAnnotation.asOptional(atom, inputName);
-    }
-    public static @Nonnull AtomInputAnnotation asOptional(@Nonnull Atom atom,
-                                                          @Nonnull String inputName,
-                                                          @Nullable Term overrideValue) {
-        return AtomInputAnnotation.asOptional(atom, inputName, overrideValue);
-    }
-    public static @Nonnull AtomInputAnnotation asRequired(@Nonnull Atom atom,
-                                                          @Nonnull String inputName) {
-        return AtomInputAnnotation.asRequired(atom, inputName);
-    }
-    public static @Nonnull AtomInputAnnotation asRequired(@Nonnull Atom atom,
-                                                          @Nonnull String inputName,
-                                                          @Nullable Term overrideValue) {
-        return AtomInputAnnotation.asRequired(atom, inputName, overrideValue);
     }
 
     public @Nonnull Atom getAtom() {

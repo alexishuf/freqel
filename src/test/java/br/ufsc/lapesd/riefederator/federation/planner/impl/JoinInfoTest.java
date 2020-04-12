@@ -14,6 +14,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.UndirectedIrreflexiveArrayGraph;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -28,7 +29,6 @@ import java.util.stream.Stream;
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMultiJoinability;
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
@@ -48,9 +48,9 @@ public class JoinInfoTest implements TestContext {
 
     private static final CQuery xpyi = CQuery.with(new Triple(x, p1, y))
             .annotate(x, AtomAnnotation.of(X))
-            .annotate(y, asRequired(Y, "Y")).build();
+            .annotate(y, AtomInputAnnotation.asRequired(Y, "Y").get()).build();
     private static final CQuery yipz = CQuery.with(new Triple(y, p1, z))
-            .annotate(y, asRequired(Y, "Y"))
+            .annotate(y, AtomInputAnnotation.asRequired(Y, "Y").get())
             .annotate(z, AtomAnnotation.of(Z)).build();
 
 
@@ -69,7 +69,7 @@ public class JoinInfoTest implements TestContext {
             CQuery.WithBuilder builder = CQuery.with(query);
             int idx = 1;
             for (Var var : filterVars) {
-                builder.annotate(var, asRequired(new Atom("A" + idx), "a"+idx));
+                builder.annotate(var, AtomInputAnnotation.asRequired(new Atom("A" + idx), "a"+idx).get());
                 ++idx;
             }
             query = builder.build();

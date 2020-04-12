@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
+import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.Triple.Position;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
@@ -921,14 +922,58 @@ public class CQuery implements  List<Triple> {
         }
         Collections.sort(indices);
         //noinspection UnstableApiUsage
-        ImmutableList.Builder<Triple> builder = builderWithExpectedSize(indices.size());
+//        ImmutableList.Builder<Triple> builder = builderWithExpectedSize(indices.size());
+//        assert indices.stream().noneMatch(i -> i < 0) : "An index cannot be negative!";
+//        int last = -1;
+//        for (int i : indices) {
+//            if (i != last)
+//                builder.add(list.get(last = i));
+//        }
+
+        Builder b = builder(indices.size());
         assert indices.stream().noneMatch(i -> i < 0) : "An index cannot be negative!";
         int last = -1;
         for (int i : indices) {
             if (i != last)
-                builder.add(list.get(last = i));
+                b.add(list.get(last = i));
         }
-        return new CQuery(builder.build(), getModifiers());
+        forEachTripleAnnotation((t, a) -> {
+            if (b.mutableList.contains(t))
+                b.annotate(t, a);
+        });
+
+        Set<Term> allTerms = new HashSet<>();
+        Set<String> allowedProjection = new HashSet<>();
+        b.mutableList.stream().flatMap(Triple::stream).forEach(t -> {
+            allTerms.add(t);
+            if (t.isVar()) allowedProjection.add(t.asVar().getName());
+        });
+        for (Modifier modifier : getModifiers()) {
+            if (!(modifier instanceof SPARQLFilter))
+                continue;
+            SPARQLFilter filter = (SPARQLFilter) modifier;
+            if (allTerms.containsAll(filter.getVarTerms())) {
+                b.modifier(filter);
+                allTerms.addAll(filter.getTerms());
+            }
+        }
+        for (Modifier modifier : getModifiers()) {
+            if (modifier instanceof SPARQLFilter) {
+                continue;
+            } else if (modifier instanceof Projection) {
+                Projection p = (Projection) modifier;
+                Set<String> vars = TreeUtils.intersect(p.getVarNames(), allowedProjection);
+                b.modifier(new Projection(ImmutableSet.copyOf(vars), p.isRequired()));
+            } else {
+                b.modifier(modifier);
+            }
+        }
+
+        forEachTermAnnotation((t, a) -> {
+            if (allTerms.contains(t)) b.annotate(t, a);
+        });
+
+        return b.build();
     }
 
     /** Equivalent to <code>containing(term, asList(positions))</code>. */
@@ -1006,15 +1051,23 @@ public class CQuery implements  List<Triple> {
         if (list.isEmpty()) return "{}";
         StringBuilder b = new StringBuilder(list.size()*16);
         b.append('{');
-        if (list.size() > 1)
-            b.append('\n');
+        if (list.size() == 1 && modifiers.stream().noneMatch(SPARQLFilter.class::isInstance)) {
+            Triple t = list.iterator().next();
+            return b.append(" ").append(t.getSubject().toString(dict)).append(' ')
+                    .append(t.getPredicate().toString(dict)).append(' ')
+                    .append(t.getObject().toString(dict)).append(" . }").toString();
+        }
+        b.append('\n');
         for (Triple t : list) {
             b.append("  ").append(t.getSubject().toString(dict)).append(' ')
                     .append(t.getPredicate().toString(dict)).append(' ')
                     .append(t.getObject().toString(dict)).append(" .\n");
         }
-        if (list.size() == 1)
-            b.setLength(b.length()-1);
+        for (Modifier modifier : modifiers) {
+            if (modifier instanceof SPARQLFilter)
+                b.append("  ").append(((SPARQLFilter) modifier).toString()).append("\n");
+        }
+        b.setLength(b.length()-1);
         return b.append('}').toString();
     }
 

@@ -3,8 +3,11 @@ package br.ufsc.lapesd.riefederator.query.modifiers;
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
+import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -26,6 +29,7 @@ import org.apache.jena.sparql.syntax.ElementFilter;
 import org.apache.jena.sparql.syntax.ElementGroup;
 import org.apache.jena.sparql.syntax.ElementVisitorBase;
 import org.apache.jena.sparql.util.Context;
+import org.apache.jena.vocabulary.XSD;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +41,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJenaNode;
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
@@ -53,6 +57,27 @@ public class SPARQLFilter implements Modifier {
                                                              "&&", "||");
     private static final Set<String> unOps = Sets.newHashSet("!", "-", "+");
 
+    private static final @Nonnull Set<URI> INTEGER_DATATYPES;
+    private static final @Nonnull URI XSD_INTEGER;
+
+    static {
+        Set<URI> set = new HashSet<>();
+        set.add(fromURIResource(XSD.nonPositiveInteger));
+        set.add(fromURIResource(XSD.nonNegativeInteger));
+        set.add(fromURIResource(XSD.xlong));
+        set.add(fromURIResource(XSD.negativeInteger));
+        set.add(fromURIResource(XSD.unsignedLong));
+        set.add(fromURIResource(XSD.positiveInteger));
+        set.add(fromURIResource(XSD.xint));
+        set.add(fromURIResource(XSD.xshort));
+        set.add(fromURIResource(XSD.xbyte));
+        set.add(fromURIResource(XSD.unsignedInt));
+        set.add(fromURIResource(XSD.unsignedShort));
+        set.add(fromURIResource(XSD.unsignedByte));
+        INTEGER_DATATYPES = set;
+        XSD_INTEGER = fromURIResource(XSD.integer);
+    }
+
     private final boolean required;
     private final @Nonnull String filter;
     private final @SuppressWarnings("Immutable") @Nonnull Expr expr;
@@ -60,6 +85,8 @@ public class SPARQLFilter implements Modifier {
     private @SuppressWarnings("Immutable") @Nonnull @LazyInit SoftReference<Set<Var>> vars
             = new SoftReference<>(null);
     private @SuppressWarnings("Immutable") @Nonnull @LazyInit SoftReference<Set<String>> varNames
+            = new SoftReference<>(null);
+    private @SuppressWarnings("Immutable") @Nonnull @LazyInit SoftReference<Set<Term>> terms
             = new SoftReference<>(null);
 
     @SuppressWarnings("Immutable") @LazyInit
@@ -278,7 +305,43 @@ public class SPARQLFilter implements Modifier {
     }
 
     public @Nonnull Set<Term> getTerms() {
-        return var2term.values();
+        Set<Term> strong = this.terms.get();
+        if (strong == null) {
+            HashSet<Term> finalSet = new HashSet<>(var2term.size() * 2);
+            finalSet.addAll(var2term.values());
+            expr.visit(new ExprVisitorBase() {
+                private void visitFunction(ExprFunction func) {
+                    for (int i = 1; i <= func.numArgs(); i++)
+                        func.getArg(i).visit(this);
+                }
+                @Override
+                public void visit(ExprFunction0 func) {  visitFunction(func); }
+                @Override
+                public void visit(ExprFunction1 func) {  visitFunction(func); }
+                @Override
+                public void visit(ExprFunction2 func) {  visitFunction(func); }
+                @Override
+                public void visit(ExprFunction3 func) {  visitFunction(func); }
+                @Override
+                public void visit(ExprFunctionN func) {  visitFunction(func); }
+                @Override
+                public void visit(ExprFunctionOp op) { visitFunction(op); }
+
+                @Override
+                public void visit(NodeValue nv) {
+                    finalSet.add(fromJena(nv.asNode()));
+                }
+
+                @Override
+                public void visit(ExprVar nv) { /* pass */ }
+                @Override
+                public void visit(ExprAggregator eAgg) {/* pass */}
+                @Override
+                public void visit(ExprNone exprNone) {/* pass */}
+            });
+            this.terms = new SoftReference<>(strong = finalSet);
+        }
+        return strong;
     }
 
     public @Nonnull Set<Var> getVarTerms() {
@@ -661,6 +724,23 @@ public class SPARQLFilter implements Modifier {
 
     private static  @Nonnull String toSPARQLSyntax(@Nonnull Expr expr) {
         return toSPARQLSyntax(expr, new StringBuilder()).toString();
+    }
+
+
+    /**
+     * Bind works by manipulating {@link Expr} instances. Such representations discard datatype
+     * information of xsd:integer sub-datatypes. This method will emulate the same behavior.
+     *
+     * @param term term to generalize the datatype
+     * @return generalized term in accordance to {@link SPARQLFilter#bind}.
+     */
+    public static @Nonnull Term generalizeAsBind(@Nonnull Term term) {
+        if (!term.isLiteral())
+            return term;
+        Lit lit = term.asLiteral();
+        if (INTEGER_DATATYPES.contains(lit.getDatatype()))
+            return StdLit.fromUnescaped(lit.getLexicalForm(), XSD_INTEGER);
+        return lit;
     }
 
     public @Nonnull SPARQLFilter bind(@Nonnull Solution solution) {

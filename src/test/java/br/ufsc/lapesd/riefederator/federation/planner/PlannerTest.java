@@ -19,10 +19,11 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.webapis.ProcurementServiceTestContext;
-import br.ufsc.lapesd.riefederator.webapis.ProcurementsService;
+import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
+import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
@@ -43,7 +44,6 @@ import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPl
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.isAcyclic;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static com.google.common.collect.Collections2.permutations;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -52,7 +52,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.apache.jena.rdf.model.ResourceFactory.*;
 import static org.testng.Assert.*;
 
-public class PlannerTest implements ProcurementServiceTestContext {
+public class PlannerTest implements TransparencyServiceTestContext {
     public static final @Nonnull StdLit title1 = StdLit.fromEscaped("title 1", "en");
     public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author 1", "en");
 
@@ -439,7 +439,7 @@ public class PlannerTest implements ProcurementServiceTestContext {
         Planner planner = supplier.get();
         QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
         QueryNode q2 = new QueryNode(empty2, CQuery.with(new Triple(x, author, y))
-                .annotate(x, asRequired(Book, "Book"))
+                .annotate(x, AtomInputAnnotation.asRequired(Book, "Book").get())
                 .annotate(y, AtomAnnotation.of(Person)).build());
         CQuery query = CQuery.from(new Triple(y, name, author1), new Triple(x, author, y));
 
@@ -460,11 +460,11 @@ public class PlannerTest implements ProcurementServiceTestContext {
         QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
         assertEquals(q1.getStrictResultVars(), singleton("y"));
         QueryNode q2 = new QueryNode(e2, CQuery.with(new Triple(x, author, y))
-                .annotate(x, asRequired(Book, "Book"))
+                .annotate(x, AtomInputAnnotation.asRequired(Book, "Book").get())
                 .annotate(y, AtomAnnotation.of(Person)).build());
         QueryNode q3 = new QueryNode(e3, CQuery.with(new Triple(x, author, y))
                 .annotate(x, AtomAnnotation.of(Book))
-                .annotate(y, asRequired(Person, "Person")).build());
+                .annotate(y, AtomInputAnnotation.asRequired(Person, "Person").get()).build());
         List<QueryNode> nodes = addFromSubject ? asList(q1, q2, q3) : asList(q1, q3);
         CQuery query = CQuery.from(new Triple(y, name, author1),
                                    new Triple(x, author, y),
@@ -509,24 +509,24 @@ public class PlannerTest implements ProcurementServiceTestContext {
                                 new Triple(x, knows, y),
                                 new Triple(y, knows, Bob));
             q1 = new QueryNode(epFromAlice, CQuery.with(new Triple(Alice, knows, x))
-                    .annotate(Alice, asRequired(Person, "Person"))
+                    .annotate(Alice, AtomInputAnnotation.asRequired(Person, "Person").get())
                     .annotate(x, AtomAnnotation.of(KnownPerson)).build());
             q2 = new QueryNode(epFromAlice, CQuery.with(new Triple(x, knows, y))
-                    .annotate(x, asRequired(Person, "Person"))
+                    .annotate(x, AtomInputAnnotation.asRequired(Person, "Person").get())
                     .annotate(y, AtomAnnotation.of(KnownPerson)).build());
             q3 = new QueryNode(epFromAlice, CQuery.with(new Triple(y, knows, Bob))
-                    .annotate(y, asRequired(Person, "Person"))
+                    .annotate(y, AtomInputAnnotation.asRequired(Person, "Person").get())
                     .annotate(Bob, AtomAnnotation.of(KnownPerson)).build());
 
             p1 = new QueryNode(epFromBob, CQuery.with(new Triple(Alice, knows, x))
                     .annotate(Alice, AtomAnnotation.of(Person))
-                    .annotate(x, asRequired(KnownPerson, "KnownPerson")).build());
+                    .annotate(x, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()).build());
             p2 = new QueryNode(epFromBob, CQuery.with(new Triple(x, knows, y))
                     .annotate(x, AtomAnnotation.of(Person))
-                    .annotate(y, asRequired(KnownPerson, "KnownPerson")).build());
+                    .annotate(y, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()).build());
             p3 = new QueryNode(epFromBob, CQuery.with(new Triple(y, knows, Bob))
                     .annotate(y, AtomAnnotation.of(Person))
-                    .annotate(Bob, asRequired(KnownPerson, "KnownPerson")).build());
+                    .annotate(Bob, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()).build());
             all = asList(q1, q2, q3, p1, p2, p3);
             fromAlice  = asList(q1, q2, q3);
             fromAlice2 = asList(q1, q2, p3);
@@ -623,19 +623,19 @@ public class PlannerTest implements ProcurementServiceTestContext {
                 new Triple(y, p2, b),
                 new Triple(y, p3, c),
                 new Triple(y, p4, t)
-        ).annotate(t, asRequired(new Atom("A1"), "A1")).build());
+        ).annotate(t, AtomInputAnnotation.asRequired(new Atom("A1"), "A1").get()).build());
         QueryNode contractById = new QueryNode(empty1, CQuery.with(
                 new Triple(b, p5, o3)
-        ).annotate(b, asRequired(new Atom("A2"), "A2")).build());
+        ).annotate(b, AtomInputAnnotation.asRequired(new Atom("A2"), "A2").get()).build());
         QueryNode contractorByName = new QueryNode(empty1, CQuery.with(
                 new Triple(c, p6, s)
-        ).annotate(c, asRequired(new Atom("A3"), "A3")).build());
+        ).annotate(c, AtomInputAnnotation.asRequired(new Atom("A3"), "A3").get()).build());
         QueryNode procurementsOfContractor = new QueryNode(empty1, CQuery.with(
                 new Triple(s, p7, a)
-        ).annotate(s, asRequired(new Atom("A4"), "A4")).build());
+        ).annotate(s, AtomInputAnnotation.asRequired(new Atom("A4"), "A4").get()).build());
         QueryNode procurementById = new QueryNode(empty1, CQuery.with(
                 new Triple(a, p8, d)
-        ).annotate(a, asRequired(new Atom("A5"), "A5")).build());
+        ).annotate(a, AtomInputAnnotation.asRequired(new Atom("A5"), "A5").get()).build());
         QueryNode modalities = new QueryNode(empty1, CQuery.from(
                 new Triple(z, p9, d)
         ));
@@ -693,7 +693,7 @@ public class PlannerTest implements ProcurementServiceTestContext {
         ARQEndpoint arqEp = ARQEndpoint.forModel(model);
 
         WebTarget fakeTarget = ClientBuilder.newClient().target("https://localhost:22/");
-        WebAPICQEndpoint webEp = ProcurementsService.getProcurementsOptClient(fakeTarget);
+        WebAPICQEndpoint webEp = TransparencyService.getProcurementsOptClient(fakeTarget);
 
         CQuery arqQuery = createQuery(x, p1, v);
         QueryNode n1 = new QueryNode(arqEp, arqQuery);

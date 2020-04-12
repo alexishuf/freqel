@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Sets;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -17,7 +18,6 @@ import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.isAcyclic;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
@@ -64,7 +64,7 @@ public class TreeUtilsTest implements TestContext {
         QueryNode q1  = new QueryNode(ep, createQuery(x, knows, Alice));
         QueryNode q2  = new QueryNode(ep, createQuery(x, knows, Bob));
         QueryNode q1a = new QueryNode(ep, CQuery.with(new Triple(x, knows, Alice))
-                .annotate(x, asRequired(person, "person"))
+                .annotate(x, AtomInputAnnotation.asRequired(person, "person").get())
                 .build());
         JoinNode j1 = JoinNode.builder(q1,  q2).build();
         JoinNode j2 = JoinNode.builder(q1a, q2).build();
@@ -197,11 +197,11 @@ public class TreeUtilsTest implements TestContext {
         Atom atom2 = new Atom("Atom2");
 
         QueryNode xInYZOut = new QueryNode(ep, CQuery.with(new Triple(x, y, z))
-                .annotate(x, asRequired(atom1, "atom1"))
+                .annotate(x, AtomInputAnnotation.asRequired(atom1, "atom1").get())
                 .build());
         QueryNode xyInZOut = new QueryNode(ep, CQuery.with(new Triple(x, y, z))
-                .annotate(x, asRequired(atom1, "atom1"))
-                .annotate(y, asRequired(atom2, "atom2"))
+                .annotate(x, AtomInputAnnotation.asRequired(atom1, "atom1").get())
+                .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get())
                 .build());
         QueryNode xKnowsALICE = new QueryNode(ep, createQuery(x, knows, Alice));
         QueryNode xKnowsZ = new QueryNode(ep, createQuery(x, knows, z));

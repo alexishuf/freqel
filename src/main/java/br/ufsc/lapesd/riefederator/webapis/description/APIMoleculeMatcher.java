@@ -14,6 +14,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SetMultimap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -24,6 +26,8 @@ import java.util.function.Predicate;
 import static java.util.stream.Collectors.toSet;
 
 public class APIMoleculeMatcher extends MoleculeMatcher {
+    private static final Logger logger = LoggerFactory.getLogger(APIMoleculeMatcher.class);
+
     private final @Nonnull APIMolecule apiMolecule;
     private @Nonnull SoftReference<InputAtoms> inputAtoms = new SoftReference<>(null);
 
@@ -53,13 +57,16 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
         }
 
         public @Nonnull AtomAnnotation asAnnotation(@Nonnull Atom atom, @Nullable Term override) {
-            String inputName = apiMolecule.getElement2Input().get(atom.getName());
+            String inName = apiMolecule.getElement2Input().get(atom.getName());
+            boolean missing = apiMolecule.getExecutor().getInputsMissingInResult().contains(inName);
             if (requiredAtoms.contains(atom.getName())) {
-                assert inputName != null;
-                return AtomAnnotation.asRequired(atom, inputName, override);
+                assert inName != null;
+                return AtomInputAnnotation.asRequired(atom, inName).override(override)
+                                          .missingInResult(missing).get();
             } else if (optionalAtoms.contains(atom.getName())) {
-                assert  inputName != null;
-                return AtomAnnotation.asOptional(atom, inputName, override);
+                assert  inName != null;
+                return AtomInputAnnotation.asOptional(atom, inName).override(override)
+                                          .missingInResult(missing).get();
             }
             return AtomAnnotation.of(atom);
         }
@@ -69,18 +76,19 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                                                     @Nonnull Term input) {
             Preconditions.checkArgument(inputAtom.getRole().equals(AtomRole.INPUT));
             String filterName = filter.getName();
-            String inputName = apiMolecule.getElement2Input().get(filterName);
+            String inName = apiMolecule.getElement2Input().get(filterName);
             Atom realAtom = apiMolecule.getMolecule().getAtom(inputAtom.getAtomName());
             assert realAtom != null : "Molecule has no Atom " + inputAtom.getAtomName() +
                                       " mentioned by AtomFilter " + filterName;
-            if (inputName == null)
-                inputName = apiMolecule.getElement2Input().get(inputAtom.getAtomName());
-            if (inputName != null) {
-                Set<String> requiredInputs = apiMolecule.getExecutor().getRequiredInputs();
-                if (requiredInputs.contains(inputName))
-                    return AtomAnnotation.asRequired(realAtom, inputName, input);
-                else
-                    return AtomAnnotation.asOptional(realAtom, inputName, input);
+            if (inName == null)
+                inName = apiMolecule.getElement2Input().get(inputAtom.getAtomName());
+            if (inName != null) {
+                boolean required = apiMolecule.getExecutor().getRequiredInputs().contains(inName);
+                AtomInputAnnotation.Builder builder;
+                builder = AtomInputAnnotation.builder(required, realAtom, inName).override(input);
+                if (apiMolecule.getExecutor().getInputsMissingInResult().contains(inName))
+                    builder.missingInResult();
+                return builder.get();
             }
             return AtomAnnotation.of(realAtom);
         }
@@ -236,16 +244,21 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                     getInputsFromFilters();
                     CQuery query = builder.build();
 
+                    // this check here is more specific than isValidEG(), as it checks inputs
+                    // (not atoms) and inputs can come from FILTER()s (and that is not the
+                    // case for Atoms)
+                    SetMultimap<String, Term> inAssignments = HashMultimap.create();
+                    query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
+                        Term value = a.isOverride() ? a.getOverrideValue() : t;
+                        inAssignments.put(a.getInputName(), value);
+                    });
+                    Set<String> reqInputs = apiMolecule.getExecutor().getRequiredInputs();
+                    if (!inAssignments.keySet().containsAll(reqInputs)) {
+                        logger.debug("Missing required inputs {} in query {}",
+                                     TreeUtils.setMinus(reqInputs, inAssignments.keySet()), query);
+                        return CQuery.EMPTY; // reject, since there are required inputs missing
+                    }
                     if (APIMolecule.class.desiredAssertionStatus()) {
-                        SetMultimap<String, Term> inAssignments = HashMultimap.create();
-                        query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
-                            Term value = a.isOverride() ? a.getOverrideValue() : t;
-                            inAssignments.put(a.getInputName(), value);
-                        });
-                        Set<String> reqInputs = apiMolecule.getExecutor().getRequiredInputs();
-                        assert inAssignments.keySet().containsAll(reqInputs) :
-                                "Upstream did not annotate some input atoms with AtomAnnotation: "
-                                        + TreeUtils.setMinus(reqInputs, inAssignments.keySet());
                         Set<String> s = reqInputs.stream()
                                 .filter(a -> inAssignments.get(a).size() > 1).collect(toSet());
                         assert s.isEmpty() : "Some required inputs are ambiguous: " + s;

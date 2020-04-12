@@ -16,7 +16,6 @@ import org.testng.annotations.Test;
 import java.util.List;
 
 import static br.ufsc.lapesd.riefederator.query.TemplateExpander.expandTemplates;
-import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static org.testng.Assert.*;
 
@@ -53,7 +52,7 @@ public class TemplateExpanderTest implements TestContext {
                                       new Triple(x, p2, Bob));
         PureDescriptive tripleAnn = new PureDescriptive();
         CQuery q = CQuery.with(triples)
-                .annotate(Alice, asRequired(A1, "A1"))
+                .annotate(Alice, AtomInputAnnotation.asRequired(A1, "A1").get())
                 .annotate(Bob, AtomAnnotation.of(A2))
                 .annotate(triples.get(1), tripleAnn).build();
         assertSame(expandTemplates(q), q);
@@ -78,7 +77,7 @@ public class TemplateExpanderTest implements TestContext {
         PureDescriptive t0Ann = new PureDescriptive(), t3Ann = new PureDescriptive();
         AtomAnnotation AliceAnn = AtomAnnotation.of(A1);
         AtomAnnotation xAnn = AtomAnnotation.of(A1), yAnn = AtomAnnotation.of(A1);
-        AtomInputAnnotation zAnn = asRequired(A2, "A2");
+        AtomInputAnnotation zAnn = AtomInputAnnotation.asRequired(A2, "A2").get();
 
         CQuery query = CQuery.with(triples)
                 .annotate(triples.get(0), t0Ann)

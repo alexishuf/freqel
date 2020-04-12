@@ -90,7 +90,7 @@ public class QueryNode extends AbstractPlanNode {
         if (query.hasTermAnnotations()) {
             Set<String> set = new HashSet<>(getResultVars().size());
             boolean has = query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
-                if (t.isVar() && a.isRequired() == required)
+                if (t.isVar() && a.isRequired() == required && !a.isOverride())
                     set.add(t.asVar().getName());
             });
             return has ? set : Collections.emptySet();
@@ -137,9 +137,16 @@ public class QueryNode extends AbstractPlanNode {
             bound.add(bind(t, s));
 
         CQuery.WithBuilder builder = CQuery.with(bound);
+        Set<Term> nonFilterTerms = q.stream().flatMap(Triple::stream).collect(toSet());
+        Set<Term> filterTerms = q.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
+                .flatMap(m -> ((SPARQLFilter) m).getTerms().stream()).collect(toSet());
         q.forEachTermAnnotation((t, a) -> {
-            if (!t.isVar() || !s.has(t.asVar().getName()))
-                builder.annotate(bind(t, s, t), a);
+            Term boundTerm = bind(t, s, t);
+            if (filterTerms.contains(t))
+                builder.annotate(SPARQLFilter.generalizeAsBind(boundTerm), a);
+            if (nonFilterTerms.contains(t))
+                builder.annotate(boundTerm, a);
+            assert filterTerms.contains(t) || nonFilterTerms.contains(t);
         });
         q.forEachTripleAnnotation((t, a) -> builder.annotate(bind(t, s), a));
         for (Modifier m : q.getModifiers()) {

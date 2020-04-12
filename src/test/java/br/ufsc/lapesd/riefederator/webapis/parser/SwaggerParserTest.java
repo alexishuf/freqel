@@ -12,7 +12,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.DictTree;
-import br.ufsc.lapesd.riefederator.webapis.ProcurementsService;
+import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
@@ -220,7 +220,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
     @Override
     protected Application configure() {
         return new ResourceConfig().register(ModelMessageBodyWriter.class)
-                                   .register(ProcurementsService.class);
+                                   .register(TransparencyService.class);
     }
 
     @Test

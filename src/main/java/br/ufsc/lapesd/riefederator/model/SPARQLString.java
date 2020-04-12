@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.model;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
@@ -33,13 +34,22 @@ public class SPARQLString {
     private final @Nonnull ImmutableSet<String> varNames;
     private final @Nonnull ImmutableSet<SPARQLFilter> filters;
 
+    private static boolean keepTriple(@Nonnull Triple triple, @Nonnull CQuery query) {
+        if (query.getTripleAnnotations(triple).contains(PureDescriptive.INSTANCE))
+            return false;
+        boolean missing = triple.stream().anyMatch(t
+                -> query.getTermAnnotations(t).stream().anyMatch(a
+                    -> a instanceof InputAnnotation && ((InputAnnotation) a).isMissingInResult()));
+        return !missing;
+    }
+
     private static @Nonnull Collection<Triple>
     removePureDescriptive(@Nonnull Collection<Triple> triples) {
-        if (triples instanceof CQuery && ((CQuery)triples).hasTripleAnnotations()) {
+        if (triples instanceof CQuery) {
             CQuery query = (CQuery) triples;
             List<Triple> list = new ArrayList<>(query.size());
             for (Triple triple : query) {
-                if (!query.getTripleAnnotations(triple).contains(PureDescriptive.INSTANCE))
+                if (keepTriple(triple, query))
                     list.add(triple);
             }
             if (list.size() != query.size())

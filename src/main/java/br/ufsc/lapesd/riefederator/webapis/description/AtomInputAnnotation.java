@@ -11,39 +11,65 @@ import java.util.Objects;
 
 @Immutable
 public class AtomInputAnnotation extends AtomAnnotation implements InputAnnotation {
-    private final boolean required;
+    private final boolean required, missingInResult;
     private final @Nullable Term overrideValue;
     private final @Nonnull String inputName;
 
     /* --- --- --- Constructor & static factory methods  --- --- --- */
 
-    public AtomInputAnnotation(@Nonnull Atom atom, boolean required, @Nonnull String inputName,
-                               @Nullable Term overrideValue) {
+    public AtomInputAnnotation(@Nonnull Atom atom, boolean required, boolean missingInResult,
+                               @Nonnull String inputName, @Nullable Term overrideValue) {
         super(atom);
         this.required = required;
+        this.missingInResult = missingInResult;
         this.inputName = inputName;
         this.overrideValue = overrideValue;
     }
 
-    public static @Nonnull AtomInputAnnotation asOptional(@Nonnull Atom atom,
-                                                          @Nonnull String inputName,
-                                                          @Nullable Term overrideValue) {
-        return new AtomInputAnnotation(atom, false, inputName, overrideValue);
-    }
-    public static @Nonnull AtomInputAnnotation asOptional(@Nonnull Atom atom,
-                                                          @Nonnull String inputName) {
-        return asOptional(atom, inputName, null);
-    }
-    public static @Nonnull AtomInputAnnotation asRequired(@Nonnull Atom atom,
-                                                          @Nonnull String inputName,
-                                                          @Nullable Term overrideValue) {
-        return new AtomInputAnnotation(atom, true, inputName, overrideValue);
-    }
-    public static @Nonnull AtomInputAnnotation asRequired(@Nonnull Atom atom,
-                                                          @Nonnull String inputName) {
-        return asRequired(atom, inputName, null);
+    public static class Builder {
+        boolean required, missingInResult;
+        @Nonnull Atom atom;
+        @Nonnull String inputName;
+        @Nullable Term overrideValue;
+
+        public Builder(boolean required, @Nonnull Atom atom, @Nonnull String inputName) {
+            this.required = required;
+            this.atom = atom;
+            this.inputName = inputName;
+        }
+
+        public @Nonnull Builder override(@Nullable Term overrideValue) {
+            this.overrideValue = overrideValue;
+            return this;
+        }
+
+        public @Nonnull Builder missingInResult() {
+            return missingInResult(true);
+        }
+
+        public @Nonnull Builder missingInResult(boolean value) {
+            this.missingInResult = value;
+            return this;
+        }
+
+        public @Nonnull AtomInputAnnotation get() {
+            return new AtomInputAnnotation(atom, required, missingInResult,
+                                           inputName, overrideValue);
+        }
     }
 
+    public static @Nonnull Builder builder(boolean required, @Nonnull Atom atom,
+                                           @Nonnull String inputName) {
+        return new Builder(required, atom, inputName);
+    }
+
+    public static @Nonnull Builder asOptional(@Nonnull Atom atom, @Nonnull String inputName) {
+        return new Builder(false, atom, inputName);
+    }
+
+    public static @Nonnull Builder asRequired(@Nonnull Atom atom, @Nonnull String inputName) {
+        return new Builder(true, atom, inputName);
+    }
 
     /* --- --- --- Getters --- --- --- */
 
@@ -67,6 +93,11 @@ public class AtomInputAnnotation extends AtomAnnotation implements InputAnnotati
     @Override
     public boolean isRequired() {
         return required;
+    }
+
+    @Override
+    public boolean isMissingInResult() {
+        return missingInResult;
     }
 
     /* --- --- --- Object overloads --- --- --- */

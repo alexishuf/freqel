@@ -1,0 +1,103 @@
+{
+  "id": 75507145,
+  "dimCompra": {
+    "numero": "003042019",
+    "objeto": "Objeto: Pregão Eletrônico -  Registro de Preços para aquisição de Materiais Permanentes Hospitalares, Laboratoriais e de Uso Geral",
+    "numeroProcesso": "23820011545201910",
+    "contatoResponsavel": "ALECIO CARMINATTI JUNIOR"
+  },
+  "situacaoContrato": {
+    "descricao": "Publicado"
+  },
+  "modalidadeCompra": {
+    "descricao": "Pregão - Registro de Preço"
+  },
+  "unidadeGestora": {
+    "codigo": "150232",
+    "nome": "HOSPITAL UNIVERSITáRIO - UFSC",
+    "nomeSemAcento": "HOSPITAL UNIVERSITaRIO - UFSC",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "83899526000182",
+      "sigla": "UFSC",
+      "siglaOriginal": "UFSC",
+      "siglaSemAcento": "UFSC",
+      "nome": "Universidade Federal de Santa Catarina",
+      "nomeOriginal": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+      "nomeSemAcento": "Universidade Federal de Santa Catarina"
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "sigla": "MEC",
+      "nome": "Ministério da Educação"
+    }
+  },
+  "unidadeGestoraCompras": {
+    "codigo": "150232",
+    "nome": "HOSPITAL UNIVERSITÁRIO/UFSC",
+    "nomeSemAcento": "HOSPITAL UNIVERSITARIO/UFSC",
+    "descricaoPoder": "EXECUTIVO",
+    "orgaoVinculado": {
+      "codigoSIAFI": "26246",
+      "cnpj": "",
+      "nome": "UNIVERSIDADE FEDERAL DE SANTA CATARINA",
+      "naturezaJuridica": {
+        "codigo": "0000    ",
+        "descricao": "Sem informação",
+        "codigoTipo": "0 ",
+        "descricaoTipo": "Sem informação"
+      },
+      "sigla": ""
+    },
+    "orgaoMaximo": {
+      "codigo": "26000",
+      "nome": "MINISTERIO DA EDUCACAO",
+      "sigla": ""
+    },
+    "existeFatoDespesa": false,
+    "existeFatoReceita": false
+  },
+  "dataAssinatura": "05/12/2019",
+  "dataPublicacaoDOU": "12/12/2019",
+  "dataInicioVigencia": "05/12/2019",
+  "dataFimVigencia": "05/12/2020",
+  "fornecedor": {
+    "numeroInscricaoSocial": "",
+    "nome": "GIGANTE RECEM NASCIDO LTDA.",
+    "razaoSocialReceita": "GIGANTE RECEM NASCIDO LTDA.",
+    "nomeFantasiaReceita": "",
+    "cnae": null,
+    "municipio": {
+      "codigoIBGE": "3543402",
+      "nomeIBGE": "RIBEIRÃO PRETO",
+      "nomeIBGEsemAcento": "RIBEIRAO PRETO",
+      "pais": "BRASIL",
+      "uf": {
+        "sigla": "SP",
+        "nome": "SÃO PAULO"
+      }
+    },
+    "localidadePessoa": null,
+    "naturezaJuridica": null,
+    "dataAbertura": "05/03/1990",
+    "enderecoEletronico": "ERICA@GIGANTE.COM.BR",
+    "numeroTelefone": "16  39691085 ",
+    "descricaoLogradouro": "R MARTINS PENA",
+    "numeroEndereco": "93",
+    "complementoEndereco": "",
+    "numeroCEP": "        ",
+    "nomeBairro": "CAMPOS ELISEOS",
+    "codigoFormatado": "62.413.869/0001-15",
+    "tipoCodigo": "CNPJ",
+    "tipoPessoa": null
+  },
+  "valorInicialCompra": 29000.0000,
+  "valorFinalCompra": 29000.0000,
+  "contrato": {
+    "numero": "3272019",
+    "objeto": "Objeto: Aquisição de bens permanentes de uso   hospitalar, laboratorial e de uso geral.",
+    "numeroProcesso": "",
+    "fundamentoLegal": "Fundamento Legal: Lei 8666/93."
+  }
+}

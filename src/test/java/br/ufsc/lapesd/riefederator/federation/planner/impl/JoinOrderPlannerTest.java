@@ -15,6 +15,7 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Collections2;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -31,7 +32,6 @@ import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMu
 import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation.asRequired;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
@@ -132,7 +132,7 @@ public class JoinOrderPlannerTest implements TestContext {
         QueryNode n7 = new QueryNode(e1, createQuery(z, p7, x));
 
         QueryNode n2i = new QueryNode(e1, CQuery.with(new Triple(x, p2, y))
-                .annotate(x, asRequired(Person, "Person")).build());
+                .annotate(x, AtomInputAnnotation.asRequired(Person, "Person").get()).build());
         QueryNode n3a = new QueryNode(e1a, createQuery(y, p3, z));
         QueryNode n4b  = new QueryNode(e2, createQuery(z, p4, w));
 
@@ -218,19 +218,19 @@ public class JoinOrderPlannerTest implements TestContext {
                 new Triple(o2, p2, b),
                 new Triple(o2, p3, c),
                 new Triple(o2, p4, t)
-        ).annotate(t, asRequired(new Atom("A1"), "A1")).build());
+        ).annotate(t, AtomInputAnnotation.asRequired(new Atom("A1"), "A1").get()).build());
         QueryNode contractById = new QueryNode(e1, CQuery.with(
                 new Triple(b, p5, o3)
-        ).annotate(b, asRequired(new Atom("A2"), "A2")).build());
+        ).annotate(b, AtomInputAnnotation.asRequired(new Atom("A2"), "A2").get()).build());
         QueryNode contractorByName = new QueryNode(e1, CQuery.with(
                 new Triple(c, p6, s)
-        ).annotate(c, asRequired(new Atom("A3"), "A3")).build());
+        ).annotate(c, AtomInputAnnotation.asRequired(new Atom("A3"), "A3").get()).build());
         QueryNode procurementsOfContractor = new QueryNode(e1, CQuery.with(
                 new Triple(s, p7, a)
-        ).annotate(s, asRequired(new Atom("A4"), "A4")).build());
+        ).annotate(s, AtomInputAnnotation.asRequired(new Atom("A4"), "A4").get()).build());
         QueryNode procurementById = new QueryNode(e1, CQuery.with(
                 new Triple(a, p8, d)
-        ).annotate(a, asRequired(new Atom("A5"), "A5")).build());
+        ).annotate(a, AtomInputAnnotation.asRequired(new Atom("A5"), "A5").get()).build());
         QueryNode modalities = new QueryNode(e1, createQuery(o4, p9, d));
 
         JoinOrderPlanner planner = supplier.get();

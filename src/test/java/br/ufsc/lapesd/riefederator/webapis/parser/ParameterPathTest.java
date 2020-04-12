@@ -51,7 +51,7 @@ public class ParameterPathTest {
         assertEquals(parameterPath.getAtom().getName(), "X");
         assertNull(parameterPath.getAtomFilter());
         assertFalse(parameterPath.isIn());
-        assertFalse(parameterPath.isMissing());
+        assertFalse(parameterPath.isMissingInResult());
     }
 
     @Test
@@ -63,7 +63,7 @@ public class ParameterPathTest {
         assertEquals(parameterPath.getAtom().getName(), "Y");
         assertNull(parameterPath.getAtomFilter());
         assertFalse(parameterPath.isIn());
-        assertFalse(parameterPath.isMissing());
+        assertFalse(parameterPath.isMissingInResult());
     }
 
     @Test
@@ -75,7 +75,7 @@ public class ParameterPathTest {
         assertEquals(parameterPath.getAtom().getName(), "Xin");
         assertNull(parameterPath.getAtomFilter());
         assertTrue(parameterPath.isIn());
-        assertTrue(parameterPath.isMissing());
+        assertTrue(parameterPath.isMissingInResult());
     }
 
     @Test
@@ -89,7 +89,7 @@ public class ParameterPathTest {
         assertEquals(parameterPath.getAtomFilter().getSPARQLFilter(),
                      SPARQLFilter.build("FILTER($actual >= $input)"));
         assertFalse(parameterPath.isIn());
-        assertFalse(parameterPath.isMissing());
+        assertFalse(parameterPath.isMissingInResult());
     }
 
     @Test

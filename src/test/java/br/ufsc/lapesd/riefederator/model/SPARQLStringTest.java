@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.model;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
@@ -13,7 +14,11 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
+import com.google.common.collect.Sets;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
@@ -40,6 +45,8 @@ import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
 
 public class SPARQLStringTest implements TestContext {
+    private static final Atom A1 = new Atom("A1");
+
     @DataProvider
     public static Object[][] term2SPARQLData() {
         StdURI xsdInt = new StdURI(XSDDatatype.XSDint.getURI());
@@ -122,6 +129,23 @@ public class SPARQLStringTest implements TestContext {
         assertEquals(string.getType(), SPARQLString.Type.SELECT);
         String sparql = string.getString();
         assertFalse(sparql.contains("Bob"));
+    }
+
+    @Test
+    public void testConjunctiveSELECTWithMissingInputAnnotation() throws SPARQLParseException {
+        CQuery query = createQuery(
+                Alice, knows, x,
+                x, age, y,
+                x, name, z, AtomInputAnnotation.asRequired(A1, "name").missingInResult().get());
+        SPARQLString string = new SPARQLString(query, EMPTY, emptyList());
+        assertEquals(string.getType(), SPARQLString.Type.SELECT);
+        assertEquals(string.getVarNames(), Sets.newHashSet("x", "y"));
+        assertEquals(string.getFilters(), emptySet());
+
+        CQuery parsed = SPARQLQueryParser.parse(string.getString());
+        assertEquals(parsed.getSet(), Sets.newHashSet(
+                new Triple(Alice, knows, x),
+                new Triple(x, age, y)));
     }
 
     @Test
