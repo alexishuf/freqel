@@ -9,15 +9,21 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.SetMultimap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
+
+import static java.util.stream.Collectors.toList;
 
 public abstract class ListSourcesAbstractDecomposer implements DecompositionStrategy {
+    private static final Logger logger
+            = LoggerFactory.getLogger(ListSourcesAbstractDecomposer.class);
     protected final @Nonnull List<Source> sources = new ArrayList<>();
     protected final @Nonnull Planner planner;
     protected int estimatePolicy = EstimatePolicy.local(50);
@@ -57,9 +63,61 @@ public abstract class ListSourcesAbstractDecomposer implements DecompositionStra
     }
 
     public @Nonnull List<QueryNode> decomposeIntoLeaves(@Nonnull CQuery query,
-                                                              @Nonnull FilterAssigner placement) {
+                                                        @Nonnull FilterAssigner placement) {
         List<ProtoQueryNode> list = decomposeIntoProtoQNs(query);
-        return placement.placeFiltersOnLeaves(list);
+        List<QueryNode> queryNodes = placement.placeFiltersOnLeaves(list);
+        return minimizeQueryNodes(queryNodes);
+    }
+
+    private static class Signature {
+        final @Nonnull TPEndpoint endpoint;
+        final @Nonnull Set<Triple> triples;
+        final @Nonnull Set<String> inputs;
+        int hash = 0;
+
+        public Signature(@Nonnull QueryNode qn) {
+            this.endpoint = qn.getEndpoint();
+            this.triples = qn.getMatchedTriples();
+            this.inputs = qn.getInputVars();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof Signature)) return false;
+            Signature signature = (Signature) o;
+            return endpoint.equals(signature.endpoint) &&
+                    triples.equals(signature.triples) &&
+                    inputs.equals(signature.inputs);
+        }
+
+        @Override
+        public int hashCode() {
+            if (this.hash == 0)
+                this.hash = Objects.hash(endpoint, triples, inputs);
+            return this.hash;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Signature{\n" +
+                    "  ins=%s,\n" +
+                    "  ep=%s,\n" +
+                    "  triples=%s\n}", inputs, endpoint, triples);
+        }
+    }
+
+    protected @Nonnull List<QueryNode> minimizeQueryNodes(@Nonnull List<QueryNode> nodes) {
+        SetMultimap<Signature, QueryNode> sig2qn = HashMultimap.create();
+        nodes.forEach(qn -> sig2qn.put(new Signature(qn), qn));
+
+        List<QueryNode> list = sig2qn.keySet().stream().map(s -> sig2qn.get(s).iterator().next())
+                                              .collect(toList());
+        if (list.size() < nodes.size()) {
+            logger.debug("Discarded {} nodes due to duplicate  endpoint/triple/inputs signatures",
+                         nodes.size() - list.size());
+        }
+        return list;
     }
 
     /**
