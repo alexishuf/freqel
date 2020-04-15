@@ -141,24 +141,24 @@ public class SubPathAggregation {
             }
             if (needsRebuild) {
                 nodes.addAll(pending);
-                removeSubsumed(nodes);
+                assert hasNoSubsumedNodes(nodes);
                 return new JoinComponent(reducedGraph, nodes);
             }
             return path; // no components or only singleton components
         }
 
-        private void removeSubsumed(IndexedSubset<PlanNode> nodes) {
-            List<PlanNode> victims = new ArrayList<>();
+        private boolean hasNoSubsumedNodes(IndexedSubset<PlanNode> nodes) {
+            List<PlanNode> subsumed = new ArrayList<>();
             for (PlanNode i : nodes) {
                 Set<Triple> iMatched = i.getMatchedTriples();
                 for (PlanNode j : nodes) {
                     if (i == j) continue;
                     Set<Triple> jMatched = j.getMatchedTriples();
                     if (iMatched.containsAll(jMatched))
-                        victims.add(j);
+                        subsumed.add(j);
                 }
             }
-            nodes.removeAll(victims);
+            return subsumed.isEmpty();
         }
 
         public void processPair(@Nonnull JoinComponent left, @Nonnull JoinComponent right) {

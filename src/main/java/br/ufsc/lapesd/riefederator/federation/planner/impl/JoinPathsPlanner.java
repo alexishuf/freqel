@@ -209,10 +209,10 @@ public class JoinPathsPlanner implements Planner {
         }
         for (JoinComponent path : paths) {
             for (PlanNode node : path.getNodes()) {
-                if (node instanceof QueryNode) continue;
+                if (node instanceof QueryNode || n2idx.containsKey(node)) continue;
                 assert list.size() == n2idx.size();
-                list.add(node);
                 n2idx.put(node, n2idx.size());
+                list.add(node);
             }
         }
         return IndexedSet.fromMap(n2idx, list);
@@ -228,10 +228,10 @@ public class JoinPathsPlanner implements Planner {
             IndexedSubset<Triple> missing = all.fullSubset();
             missing.removeAll(subset);
             if (query != null) {
-                logger.info("QueryNodes miss  triples {}. Full query was {}. Returning EmptyNode",
+                logger.info("QueryNodes miss triples {}. Full query was {}. Returning EmptyNode",
                             missing, query);
             } else {
-                logger.info("QueryNodes miss  triples {}.", missing);
+                logger.info("QueryNodes miss triples {}.", missing);
             }
             return false;
         }
@@ -303,11 +303,27 @@ public class JoinPathsPlanner implements Planner {
         private static final class State {
             final @Nonnull ImmutableIndexedSubset<PlanNode> nodes;
             final @Nonnull ImmutableIndexedSubset<Triple> matched;
+            final int[] tripleOccurrences;
+
+            private State(@Nonnull ImmutableIndexedSubset<PlanNode> nodes,
+                          @Nonnull ImmutableIndexedSubset<Triple> matched,
+                          int[] tripleOccurrences) {
+                this.nodes = nodes;
+                this.matched = matched;
+                this.tripleOccurrences = tripleOccurrences;
+            }
+
+            private static int[] initTripleOccurrences(ImmutableIndexedSubset<Triple> matched) {
+                int[] occurrences = new int[matched.getParent().size()];
+                BitSet bs = matched.getBitSet();
+                for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1))
+                    occurrences[i] = 1;
+                return occurrences;
+            }
 
             public State(@Nonnull ImmutableIndexedSubset<PlanNode> nodes,
                          @Nonnull ImmutableIndexedSubset<Triple> matched) {
-                this.nodes = nodes;
-                this.matched = matched;
+                this(nodes, matched, initTripleOccurrences(matched));
             }
 
             @Override
@@ -341,6 +357,23 @@ public class JoinPathsPlanner implements Planner {
                 return new JoinComponent(nodes.getParent(), nodes); //share nodes
             }
 
+            boolean hasConflictingNode(@Nonnull IndexedSubset<Triple> candidateMatched) {
+                BitSet bs = candidateMatched.getBitSet();
+                IndexedSet<Triple> all = candidateMatched.getParent();
+                assert tripleOccurrences.length == all.size();
+                outer:
+                for (PlanNode old : nodes) {
+                    for (Triple triple : old.getMatchedTriples()) {
+                        int idx = all.indexOf(triple);
+                        assert idx >= 0;
+                        if (tripleOccurrences[idx] == 1 && !bs.get(idx))
+                            continue outer;
+                    }
+                    return true; //all triples found only in old are also in candidateMatched
+                }
+                return false; //every old node still contributes at least triple
+            }
+
             @Nullable State tryAdvance(@Nonnull PlanNode node) {
                 IndexedSubset<Triple> nodeMatched;
                 nodeMatched = matched.getParent().subset(node.getMatchedTriples());
@@ -349,9 +382,15 @@ public class JoinPathsPlanner implements Planner {
                 ImmutableIndexedSubset<Triple> novel = matched.createUnion(nodeMatched);
                 if (novel.size() == matched.size())
                     return null; //no new triples
-                if (nodes.stream().anyMatch(o -> nodeMatched.containsAll(o.getMatchedTriples())))
-                    return null; // cannot incorporate node
-                return new State(nodes.createAdding(node), novel);
+                if (hasConflictingNode(nodeMatched))
+                    return null; // adding the node would make another useless
+
+                // for every triple in the new node, increment its occurrence count
+                int[] occurrences = Arrays.copyOf(tripleOccurrences, tripleOccurrences.length);
+                BitSet bs = nodeMatched.getBitSet();
+                for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1))
+                    ++occurrences[i];
+                return new State(nodes.createAdding(node), novel, occurrences);
             }
         }
 

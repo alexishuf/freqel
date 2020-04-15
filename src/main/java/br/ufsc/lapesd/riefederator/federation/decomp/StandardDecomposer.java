@@ -49,6 +49,7 @@ public class StandardDecomposer extends ListSourcesAbstractDecomposer {
         // for single-endpoint triples, build the EGs
         for (TPEndpoint ep : protoEGs.keySet())
             qns.add(createPQN(ep, CQuery.from(protoEGs.get(ep))));
+        assert qns.stream().distinct().count() == qns.size();
         return qns;
     }
 
