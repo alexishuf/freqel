@@ -80,9 +80,11 @@ public class ServerMain {
         server.createContext("/", handler);
 
         server.start();
-        logger.info("SPARQL endpoint listening on http://{}:{}/sparql/query " +
-                    "via GET and POST (form and plain)", listenAddress, port);
-        logger.info("Query interface listening on http://{}:{}/ui/index.html", listenAddress, port);
+
+        System.out.printf("SPARQL endpoint listening on http://%s:%d/sparql/query " +
+                          "via GET and POST (form and plain)\n", listenAddress, port);
+        System.out.printf("Query interface listening on http://%s:%d/ui/index.html",
+                          listenAddress, port);
         Thread.currentThread().join();
     }
 

@@ -12,6 +12,7 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,8 @@ public class ResultsFormatterDispatcher {
             /* This is non-standard, but qonsole does this (and does not set the Accept header) */
             MultivaluedMap<String, String> params = uriInfo.getQueryParameters();
             List<String> list = params.get("output");
-            if (list.isEmpty()) list = params.get("out");
+            if (list == null || list.isEmpty()) list = params.get("out");
+            list = list == null ? Collections.emptyList() : list;
             for (String s : list) {
                 String string = s.trim().toLowerCase();
                 try {

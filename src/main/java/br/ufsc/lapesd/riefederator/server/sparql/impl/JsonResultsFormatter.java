@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.server.sparql.FormattedResults;
 import br.ufsc.lapesd.riefederator.server.sparql.ResultsFormatter;
+import com.google.common.collect.Sets;
 import com.google.gson.stream.JsonWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,6 @@ import javax.ws.rs.core.MediaType;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.util.Collections;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -27,9 +27,12 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
 public class JsonResultsFormatter implements ResultsFormatter {
     private static final Logger logger = LoggerFactory.getLogger(JsonResultsFormatter.class);
 
+    public static final @Nonnull MediaType SPARQL_JSON_TYPE =
+            new MediaType("application", "sparql-results+json");
+
     @Override
     public @Nonnull Set<MediaType> outputMediaTypes() {
-        return Collections.singleton(APPLICATION_JSON_TYPE);
+        return Sets.newHashSet(SPARQL_JSON_TYPE, APPLICATION_JSON_TYPE);
     }
 
     @Override

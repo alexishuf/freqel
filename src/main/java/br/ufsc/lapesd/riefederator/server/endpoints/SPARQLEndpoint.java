@@ -42,11 +42,6 @@ public class SPARQLEndpoint {
 
     private @Nonnull Response handleQuery(@Nullable String query,
                                           @Nullable HttpHeaders headers, UriInfo uriInfo) {
-        List<MediaType> acceptable;
-        acceptable = headers == null ? emptyList() : headers.getAcceptableMediaTypes();
-        if (!acceptable.isEmpty() && acceptable.stream().noneMatch(JSON_TYPE::isCompatible))
-            return Response.notAcceptable(ALLOWED_VARIANTS).build();
-
         query = query == null ? "" : query;
         try {
             CQuery cQuery = SPARQLQueryParser.parse(query);

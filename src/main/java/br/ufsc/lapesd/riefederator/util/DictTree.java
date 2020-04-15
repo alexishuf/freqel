@@ -694,6 +694,15 @@ public class DictTree {
         return list == null ? Collections.emptyList() : list;
     }
 
+    public @Nullable Set<Object> getSet(@Nonnull String path) {
+        List<Object> list = getList(path);
+        return list == null ? null : new HashSet<>(list);
+    }
+    public @Nonnull Set<Object> getSetNN(@Nonnull String path) {
+        return new HashSet<>(getListNN(path));
+    }
+
+
     public Object getPrimitive(@Nonnull String path, Object fallback) {
         Object value = get(path);
         if (value instanceof List && !((List<?>)value).isEmpty())
