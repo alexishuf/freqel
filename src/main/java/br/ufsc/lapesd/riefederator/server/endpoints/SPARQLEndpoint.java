@@ -9,26 +9,25 @@ import br.ufsc.lapesd.riefederator.query.parse.UnsupportedSPARQLFeatureException
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.server.sparql.ResultsFormatterDispatcher;
 import org.apache.commons.io.output.StringBuilderWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.io.PrintWriter;
-import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN_TYPE;
 
 @Path("/sparql")
 public class SPARQLEndpoint {
+    private static final Logger logger = LoggerFactory.getLogger(SPARQLEndpoint.class);
+
     public static final @Nonnull MediaType JSON_TYPE =
             new MediaType("application", "sparql-results+json");
-    private static final @Nonnull List<Variant> ALLOWED_VARIANTS =
-            singletonList(new Variant(JSON_TYPE, (String) null, null));
 
     private @Context Application application;
 
@@ -75,7 +74,12 @@ public class SPARQLEndpoint {
     @Path("query")
     public @Nonnull Response queryGet(@QueryParam("query") String query, @Context UriInfo uriInfo,
                                       @Context HttpHeaders headers) {
-        return handleQuery(query, headers, uriInfo);
+        try {
+            return handleQuery(query, headers, uriInfo);
+        } catch (Exception e) {
+            logger.warn("Exception thrown while processing GET {}", uriInfo.getRequestUri(), e);
+            throw e;
+        }
     }
 
     @POST
@@ -83,7 +87,13 @@ public class SPARQLEndpoint {
     @Path("query")
     public @Nonnull Response queryForm(@FormParam("query") String query, @Context UriInfo uriInfo,
                                        @Context HttpHeaders headers) {
-        return handleQuery(query, headers, uriInfo);
+        try {
+            return handleQuery(query, headers, uriInfo);
+        } catch (Exception e) {
+            logger.warn("Exception thrown while processing POST " +
+                        "application/x-www-form-urlencoded {}", uriInfo.getRequestUri(), e);
+            throw e;
+        }
     }
 
     @POST
@@ -91,6 +101,13 @@ public class SPARQLEndpoint {
     @Path("query")
     public @Nonnull Response queryPost(String query, @Context UriInfo uriInfo,
                                        @Context HttpHeaders headers) {
-        return handleQuery(query, headers, uriInfo);
+        try {
+            return handleQuery(query, headers, uriInfo);
+        } catch (Exception e) {
+            logger.warn("Exception thrown while processing POST application/sparql-query {}",
+                    uriInfo.getRequestUri(), e);
+            throw e;
+
+        }
     }
 }

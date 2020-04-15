@@ -12,8 +12,6 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.ws.rs.ext.RuntimeDelegate;
@@ -23,8 +21,6 @@ import java.io.PrintStream;
 import java.net.InetSocketAddress;
 
 public class ServerMain {
-    private static final Logger logger = LoggerFactory.getLogger(ServerMain.class);
-
     @Option(name = "--help", aliases = {"-h"}, usage = "Shows help", help = true)
     private boolean help = false;
 
