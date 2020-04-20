@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
@@ -26,6 +27,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.lang.ref.SoftReference;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -384,6 +386,7 @@ public class CQuery implements  List<Triple> {
     }
 
     public static class Builder extends WithBuilder {
+        private static AtomicInteger nextId = new AtomicInteger((int)(Math.random()*10000));
         private List<Triple> mutableList;
         private int size = 0;
 
@@ -392,6 +395,10 @@ public class CQuery implements  List<Triple> {
         }
         public Builder(int sizeHint) {
             mutableList = new ArrayList<>(sizeHint);
+        }
+
+        protected @Nonnull Var nextHidden() {
+            return new StdVar("cqueryHiddenVar"+nextId.getAndIncrement());
         }
 
         public int size() {
@@ -414,6 +421,31 @@ public class CQuery implements  List<Triple> {
                 ((CQuery) triples).forEachTermAnnotation(  this::annotate);
                 ((CQuery) triples).forEachTripleAnnotation(this::annotate);
             }
+            return this;
+        }
+
+        public @Contract("_, _, _ -> this") @Nonnull Builder
+        add(@Nonnull Term subj, @Nonnull SimplePath path, @Nonnull Term obj) {
+            checkArgument(!path.isEmpty());
+            Term focus = subj;
+            ArrayList<Term> terms = new ArrayList<>();
+            for (Iterator<SimplePath.Segment> it = path.getSegments().iterator(); it.hasNext(); ) {
+                SimplePath.Segment segment = it.next();
+                Term oldFocus = focus;
+                focus = it.hasNext() ? nextHidden() : obj;
+                if (segment.isReverse()) {
+                    terms.add(focus);
+                    terms.add(segment.getTerm());
+                    terms.add(oldFocus);
+                } else {
+                    terms.add(oldFocus);
+                    terms.add(segment.getTerm());
+                    terms.add(focus);
+                }
+            }
+            assert (terms.size() % 3) == 0;
+            for (int i = 0; i < terms.size(); i += 3)
+                add(new Triple(terms.get(i+0), terms.get(i+1), terms.get(i+2)));
             return this;
         }
 

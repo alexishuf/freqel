@@ -136,6 +136,7 @@ public class JsonSchemaMoleculeParser {
             if (minItems == 0) // assume maxItems is maxItems **per page**
                 minItems = schemaRoot.getLong("maxItems", 0);
             cardinality = Cardinality.lowerBound((int)Math.max(2, minItems));
+            schemaRoot = schemaRoot.getMapNN("items");
         }
         parsersRegistry = new PrimitiveParsersRegistry();
         MoleculeBuilder builder = new MoleculeBuilder(nameForSchema(schemaRoot));

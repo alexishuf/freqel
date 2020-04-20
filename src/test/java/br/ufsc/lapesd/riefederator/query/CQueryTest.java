@@ -605,4 +605,51 @@ public class CQueryTest implements TestContext {
                      singleton(PureDescriptive.INSTANCE));
     }
 
+    @Test
+    public void testAddPathRequiresNonEmpty() {
+        expectThrows(IllegalArgumentException.class,
+                     () -> CQuery.builder().add(x, SimplePath.EMPTY, y));
+    }
+
+    @Test
+    public void testAddPath() {
+        CQuery query = CQuery.builder()
+                .add(new Triple(x, age, lit(22)))
+                .add(x, SimplePath.fromTerms(knows, isPrimaryTopicOf, title), y)
+                .add(x, SimplePath.fromTerms(author, genre), z)
+                .annotate(y, AtomInputAnnotation.asRequired(A1, "a1").get())
+                .build();
+        assertEquals(query.size(), 6);
+        assertTrue(query.contains(new Triple(x, age, lit(22))));
+        assertTrue(query.getVars().containsAll(Sets.newHashSet(x, y, z)));
+        assertEquals(query.getVars().size(), 3/*x, y, z*/ + 3 /*hidden*/);
+        assertEquals(query.getTermAnnotations(y),
+                     singleton(AtomInputAnnotation.asRequired(A1, "a1").get()));
+
+        HashSet<Triple> set = new HashSet<>(query.getSet());
+        assertTrue(set.remove(new Triple(x, age, lit(22))));
+        Triple kt, it, tt, at, gt;
+        kt = set.stream().filter(t -> t.getPredicate().equals(knows)).findFirst().orElse(null);
+        it = set.stream().filter(t -> t.getPredicate().equals(isPrimaryTopicOf)).findFirst().orElse(null);
+        tt = set.stream().filter(t -> t.getPredicate().equals(title)).findFirst().orElse(null);
+        at = set.stream().filter(t -> t.getPredicate().equals(author)).findFirst().orElse(null);
+        gt = set.stream().filter(t -> t.getPredicate().equals(genre)).findFirst().orElse(null);
+        assertNotNull(kt);
+        assertNotNull(it);
+        assertNotNull(tt);
+        assertNotNull(at);
+        assertNotNull(gt);
+        assertEquals(kt.getSubject(), x);
+        assertEquals(kt.getObject(), it.getSubject());
+        assertEquals(it.getObject(), tt.getSubject());
+        assertEquals(tt.getObject(), y);
+
+        assertEquals(at.getSubject(), x);
+        assertEquals(at.getObject(), gt.getSubject());
+        assertEquals(gt.getObject(), z);
+
+        assertNotEquals(at.getObject(), kt.getObject());
+        assertNotEquals(at.getObject(), it.getObject());
+    }
+
 }

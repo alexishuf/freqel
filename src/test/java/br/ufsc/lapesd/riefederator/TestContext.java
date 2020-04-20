@@ -56,6 +56,7 @@ public interface TestContext {
 
     @Nonnull URI knows            = new StdURI(FOAF.knows.getURI());
     @Nonnull URI name             = new StdURI(FOAF.name.getURI());
+    @Nonnull URI mbox             = new StdURI(FOAF.mbox.getURI());
     @Nonnull URI primaryTopic     = new StdURI(FOAF.primaryTopic.getURI());
     @Nonnull URI isPrimaryTopicOf = new StdURI(FOAF.isPrimaryTopicOf.getURI());
     @Nonnull URI age              = new StdURI(FOAF.age.getURI());
@@ -78,6 +79,7 @@ public interface TestContext {
     @Nonnull URI likes      = new StdURI("http://example.org/likes");
     @Nonnull URI bornIn     = new StdURI("http://example.org/bornIn");
     @Nonnull URI author     = new StdURI("http://example.org/author");
+    @Nonnull URI isAuthorOf = new StdURI("http://example.org/isAuthorOf");
     @Nonnull URI mainAuthor = new StdURI("http://example.org/mainAuthor");
     @Nonnull URI cites      = new StdURI("http://example.org/cites");
     @Nonnull URI manages    = new StdURI("http://example.org/manages");

@@ -109,6 +109,11 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
         this(apiMolecule, OWLAPITBoxReasoner.structural());
     }
 
+
+    public @Nonnull APIMolecule getApiMolecule() {
+        return apiMolecule;
+    }
+
     protected @Nonnull InputAtoms getInputAtoms() {
         InputAtoms strong = this.inputAtoms.get();
         if (strong == null)

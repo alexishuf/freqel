@@ -20,6 +20,8 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.Par
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.riefederator.linkedator.Linkedator;
+import br.ufsc.lapesd.riefederator.linkedator.LinkedatorResult;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Res;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
@@ -31,6 +33,7 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
+import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
@@ -79,7 +82,8 @@ import static org.apache.jena.rdf.model.ResourceFactory.createLangLiteral;
 import static org.apache.jena.rdf.model.ResourceFactory.createResource;
 import static org.testng.Assert.*;
 
-public class FederationTest extends JerseyTestNg.ContainerPerClassTest implements TestContext {
+public class FederationTest extends JerseyTestNg.ContainerPerClassTest
+        implements TestContext, TransparencyServiceTestContext {
     public static final @Nonnull StdLit title1 = StdLit.fromUnescaped("title 1", "en");
     public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author1", "en");
     public static final @Nonnull StdLit genre1 = StdLit.fromUnescaped("genre1", "en");
@@ -317,6 +321,16 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest implement
                 federation.addSource(new Source(new SelectDescription(ep), ep));
                 ep = createEndpoint("genres.nt");
                 federation.addSource(new Source(new SelectDescription(ep), ep));
+
+                Linkedator linkedator = Linkedator.getDefault();
+                List<LinkedatorResult> suggestions;
+                suggestions = linkedator.getSuggestions(federation.getSources());
+                List<LinkedatorResult> hasLicitacaoSuggestions = suggestions.stream()
+                        .filter(r -> r.getTemplateLink().equals(hasLicitacao.asURI()))
+                        .collect(toList());
+                assertEquals(hasLicitacaoSuggestions.size(), 1);
+                linkedator.install(federation, hasLicitacaoSuggestions);
+
             } catch (IOException e) {
                 fail("Unexpected exception", e);
             }
@@ -508,7 +522,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest implement
     public static @Nonnull List<List<Object>> transparencyJoinsData()
             throws IOException, SPARQLParseException {
         Class<FederationTest> myClass = FederationTest.class;
-        String[] sparql = new String[3];
+        String[] sparql = new String[4];
         for (int i = 0; i < 3; i++) {
             try (InputStream in = myClass.getResourceAsStream("transparency-query-"+i+".sparql")) {
                 sparql[i] = IOUtils.toString(in, StandardCharsets.UTF_8);
@@ -555,6 +569,17 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest implement
                                        .put("startDate", d20191202)
                                        .put("openDate", d20191017)
                                        .put("modDescr", pregao).build()))
+//                /* Get procurement of a contract using linkedator link */
+//                asList(new SetupTransparency(),
+//                        SPARQLQueryParser.parse(sparql[3]),
+//                        newHashSet(MapSolution.builder()
+//                                        .put("id", s70507179)
+//                                        .put("startDate", d20191202)
+//                                        .put("openDate", d20191017).build(),
+//                                MapSolution.builder()
+//                                        .put("id", s71407155)
+//                                        .put("startDate", d20191202)
+//                                        .put("openDate", d20191017).build()))
                 );
     }
 

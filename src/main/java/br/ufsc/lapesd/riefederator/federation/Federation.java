@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.TemplateExpander;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
@@ -28,21 +29,33 @@ import javax.inject.Inject;
 public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private final @Nonnull DecompositionStrategy strategy;
     private final @Nonnull PlanExecutor executor;
+    private @Nonnull TemplateExpander templateExpander;
+
 
     @Inject
     public Federation(@Nonnull DecompositionStrategy strategy,
                       @Nonnull PlanExecutor executor) {
         this.strategy = strategy;
         this.executor = executor;
+        this.templateExpander = new TemplateExpander();
+    }
+
+    public static @Nonnull Federation createDefault() {
+        Injector injector = Guice.createInjector(new SimpleFederationModule());
+        return injector.getInstance(Federation.class);
     }
 
     public @Nonnull DecompositionStrategy getDecompositionStrategy() {
         return strategy;
     }
 
-    public static @Nonnull Federation createDefault() {
-        Injector injector = Guice.createInjector(new SimpleFederationModule());
-        return injector.getInstance(Federation.class);
+    public @Nonnull Federation setTemplateExpander(@Nonnull TemplateExpander templateExpander) {
+        this.templateExpander = templateExpander;
+        return this;
+    }
+
+    public @Nonnull TemplateExpander getTemplateExpander() {
+        return templateExpander;
     }
 
     @Contract("_ -> this") @CanIgnoreReturnValue
@@ -69,11 +82,12 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     @Override
     public @Nonnull
     Results query(@Nonnull CQuery query) {
-        PlanNode plan = plan(query);
+        CQuery expandedQuery = templateExpander.apply(query);
+        PlanNode plan = plan(expandedQuery);
         Results results = executor.executePlan(plan);
 
-        results = ProjectingResults.applyIf(results, query);
-        results = HashDistinctResults.applyIf(results, query);
+        results = ProjectingResults.applyIf(results, expandedQuery);
+        results = HashDistinctResults.applyIf(results, expandedQuery);
         return results;
     }
 

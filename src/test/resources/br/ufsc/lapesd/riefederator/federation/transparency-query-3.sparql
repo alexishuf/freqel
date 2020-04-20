@@ -1,0 +1,29 @@
+PREFIX :     <urn:plain:>
+PREFIX mod:  <https://alexishuf.bitbucket.io/dexa-2020/modalidades.ttl#>
+PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX dct:  <http://purl.org/dc/terms/>
+
+SELECT ?id ?startDate ?openDate WHERE {
+    ?contract :id ?id ;
+              :hasLicitacao ?proc ;
+              :unidadeGestora/:orgaoVinculado/:codigoSIAFI "26246" ;
+              :dataInicioVigencia ?startDate ;
+              :dataFimVigencia ?endDate ;
+              FILTER(?startDate >= "2019-12-01"^^xsd:date)
+              FILTER(?endDate <= "2020-12-02"^^xsd:date) .
+
+    ?proc :id ?procId;
+          :dataAbertura ?openDate .
+}
+
+# Expected results:
+# +------------------------------------------------------------+
+# | ?id      | ?startDate             | ?openDate              |
+# +------------------------------------------------------------+
+# | 70507179 | "2019-12-02"^^xsd:date | "2019-10-17"^^xsd:date |
+# | 71407155 | "2019-12-02"^^xsd:date | "2019-10-17"^^xsd:date |
+# +------------------------------------------------------------+

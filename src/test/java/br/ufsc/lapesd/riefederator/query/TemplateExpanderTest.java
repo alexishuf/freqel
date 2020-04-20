@@ -60,10 +60,10 @@ public class TemplateExpanderTest implements TestContext {
 
     @Test
     public void testRewriteWithRecursionConflictsAndAnnotations() {
-        TemplateLink t2 = new TemplateLink("t2",
+        TemplateLink t2 = new TemplateLink(EX+"t2",
                 CQuery.from(new Triple(x, s1, y), new Triple(y, s2, z), new Triple(z, s3, w)),
                 x, w);
-        TemplateLink t1 = new TemplateLink("t1",
+        TemplateLink t1 = new TemplateLink(EX+"t1",
                 CQuery.from(new Triple(x, r1, y), new Triple(y, t2, z)),
                 x, z);
 

@@ -649,7 +649,7 @@ public class DictTree {
             }
             //get value for step and pass through getChild (process $ref)
             object = asMap.getOrDefault(step, null);
-            object = getChild(object, path);
+            object = getChild(object, path.replaceAll("^#/", ""));
         }
         return object == null ? fallback : object;
     }

@@ -14,15 +14,12 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 @Immutable
 public class TemplateLink extends StdURI {
-    public static final @Nonnull String NID = "plain";
-    public static final @Nonnull String URI_PREFIX = "urn:"+NID+":";
-
     private final @Nonnull CQuery template;
     private final @Nonnull Term subject, object;
 
-    public TemplateLink(@Nonnull String name, @Nonnull CQuery template,
+    public TemplateLink(@Nonnull String uri, @Nonnull CQuery template,
                         @Nonnull Term sub, @Nonnull Term obj) {
-        super(URI_PREFIX+name);
+        super(uri);
         Set<Term> vars = template.streamTerms(Var.class).collect(Collectors.toSet());
         checkArgument(vars.contains(sub), "Subject "+sub+" missing from template "+template);
         checkArgument(vars.contains(obj), "Object " +obj+" missing from template "+template);

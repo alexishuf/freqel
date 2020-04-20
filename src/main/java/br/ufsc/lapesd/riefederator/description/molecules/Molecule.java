@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.description.molecules;
 
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.MultimapBuilder;
@@ -24,6 +25,9 @@ public class Molecule {
     private @LazyInit int atomCount;
     private @Nonnull final ImmutableSet<AtomFilter> filters;
     private @Nonnull final ImmutableSetMultimap<String, AtomFilter> atom2Filters;
+    @SuppressWarnings("Immutable")
+    private @LazyInit @Nonnull SoftReference<IndexedSet<String>> atomNames
+            = new SoftReference<>(null);
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<Map<String, Atom>> atomMap
             = new SoftReference<>(null);
@@ -91,6 +95,15 @@ public class Molecule {
     }
     public @Nonnull String dump(@Nonnull PrefixDict dict) {
         return getCore().dump(dict);
+    }
+
+    public @Nonnull IndexedSet<String> getAtomNames() {
+        IndexedSet<String> strong = atomNames.get();
+        if (strong == null) {
+            strong = IndexedSet.fromDistinct(getAtomMap().keySet());
+            atomNames = new SoftReference<>(strong);
+        }
+        return strong;
     }
 
     public @Nonnull Map<String, Atom> getAtomMap() {
@@ -251,9 +264,9 @@ public class Molecule {
                 stream = edge2triple.get(edge).stream();
             }
             if (subj != null)
-                return stream.filter(t -> t.getSubj().equals(subj));
+                stream = stream.filter(t -> t.getSubj().equals(subj));
             if (obj != null)
-                return stream.filter(t -> t.getObj().equals(obj));
+                stream = stream.filter(t -> t.getObj().equals(obj));
             return stream;
         }
 

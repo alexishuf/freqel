@@ -18,22 +18,41 @@ import java.util.regex.Pattern;
 
 public class TemplateExpander implements Function<CQuery, CQuery> {
     private static final @Nonnull Pattern TPL_RX = Pattern.compile("tpl(\\d+)");
-
     public static final @Nonnull TemplateExpander INSTANCE = new TemplateExpander();
+
+    private Map<String, TemplateLink> registry = new HashMap<>();
+
+    public TemplateExpander register(@Nonnull TemplateLink link) {
+        registry.put(link.getURI(), link);
+        return this;
+    }
 
     @Override
     public @Nonnull CQuery apply(@Nonnull CQuery query) {
         return apply(query, null);
     }
 
+    private boolean hasTemplatePredicate(@Nonnull Triple triple) {
+        Term predicate = triple.getPredicate();
+        if (predicate instanceof TemplateLink)
+            return true;
+        return predicate.isURI() && registry.containsKey(predicate.asURI().getURI());
+    }
+
     public @Nonnull CQuery apply(@Nonnull CQuery query, @Nullable int[] lastId) {
-        if (query.stream().noneMatch(t -> t.getPredicate() instanceof TemplateLink))
+        if (query.stream().noneMatch(this::hasTemplatePredicate))
             return query; // no template
         if (lastId == null)
             lastId = new int[]{getLastId(query)};
         CQuery.Builder builder = CQuery.builder(query.size() + 10);
         Map<Term, Term> var2Safe = new HashMap<>();
         for (Triple triple : query) {
+            Term predicate = triple.getPredicate();
+            if (!(predicate instanceof TemplateLink) && predicate.isURI()) {
+                TemplateLink template = registry.get(predicate.asURI().getURI());
+                if (template != null)
+                    triple = triple.withPredicate(template);
+            }
             expandTo(query, builder, lastId, var2Safe, triple);
             var2Safe.clear();
         }
