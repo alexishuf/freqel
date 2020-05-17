@@ -40,13 +40,6 @@ public class ProjectedResultsTest {
     }
 
     @Test
-    public void testBadVariables() {
-        CollectionResults in = createResults(0, "x", "y");
-        expectThrows(IllegalArgumentException.class,
-                () -> new ProjectingResults(in, newHashSet("x", "z")));
-    }
-
-    @Test
     public void testProjectAll() {
         CollectionResults in = createResults(1, "x", "y");
         ProjectingResults p = new ProjectingResults(in, newHashSet("x", "y"));

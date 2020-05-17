@@ -574,7 +574,7 @@ public class APIMoleculeMatcherTest implements TestContext {
         String resourcePath = "../../federation/transparency-query-2.sparql";
         CQuery query;
         try (InputStream in = getClass().getResourceAsStream(resourcePath)) {
-            query = SPARQLQueryParser.parse(new InputStreamReader(in, UTF_8));
+            query = SPARQLQueryParser.strict().parse(new InputStreamReader(in, UTF_8));
         }
         WebTarget target = ClientBuilder.newClient().target("http://dummy.example.org:1234/");
         WebAPICQEndpoint endpoint = TransparencyService.getContractsClient(target);

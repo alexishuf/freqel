@@ -133,6 +133,7 @@ public class CQuery implements  List<Triple> {
     public static class WithBuilder {
         protected  @Nullable ImmutableList<Triple> list;
         private Projection.Builder projection = null;
+        private boolean allowExtraProjection = false;
         private boolean distinct = false, ask = false;
         private boolean distinctRequired = false, askRequired = false;
         private Set<Modifier> modifiers = new LinkedHashSet<>();
@@ -150,6 +151,13 @@ public class CQuery implements  List<Triple> {
         public @Nonnull List<Triple> getList() {
             assert list != null;
             return list;
+        }
+
+        @CanIgnoreReturnValue
+        @Contract("_ -> this")
+        public @Nonnull WithBuilder allowExtraProjection(boolean value) {
+            allowExtraProjection = value;
+            return this;
         }
 
         @CanIgnoreReturnValue
@@ -366,9 +374,10 @@ public class CQuery implements  List<Triple> {
             if (projection != null) {
                 Set<String> allVars = list.stream().flatMap(Triple::stream).filter(Term::isVar)
                                                    .map(t -> t.asVar().getName()).collect(toSet());
-                checkArgument(allVars.containsAll(projection.getMutableSet()),
-                              "There are projected vars which are not results");
-                if (projection.getMutableSet().size() != allVars.size())
+                Set<String> projectedVars = projection.getMutableSet();
+                checkArgument(allowExtraProjection || allVars.containsAll(projectedVars),
+                        "There are projected vars which are not results");
+                if (!projectedVars.containsAll(allVars))
                     b.add(projection.build()); //only add real projections
             }
             if (distinct)
@@ -452,6 +461,12 @@ public class CQuery implements  List<Triple> {
         @Override
         public @Nonnull List<Triple> getList() {
             return mutableList;
+        }
+
+        @Override
+        public @Contract("_ -> this") @Nonnull Builder allowExtraProjection(boolean value) {
+            super.allowExtraProjection(value);
+            return this;
         }
 
         @Override

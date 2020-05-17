@@ -138,7 +138,7 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
             assertNotNull(in, "Resource "+sparqlResourcePath+" not found!");
             sparql = IOUtils.toString(in, UTF_8);
         }
-        CQuery query = SPARQLQueryParser.parse(sparql);
+        CQuery query = SPARQLQueryParser.strict().parse(sparql);
         Set<Map<String, String>> solutions = new HashSet<>();
         Results results = federation.query(query);
         while (results.hasNext()) {

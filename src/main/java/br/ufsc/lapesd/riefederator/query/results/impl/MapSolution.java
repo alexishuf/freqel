@@ -37,13 +37,13 @@ public class MapSolution extends AbstractSolution {
         private @Nullable HashMap<String, Term> map = new HashMap<>();
 
         @Contract("_, _ -> this")
-        public @Nonnull Builder put(@Nonnull String name, @Nonnull Term term) {
+        public @Nonnull Builder put(@Nonnull String name, @Nullable Term term) {
             Preconditions.checkState(map != null, "Closed builder");
             map.put(name, term);
             return this;
         }
         @Contract("_, _ -> this")
-        public @Nonnull Builder put(@Nonnull Var var, @Nonnull Term term) {
+        public @Nonnull Builder put(@Nonnull Var var, @Nullable Term term) {
             return put(var.getName(), term);
         }
 
@@ -78,7 +78,7 @@ public class MapSolution extends AbstractSolution {
     }
 
     @Contract("_, _ -> new")
-    public static @Nonnull MapSolution build(@Nonnull String name, @Nonnull Term term) {
+    public static @Nonnull MapSolution build(@Nonnull String name, @Nullable Term term) {
         return builder().put(name, term).build();
     }
     @Contract("_, _ -> new")

@@ -43,7 +43,7 @@ public class SPARQLEndpoint {
                                           @Nullable HttpHeaders headers, UriInfo uriInfo) {
         query = query == null ? "" : query;
         try {
-            CQuery cQuery = SPARQLQueryParser.parse(query);
+            CQuery cQuery = SPARQLQueryParser.tolerant().parse(query);
             Results results = getFederation().query(cQuery);
             return ResultsFormatterDispatcher.getDefault()
                     .format(results, cQuery.isAsk(), headers, uriInfo)

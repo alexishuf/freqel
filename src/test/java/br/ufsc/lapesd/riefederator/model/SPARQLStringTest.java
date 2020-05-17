@@ -142,7 +142,7 @@ public class SPARQLStringTest implements TestContext {
         assertEquals(string.getVarNames(), Sets.newHashSet("x", "y"));
         assertEquals(string.getFilters(), emptySet());
 
-        CQuery parsed = SPARQLQueryParser.parse(string.getString());
+        CQuery parsed = SPARQLQueryParser.strict().parse(string.getString());
         assertEquals(parsed.getSet(), Sets.newHashSet(
                 new Triple(Alice, knows, x),
                 new Triple(x, age, y)));

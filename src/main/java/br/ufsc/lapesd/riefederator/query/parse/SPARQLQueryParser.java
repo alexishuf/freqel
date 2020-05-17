@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.parse;
 
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
@@ -34,6 +33,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class SPARQLQueryParser {
     private final static Logger logger = LoggerFactory.getLogger(SPARQLQueryParser.class);
     private final static String HIDDEN_VAR_PREFIX = "parserPathHiddenVar";
+    private final static SPARQLQueryParser INSTANCE = new SPARQLQueryParser();
+    private final static SPARQLQueryParser TOLERANT = new SPARQLQueryParser()
+            .allowExtraProjections(true);
+    private boolean allowExtraProjections = false;
 
     static @Nonnull StdVar hidden(int id) {
         return new StdVar(HIDDEN_VAR_PREFIX+id);
@@ -42,7 +45,22 @@ public class SPARQLQueryParser {
         return term.isVar() && term.asVar().getName().matches(HIDDEN_VAR_PREFIX+"\\d+");
     }
 
-    public static @Nonnull CQuery parse(@Nonnull String sparql) throws SPARQLParseException {
+    public @Nonnull SPARQLQueryParser allowExtraProjections(boolean value) {
+        allowExtraProjections = value;
+         return this;
+    }
+
+    public static @Nonnull SPARQLQueryParser tolerant() {
+        return TOLERANT;
+    }
+
+    public static @Nonnull SPARQLQueryParser strict() {
+        return INSTANCE;
+    }
+
+    /* ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- v*/
+
+    public @Nonnull CQuery parse(@Nonnull String sparql) throws SPARQLParseException {
         try {
             return convert(QueryFactory.create(sparql));
         } catch (QueryParseException e) {
@@ -50,7 +68,7 @@ public class SPARQLQueryParser {
         }
     }
 
-    public static @Nonnull CQuery parse(@Nonnull Reader sparqlReader) throws SPARQLParseException {
+    public @Nonnull CQuery parse(@Nonnull Reader sparqlReader) throws SPARQLParseException {
         try {
             return parse(IOUtils.toString(sparqlReader));
         } catch (IOException e) {
@@ -67,8 +85,8 @@ public class SPARQLQueryParser {
         }
     }
 
-    public static  @Nonnull CQuery convert(@Nonnull Query q) throws SPARQLParseException {
-        CQuery.Builder builder = CQuery.builder();
+    public @Nonnull CQuery convert(@Nonnull Query q) throws SPARQLParseException {
+        CQuery.Builder builder = CQuery.builder().allowExtraProjection(allowExtraProjections);
         Set<String> allResultVars = new HashSet<>();
         Set<String> projection = new HashSet<>();
         int[] lastHidden = {-1};
@@ -341,13 +359,7 @@ public class SPARQLQueryParser {
                 @Override
                 public void finishVisit(Query query) {}
             });
-
-            if (!allResultVars.containsAll(projection)) {
-                Set<String> extra = TreeUtils.setMinus(projection, allResultVars);
-                logger.warn("Projected vars {} are not results and will be discarded. Query:\n{}",
-                            extra, q.serialize());
-            }
-            if (!q.isAskType() && projection.size() < allResultVars.size()) {
+            if (!q.isAskType() && !projection.containsAll(allResultVars)) {
                 projection.forEach(builder::project);
                 builder.requireProjection();
             }

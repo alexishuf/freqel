@@ -78,7 +78,16 @@ public abstract class CQueryContext {
     }
 
     public static @Nonnull CQuery createQuery(Object... termAndAnnotations) {
-        CQuery.Builder builder = CQuery.builder(termAndAnnotations.length / 3);
+        return createQuery(false, termAndAnnotations);
+    }
+
+    public static @Nonnull CQuery createTolerantQuery(Object... termAndAnnotations) {
+        return createQuery(true, termAndAnnotations);
+    }
+
+    static @Nonnull CQuery createQuery(boolean tolerant, Object... termAndAnnotations) {
+        CQuery.Builder builder = CQuery.builder(termAndAnnotations.length / 3)
+                                       .allowExtraProjection(tolerant);
         PrefixDict prefixDict = null;
         List<Term> window = new ArrayList<>();
         for (Object next : termAndAnnotations) {

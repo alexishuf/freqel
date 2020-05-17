@@ -52,7 +52,7 @@ public class SPARQLFilter implements Modifier {
     private static final Logger logger = LoggerFactory.getLogger(SPARQLFilter.class);
     private static final Pattern varNameRx =
             Pattern.compile("(?:^|\\s|[,(.])[$?]([^ \t.),\n]+)(?:\\s|[,.)]|$)");
-    private static final Set<String> biOps = Sets.newHashSet("<", "<=", "==", "!=", ">=", ">",
+    private static final Set<String> biOps = Sets.newHashSet("<", "<=", "=", "==", "!=", ">=", ">",
                                                              "+", "-", "*", "/",
                                                              "&&", "||");
     private static final Set<String> unOps = Sets.newHashSet("!", "-", "+");

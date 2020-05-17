@@ -9,7 +9,6 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import java.util.Set;
@@ -19,8 +18,8 @@ public class ProjectingResults implements Results {
     private final @Nonnull Set<String> varNames;
 
     public ProjectingResults(@Nonnull Results delegate, @Nonnull Set<String> varNames) {
-        Preconditions.checkArgument(delegate.getVarNames().containsAll(varNames),
-                "Some variables of the projection are not present in the delegate");
+//        Preconditions.checkArgument(delegate.getVarNames().containsAll(varNames),
+//                "Some variables of the projection are not present in the delegate");
         this.delegate = delegate;
         this.varNames = varNames;
     }
@@ -50,8 +49,7 @@ public class ProjectingResults implements Results {
         MapSolution.Builder b = MapSolution.builder();
         for (String name : varNames) {
             Term term = solution.get(name, null);
-            if (term != null)
-                b.put(name, term);
+            b.put(name, term);
         }
         return b.build();
     }

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createTolerantQuery;
 import static br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser.hidden;
 import static java.util.Arrays.asList;
 import static org.testng.Assert.*;
@@ -33,32 +34,32 @@ public class SPARQLQueryParserTest implements TestContext {
                         "PREFIX foaf: <"+ FOAF.getURI() +">\n" +
                         "PREFIX ex: <"+ EX +">\n";
         return Stream.of(
-                asList("", null, SPARQLParseException.class),
-                asList("xxx", null, SPARQLParseException.class),
-                asList("SELECT ?x WHERE {?x ex:p foaf:Agent.}", null, SPARQLParseException.class),
-                asList(prolog+"SELECT * WHERE {?x ?p ?o.}",
+                asList("", true, null, SPARQLParseException.class),
+                asList("xxx", true, null, SPARQLParseException.class),
+                asList("SELECT ?x WHERE {?x ex:p foaf:Agent.}", true, null, SPARQLParseException.class),
+                asList(prolog+"SELECT * WHERE {?x ?p ?o.}", true,
                        createQuery(x, p, o),
                        null),
-                asList(prolog+"SELECT ?x WHERE {?x ?p ?o.}",
+                asList(prolog+"SELECT ?x WHERE {?x ?p ?o.}", true,
                        createQuery(x, p, o, Projection.required("x")),
                        null),
-                asList(prolog+"ASK WHERE {?x ?p ?o.}",
+                asList(prolog+"ASK WHERE {?x ?p ?o.}", true,
                        createQuery(x, p, o, Ask.ADVISED),
                        null),
-                asList(prolog+"ASK WHERE {?x rdf:type/rdfs:subClassOf* ?o.}",
+                asList(prolog+"ASK WHERE {?x rdf:type/rdfs:subClassOf* ?o.}", true,
                        null,
                        UnsupportedSPARQLFeatureException.class),
-                asList("DESCRIBE <"+EX+"Alice>", null, UnsupportedSPARQLFeatureException.class),
+                asList("DESCRIBE <"+EX+"Alice>", true, null, UnsupportedSPARQLFeatureException.class),
                 asList(prolog+"SELECT * WHERE {\n" +
                                 "ex:Alice foaf:knows ?x.\n" +
-                                "?x foaf:knows ex:Bob.\n}",
+                                "?x foaf:knows ex:Bob.\n}", true,
                        createQuery(Alice, knows, x, x, knows, Bob),
                        null),
                 asList(prolog+"SELECT * WHERE {\n" +
                                 "ex:Alice foaf:knows ?x.\n" +
                                 "?x foaf:age ?y\n" +
                                 "  FILTER(?y < 23).\n" +
-                                "?x foaf:knows ex:Bob.\n}",
+                                "?x foaf:knows ex:Bob.\n}", true,
                        createQuery(
                                Alice, knows, x,
                                x, age, y, SPARQLFilter.build("?y < 23"),
@@ -68,7 +69,7 @@ public class SPARQLQueryParserTest implements TestContext {
                                 "ex:Alice foaf:knows ?x.\n" +
                                 "?x foaf:age ?y\n" +
                                 "  FILTER(?y < 23).\n" +
-                                "?x foaf:knows ex:Bob.\n}",
+                                "?x foaf:knows ex:Bob.\n}", true,
                        createQuery(
                                Alice, knows, x,
                                x, age, y, SPARQLFilter.build("?y < 23"),
@@ -78,14 +79,14 @@ public class SPARQLQueryParserTest implements TestContext {
                                 "ex:Alice foaf:knows ?x.\n" +
                                 "?x foaf:age ?y\n" +
                                 "  FILTER(?y < 23).\n" +
-                                "?x foaf:knows ex:Bob.\n}",
+                                "?x foaf:knows ex:Bob.\n}", true,
                        createQuery(
                                Alice, knows, x,
                                x, age, y, SPARQLFilter.build("?y < 23"),
                                x, knows, Bob, Projection.required("x"), Distinct.REQUIRED),
                        null),
                 asList(prolog+"SELECT * WHERE {\n" +
-                              "?x foaf:knows/foaf:age ?u. FILTER(?u > 23)\n}",
+                              "?x foaf:knows/foaf:age ?u. FILTER(?u > 23)\n}", true,
                         createQuery(
                                 x, knows, hidden(0),
                                 hidden(0), age, u,
@@ -94,7 +95,7 @@ public class SPARQLQueryParserTest implements TestContext {
                         null),
                 asList(prolog+"SELECT * WHERE {\n" +
                               "?x foaf:name ?y; \n" +
-                              "   foaf:knows/foaf:knows/foaf:age ?u. FILTER(?u > 23)\n}",
+                              "   foaf:knows/foaf:knows/foaf:age ?u. FILTER(?u > 23)\n}", true,
                         createQuery(
                                 x, name, y,
                                 x, knows, hidden(0),
@@ -105,7 +106,7 @@ public class SPARQLQueryParserTest implements TestContext {
                         null),
                 asList(prolog+"SELECT DISTINCT ?y WHERE {\n" +
                                 "?x foaf:name ?y; \n" +
-                                "   foaf:knows/foaf:knows/foaf:age ?u. FILTER(?u > 23)\n}",
+                                "   foaf:knows/foaf:knows/foaf:age ?u. FILTER(?u > 23)\n}", true,
                         createQuery(
                                 x, name, y,
                                 x, knows, hidden(0),
@@ -117,7 +118,7 @@ public class SPARQLQueryParserTest implements TestContext {
                 asList(prolog+"SELECT * WHERE {\n" +
                                 "?x foaf:name ?y ; \n" +
                                 "   foaf:knows/foaf:knows/foaf:age ?u ;\n" +
-                                "   foaf:isPrimaryTopicOf/foaf:title ?z .\n}",
+                                "   foaf:isPrimaryTopicOf/foaf:title ?z .\n}", true,
                         createQuery(
                                 x, name, y,
                                 x, knows, hidden(0),
@@ -126,23 +127,32 @@ public class SPARQLQueryParserTest implements TestContext {
                                 x, isPrimaryTopicOf, hidden(2),
                                 hidden(2), foafTitle, z,
                                 Projection.required("x", "y", "u", "z")),
-                        null)
+                        null),
+                asList(prolog+"SELECT ?x ?z WHERE {\n?x foaf:name ?y}", true,
+                       null, SPARQLParseException.class),
+                asList(prolog+"SELECT ?x ?z WHERE {\n?x foaf:name ?y}", false,
+                       createTolerantQuery(x, name, y, Projection.required("x", "z")), null)
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "parseData")
-    public void testParse(@Nonnull String sparql, @Nullable CQuery expected,
+    public void testParse(@Nonnull String sparql, boolean strict, @Nullable CQuery expected,
                           Class<? extends Throwable> exception) throws Exception {
+        SPARQLQueryParser parser = strict ? SPARQLQueryParser.strict()
+                                          : SPARQLQueryParser.tolerant();
         if (exception == null) {
-            CQuery query = SPARQLQueryParser.parse(sparql);
+            CQuery query = parser.parse(sparql);
             assertNotNull(expected); // bad test data
             assertEquals(query.getSet(), expected.getSet());
             assertEquals(query.getModifiers(), expected.getModifiers());
             //noinspection SimplifiedTestNGAssertion
             assertTrue(query.equals(expected));
+
+            if (strict) // if strict was OK, tolerant should also be ok with it
+                testParse(sparql, false, expected, exception);
         } else {
             assertNull(expected); //bad test data
-            expectThrows(exception, () -> SPARQLQueryParser.parse(sparql));
+            expectThrows(exception, () -> parser.parse(sparql));
         }
     }
 }

@@ -135,7 +135,7 @@ public class Linkedator {
             throw new ResultParseException("Missing sparql key");
         CQuery query;
         try {
-            query = SPARQLQueryParser.parse(queryString);
+            query = SPARQLQueryParser.strict().parse(queryString);
         } catch (SPARQLParseException e) {
             throw new ResultParseException("SPARQL query failed to parse: " + e.getMessage() +
                                            "Query: "+ queryString, e);

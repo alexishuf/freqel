@@ -19,6 +19,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InM
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
+import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.linkedator.Linkedator;
 import br.ufsc.lapesd.riefederator.linkedator.LinkedatorResult;
@@ -540,12 +541,12 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         return asList(
                 /* match only against getContracts() */
                 asList(new SetupTransparency(),
-                        SPARQLQueryParser.parse(sparql[0]),
+                        SPARQLQueryParser.strict().parse(sparql[0]),
                         newHashSet(MapSolution.build("id", s267291791),
                                    MapSolution.build("id", s278614622))),
                 /* match only against getProcurements() */
                 asList(new SetupTransparency(),
-                       SPARQLQueryParser.parse(sparql[1]),
+                       SPARQLQueryParser.strict().parse(sparql[1]),
                        newHashSet(MapSolution.builder()
                                        .put("id", s70507179)
                                        .put("startDate", d20191202)
@@ -558,7 +559,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                                        .put("modDescr", pregao).build())),
                 /* Get procurement of a contract */
                 asList(new SetupTransparency(),
-                       SPARQLQueryParser.parse(sparql[2]),
+                       SPARQLQueryParser.strict().parse(sparql[2]),
                        newHashSet(MapSolution.builder()
                                        .put("id", s70507179)
                                        .put("startDate", d20191202)
@@ -606,16 +607,22 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
     @Test(dataProvider = "queryData")
     public void testQuery(@Nonnull Module module, @Nonnull Setup setup,
-                          @Nonnull CQuery query,  @Nonnull Set<Solution> expected) {
+                          @Nonnull CQuery query,  @Nullable Set<Solution> expected) {
         Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
                                                         .with(module));
         Federation federation = injector.getInstance(Federation.class);
         setup.accept(federation, target().getUri().toString());
 
         Set<Solution> actual = new HashSet<>();
-        try (Results results = federation.query(query)) {
-            results.forEachRemaining(actual::add);
+        PlanNode plan = federation.plan(query);
+        PlannerTest.assertPlanAnswers(plan, query);
+
+        // expected may be null telling us that we shouldn't execute, only check the plan
+        if (expected != null) {
+            try (Results results = federation.query(query)) {
+                results.forEachRemaining(actual::add);
+            }
+            assertEquals(actual, expected);
         }
-        assertEquals(actual, expected);
     }
 }

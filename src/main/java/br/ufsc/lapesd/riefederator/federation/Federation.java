@@ -13,6 +13,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableCollection;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.Guice;
@@ -74,21 +75,26 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return strategy.getSources();
     }
 
-    public @Nonnull PlanNode plan(@Nonnull CQuery query) {
-        ModifierUtils.check(this, query.getModifiers());
-        return strategy.decompose(query);
-    }
-
     @Override
-    public @Nonnull
-    Results query(@Nonnull CQuery query) {
-        CQuery expandedQuery = templateExpander.apply(query);
-        PlanNode plan = plan(expandedQuery);
+    public @Nonnull Results query(@Nonnull CQuery query) {
+        PlanNode plan = plan(expandTemplates(query));
         Results results = executor.executePlan(plan);
 
-        results = ProjectingResults.applyIf(results, expandedQuery);
-        results = HashDistinctResults.applyIf(results, expandedQuery);
+        results = ProjectingResults.applyIf(results, query);
+        results = HashDistinctResults.applyIf(results, query);
         return results;
+    }
+
+    @VisibleForTesting
+    @Nonnull CQuery expandTemplates(@Nonnull CQuery query) {
+        ModifierUtils.check(this, query.getModifiers());
+        return templateExpander.apply(query);
+    }
+
+    @VisibleForTesting
+    @Nonnull PlanNode plan(@Nonnull CQuery query) {
+        ModifierUtils.check(this, query.getModifiers());
+        return strategy.decompose(query);
     }
 
     @Override
