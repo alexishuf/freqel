@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query;
 
+import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
@@ -26,6 +27,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.JoinType.OBJ_SUBJ;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
@@ -650,6 +652,32 @@ public class CQueryTest implements TestContext {
 
         assertNotEquals(at.getObject(), kt.getObject());
         assertNotEquals(at.getObject(), it.getObject());
+    }
+
+    @DataProvider
+    public static @Nonnull Object[][] isJoinConnectedData() throws Exception {
+        return Stream.of(
+                asList(CQuery.EMPTY, true),
+                asList(createQuery(Alice, knows, x), true),
+                asList(createQuery(Alice, knows, x, Alice, knows, x), true),
+                asList(createQuery(Alice, knows, x, x, knows, Bob), true),
+                asList(createQuery(Alice, knows, x, Bob, knows, x), true),
+                asList(createQuery(Alice, knows, x, Bob, knows, y), false),
+                asList(createQuery(Alice, knows, x, Alice, knows, y), false),
+                asList(createQuery(Alice, knows, x, Alice, knows, Bob), false),
+                asList(createQuery(Alice, knows, x, Alice, knows, y, x, knows, y), true),
+                asList(createQuery(Alice, knows, x, Alice, knows, y, x, knows, z, y, knows, z), true),
+                asList(LargeRDFBenchSelfTest.loadQuery("S7"), true),
+                asList(LargeRDFBenchSelfTest.loadQuery("B2"), true),
+                asList(LargeRDFBenchSelfTest.loadQuery("C10"), true),
+                asList(LargeRDFBenchSelfTest.loadQuery("B5"), false),
+                asList(LargeRDFBenchSelfTest.loadQuery("B6"), false)
+        ).map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "isJoinConnectedData")
+    public void testIsJoinConnected(@Nonnull CQuery query, boolean expected) {
+        assertEquals(query.isJoinConnected(), expected);
     }
 
 }

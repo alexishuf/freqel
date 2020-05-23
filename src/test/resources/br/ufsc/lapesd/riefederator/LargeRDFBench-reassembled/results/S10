@@ -1,0 +1,11 @@
+Drug<===>IntDrug<===>IntEffect
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00091<===>"Increases the effect and toxicity of immunosuppressant"
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00203<===>"Increases the effect and toxicity of sildenafil"
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00213<===>"This gastric pH modifier decreases the levels/effects of atazanavir"
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00224<===>"Increased risk of hyperbilirubinemia with this association"
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00227<===>"Increased risk of myopathy/rhabdomyolysis"
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00238<===>"Nevirapine decreases levels/effect of atazanavir"
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00243<===>"Increased levels of ranolazine- risk of toxicity"
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00266<===>"The protease inhibitor increases the anticoagulant effect"
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00281<===>"Increased risk of cardiotoxicity and arrhythmias"
+http://dbpedia.org/resource/Atazanavir<===>http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00300<===>"Tenofovir decreases the levels/effects of atazanavir"

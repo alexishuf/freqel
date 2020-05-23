@@ -153,6 +153,17 @@
       <version>15.0</version>
       <scope>compile</scope>
     </dependency>
+    <!-- sevenzipjbinding is used only in LargeRDFBenchTestResourcesGenerator -->
+    <dependency>
+      <groupId>net.sf.sevenzipjbinding</groupId>
+      <artifactId>sevenzipjbinding</artifactId>
+      <version>16.02-2.01</version>
+    </dependency>
+    <dependency>
+      <groupId>net.sf.sevenzipjbinding</groupId>
+      <artifactId>sevenzipjbinding-all-platforms</artifactId>
+      <version>16.02-2.01</version>
+    </dependency>
   </dependencies>
 
   <build>

@@ -111,6 +111,34 @@ public class TreeUtils {
                 DISTINCT | NONNULL), false);
     }
 
+    private static final class Replacer {
+        private final @Nonnull Map<PlanNode, PlanNode> replacements = new HashMap<>();
+        private final @Nonnull Set<PlanNode> visited = new HashSet<>();
+
+        public Replacer(@Nonnull Map<PlanNode, PlanNode> replacements) {
+            this.replacements.putAll(replacements);
+            visited.addAll(replacements.values());
+        }
+
+        public @Nonnull PlanNode visit(@Nonnull PlanNode node) {
+            if (!visited.add(node)) return node;
+            node.getChildren().forEach(this::visit);
+            PlanNode newNode = replacements.getOrDefault(node, null);
+            if (newNode != null)
+                return newNode;
+            if (node.getChildren().stream().noneMatch(replacements::containsKey))
+                return node; // no work
+            newNode = node.replacingChildren(replacements);
+            replacements.put(node, newNode); //replace this node in parents
+            return newNode;
+        }
+    }
+
+    public static @Nonnull PlanNode replaceNodes(@Nonnull PlanNode root,
+                                                 @Nonnull Map<PlanNode, PlanNode> replacements) {
+        return new Replacer(replacements).visit(root);
+    }
+
     static @Nonnull <T, I>
     Set<T> intersect(@Nonnull Collection<I> input,
                      @Nonnull Function<I, ? extends Collection<T>> getter,

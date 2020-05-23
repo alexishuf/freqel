@@ -165,7 +165,7 @@ public class MultiQueryNode extends AbstractInnerPlanNode {
         if (intersectInputs) builder.intersectInputs();
         builder.setResultVars(setMinus(getResultVars(), solution.getVarNames()));
         MultiQueryNode bound = builder.build();
-        bound.addBoundFiltersFrom(getFilers(), solution);
+        bound.addBoundFiltersFrom(getFilters(), solution);
         return bound;
     }
 
@@ -186,7 +186,9 @@ public class MultiQueryNode extends AbstractInnerPlanNode {
             return this;
         if (intersectInputs) builder.intersectInputs();
         builder.setResultVars(getResultVars());
-        return builder.build();
+        MultiQueryNode newNode = builder.build();
+        newNode.addApplicableFilters(getFilters());
+        return newNode;
     }
 
     public @Nonnull PlanNode  with(@Nonnull List<PlanNode> list) {

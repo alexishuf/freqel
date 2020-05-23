@@ -5,7 +5,6 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 
 import javax.annotation.Nonnull;
@@ -88,14 +87,13 @@ public class EmptyNode extends AbstractPlanNode {
         Set<String> reqInputs = setMinus(getRequiredInputVars(), names);
         Set<String> optInputs = setMinus(getOptionalInputVars(), names);
         EmptyNode bound = new EmptyNode(resultVars, reqInputs, optInputs);
-        bound.addBoundFiltersFrom(getFilers(), solution);
+        bound.addBoundFiltersFrom(getFilters(), solution);
         return bound;
     }
 
     @Override
     public @Nonnull EmptyNode
     replacingChildren(@Nonnull Map<PlanNode, PlanNode> map) throws IllegalArgumentException {
-        Preconditions.checkArgument(map.isEmpty());
         return this;
     }
 

@@ -27,6 +27,7 @@ import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.testng.annotations.DataProvider;
@@ -89,10 +90,10 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     public static void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query) {
-        assertPlanAnswers(root, query, false);
+        assertPlanAnswers(root, query, false, false);
     }
     public static void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query,
-                                         boolean allowEmptyNode) {
+                                         boolean allowEmptyNode, boolean forgiveFilters) {
         IndexedSet<Triple> triples = IndexedSet.from(query.getMatchedTriples());
 
         // the plan is acyclic
@@ -212,6 +213,41 @@ public class PlannerTest implements TransparencyServiceTestContext {
                     }
                     return false;
                 }).collect(toList());
+
+        if (!forgiveFilters) {
+            //all filters are placed somewhere
+            List<SPARQLFilter> missingFilters = query.getModifiers().stream()
+                    .filter(SPARQLFilter.class::isInstance).map(m -> (SPARQLFilter) m)
+                    .filter(f -> streamPreOrder(root).noneMatch(n -> {
+                        if (n instanceof ComponentNode) {
+                            if (((ComponentNode)n).getQuery().getModifiers().contains(f))
+                                return true;
+                        }
+                        return n.getFilters().contains(f);
+                    }))
+                    .collect(toList());
+            assertEquals(missingFilters, emptyList());
+
+            // all filters are placed somewhere valid (with all required vars)
+            List<ImmutablePair<? extends PlanNode, SPARQLFilter>> badFilterAssignments;
+            badFilterAssignments = streamPreOrder(root)
+                    .flatMap(n -> n.getFilters().stream().map(f -> ImmutablePair.of(n, f)))
+                    .filter(p -> !p.left.getAllVars().containsAll(p.right.getVarTermNames()))
+                    .collect(toList());
+            assertEquals(badFilterAssignments, emptyList());
+
+            // same as previous, but checks filters within CQuery instances
+            badFilterAssignments = streamPreOrder(root)
+                    .filter(ComponentNode.class::isInstance)
+                    .map(n -> (ComponentNode)n)
+                    .flatMap(n -> n.getQuery().getModifiers().stream()
+                                              .filter(SPARQLFilter.class::isInstance)
+                                              .map(f -> ImmutablePair.of(n, (SPARQLFilter)f)))
+                    .filter(p -> !p.left.getAllVars().containsAll(p.right.getVarTermNames()))
+                    .collect(toList());
+            assertEquals(badFilterAssignments, emptyList());
+        }
+
         assertEquals(bad, emptyList());
     }
 
@@ -448,7 +484,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
             assertTrue(plan instanceof EmptyNode);
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertEquals(plan.getRequiredInputVars(), emptySet());
-            assertPlanAnswers(plan, query, true);
+            assertPlanAnswers(plan, query, true, true);
         }
     }
 
@@ -610,7 +646,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
             assertTrue(plan instanceof EmptyNode);
             assertEquals(plan.getRequiredInputVars(), emptySet());
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
-            assertPlanAnswers(plan, f.query, true);
+            assertPlanAnswers(plan, f.query, true, true);
         }
     }
 
@@ -705,6 +741,6 @@ public class PlannerTest implements TransparencyServiceTestContext {
         Planner planner = supplier.get();
         CQuery wholeQuery = CQuery.union(arqQuery, webQuery);
         PlanNode plan = planner.plan(wholeQuery, asList(n1, n2));
-        assertPlanAnswers(plan, wholeQuery);
+        assertPlanAnswers(plan, wholeQuery, false, true);
     }
 }

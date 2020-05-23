@@ -4,7 +4,6 @@ import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
@@ -144,21 +143,22 @@ public class JoinNode extends AbstractInnerPlanNode {
         Set<String> results = setMinus(getResultVars(), solution.getVarNames());
         Set<String> joinVars = setMinus(getJoinVars(), solution.getVarNames());
         JoinNode bound = builder(left, right).setJoinVars(joinVars).setResultVars(results).build();
-        bound.addBoundFiltersFrom(getFilers(), solution);
+        bound.addBoundFiltersFrom(getFilters(), solution);
         return bound;
     }
 
     @Override
     public@Nonnull JoinNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
             throws IllegalArgumentException {
-        Preconditions.checkArgument(getChildren().containsAll(map.keySet()));
         if (map.isEmpty()) return this;
 
         PlanNode l = map.getOrDefault(getLeft(), getLeft());
         PlanNode r = map.getOrDefault(getRight(), getRight());
 
         Set<String> joinVars = intersect(l.getPublicVars(), r.getPublicVars(), getJoinVars());
-        return builder(l, r).addJoinVars(joinVars).build();
+        JoinNode newNode = builder(l, r).addJoinVars(joinVars).build();
+        newNode.addApplicableFilters(getFilters());
+        return newNode;
     }
 
     private static @Nonnull Cardinality getCardinality(@Nonnull PlanNode l, @Nonnull PlanNode r) {

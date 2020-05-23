@@ -21,14 +21,14 @@ import java.util.*;
 
 import static java.util.stream.Collectors.toList;
 
-public abstract class ListSourcesAbstractDecomposer implements DecompositionStrategy {
+public abstract class SourcesListAbstractDecomposer implements DecompositionStrategy {
     private static final Logger logger
-            = LoggerFactory.getLogger(ListSourcesAbstractDecomposer.class);
+            = LoggerFactory.getLogger(SourcesListAbstractDecomposer.class);
     protected final @Nonnull List<Source> sources = new ArrayList<>();
     protected final @Nonnull Planner planner;
     protected int estimatePolicy = EstimatePolicy.local(50);
 
-    public ListSourcesAbstractDecomposer(@Nonnull Planner planner) {
+    public SourcesListAbstractDecomposer(@Nonnull Planner planner) {
         this.planner = planner;
     }
 

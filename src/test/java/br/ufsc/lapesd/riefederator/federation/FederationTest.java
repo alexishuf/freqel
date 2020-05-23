@@ -1,9 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation;
 
+import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.AskDescription;
+import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
+import br.ufsc.lapesd.riefederator.description.semantic.SemanticSelectDescription;
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.EvenDecomposer;
 import br.ufsc.lapesd.riefederator.federation.decomp.StandardDecomposer;
@@ -17,6 +20,8 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.Sim
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
+import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.OuterPlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
@@ -28,17 +33,20 @@ import br.ufsc.lapesd.riefederator.model.term.Res;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
+import com.google.common.base.Preconditions;
 import com.google.inject.Module;
 import com.google.inject.*;
 import com.google.inject.util.Modules;
@@ -72,8 +80,9 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 
+import static br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest.DATA_FILENAMES;
+import static br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest.RESOURCE_DIR;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.*;
 import static br.ufsc.lapesd.riefederator.webapis.TransparencyService.*;
 import static com.google.common.collect.Sets.newHashSet;
@@ -343,77 +352,141 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         }
     }
 
+    private static final class SetupLargeRDFBench implements Setup {
+        private int variantIdx;
+
+        public SetupLargeRDFBench(int variantIdx) {
+            this.variantIdx = variantIdx;
+        }
+
+        @Override
+        public @Nullable Setup nextVariant() {
+            return variantIdx >= 9 ? null : new SetupLargeRDFBench(variantIdx + 1);
+        }
+
+        @Override
+        public boolean requiresBindJoin() {
+            return false;
+        }
+
+        private @Nonnull Source wrap(@Nonnull CQEndpoint ep) {
+            Preconditions.checkState(variantIdx <= 9);
+            Description description = null;
+            if ((variantIdx % 5) == 0) description = new SelectDescription(ep);
+            else if ((variantIdx % 5) == 1) description = new SelectDescription(ep, true);
+            else if ((variantIdx % 5) == 2) description = new AskDescription(ep);
+            else if ((variantIdx % 5) == 3) description = new AskDescription(ep, 1);
+            else if ((variantIdx % 5) == 4) description = new SemanticSelectDescription(ep, new TransitiveClosureTBoxReasoner());
+            assert description != null;
+            return new Source(description, ep);
+        }
+
+        @Override
+        public void accept(Federation federation, String base) {
+            ClassLoader cl = Thread.currentThread().getContextClassLoader();
+            Model union = ModelFactory.createDefaultModel();
+            for (String filename : DATA_FILENAMES) {
+                try (InputStream stream = cl.getResourceAsStream(RESOURCE_DIR + "/data/" + filename)) {
+                    assertNotNull(stream);
+                    if (variantIdx >= 5) {
+                        RDFDataMgr.read(union, stream, Lang.NT);
+                    } else {
+                        Model model = ModelFactory.createDefaultModel();
+                        RDFDataMgr.read(model, stream, Lang.NT);
+                        federation.addSource(wrap(ARQEndpoint.forModel(model)));
+                    }
+                } catch (IOException e) {
+                    fail("Unexpected exception", e);
+                }
+            }
+            if (variantIdx >= 5)
+                federation.addSource(wrap(ARQEndpoint.forModel(union)));
+        }
+    }
+
     private static abstract class TestModule extends AbstractModule {
-        private boolean canBindJoin;
+        private final boolean canBindJoin;
         public TestModule(boolean canBindJoin) {this.canBindJoin = canBindJoin;}
         public boolean canBindJoin() { return canBindJoin; }
     }
 
-    private static final @Nonnull List<BiFunction<Provider<Planner>,
-                                       Class<? extends DecompositionStrategy>,
-                                       TestModule>> moduleProtoList = asList(
-            (planner, decomp) -> new TestModule(true) {
+    @FunctionalInterface
+    private interface ModuleFactory {
+        TestModule apply(Provider<? extends OuterPlanner> outerPlanner,
+                         Provider<? extends Planner> planner,
+                         Class<? extends DecompositionStrategy> decompositionStrategy);
+    }
+
+    private static final @Nonnull List<ModuleFactory> moduleProtoList = asList(
+            (outerPlanner, planner, decomp) -> new TestModule(true) {
                 @Override
                 protected void configure() {
+                    bind(OuterPlanner.class).toProvider(outerPlanner);
                     bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+"+decomp; }
+                public String toString() { return planner+"+"+decomp+"+"+outerPlanner; }
             },
-            (planner, decomp) -> new TestModule(false) {
+            (outerPlanner, planner, decomp) -> new TestModule(false) {
                 @Override
                 protected void configure() {
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
+                    bind(OuterPlanner.class).toProvider(outerPlanner);
                     bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+"+decomp+"+InMemoryHashJoinResults"; }
+                public String toString() { return planner+"+"+decomp+"+"+outerPlanner+"+InMemoryHashJoinResults"; }
             },
-            (planner, decomp) -> new TestModule(false) {
+            (outerPlanner, planner, decomp) -> new TestModule(false) {
                 @Override
                 protected void configure() {
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults::new);
+                    bind(OuterPlanner.class).toProvider(outerPlanner);
                     bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+"+decomp+"+ParallelInMemoryHashJoinResults"; }
+                public String toString() { return planner+"+"+decomp+"+"+outerPlanner+"+ParallelInMemoryHashJoinResults"; }
             },
-            (planner, decomp) -> new TestModule(true) {
+            (outerPlanner, planner, decomp) -> new TestModule(true) {
                 @Override
                 protected void configure() {
                     bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
+                    bind(OuterPlanner.class).toProvider(outerPlanner);
                     bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+"+decomp+"+SimpleBindJoinResults"; }
+                public String toString() { return planner+"+"+decomp+"+"+outerPlanner+"+SimpleBindJoinResults"; }
             },
-            (planner, decomp) -> new TestModule(true) {
+            (outerPlanner, planner, decomp) -> new TestModule(true) {
                 @Override
                 protected void configure() {
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                     bind(JoinNodeExecutor.class).to(SimpleJoinNodeExecutor.class);
+                    bind(OuterPlanner.class).toProvider(outerPlanner);
                     bind(Planner.class).toProvider(planner);
                     bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
-                public String toString() { return planner+"+"+decomp+"+SimpleJoinNodeExecutor"; }
+                public String toString() { return planner+"+"+decomp+"+"+outerPlanner+"+SimpleJoinNodeExecutor"; }
             }
     );
 
     private static final @Nonnull List<Class<? extends DecompositionStrategy>>
             decomposerClasses = asList(EvenDecomposer.class, StandardDecomposer.class);
 
-    private static final @Nonnull List<TestModule> moduleList = PlannerTest.suppliers.stream()
-            .flatMap(ps -> decomposerClasses.stream()
-                    .flatMap(dc -> moduleProtoList.stream().map(p -> p.apply(ps, dc))))
-            .collect(toList());
+    private static final @Nonnull List<TestModule> moduleList =
+            OuterPlannerTest.suppliers.stream()
+                    .flatMap(op -> PlannerTest.suppliers.stream()
+                            .flatMap(ip -> decomposerClasses.stream()
+                                    .flatMap(ds -> moduleProtoList.stream().map(p -> p.apply(op, ip, ds)))))
+                    .collect(toList());
 
     private static @Nonnull Object[][] prependModules(List<List<Object>> in) {
         List<List<Object>> rows = new ArrayList<>();
@@ -584,6 +657,18 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 );
     }
 
+    public static @Nonnull List<List<Object>> largeRDFBenchData() throws Exception {
+        List<List<Object>> list = new ArrayList<>();
+        for (String queryName : LargeRDFBenchSelfTest.QUERY_FILENAMES) {
+            List<Object> row = new ArrayList<>();
+            row.add(new SetupLargeRDFBench(0));
+            row.add(LargeRDFBenchSelfTest.loadQuery(queryName));
+            row.add(new HashSet<>(LargeRDFBenchSelfTest.loadResults(queryName).getCollection()));
+            list.add(row);
+        }
+        return list;
+    }
+
     @DataProvider
     public static Object[][] queryData() throws Exception {
         List<List<Object>> basic = new ArrayList<>();
@@ -591,6 +676,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         basic.addAll(singleEpQueryData());
         basic.addAll(crossEpJoinsData());
         basic.addAll(transparencyJoinsData());
+        basic.addAll(largeRDFBenchData());
 
         List<List<Object>> withVariants = new ArrayList<>();
         for (List<Object> row : basic) {

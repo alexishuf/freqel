@@ -10,6 +10,13 @@ import java.util.Collection;
 
 public interface Planner {
     /**
+     * If true, this Planner allows queries given to plan() to be join-disconnected.
+     *
+     * Join disconnected queries require a cartesian product.
+     */
+    boolean allowJoinDisconnected();
+
+    /**
      * Builds a plan, as a tree, for the given {@link QueryNode}s which are treated as components
      * of a conjunctive query (i.e., the planner will attempt to join them all under a single
      * root).

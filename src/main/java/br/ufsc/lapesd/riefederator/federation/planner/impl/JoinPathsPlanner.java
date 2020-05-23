@@ -40,6 +40,11 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @Override
+    public boolean allowJoinDisconnected() {
+        return false;
+    }
+
+    @Override
     public @Nonnull PlanNode plan(@Nonnull CQuery query, @Nonnull Collection<QueryNode> qns){
         checkArgument(!qns.isEmpty(), "Cannot plan without QueryNodes!");
         if (query.isEmpty())
@@ -47,71 +52,45 @@ public class JoinPathsPlanner implements Planner {
         IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.getMatchedTriples());
         if (JoinPathsPlanner.class.desiredAssertionStatus()) {
             checkArgument(qns.stream().allMatch(n -> full.containsAll(n.getMatchedTriples())),
-                    "Some QueryNodes match triples not in query");
+                          "Some QueryNodes match triples not in query");
         }
         if (!satisfiesAll(full, qns, query))
             return new EmptyNode(query);
-
-
-        List<IndexedSet<Triple>> cartesianComponents = getCartesianComponents(full);
-        assert !cartesianComponents.isEmpty();
-        if (cartesianComponents.size() > 1) {
-            List<PlanNode> list = new ArrayList<>(cartesianComponents.size());
-            for (IndexedSet<Triple> component : cartesianComponents) {
-                List<QueryNode> selected = qns.stream()
+        /* throw instead of EmptyNode bcs allowJoinDisconnected(). Failing here means someone
+           built a Federation using incompatible components. This is likely a bug in the
+           Federation creator */
+        NaiveOuterPlanner outerPlanner = new NaiveOuterPlanner();
+        PlanNode plan = outerPlanner.plan(query);
+        if (!(plan instanceof ComponentNode)) {
+            logger.warn("JoinPathsPlanner was designed for handling conjunctive queries, yet " +
+                        "the given query requires Cartesian products or unions. Will try to " +
+                        "continue, but planning may fail. Query: {}", query);
+            Map<PlanNode, PlanNode> replacements = new HashMap<>();
+            TreeUtils.streamPreOrder(plan).filter(ComponentNode.class::isInstance).forEach(n -> {
+                IndexedSet<Triple> component = ((ComponentNode) n).getQuery().getSet();
+                List<QueryNode> relevant = qns.stream()
                         .filter(qn -> component.containsAny(qn.getMatchedTriples()))
                         .collect(toList());
-                PlanNode root = plan(selected, component);
-                if (root == null) {
-                    logger.debug("Query {} is unsatisfiable because one component {} of a " +
-                                 "cartesian product is unsatisfiable", query, component);
-                    return new EmptyNode(query);
-                }
-                list.add(root);
+                PlanNode subPlan = plan(relevant, component);
+                if (subPlan instanceof EmptyNode)
+                    logger.info("Unsatisfiable query component: {} ", component);
+                replacements.put(n, subPlan);
+            });
+            if (replacements.values().stream().anyMatch(EmptyNode.class::isInstance)) {
+                logger.info("A conjunctive query component is unsatisfiable. JoinPathsPlanner " +
+                            "used NaiveOuterPlanner to identify components. Query: {}.", query);
+                return new EmptyNode(query);
             }
-            return new CartesianNode(list);
+            return TreeUtils.replaceNodes(plan, replacements);
         } else {
             PlanNode root = plan(qns, full);
             if (root == null) {
                 logger.info("No join path across endpoints for join-connected query {}. " +
-                             "Returning EmptyNode", query);
+                        "Returning EmptyNode", query);
                 return new EmptyNode(query);
             }
             return root;
         }
-    }
-
-    private boolean hasJoin(@Nonnull Triple a, @Nonnull Triple b) {
-        return  (a.getSubject().isVar()   && b.contains(a.getSubject()  )) ||
-                (a.getPredicate().isVar() && b.contains(a.getPredicate())) ||
-                (a.getObject().isVar()    && b.contains(a.getObject()   ));
-    }
-
-    @VisibleForTesting
-    @Nonnull List<IndexedSet<Triple>>
-    getCartesianComponents(@Nonnull IndexedSet<Triple> triples) {
-        List<IndexedSet<Triple>> components = new ArrayList<>();
-
-        IndexedSubset<Triple> visited = triples.emptySubset(), component = triples.emptySubset();
-        ArrayDeque<Triple> stack = new ArrayDeque<>(triples.size());
-        for (Triple start : triples) {
-            if (visited.contains(start))
-                continue;
-            component.clear();
-            stack.push(start);
-            while (!stack.isEmpty()) {
-                Triple triple = stack.pop();
-                if (visited.add(triple)) {
-                    component.add(triple);
-                    for (Triple next : triples) {
-                        if (!visited.contains(next) && hasJoin(triple, next))
-                            stack.push(next);
-                    }
-                }
-            }
-            components.add(IndexedSet.fromDistinct(component));
-        }
-        return components;
     }
 
     private void assertValidJoinComponents(@Nonnull Collection<JoinComponent> components,

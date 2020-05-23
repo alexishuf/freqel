@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
@@ -18,9 +19,12 @@ import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Sets;
 import org.apache.jena.vocabulary.XSD;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import java.util.Set;
+import java.util.function.BiFunction;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.annotateTerm;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
@@ -37,19 +41,29 @@ public class QueryNodeTest implements TestContext {
     private static final @Nonnull Atom atom2 = Molecule.builder("Atom2").buildAtom();
     private static final @Nonnull Atom atom3 = Molecule.builder("Atom3").buildAtom();
 
-    @Test
-    public void testNoVars() {
+    @DataProvider
+    public static @Nonnull Object[][] factoryData() {
+        BiFunction<CQuery, Set<String>, ComponentNode> f1 =
+                (q, p) -> new ComponentNode(q, p, Cardinality.UNSUPPORTED);
+        BiFunction<CQuery, Set<String>, ComponentNode> f2 =
+                (q, p) -> new QueryNode(empty, q, p);
+        return new Object[][] { {f1}, {f2} };
+    }
+
+    @Test(dataProvider = "factoryData")
+    public void testNoVars(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.from(new Triple(Alice, knows, Bob));
-        QueryNode node = new QueryNode(empty, query);
-        assertSame(node.getEndpoint(), empty);
+        ComponentNode node = fac.apply(query, null);
+        if (node instanceof QueryNode)
+            assertSame(((QueryNode)node).getEndpoint(), empty);
         assertSame(node.getQuery(), query);
         assertEquals(node.getResultVars(), emptySet());
         assertFalse(node.isProjecting());
     }
 
-    @Test
-    public void testVarsInTriple() {
-        QueryNode node = new QueryNode(empty, CQuery.from(new Triple(Alice, knows, x)));
+    @Test(dataProvider = "factoryData")
+    public void testVarsInTriple(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
+        ComponentNode node = fac.apply(CQuery.from(new Triple(Alice, knows, x)), null);
         assertEquals(node.getResultVars(), singleton("x"));
         assertEquals(node.getRequiredInputVars(), emptySet());
         assertEquals(node.getOptionalInputVars(), emptySet());
@@ -59,13 +73,13 @@ public class QueryNodeTest implements TestContext {
         assertFalse(node.isProjecting());
     }
 
-    @Test
-    public void testVarInFilter() {
+    @Test(dataProvider = "factoryData")
+    public void testVarInFilter(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, SPARQLFilter.build("?y < ?z")
         );
-        QueryNode node = new QueryNode(empty, query);
+        ComponentNode node = fac.apply(query, null);
         assertFalse(node.isProjecting());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getAllVars(), Sets.newHashSet("x", "y", "z"));
@@ -76,14 +90,14 @@ public class QueryNodeTest implements TestContext {
     }
 
 
-    @Test
-    public void testRequiredInputInFilter() {
+    @Test(dataProvider = "factoryData")
+    public void testRequiredInputInFilter(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asRequired(atom1, "a1").get())
         );
-        QueryNode node = new QueryNode(empty, query);
+        ComponentNode node = fac.apply(query, null);
         assertFalse(node.isProjecting());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getStrictResultVars(), Sets.newHashSet("x", "y"));
@@ -93,14 +107,14 @@ public class QueryNodeTest implements TestContext {
         assertEquals(node.getInputVars(), singleton("z"));
     }
 
-    @Test
-    public void testOptionalInputInFilter() {
+    @Test(dataProvider = "factoryData")
+    public void testOptionalInputInFilter(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asOptional(atom1, "a1").get())
         );
-        QueryNode node = new QueryNode(empty, query);
+        ComponentNode node = fac.apply(query, null);
         assertFalse(node.isProjecting());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getStrictResultVars(), Sets.newHashSet("x", "y"));
@@ -110,15 +124,15 @@ public class QueryNodeTest implements TestContext {
         assertEquals(node.getInputVars(), singleton("z"));
     }
 
-    @Test
-    public void testStrictResultVars() {
+    @Test(dataProvider = "factoryData")
+    public void testStrictResultVars(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, AtomInputAnnotation.asRequired(atom1, "a2").get(),
                 SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asOptional(atom2, "a2").get())
         );
-        QueryNode node = new QueryNode(empty, query);
+        ComponentNode node = fac.apply(query, null);
         assertFalse(node.isProjecting());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getStrictResultVars(), singleton("x"));
@@ -129,15 +143,15 @@ public class QueryNodeTest implements TestContext {
     }
 
 
-    @Test
-    public void testProject() {
+    @Test(dataProvider = "factoryData")
+    public void testProject(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, AtomInputAnnotation.asRequired(atom1, "a2").get(),
                 SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asOptional(atom2, "a2").get())
         );
-        QueryNode node = new QueryNode(empty, query, singleton("x"));
+        ComponentNode node = fac.apply(query, singleton("x"));
         assertTrue(node.isProjecting());
         assertEquals(node.getResultVars(), Sets.newHashSet("x"));
         assertEquals(node.getStrictResultVars(), singleton("x"));
@@ -147,15 +161,15 @@ public class QueryNodeTest implements TestContext {
         assertEquals(node.getInputVars(), Sets.newHashSet("y", "z"));
     }
 
-    @Test
-    public void testProjectFilterInput() {
+    @Test(dataProvider = "factoryData")
+    public void testProjectFilterInput(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y,
                 SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asOptional(atom2, "a2").get())
         );
-        QueryNode node = new QueryNode(empty, query, singleton("x"));
+        ComponentNode node = fac.apply(query, singleton("x"));
         assertEquals(node.getPublicVars(), Sets.newHashSet("x", "z"));
         assertEquals(node.getResultVars(), singleton("x"));
         assertEquals(node.getInputVars(), singleton("z"));
@@ -163,29 +177,29 @@ public class QueryNodeTest implements TestContext {
         assertEquals(node.getOptionalInputVars(), singleton("z"));
     }
 
-    @Test
-    public void testVarsInConjunctive() {
+    @Test(dataProvider = "factoryData")
+    public void testVarsInConjunctive(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.from(asList(new Triple(Alice, knows, x),
                                           new Triple(x, knows, y)));
-        QueryNode node = new QueryNode(empty, query);
+        ComponentNode node = fac.apply(query, null);
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertFalse(node.isProjecting());
         assertFalse(node.toString().startsWith("π"));
     }
 
 
-    @Test
-    public void testVarsInProjection() {
+    @Test(dataProvider = "factoryData")
+    public void testVarsInProjection(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.from(asList(new Triple(Alice, knows, x),
                                           new Triple(x, knows, y)));
-        QueryNode node = new QueryNode(empty, query, singleton("x"));
+        ComponentNode node = fac.apply(query, singleton("x"));
         assertEquals(node.getResultVars(), singleton("x"));
         assertTrue(node.isProjecting());
         assertTrue(node.toString().startsWith("π[x]("));
     }
 
-    @Test
-    public void testVarsInOverriddenInputAnnotation() {
+    @Test(dataProvider = "factoryData")
+    public void testVarsInOverriddenInputAnnotation(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = createQuery(
                 x, knows, y,
                 x, age, u, AtomInputAnnotation.asRequired(atom1, "a1").get(),
@@ -196,7 +210,7 @@ public class QueryNodeTest implements TestContext {
                 AtomInputAnnotation.asRequired(atom3, "a3").override(lit("Bob")).get(),
                 SPARQLFilter.build("regex(str(?y1), \"Bob.*\")")
         );
-        QueryNode node = new QueryNode(empty, query);
+        ComponentNode node = fac.apply(query, null);
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y", "u", "x1", "y1"));
         assertEquals(node.getOptionalInputVars(), emptySet());
         assertEquals(node.getRequiredInputVars(), singleton("u"));
@@ -204,12 +218,16 @@ public class QueryNodeTest implements TestContext {
         assertEquals(node.getStrictResultVars(), Sets.newHashSet("x", "y", "x1", "y1"));
     }
 
-    @Test
-    public void testCreateBoundNoOp() {
+    @Test(dataProvider = "factoryData")
+    public void testCreateBoundNoOp(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.with(asList(new Triple(Alice, knows, x),
                                           new Triple(x, knows, Bob))).distinct(true).build();
-        QueryNode node = new QueryNode(empty, query);
-        QueryNode bound = node.createBound(MapSolution.build("y", Charlie));
+        ComponentNode node = fac.apply(query, null);
+        ComponentNode bound = node.createBound(MapSolution.build("y", Charlie));
+        if (node instanceof QueryNode) {
+            assertTrue(bound instanceof QueryNode);
+            assertSame(((QueryNode) bound).getEndpoint(), ((QueryNode) node).getEndpoint());
+        }
 
         assertEquals(bound.getQuery(), query);
         Modifier modifier = ModifierUtils.getFirst(Capability.DISTINCT,
@@ -218,12 +236,12 @@ public class QueryNodeTest implements TestContext {
         assertTrue(modifier.isRequired());
     }
 
-    @Test
-    public void testCreateBoundBindingOneVar() {
+    @Test(dataProvider = "factoryData")
+    public void testCreateBoundBindingOneVar(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.with(asList(new Triple(x, knows, Alice),
                                           new Triple(y, knows, x))).ask(false).build();
-        QueryNode node = new QueryNode(empty, query);
-        QueryNode bound = node.createBound(MapSolution.build("x", Bob));
+        ComponentNode node = fac.apply(query, null);
+        ComponentNode bound = node.createBound(MapSolution.build("x", Bob));
 
         assertEquals(bound.getQuery(),
                      CQuery.with(asList(new Triple(Bob, knows, Alice),
@@ -234,12 +252,12 @@ public class QueryNodeTest implements TestContext {
         assertFalse(modifier.isRequired());
     }
 
-    @Test
-    public void testCreateBoundBindingOnlyVar() {
+    @Test(dataProvider = "factoryData")
+    public void testCreateBoundBindingOnlyVar(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.from(asList(new Triple(x, knows, Alice),
                                           new Triple(x, age, i23)));
-        QueryNode node = new QueryNode(empty, query);
-        QueryNode bound = node.createBound(MapSolution.build("x", Bob));
+        ComponentNode node = fac.apply(query, null);
+        ComponentNode bound = node.createBound(MapSolution.build("x", Bob));
 
         CQuery expected = CQuery.from(asList(new Triple(Bob, knows, Alice),
                                              new Triple(Bob, age,   i23)));
@@ -247,11 +265,11 @@ public class QueryNodeTest implements TestContext {
         assertTrue(bound.getQuery().getModifiers().isEmpty());
     }
 
-    @Test
-    public void testBindingRemovesProjectedVar() {
+    @Test(dataProvider = "factoryData")
+    public void testBindingRemovesProjectedVar(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.from(new Triple(x, knows, y));
-        QueryNode node = new QueryNode(empty, query, singleton("x"));
-        QueryNode bound = node.createBound(MapSolution.build(x, Alice));
+        ComponentNode node = fac.apply(query, singleton("x"));
+        ComponentNode bound = node.createBound(MapSolution.build(x, Alice));
 
         CQuery actual = bound.getQuery();
         assertEquals(actual, CQuery.from(new Triple(Alice, knows, y)));
@@ -260,11 +278,11 @@ public class QueryNodeTest implements TestContext {
         assertTrue(bound.isProjecting());
     }
 
-    @Test
-    public void testBindingRemovesResultVar() {
+    @Test(dataProvider = "factoryData")
+    public void testBindingRemovesResultVar(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.from(new Triple(x, knows, y));
-        QueryNode node = new QueryNode(empty, query);
-        QueryNode bound = node.createBound(MapSolution.build(y, Bob));
+        ComponentNode node = fac.apply(query, null);
+        ComponentNode bound = node.createBound(MapSolution.build(y, Bob));
 
         assertEquals(bound.getQuery(), CQuery.from(new Triple(x, knows, Bob)));
         assertEquals(bound.getResultVars(), singleton("x"));
@@ -272,13 +290,13 @@ public class QueryNodeTest implements TestContext {
         assertFalse(bound.isProjecting());
     }
 
-    @Test
-    public void testBindingNoChangePreservesAnnotations() {
+    @Test(dataProvider = "factoryData")
+    public void testBindingNoChangePreservesAnnotations(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.with(new Triple(Alice, knows, y))
                 .annotate(Alice, AtomAnnotation.of(atom1))
                 .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get()).build();
-        QueryNode node = new QueryNode(empty, query);
-        QueryNode bound = node.createBound(MapSolution.build(x, Bob));
+        ComponentNode node = fac.apply(query, null);
+        ComponentNode bound = node.createBound(MapSolution.build(x, Bob));
 
         assertEquals(bound.getResultVars(), singleton("y"));
         assertTrue(bound.hasInputs());
@@ -288,15 +306,15 @@ public class QueryNodeTest implements TestContext {
         assertEquals(bound.getQuery(), query);
     }
 
-    @Test
-    public void testBindingPreservesAnnotations() {
+    @Test(dataProvider = "factoryData")
+    public void testBindingPreservesAnnotations(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = CQuery.with(new Triple(x, knows, y), new Triple(Alice, knows, x))
                 .annotate(x, AtomInputAnnotation.asRequired(atom1, "atom1").get())
                 .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get())
                 .annotate(Alice, AtomAnnotation.of(atom3))
                 .build();
-        QueryNode node = new QueryNode(empty, query);
-        QueryNode bound = node.createBound(MapSolution.build(x, Bob));
+        ComponentNode node = fac.apply(query, null);
+        ComponentNode bound = node.createBound(MapSolution.build(x, Bob));
 
         assertEquals(bound.getResultVars(), singleton("y"));
         assertTrue(bound.hasInputs());
@@ -313,19 +331,19 @@ public class QueryNodeTest implements TestContext {
                                    .contains(AtomInputAnnotation.asRequired(atom1, "atom1").get()));
     }
 
-    @Test
-    public void testBindInputInFilterOfQuery() {
+    @Test(dataProvider = "factoryData")
+    public void testBindInputInFilterOfQuery(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = createQuery(
                 x, age, y,
                 SPARQLFilter.build("?y < ?u"),
                 annotateTerm(u, AtomInputAnnotation.asRequired(atom1, "a1").get())
         );
-        QueryNode node = new QueryNode(empty, query);
+        ComponentNode node = fac.apply(query, null);
         assertEquals(node.getInputVars(), singleton("u"));
         assertEquals(node.getPublicVars(), Sets.newHashSet("x", "y", "u"));
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
 
-        QueryNode bound = node.createBound(MapSolution.build(u, lit(23)));
+        ComponentNode bound = node.createBound(MapSolution.build(u, lit(23)));
 
         assertEquals(bound.getPublicVars(), Sets.newHashSet("x", "y"));
         assertEquals(bound.getInputVars(), emptySet());
@@ -335,24 +353,24 @@ public class QueryNodeTest implements TestContext {
         assertEquals(((SPARQLFilter)modifier).getVars(), singleton("y"));
     }
 
-    @Test
-    public void testBindInputInFilter() {
+    @Test(dataProvider = "factoryData")
+    public void testBindInputInFilter(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 Alice, age, y, SPARQLFilter.build("?y < ?u"),
                 x, age, z, SPARQLFilter.build("?z < ?y"),
                 annotateTerm(u, AtomInputAnnotation.asRequired(atom1, "a1").get())
         );
-        QueryNode node = new QueryNode(empty, query);
+        ComponentNode node = fac.apply(query, null);
         assertEquals(node.getInputVars(), singleton("u"));
         assertEquals(node.getPublicVars(), Sets.newHashSet("x", "y", "y", "z", "u"));
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y", "y", "z"));
 
         query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
                 .forEach(m -> node.addFilter((SPARQLFilter)m));
-        assertEquals(node.getFilers().size(), 2);
+        assertEquals(node.getFilters().size(), 2);
 
-        QueryNode bound = node.createBound(MapSolution.build(u, lit(23)));
+        ComponentNode bound = node.createBound(MapSolution.build(u, lit(23)));
         assertEquals(bound.getInputVars(), emptySet());
         assertEquals(bound.getPublicVars(), Sets.newHashSet("x", "y", "y", "z"));
 
@@ -360,8 +378,8 @@ public class QueryNodeTest implements TestContext {
         assertTrue(bound.getQuery().getModifiers().contains(SPARQLFilter.build("?z < ?y")));
         assertTrue(bound.getQuery().getModifiers().contains(SPARQLFilter.build("?y < 23")));
 
-        assertEquals(bound.getFilers().size(), 2);
-        assertTrue(bound.getFilers().contains(SPARQLFilter.build("?z < ?y")));
-        assertTrue(bound.getFilers().contains(SPARQLFilter.build("?y < 23")));
+        assertEquals(bound.getFilters().size(), 2);
+        assertTrue(bound.getFilters().contains(SPARQLFilter.build("?z < ?y")));
+        assertTrue(bound.getFilters().contains(SPARQLFilter.build("?y < 23")));
     }
 }

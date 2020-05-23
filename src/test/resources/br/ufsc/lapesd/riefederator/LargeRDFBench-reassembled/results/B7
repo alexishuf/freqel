@@ -1,0 +1,11 @@
+patient<===>p<===>o
+http://www.w3.org/1999/02/22-rdf-syntax-ns#type<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o=http://tcga.deri.ie/schema/aliquot
+http://tcga.deri.ie/schema/amount<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o="10.00"
+http://tcga.deri.ie/schema/bcr_aliquot_barcode<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o=http://tcga.deri.ie/TCGA-D9-A1JX-10A-01D-A18Z-02
+http://tcga.deri.ie/schema/bcr_aliquot_uuid<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o="6D4599CC-43B3-4AE5-805E-8D23DEF87FAA"
+http://tcga.deri.ie/schema/bcr_sample_barcode<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o=http://tcga.deri.ie/TCGA-D9-A1JX-10A
+http://tcga.deri.ie/schema/biospecimen_barcode_bottom<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o=http://tcga.deri.ie/0118967670
+http://tcga.deri.ie/schema/center_id<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o="02"
+http://tcga.deri.ie/schema/concentration<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o="0.17"
+http://tcga.deri.ie/schema/date_of_shipment<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o="2011-10-25"
+http://tcga.deri.ie/schema/is_derived_from_ffpe<===>patient=http://tcga.deri.ie/TCGA-D9-A1JX<===>o="NO"

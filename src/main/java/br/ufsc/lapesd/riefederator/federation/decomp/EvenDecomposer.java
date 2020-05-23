@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
-public class EvenDecomposer extends ListSourcesAbstractDecomposer {
+public class EvenDecomposer extends SourcesListAbstractDecomposer {
     @Inject
     public EvenDecomposer(@Nonnull Planner planner) {
         super(planner);

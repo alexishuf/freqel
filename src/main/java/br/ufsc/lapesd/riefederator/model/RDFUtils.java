@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.model;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
@@ -86,6 +87,13 @@ public class RDFUtils {
     /** See toNT(Lit). */
     public static @Nonnull String toNT(@Nonnull URI uri) {
         return toTurtle(uri, StdPrefixDict.EMPTY);
+    }
+
+    public static @Nonnull String toNT(@Nonnull Term term) {
+        if (term.isURI()) return toNT(term.asURI());
+        else if (term.isLiteral()) return toNT(term.asLiteral());
+        else if (term.isBlank()) return "[]";
+        throw new IllegalArgumentException("Only URI, Lit and Blank are representable in NTriples");
     }
 
     /**

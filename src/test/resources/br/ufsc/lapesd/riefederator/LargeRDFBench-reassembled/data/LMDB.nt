@@ -1,0 +1,6 @@
+<https://example.org/sk#253> <http://data.linkedmdb.org/resource/movie/actor> <http://data.linkedmdb.org/resource/actor/7> .
+<http://data.linkedmdb.org/resource/actor/7> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#254> .
+<https://example.org/sk#256> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/L%27ultimo_bacio> .
+<https://example.org/sk#256> <http://data.linkedmdb.org/resource/movie/genre> <http://data.linkedmdb.org/resource/film_genre/4> .
+<https://example.org/sk#257> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Remember_Me%2C_My_Love> .
+<https://example.org/sk#257> <http://data.linkedmdb.org/resource/movie/genre> <http://data.linkedmdb.org/resource/film_genre/4> .

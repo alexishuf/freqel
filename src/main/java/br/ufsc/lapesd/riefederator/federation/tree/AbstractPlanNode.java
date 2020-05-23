@@ -111,7 +111,7 @@ public abstract class AbstractPlanNode implements PlanNode {
     }
 
     @Override
-    public @Nonnull Set<SPARQLFilter> getFilers() {
+    public @Nonnull Set<SPARQLFilter> getFilters() {
         return filters;
     }
 
@@ -122,6 +122,13 @@ public abstract class AbstractPlanNode implements PlanNode {
         for (SPARQLFilter filter : collection)
             change |= addFilter(filter.bind(solution));
         return change;
+    }
+
+    @CanIgnoreReturnValue
+    protected boolean addApplicableFilters(@Nonnull Collection<SPARQLFilter> filters) {
+        Set<String> allVars = getAllVars();
+        return filters.stream().filter(f -> allVars.containsAll(f.getVarTermNames()))
+                .map(this::addFilter).reduce(Boolean::logicalAnd).orElse(false);
     }
 
     @Override

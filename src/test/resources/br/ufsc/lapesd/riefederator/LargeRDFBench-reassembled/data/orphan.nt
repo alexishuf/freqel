@@ -1,0 +1,51 @@
+<http://dbpedia.org/resource/Atazanavir> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Drug> .
+<https://example.org/sk#171> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#173> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#175> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#177> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#179> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#181> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#183> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#185> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#187> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#189> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#202> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#201> .
+<https://example.org/sk#202> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=4875"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#205> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#204> .
+<https://example.org/sk#205> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=3823"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#208> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#207> .
+<https://example.org/sk#208> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=5938"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#211> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#210> .
+<https://example.org/sk#211> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=6427"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#214> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#213> .
+<https://example.org/sk#214> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=3774"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#217> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#216> .
+<https://example.org/sk#217> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43048"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#220> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#219> .
+<https://example.org/sk#220> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43114"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#223> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#222> .
+<https://example.org/sk#223> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43190"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#226> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#225> .
+<https://example.org/sk#226> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43239"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#229> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#228> .
+<https://example.org/sk#229> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43757"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#258> <http://xmlns.com/foaf/0.1/name> "\"Superdefekt\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#258> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#260> <http://xmlns.com/foaf/0.1/name> "\"Chaos\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#260> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#262> <http://xmlns.com/foaf/0.1/name> "\"Michael Bartels\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#262> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#264> <http://xmlns.com/foaf/0.1/name> "\"Remote Controlled\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#264> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#266> <http://xmlns.com/foaf/0.1/name> "\"Melophon\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#266> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#268> <http://xmlns.com/foaf/0.1/name> "\"Arne Pahlke\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#268> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#270> <http://xmlns.com/foaf/0.1/name> "\"The Gay Romeos\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#270> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#272> <http://xmlns.com/foaf/0.1/name> "\"Der tollw�tige Kasper\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#272> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#274> <http://xmlns.com/foaf/0.1/name> "\"The Rodeo Five\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#274> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#276> <http://xmlns.com/foaf/0.1/name> "\"the ad.kowas\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#276> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .

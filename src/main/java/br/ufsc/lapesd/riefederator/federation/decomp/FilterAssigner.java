@@ -82,7 +82,7 @@ class FilterAssigner {
                                    @Nonnull SPARQLFilter annotation) {
         if (!canFilter(node, annotation))
             return false; // do not recurse into this subtree
-        if (node.getFilers().contains(annotation))
+        if (node.getFilters().contains(annotation))
             return true; // already added
         if (node instanceof MultiQueryNode) {
             int count = 0;

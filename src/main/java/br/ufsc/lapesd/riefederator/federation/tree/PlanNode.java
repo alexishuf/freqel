@@ -98,7 +98,7 @@ public interface PlanNode {
     @CanIgnoreReturnValue
     boolean removeFilter(@Nonnull SPARQLFilter filter);
 
-    @Nonnull Set<SPARQLFilter> getFilers();
+    @Nonnull Set<SPARQLFilter> getFilters();
 
     <T extends TermAnnotation>
     boolean forEachTermAnnotation(@Nonnull Class<T> cls, @Nonnull BiConsumer<Term, T> consumer);

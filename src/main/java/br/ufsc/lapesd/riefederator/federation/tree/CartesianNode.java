@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -39,7 +38,7 @@ public class CartesianNode extends AbstractInnerPlanNode {
     public @Nonnull PlanNode createBound(@Nonnull Solution solution) {
         CartesianNode bound = new CartesianNode(getChildren().stream()
                 .map(n -> n.createBound(solution)).collect(toList()));
-        bound.addBoundFiltersFrom(getFilers(), solution);
+        bound.addBoundFiltersFrom(getFilters(), solution);
         return bound;
     }
 
@@ -47,10 +46,11 @@ public class CartesianNode extends AbstractInnerPlanNode {
     public @Nonnull CartesianNode replacingChildren(@Nonnull Map<PlanNode, PlanNode> map)
             throws IllegalArgumentException {
         if (map.isEmpty()) return this;
-        Preconditions.checkArgument(getChildren().containsAll(map.keySet()));
         List<PlanNode> list = new ArrayList<>(getChildren().size());
         for (PlanNode child : getChildren()) list.add(map.getOrDefault(child, child));
-        return new CartesianNode(list);
+        CartesianNode newNode = new CartesianNode(list);
+        newNode.addApplicableFilters(getFilters());
+        return newNode;
     }
 
     @Override

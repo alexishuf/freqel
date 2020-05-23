@@ -1,0 +1,11 @@
+drug<===>keggUrl<===>chebiImage
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00005<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C07897"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=4875"
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00048<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C00816"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=3823"
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00068<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C07901"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=5938"
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00007<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C07612"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=6427"
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00100<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C03101"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=3774"
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C00135"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43048"
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C00135"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43114"
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C00135"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43190"
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C00135"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43239"
+http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00123<===>"http://www.genome.jp/dbget-bin/www_bget?cpd:C00047"<===>"http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43757"

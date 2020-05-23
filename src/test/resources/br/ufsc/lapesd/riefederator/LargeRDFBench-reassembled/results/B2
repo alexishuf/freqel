@@ -1,0 +1,11 @@
+patient<===>tumorType<===>exonValue
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>325.021521947364
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>2.61504872102758
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>0.586771206355206
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>0.121619925352365
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>0.06820576894761
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>0.046093396366422
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>0.07720423559653
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>0.069140094549632
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>0.168240896737439
+http://tcga.deri.ie/TCGA-18-3408<===>"Primary"<===>0.107387806428152

@@ -25,6 +25,10 @@ public interface TestContext {
     @Nonnull URI Charlie = new StdURI(EX+"Charlie");
     @Nonnull URI Dave    = new StdURI(EX+"Dave");
 
+    @Nonnull URI Class1    = new StdURI(EX+"Class1");
+    @Nonnull URI Class2    = new StdURI(EX+"Class2");
+    @Nonnull URI Class3    = new StdURI(EX+"Class3");
+
     @Nonnull URI type = new StdURI(RDF.type.getURI());
 
     @Nonnull URI subPropertyOf = new StdURI(RDFS.subPropertyOf.getURI());

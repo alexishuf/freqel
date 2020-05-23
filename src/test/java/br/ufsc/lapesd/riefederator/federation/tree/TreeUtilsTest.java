@@ -7,7 +7,6 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
-import com.google.common.collect.Sets;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -17,7 +16,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.isAcyclic;
+import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.replaceNodes;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
@@ -184,11 +185,11 @@ public class TreeUtilsTest implements TestContext {
         List<String> xyz = asList("x", "y", "z");
         Set<String> x = singleton("x");
 
-        assertEquals(TreeUtils.intersect(xy, x), Sets.newHashSet("x"));
-        assertEquals(TreeUtils.intersect(x, xy), Sets.newHashSet("x"));
-        assertEquals(TreeUtils.intersect(xyz, xy), Sets.newHashSet("x", "y"));
-        assertEquals(TreeUtils.intersect(xy, xyz), Sets.newHashSet("x", "y"));
-        assertEquals(TreeUtils.intersect(xyz, xyz), Sets.newHashSet("x", "y", "z"));
+        assertEquals(TreeUtils.intersect(xy, x), newHashSet("x"));
+        assertEquals(TreeUtils.intersect(x, xy), newHashSet("x"));
+        assertEquals(TreeUtils.intersect(xyz, xy), newHashSet("x", "y"));
+        assertEquals(TreeUtils.intersect(xy, xyz), newHashSet("x", "y"));
+        assertEquals(TreeUtils.intersect(xyz, xyz), newHashSet("x", "y", "z"));
     }
 
     @DataProvider
@@ -217,5 +218,78 @@ public class TreeUtilsTest implements TestContext {
                 new Object[]{xKnowsY, xInYZOut, singleton("x"), emptyList()},
                 new Object[]{xInYZOut, xyInZOut, emptySet(), emptyList()},
         };
+    }
+
+    @Test
+    public void testReplaceNodesNoEffect() {
+        QueryNode qn1 = new QueryNode(ep, createQuery(Alice, knows, x));
+        QueryNode qn2 = new QueryNode(ep, createQuery(x, knows, Bob));
+        QueryNode qn3 = new QueryNode(ep, createQuery(Alice, knows, Bob));
+        Map<PlanNode, PlanNode> map = new HashMap<>();
+        map.put(qn3, qn2);
+        assertSame(replaceNodes(qn1, emptyMap()), qn1);
+        assertSame(replaceNodes(qn1, map), qn1);
+        assertSame(replaceNodes(qn2, map), qn2);
+
+        JoinNode join = JoinNode.builder(qn1, qn2).build();
+        assertSame(replaceNodes(join, emptyMap()), join);
+        assertSame(replaceNodes(join, emptyMap()), join);
+    }
+
+    @Test
+    public void testReplaceNodesSelf() {
+        QueryNode qn1 = new QueryNode(ep, createQuery(Alice, knows, x));
+        QueryNode qn2 = new QueryNode(ep, createQuery(x, knows, Bob));
+
+        Map<PlanNode, PlanNode> map = new HashMap<>();
+        map.put(qn1, qn2);
+        assertSame(replaceNodes(qn1, map), qn2);
+        assertSame(replaceNodes(qn2, map), qn2);
+    }
+
+    @Test
+    public void testReplaceChild() {
+        QueryNode qn1 = new QueryNode(ep, createQuery(Alice, knows, x));
+        QueryNode qn2 = new QueryNode(ep, createQuery(x, knows, y));
+        QueryNode qn3 = new QueryNode(ep, createQuery(x, knows, Bob));
+
+        JoinNode join = JoinNode.builder(qn1, qn2).build();
+        Map<PlanNode, PlanNode> map = new HashMap<>();
+        map.put(qn2, qn3);
+        PlanNode join2 = replaceNodes(join, map);
+        assertNotSame(join2, join);
+
+        assertEquals(join2.getChildren(), asList(qn1, qn3));
+    }
+
+    @Test
+    public void testReplaceLeaves() {
+        QueryNode qn1 = new QueryNode(ep, createQuery(Alice, knows, x));
+        QueryNode qn2 = new QueryNode(ep, createQuery(x, knows, y));
+        QueryNode qn2_ = new QueryNode(ep, createQuery(x, knows, Charlie));
+        QueryNode qn3 = new QueryNode(ep, createQuery(Bob, knows, u));
+        QueryNode qn4 = new QueryNode(ep, createQuery(u, age, v));
+        QueryNode qn4_ = new QueryNode(ep, createQuery(u, age, lit(23)));
+        JoinNode left = JoinNode.builder(qn1, qn2).build();
+        JoinNode right = JoinNode.builder(qn3, qn4).build();
+        CartesianNode root = new CartesianNode(asList(left, right));
+
+        Map<PlanNode, PlanNode> map = new HashMap<>();
+        map.put(qn2, qn2_);
+        map.put(qn4, qn4_);
+        PlanNode newRoot = replaceNodes(root, map);
+
+        assertNotSame(newRoot, root);
+        assertEquals(newRoot.getChildren().size(), 2);
+        JoinNode newLeft = (JoinNode) newRoot.getChildren().get(0);
+        JoinNode newRight = (JoinNode) newRoot.getChildren().get(1);
+        assertNotSame(newLeft, left);
+        assertNotSame(newRight, right);
+
+        assertSame(newLeft.getLeft(), qn1);
+        assertSame(newLeft.getRight(), qn2_);
+
+        assertSame(newRight.getLeft(), qn3);
+        assertSame(newRight.getRight(), qn4_);
     }
 }

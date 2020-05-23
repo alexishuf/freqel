@@ -72,7 +72,7 @@ public class APIMoleculeInputsLinkedatorStrategyTest implements TestContext,
 
         Atom DimCompra = Molecule.builder("DimCompra")
                 .out(numero, new Atom("DimCompra/numero"))
-                .out(objeto, new Atom(("DimCompra/objeto"))).buildAtom();
+                .out(objeto, new Atom("DimCompra/objeto")).buildAtom();
         Atom ModalidadeCompra = Molecule.builder("ModalidadeCompra")
                 .out(descricao, new Atom("ModalidadeCompra/descricao"))
                 .out(codigo, new Atom("ModalidadeCompra/codigo")).buildAtom();
@@ -243,7 +243,7 @@ public class APIMoleculeInputsLinkedatorStrategyTest implements TestContext,
         WebAPICQEndpoint procurementsById = TransparencyService.getProcurementsByIdClient(target);
         WebAPICQEndpoint organizations = TransparencyService.getOrgaosSiafiClient(target);
         List<Source> sources = Stream.of(
-                contracts, contractsById, procurements, procurementsById, procurementsByNumber
+                contracts, contractsById, procurements, procurementsById, procurementsByNumber, organizations
         ).map(WebAPICQEndpoint::asSource).collect(Collectors.toList());
         APIMoleculeInputsLinkedatorStrategy strategy = new APIMoleculeInputsLinkedatorStrategy();
         Collection<LinkedatorResult> suggestions = strategy.getSuggestions(sources);

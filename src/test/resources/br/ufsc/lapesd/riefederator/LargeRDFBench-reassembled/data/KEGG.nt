@@ -1,0 +1,52 @@
+<https://example.org/sk#192> <http://bio2rdf.org/ns/kegg#xSubstrate> <http://bio2rdf.org/cpd:C00794> .
+<https://example.org/sk#192> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Enzyme> .
+<https://example.org/sk#193> <http://bio2rdf.org/ns/kegg#xEnzyme> <https://example.org/sk#192> .
+<https://example.org/sk#193> <http://bio2rdf.org/ns/kegg#equation> "C00794 + C00028 <=> C00247 + C00030"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#195> <http://bio2rdf.org/ns/kegg#xSubstrate> <http://bio2rdf.org/cpd:C00794> .
+<https://example.org/sk#195> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Enzyme> .
+<https://example.org/sk#196> <http://bio2rdf.org/ns/kegg#xEnzyme> <https://example.org/sk#195> .
+<https://example.org/sk#196> <http://bio2rdf.org/ns/kegg#equation> "C00794 + C00016 <=> C01352 + C00247"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#198> <http://bio2rdf.org/ns/kegg#xSubstrate> <http://bio2rdf.org/cpd:C00794> .
+<https://example.org/sk#198> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Enzyme> .
+<https://example.org/sk#199> <http://bio2rdf.org/ns/kegg#xEnzyme> <https://example.org/sk#198> .
+<https://example.org/sk#199> <http://bio2rdf.org/ns/kegg#equation> "C00794 + C00006 <=> C00247 + C00005 + C00080"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#200> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C07897"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#203> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C00816"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#206> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C07901"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#209> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C07612"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#212> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C03101"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#215> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C00135"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#218> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C00135"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#221> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C00135"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#224> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C00135"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#227> <http://bio2rdf.org/ns/bio2rdf#url> "http://www.genome.jp/dbget-bin/www_bget?cpd:C00047"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#231> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#231> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#230> .
+<https://example.org/sk#231> <http://purl.org/dc/elements/1.1/title> "L-Histidine (JAN)"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#233> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#233> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#232> .
+<https://example.org/sk#233> <http://purl.org/dc/elements/1.1/title> "L-Phenylalanine (JP15)"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#235> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#235> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#234> .
+<https://example.org/sk#235> <http://purl.org/dc/elements/1.1/title> "Biotin (JAN/USP/INN)"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#237> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#237> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#236> .
+<https://example.org/sk#237> <http://purl.org/dc/elements/1.1/title> "Lysine (USAN/INN)"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#239> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#239> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#238> .
+<https://example.org/sk#239> <http://purl.org/dc/elements/1.1/title> "L-Arginine (JP15)"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#241> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#241> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#240> .
+<https://example.org/sk#241> <http://purl.org/dc/elements/1.1/title> "L-Aspartic acid (JP15)"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#243> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#243> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#242> .
+<https://example.org/sk#243> <http://purl.org/dc/elements/1.1/title> "L-Glutamine (JAN)"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#245> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#245> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#244> .
+<https://example.org/sk#245> <http://purl.org/dc/elements/1.1/title> "Adenosine phosphate (USAN/INN)"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#247> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#247> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#246> .
+<https://example.org/sk#247> <http://purl.org/dc/elements/1.1/title> "L-Serine (JAN)"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#249> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://bio2rdf.org/ns/kegg#Drug> .
+<https://example.org/sk#249> <http://bio2rdf.org/ns/bio2rdf#xRef> <https://example.org/sk#248> .
+<https://example.org/sk#249> <http://purl.org/dc/elements/1.1/title> "L-Methionine (JP15)"^^<http://www.w3.org/2001/XMLSchema#string> .

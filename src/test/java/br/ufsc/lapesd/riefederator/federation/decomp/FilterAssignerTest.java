@@ -37,10 +37,10 @@ public class FilterAssignerTest implements TestContext {
         while (!stack.isEmpty()) {
             List<PlanNode> path = stack.pop();
             PlanNode node = path.get(path.size() - 1);
-            modifiers.removeAll(node.getFilers());
+            modifiers.removeAll(node.getFilters());
             // no filter is present in any ancestor
             for (PlanNode ancestor : path.subList(0, path.size() - 1)) {
-                assertEquals(intersect(node.getFilers(), ancestor.getFilers()), emptySet());
+                assertEquals(intersect(node.getFilters(), ancestor.getFilters()), emptySet());
             }
             // queue one path for each child
             for (PlanNode child : node.getChildren()) {
@@ -138,9 +138,9 @@ public class FilterAssignerTest implements TestContext {
         assertTrue(queryNodes.stream().noneMatch(Objects::isNull));
         for (int i = 0; i < queryNodes.size(); i++)
             assertEquals(prototypes.get(i).getQuery(), queryNodes.get(i).getQuery());
-        assertEquals(queryNodes.get(0).getFilers(), emptySet());
-        assertEquals(queryNodes.get(1).getFilers(), singleton(annEquals));
-        assertEquals(queryNodes.get(2).getFilers(), singleton(annEquals));
+        assertEquals(queryNodes.get(0).getFilters(), emptySet());
+        assertEquals(queryNodes.get(1).getFilters(), singleton(annEquals));
+        assertEquals(queryNodes.get(2).getFilters(), singleton(annEquals));
 
         JoinNode joinLeft  = JoinNode.builder(queryNodes.get(1), queryNodes.get(2)).build();
         JoinNode joinRight = JoinNode.builder(queryNodes.get(1), queryNodes.get(2)).build();
@@ -150,8 +150,8 @@ public class FilterAssignerTest implements TestContext {
         assigner.placeBottommost(leftDeep);
         assigner.placeBottommost(rightDeep);
 
-        assertEquals(joinLeft.getFilers(), singleton(annGreater));
-        assertEquals(joinRight.getFilers(), singleton(annGreater));
+        assertEquals(joinLeft.getFilters(), singleton(annGreater));
+        assertEquals(joinRight.getFilters(), singleton(annGreater));
         checkAllFilters(fullQuery, rightDeep);
         checkAllFilters(fullQuery, leftDeep);
     }

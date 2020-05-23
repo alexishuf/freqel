@@ -19,19 +19,19 @@ import org.apache.jena.sparql.expr.E_NotExists;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.path.*;
 import org.apache.jena.sparql.syntax.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class SPARQLQueryParser {
-    private final static Logger logger = LoggerFactory.getLogger(SPARQLQueryParser.class);
     private final static String HIDDEN_VAR_PREFIX = "parserPathHiddenVar";
     private final static SPARQLQueryParser INSTANCE = new SPARQLQueryParser();
     private final static SPARQLQueryParser TOLERANT = new SPARQLQueryParser()
@@ -76,6 +76,9 @@ public class SPARQLQueryParser {
         }
     }
 
+    public @Nonnull CQuery parse(@Nonnull InputStream stream) throws SPARQLParseException {
+        return parse(new InputStreamReader(stream, StandardCharsets.UTF_8));
+    }
 
     private static class FeatureException extends RuntimeException {
         final @Nonnull String message;

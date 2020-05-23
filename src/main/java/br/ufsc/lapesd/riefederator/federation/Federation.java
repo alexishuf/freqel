@@ -2,7 +2,11 @@ package br.ufsc.lapesd.riefederator.federation;
 
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
+import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
+import br.ufsc.lapesd.riefederator.federation.tree.ComponentNode;
+import br.ufsc.lapesd.riefederator.federation.tree.EmptyNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
+import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.TemplateExpander;
@@ -19,23 +23,31 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import org.jetbrains.annotations.Contract;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.Map;
 
 
 /**
  * A {@link CQEndpoint} that decomposes queries into the registered {@link Source}s.
  */
 public class Federation extends AbstractTPEndpoint implements CQEndpoint {
+    private static final @Nonnull Logger logger = LoggerFactory.getLogger(Federation.class);
+
+    private final @Nonnull OuterPlanner outerPlanner;
     private final @Nonnull DecompositionStrategy strategy;
     private final @Nonnull PlanExecutor executor;
     private @Nonnull TemplateExpander templateExpander;
 
-
     @Inject
-    public Federation(@Nonnull DecompositionStrategy strategy,
+    public Federation(@Nonnull OuterPlanner outerPlanner,
+                      @Nonnull DecompositionStrategy strategy,
                       @Nonnull PlanExecutor executor) {
+        this.outerPlanner = outerPlanner;
         this.strategy = strategy;
         this.executor = executor;
         this.templateExpander = new TemplateExpander();
@@ -94,7 +106,23 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     @VisibleForTesting
     @Nonnull PlanNode plan(@Nonnull CQuery query) {
         ModifierUtils.check(this, query.getModifiers());
-        return strategy.decompose(query);
+        PlanNode root = outerPlanner.plan(query);
+
+        Map<PlanNode, PlanNode> map = new HashMap<>();
+        TreeUtils.streamPreOrder(root)
+                .filter(ComponentNode.class::isInstance).forEach(n -> {
+            ComponentNode componentNode = (ComponentNode) n;
+            PlanNode componentPlan = strategy.decompose(componentNode.getQuery());
+            if (componentPlan instanceof EmptyNode) {
+                logger.info("Query is unsatisfiable because one component extracted by the " +
+                            "OuterPlanner is unsatisfiable. Query: {}. Component: {}",
+                            query, componentNode.getQuery());
+            }
+            map.put(componentNode, componentPlan);
+        });
+        if (map.values().stream().anyMatch(EmptyNode.class::isInstance))
+            return new EmptyNode(query); //unsatisfiable
+        return TreeUtils.replaceNodes(root, map);
     }
 
     @Override

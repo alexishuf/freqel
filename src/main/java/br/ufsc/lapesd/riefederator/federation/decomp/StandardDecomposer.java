@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class StandardDecomposer extends ListSourcesAbstractDecomposer {
+public class StandardDecomposer extends SourcesListAbstractDecomposer {
     @Inject
     public StandardDecomposer(@Nonnull Planner planner) {
         super(planner);

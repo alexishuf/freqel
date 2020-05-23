@@ -400,49 +400,6 @@ public class JoinPathsPlannerTest implements TestContext {
     }
 
     @DataProvider
-    public static Object[][] cartesianComponentsData() {
-        return Stream.of(
-                asList(singleton(new Triple(Alice, p1, x)),
-                       singleton(singleton(new Triple(Alice, p1, x)))),
-                asList(asList(new Triple(Alice, p1, x), new Triple(y, p2, Bob)),
-                       asList(singleton(new Triple(Alice, p1, x)),
-                              singleton(new Triple(y, p2, Bob)))),
-                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
-                              new Triple(z, p3, Alice)),
-                       asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y)),
-                              singleton(new Triple(z, p3, Alice)))),
-                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
-                              new Triple(z, p3, Bob)),
-                       asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y)),
-                              singleton(new Triple(z, p3, Bob)))),
-                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
-                              new Triple(z, p3, Bob), new Triple(z, p4, Bob)),
-                       asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y)),
-                              asList(new Triple(z, p3, Bob), new Triple(z, p4, Bob)))),
-                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
-                              new Triple(z, p3, Bob), new Triple(z, p4, y)),
-                       singleton(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
-                                        new Triple(z, p3, Bob), new Triple(z, p4, y)))),
-                asList(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
-                              new Triple(z, p3, Bob), new Triple(z, p4, x)),
-                       singleton(asList(new Triple(Alice, p1, x), new Triple(x, p2, y),
-                                        new Triple(z, p3, Bob), new Triple(z, p4, x)))),
-                asList(asList(new Triple(Alice, p1, x), new Triple(Alice, p2, y)),
-                       asList(singleton(new Triple(Alice, p1, x)),
-                              singleton(new Triple(Alice, p2, y))))
-        ).map(List::toArray).toArray(Object[][]::new);
-    }
-
-
-    @Test(dataProvider = "cartesianComponentsData")
-    public void testCartesianComponents(Collection<Triple> triples,
-                                        Collection<Collection<Triple>> expected) {
-        JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
-        List<IndexedSet<Triple>> list = planner.getCartesianComponents(IndexedSet.from(triples));
-        assertEquals(new HashSet<>(list), expected.stream().map(IndexedSet::from).collect(toSet()));
-    }
-
-    @DataProvider
     public static @Nonnull Object[][] indexedSetForDuplicatesData() {
         QueryNode n1 = node(e1, Alice, p1, x  ), n1a = node(e1a, Alice, p1, x  );
         QueryNode n2 = node(e1, x,     p2, y  ), n2a = node(e1a, x,     p2, y  );

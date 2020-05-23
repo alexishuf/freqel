@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
@@ -15,6 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+
+import static com.google.common.base.Preconditions.checkState;
 
 public class MapSolution extends AbstractSolution {
     private final @Nonnull Map<String, Term> map;
@@ -38,7 +39,7 @@ public class MapSolution extends AbstractSolution {
 
         @Contract("_, _ -> this")
         public @Nonnull Builder put(@Nonnull String name, @Nullable Term term) {
-            Preconditions.checkState(map != null, "Closed builder");
+            checkState(map != null, "Closed builder");
             map.put(name, term);
             return this;
         }
@@ -47,20 +48,30 @@ public class MapSolution extends AbstractSolution {
             return put(var.getName(), term);
         }
 
+        public @Contract("_ -> this") @Nonnull Builder remove(@Nonnull String name) {
+            checkState(map != null, "Closed builder");
+            map.remove(name);
+            return this;
+        }
+
+        public @Contract("_ -> this") @Nonnull Builder remove(@Nonnull Var var) {
+            return remove(var.getName());
+        }
+
         public @WillClose @Nonnull MapSolution build() {
-            Preconditions.checkState(map != null, "Closed builder");
+            checkState(map != null, "Closed builder");
             HashMap<String, Term> old = this.map;
             map = null;
             return new MapSolution(old);
         }
         public @WillClose @Nonnull MapSolution buildUnmodifiable() {
-            Preconditions.checkState(map != null, "Closed builder");
+            checkState(map != null, "Closed builder");
             HashMap<String, Term> old = this.map;
             this.map = null;
             return new MapSolution(Collections.unmodifiableMap(old));
         }
         public @Nonnull MapSolution buildAndContinue() {
-            Preconditions.checkState(map != null, "Closed builder");
+            checkState(map != null, "Closed builder");
             return new MapSolution(new HashMap<>(map));
         }
     }

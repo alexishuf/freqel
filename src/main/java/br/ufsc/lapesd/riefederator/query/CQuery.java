@@ -10,6 +10,8 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -72,16 +74,16 @@ public class CQuery implements  List<Triple> {
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<Multimap<Term, Integer>> t2triple, s2triple, o2triple;
     @SuppressWarnings("Immutable")
-    private @LazyInit @Nonnull SoftReference<Set<Var>> termVarsCache
+    private @LazyInit @Nonnull SoftReference<IndexedSet<Var>> termVarsCache
             = new SoftReference<>(null);
     @SuppressWarnings("Immutable")
-    private @LazyInit @Nonnull SoftReference<Set<Var>> varsCache
+    private @LazyInit @Nonnull SoftReference<IndexedSet<Var>> varsCache
             = new SoftReference<>(null);
     @SuppressWarnings("Immutable")
-    private @LazyInit @Nonnull SoftReference<ImmutableSet<Triple>> set
+    private @LazyInit @Nonnull SoftReference<IndexedSet<Triple>> set
             = new SoftReference<>(null);
     @SuppressWarnings("Immutable")
-    private @LazyInit @Nonnull SoftReference<Set<Triple>> matchedTriples
+    private @LazyInit @Nonnull SoftReference<IndexedSet<Triple>> matchedTriples
             = new SoftReference<>(null);
     private @LazyInit int hash = 0;
     private @LazyInit @Nullable Boolean ask = null;
@@ -108,7 +110,7 @@ public class CQuery implements  List<Triple> {
                 if ((fail[0] |= !terms.contains(t)))
                     logger.error("Foreign term {} has annotation {} in {}!", t, a, CQuery.this);
             });
-            ImmutableSet<Triple> triples = getSet();
+            IndexedSet<Triple> triples = getSet();
             forEachTripleAnnotation((t, a) -> {
                 if ((fail[0] |= !triples.contains(t)))
                     logger.error("Foreign Triple {} has annotation {} in {}!", t, a, CQuery.this);
@@ -354,7 +356,11 @@ public class CQuery implements  List<Triple> {
                 if (getList().contains(t)) annotate(t, a);
             });
             if (other.hasTermAnnotations()) {
-                Set<Term> terms = getList().stream().flatMap(Triple::stream).collect(toSet());
+                Set<Term> terms = Stream.concat(
+                        getList().stream().flatMap(Triple::stream),
+                        modifiers.stream().filter(SPARQLFilter.class::isInstance)
+                                .flatMap(f -> ((SPARQLFilter) f).getTerms().stream())
+                ).collect(toSet());
                 other.forEachTermAnnotation((t, a) -> {
                     if (terms.contains(t)) annotate(t, a);
                 });
@@ -712,11 +718,11 @@ public class CQuery implements  List<Triple> {
     public @Nonnull ImmutableList<Triple> getList() { return list; }
 
     /** Gets all {@link Triple}s in this query in an {@link ImmutableSet}. */
-    public @Nonnull ImmutableSet<Triple> getSet() {
-        ImmutableSet<Triple> strong = set.get();
-        if (strong == null) {
-            set = new SoftReference<>(strong = ImmutableSet.copyOf(getList()));
-        }
+    public @Nonnull IndexedSet<Triple> getSet() {
+        IndexedSet<Triple> strong = set.get();
+        if (strong == null)
+            set = new SoftReference<>(strong = IndexedSet.from(getList()));
+
         return strong;
     }
 
@@ -757,20 +763,20 @@ public class CQuery implements  List<Triple> {
         return tripleAnnotations == null ? emptySet() : tripleAnnotations.get(triple);
     }
 
-    public @Nonnull Set<Triple> getMatchedTriples() {
-        Set<Triple> strong = matchedTriples.get();
+    public @Nonnull IndexedSet<Triple> getMatchedTriples() {
+        IndexedSet<Triple> strong = matchedTriples.get();
         if (strong == null) {
-            strong = new HashSet<>(size());
+            Set<Triple> set = new HashSet<>(size());
             for (Triple triple : getList()) {
                 boolean has = false;
                 for (TripleAnnotation ann : getTripleAnnotations(triple)) {
                     if ((has = ann instanceof MatchAnnotation))
-                        strong.add(((MatchAnnotation) ann).getMatched());
+                        set.add(((MatchAnnotation) ann).getMatched());
                 }
                 if (!has)
-                    strong.add(triple);
+                    set.add(triple);
             }
-            matchedTriples = new SoftReference<>(strong);
+            matchedTriples = new SoftReference<>(strong = IndexedSet.fromDistinct(set));
         }
         return strong;
     }
@@ -845,22 +851,22 @@ public class CQuery implements  List<Triple> {
     }
 
     public @Nonnull Set<Var> getVars() {
-        Set<Var> strong = varsCache.get();
+        IndexedSet<Var> strong = varsCache.get();
         if (strong == null) {
             Set<Var> set = new HashSet<>(getTermVars());
             getModifiers().stream().filter(SPARQLFilter.class::isInstance)
                     .forEach(m -> set.addAll(((SPARQLFilter)m).getVarTerms()));
-            varsCache = new SoftReference<>(strong = set);
+            varsCache = new SoftReference<>(strong = IndexedSet.fromDistinct(set));
         }
         return strong;
     }
 
     public @Nonnull Set<Var> getTermVars() {
-        Set<Var> strong = termVarsCache.get();
+        IndexedSet<Var> strong = termVarsCache.get();
         if (strong == null) {
-            strong = list.stream().flatMap(Triple::stream).filter(Term::isVar)
-                                  .map(Term::asVar).collect(toSet());
-            termVarsCache = new SoftReference<>(strong);
+            Set<Var> set = list.stream().flatMap(Triple::stream)
+                               .filter(Term::isVar).map(Term::asVar).collect(toSet());
+            termVarsCache = new SoftReference<>(strong = IndexedSet.fromDistinct(set));
         }
         return strong;
     }
@@ -888,6 +894,46 @@ public class CQuery implements  List<Triple> {
 
         walker.visit(joinTerm);
         return walker.build();
+    }
+
+    /**
+     * A join connected query is in which any triple can be reached from another triple
+     * through joins between triples sharing at least one variable.
+     *
+     * @return true iff this query is join connected
+     */
+    public boolean isJoinConnected() {
+        if (isEmpty()) return true;
+
+        IndexedSet<Triple> triples = IndexedSet.fromDistinctCopy(getSet());
+        IndexedSet<Var> vars = IndexedSet.fromDistinctCopy(getTermVars());
+        List<IndexedSubset<Triple>> var2triple = new ArrayList<>(vars.size());
+        for (int i = 0; i < vars.size(); i++) var2triple.add(triples.emptySubset());
+        for (Triple triple : triples) {
+            triple.forEach(t -> {
+                if (t.isVar()) var2triple.get(vars.indexOf(t.asVar())).add(triple);
+            });
+        }
+
+        IndexedSubset<Triple> visited = triples.emptySubset();
+        ArrayDeque<Triple> queue = new ArrayDeque<>();
+        queue.add(triples.get(0));
+        while (!queue.isEmpty()) {
+            Triple triple = queue.remove();
+            if (!visited.add(triple)) continue;
+            triple.forEach(t -> {
+                if (t.isVar())
+                    queue.addAll(var2triple.get(vars.indexOf(t)));
+            });
+        }
+        return visited.equals(triples);
+
+    }
+
+    private boolean hasJoin(@Nonnull Triple a, @Nonnull Triple b) {
+        return  (a.getSubject().isVar()   && b.contains(a.getSubject()  )) ||
+                (a.getPredicate().isVar() && b.contains(a.getPredicate())) ||
+                (a.getObject().isVar()    && b.contains(a.getObject()   ));
     }
 
     @Contract(value = "_, _ -> new", pure = true)
@@ -1076,7 +1122,7 @@ public class CQuery implements  List<Triple> {
     public boolean equals(@Nullable Object o) {
         if (!(o instanceof CQuery))
             return list.equals(o); // fallback to list comparison when comparing with a list
-        return list.equals(((CQuery) o).list)
+        return getSet().equals(((CQuery) o).getSet())
                 && modifiers.equals(((CQuery) o).modifiers)
                 && Objects.equals(termAnnotations, ((CQuery) o).termAnnotations)
                 && Objects.equals(tripleAnnotations, ((CQuery) o).tripleAnnotations);

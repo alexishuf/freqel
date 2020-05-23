@@ -96,7 +96,7 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o instanceof IndexedSet && o == parent)
+        if (o == parent)
             return size() == parent.size();
         if (o instanceof IndexedSubset) {
             IndexedSubset<?> that = (IndexedSubset<?>) o;
@@ -130,6 +130,10 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
         return idx >= 0 && bitSet.get(idx);
     }
 
+    public boolean containsAny(@Nonnull Collection<T> other) {
+        return other.stream().anyMatch(this::contains);
+    }
+
     @Override
     @SuppressWarnings("ReferenceEquality")
     public boolean containsAll(@Nonnull Collection<?> c) {
@@ -141,7 +145,7 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
                 copy.or(that.getBitSet());
                 return copy.equals(bitSet);
             }
-        } else if (c instanceof IndexedSet && c == parent) {
+        } else if (c == parent) {
             return size() == parent.size();
         }
         if (size() < c.size()) return false;
