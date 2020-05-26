@@ -32,6 +32,24 @@ function fix_nt() {
     test "$CHG" -ne 0 && mv "$1.tmp" "$1" || rm "$1.tmp"
   done
 
+  # Replace "{"
+  CHG=1
+  while [ "$CHG" -ne 0 ]; do
+    sed -E 's@(<https?://[^ >]*)\{(.*>)@\1%7B\2@g' "$1" > "$1.tmp"
+    diff "$1" "$1.tmp"
+    CHG=$?
+    test "$CHG" -ne 0 && mv "$1.tmp" "$1" || rm "$1.tmp"
+  done
+  
+  # Replace "}"
+  CHG=1
+  while [ "$CHG" -ne 0 ]; do
+    sed -E 's@(<https?://[^ >]*)\}(.*>)@\1%7D\2@g' "$1" > "$1.tmp"
+    diff "$1" "$1.tmp"
+    CHG=$?
+    test "$CHG" -ne 0 && mv "$1.tmp" "$1" || rm "$1.tmp"
+  done
+
   # Replace '"'
   CHG=1
   while [ "$CHG" -ne 0 ]; do
