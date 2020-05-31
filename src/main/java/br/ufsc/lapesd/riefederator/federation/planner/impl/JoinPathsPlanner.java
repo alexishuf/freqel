@@ -32,7 +32,7 @@ import static java.util.stream.Collectors.toSet;
 public class JoinPathsPlanner implements Planner {
     private static final Logger logger = LoggerFactory.getLogger(JoinPathsPlanner.class);
     private static final int PATHS_PAR_THRESHOLD = 10;
-    private @Nonnull JoinOrderPlanner joinOrderPlanner;
+    private final @Nonnull JoinOrderPlanner joinOrderPlanner;
 
     @Inject
     public JoinPathsPlanner(@Nonnull JoinOrderPlanner joinOrderPlanner) {
@@ -132,7 +132,7 @@ public class JoinPathsPlanner implements Planner {
         boolean parallel = pathsSet.size() > PATHS_PAR_THRESHOLD;
         MultiQueryNode.Builder builder = MultiQueryNode.builder();
         builder.addAll((parallel ? aggregatedPaths.parallelStream() : aggregatedPaths.stream())
-                .map(p -> p.isWhole() ? p.getWhole() : joinOrderPlanner.plan(g2, p.getNodes()))
+                .map(p -> joinOrderPlanner.plan(g2, p.getNodes()))
                 .collect(toList()));
         return builder.buildIfMulti();
     }

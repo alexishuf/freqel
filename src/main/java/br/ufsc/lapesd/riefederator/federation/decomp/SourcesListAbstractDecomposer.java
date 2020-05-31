@@ -1,6 +1,9 @@
 package br.ufsc.lapesd.riefederator.federation.decomp;
 
+import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
+import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
+import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
@@ -26,10 +29,13 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
             = LoggerFactory.getLogger(SourcesListAbstractDecomposer.class);
     protected final @Nonnull List<Source> sources = new ArrayList<>();
     protected final @Nonnull Planner planner;
+    protected final @Nonnull PerformanceListener performance;
     protected int estimatePolicy = EstimatePolicy.local(50);
 
-    public SourcesListAbstractDecomposer(@Nonnull Planner planner) {
+    public SourcesListAbstractDecomposer(@Nonnull Planner planner,
+                                         @Nonnull PerformanceListener performance) {
         this.planner = planner;
+        this.performance = performance;
     }
 
     @Override
@@ -47,14 +53,17 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
         return ImmutableList.copyOf(sources);
     }
 
-
     @Override
     public @Nonnull PlanNode decompose(@Nonnull CQuery query) {
-        FilterAssigner p = new FilterAssigner(query, this::createQN);
-        Collection<QueryNode> leafs = decomposeIntoLeaves(query, p);
-        PlanNode plan = planner.plan(query, leafs);
-        p.placeBottommost(plan);
-        return plan;
+        try (TimeSampler ignored = Metrics.PLAN_MS.createThreadSampler(performance)) {
+            FilterAssigner p = new FilterAssigner(query, this::createQN);
+            Collection<QueryNode> leafs = decomposeIntoLeaves(query, p);
+            performance.sample(Metrics.SOURCES_COUNT,
+                               (int)leafs.stream().map(QueryNode::getEndpoint).distinct().count());
+            PlanNode plan = planner.plan(query, leafs);
+            p.placeBottommost(plan);
+            return plan;
+        }
     }
 
     @Override

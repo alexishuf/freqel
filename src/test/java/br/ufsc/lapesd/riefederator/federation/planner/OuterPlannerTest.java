@@ -10,7 +10,6 @@ import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
@@ -31,13 +30,12 @@ import static org.testng.Assert.assertTrue;
 
 public class OuterPlannerTest implements TestContext {
 
-    public static @Nonnull List<NamedSupplier<OuterPlanner>> suppliers = singletonList(
-            new NamedSupplier<>(NaiveOuterPlanner.class)
+    public static @Nonnull List<Class<? extends OuterPlanner>> classes = singletonList(
+            NaiveOuterPlanner.class
     );
 
     @DataProvider
     public static @Nonnull Object[][] planData() throws IOException, SPARQLParseException {
-        Set<Modifier> e = Collections.emptySet();
         List<List<Object>> stubs = new ArrayList<>(asList(
                 asList(createQuery(Alice, knows, x), singleton(createQuery(Alice, knows, x))),
                 asList(createQuery(x, knows, y), singleton(createQuery(x, knows, y))),
@@ -99,10 +97,10 @@ public class OuterPlannerTest implements TestContext {
         }
 
         List<List<Object>> rows = new ArrayList<>();
-        for (NamedSupplier<OuterPlanner> supplier : suppliers) {
+        for (Class<? extends OuterPlanner> aClass : classes) {
             for (List<Object> stub : stubs) {
                 ArrayList<Object> row = new ArrayList<>(stub);
-                row.add(0, supplier);
+                row.add(0, new NamedSupplier<>(aClass));
                 rows.add(row);
             }
         }

@@ -2,10 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.planner;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.ArbitraryJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.GreedyJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinPathsPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.impl.*;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
@@ -27,6 +24,8 @@ import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.Sets;
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -65,12 +64,29 @@ public class PlannerTest implements TransparencyServiceTestContext {
     private static final Var s = new StdVar("s");
     private static final Var t = new StdVar("t");
 
-    public static @Nonnull List<NamedSupplier<Planner>> suppliers = asList(
-            new NamedSupplier<>("JoinPathsPlanner+ArbitraryJoinOrderPlanner",
-                    () -> new JoinPathsPlanner(new ArbitraryJoinOrderPlanner())),
-            new NamedSupplier<>("JoinPathsPlanner+GreedyJoinOrderPlanner",
-                    () -> new JoinPathsPlanner(new GreedyJoinOrderPlanner()))
-    );
+    public static @Nonnull List<Class<? extends Planner>> plannerClasses
+            = singletonList(JoinPathsPlanner.class);
+    public static @Nonnull List<Class<? extends JoinOrderPlanner>> joinOrderPlannerClasses
+            = asList(ArbitraryJoinOrderPlanner.class, GreedyJoinOrderPlanner.class);
+
+    public static @Nonnull List<Supplier<Planner>> suppliers;
+
+    static {
+        suppliers = new ArrayList<>();
+        for (Class<? extends Planner> p : plannerClasses) {
+            for (Class<? extends JoinOrderPlanner> op : joinOrderPlannerClasses) {
+                Supplier<Planner> supplier = () -> Guice.createInjector(new AbstractModule() {
+                            @Override
+                            protected void configure() {
+                                bind(Planner.class).to(p);
+                                bind(JoinOrderPlanner.class).to(op);
+                            }
+                        }).getInstance(Planner.class);
+                String name = p.getSimpleName() + "+" + op.getSimpleName();
+                suppliers.add(new NamedSupplier<>(name, supplier));
+            }
+        }
+    }
 
     private static final @Nonnull
     EmptyEndpoint empty1  = new EmptyEndpoint(),  empty2 = new EmptyEndpoint(),

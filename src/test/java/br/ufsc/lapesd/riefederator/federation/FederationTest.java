@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation;
 
 import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
+import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.AskDescription;
 import br.ufsc.lapesd.riefederator.description.Description;
@@ -20,10 +21,12 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.Sim
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
+import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
+import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.linkedator.Linkedator;
@@ -47,8 +50,10 @@ import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
 import com.google.common.base.Preconditions;
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import com.google.inject.Module;
-import com.google.inject.*;
 import com.google.inject.util.Modules;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.rdf.model.Model;
@@ -60,6 +65,8 @@ import org.apache.jena.vocabulary.RDF;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.uri.UriTemplate;
+import org.jetbrains.annotations.NotNull;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -406,93 +413,120 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
     private static abstract class TestModule extends AbstractModule {
         private final boolean canBindJoin;
-        public TestModule(boolean canBindJoin) {this.canBindJoin = canBindJoin;}
-        public boolean canBindJoin() { return canBindJoin; }
+        private boolean storingPerformanceListener;
+        public TestModule(boolean canBindJoin,
+                          Class<? extends PerformanceListener> performanceClass) {
+            this.canBindJoin = canBindJoin;
+            storingPerformanceListener =
+                    PerformanceListenerTest.storingClasses.contains(performanceClass);
+        }
+        public boolean cannotBindJoin() { return !canBindJoin; }
+        public boolean hasStoringPerformanceListener() {
+            return storingPerformanceListener;
+        }
+
+        protected void configureBasics(Class<? extends OuterPlanner> op,
+                                       Class<? extends Planner> ip,
+                                       Class<? extends JoinOrderPlanner> jo,
+                                       Class<? extends DecompositionStrategy> ds,
+                                       Class<? extends PerformanceListener> pl) {
+            bind(OuterPlanner.class).to(op);
+            bind(Planner.class).to(ip);
+            bind(JoinOrderPlanner.class).to(jo);
+            bind(DecompositionStrategy.class).to(ds);
+            bind(PerformanceListener.class).toInstance(new NamedSupplier<>(pl).get());
+        }
     }
 
     @FunctionalInterface
     private interface ModuleFactory {
-        TestModule apply(Provider<? extends OuterPlanner> outerPlanner,
-                         Provider<? extends Planner> planner,
-                         Class<? extends DecompositionStrategy> decompositionStrategy);
+        TestModule apply(Class<? extends OuterPlanner> outerPlanner,
+                         Class<? extends Planner> planner,
+                         Class<? extends JoinOrderPlanner> joinOrder,
+                         Class<? extends DecompositionStrategy> decompositionStrategy,
+                         Class<? extends PerformanceListener> performance);
     }
 
     private static final @Nonnull List<ModuleFactory> moduleProtoList = asList(
-            (outerPlanner, planner, decomp) -> new TestModule(true) {
+            (outerPlanner, planner, joinOrder, decomp, performance) -> new TestModule(true, performance) {
                 @Override
                 protected void configure() {
-                    bind(OuterPlanner.class).toProvider(outerPlanner);
-                    bind(Planner.class).toProvider(planner);
-                    bind(DecompositionStrategy.class).to(decomp);
+                    configureBasics(outerPlanner, planner, joinOrder, decomp, performance);
                 }
                 @Override
                 public String toString() { return planner+"+"+decomp+"+"+outerPlanner; }
             },
-            (outerPlanner, planner, decomp) -> new TestModule(false) {
+            (outerPlanner, planner, joinOrder, decomp, performance) -> new TestModule(false, performance) {
                 @Override
                 protected void configure() {
+                    configureBasics(outerPlanner, planner, joinOrder, decomp, performance);
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
-                    bind(OuterPlanner.class).toProvider(outerPlanner);
-                    bind(Planner.class).toProvider(planner);
-                    bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
                 public String toString() { return planner+"+"+decomp+"+"+outerPlanner+"+InMemoryHashJoinResults"; }
             },
-            (outerPlanner, planner, decomp) -> new TestModule(false) {
+            (outerPlanner, planner, joinOrder, decomp, performance) -> new TestModule(false, performance) {
                 @Override
                 protected void configure() {
+                    configureBasics(outerPlanner, planner, joinOrder, decomp, performance);
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults::new);
-                    bind(OuterPlanner.class).toProvider(outerPlanner);
-                    bind(Planner.class).toProvider(planner);
+                    bind(OuterPlanner.class).to(outerPlanner);
+                    bind(Planner.class).to(planner);
                     bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
                 public String toString() { return planner+"+"+decomp+"+"+outerPlanner+"+ParallelInMemoryHashJoinResults"; }
             },
-            (outerPlanner, planner, decomp) -> new TestModule(true) {
+            (outerPlanner, planner, joinOrder, decomp, performance) -> new TestModule(true, performance) {
                 @Override
                 protected void configure() {
+                    configureBasics(outerPlanner, planner, joinOrder, decomp, performance);
                     bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
-                    bind(OuterPlanner.class).toProvider(outerPlanner);
-                    bind(Planner.class).toProvider(planner);
-                    bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
                 public String toString() { return planner+"+"+decomp+"+"+outerPlanner+"+SimpleBindJoinResults"; }
             },
-            (outerPlanner, planner, decomp) -> new TestModule(true) {
+            (outerPlanner, planner, joinOrder, decomp, performance) -> new TestModule(true, performance) {
                 @Override
                 protected void configure() {
+                    configureBasics(outerPlanner, planner, joinOrder, decomp, performance);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                     bind(JoinNodeExecutor.class).to(SimpleJoinNodeExecutor.class);
-                    bind(OuterPlanner.class).toProvider(outerPlanner);
-                    bind(Planner.class).toProvider(planner);
-                    bind(DecompositionStrategy.class).to(decomp);
                 }
                 @Override
                 public String toString() { return planner+"+"+decomp+"+"+outerPlanner+"+SimpleJoinNodeExecutor"; }
             }
     );
 
+    private Federation federation = null;
+
+    @AfterMethod
+    public void methodTearDown() {
+        if (federation != null)
+            federation.close();
+    }
+
     private static final @Nonnull List<Class<? extends DecompositionStrategy>>
             decomposerClasses = asList(EvenDecomposer.class, StandardDecomposer.class);
 
     private static final @Nonnull List<TestModule> moduleList =
-            OuterPlannerTest.suppliers.stream()
-                    .flatMap(op -> PlannerTest.suppliers.stream()
-                            .flatMap(ip -> decomposerClasses.stream()
-                                    .flatMap(ds -> moduleProtoList.stream().map(p -> p.apply(op, ip, ds)))))
-                    .collect(toList());
+            OuterPlannerTest.classes.stream()
+                .flatMap(op -> PlannerTest.plannerClasses.stream()
+                    .flatMap(ip -> PlannerTest.joinOrderPlannerClasses.stream()
+                        .flatMap(jo -> decomposerClasses.stream()
+                            .flatMap(ds -> PerformanceListenerTest.classes.stream()
+                                .flatMap(pl -> moduleProtoList.stream().map(p -> p.apply(op, ip, jo, ds, pl))))
+                            )))
+            .collect(toList());
 
     private static @Nonnull Object[][] prependModules(List<List<Object>> in) {
         List<List<Object>> rows = new ArrayList<>();
         for (TestModule module : moduleList) {
             for (List<Object> list : in) {
-                if (((Setup)list.get(0)).requiresBindJoin() && !module.canBindJoin())
+                if (((Setup)list.get(0)).requiresBindJoin() && module.cannotBindJoin())
                     continue; //skip
                 ArrayList<Object> row = new ArrayList<>();
                 row.add(module);
@@ -669,15 +703,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         return list;
     }
 
-    @DataProvider
-    public static Object[][] queryData() throws Exception {
-        List<List<Object>> basic = new ArrayList<>();
-        basic.addAll(singleTripleData());
-        basic.addAll(singleEpQueryData());
-        basic.addAll(crossEpJoinsData());
-        basic.addAll(transparencyJoinsData());
-        basic.addAll(largeRDFBenchData());
-
+    @NotNull
+    private static List<List<Object>> expandVariants(List<List<Object>> basic) {
         List<List<Object>> withVariants = new ArrayList<>();
         for (List<Object> row : basic) {
             withVariants.add(row);
@@ -688,6 +715,19 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 withVariants.add(copy);
             }
         }
+        return withVariants;
+    }
+
+    @DataProvider
+    public static Object[][] queryData() throws Exception {
+        List<List<Object>> basic = new ArrayList<>();
+        basic.addAll(singleTripleData());
+        basic.addAll(singleEpQueryData());
+        basic.addAll(crossEpJoinsData());
+        basic.addAll(transparencyJoinsData());
+        basic.addAll(largeRDFBenchData());
+
+        List<List<Object>> withVariants = expandVariants(basic);
         return prependModules(withVariants);
     }
 
@@ -696,7 +736,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                           @Nonnull CQuery query,  @Nullable Set<Solution> expected) {
         Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
                                                         .with(module));
-        Federation federation = injector.getInstance(Federation.class);
+
+        federation = injector.getInstance(Federation.class);
         setup.accept(federation, target().getUri().toString());
 
         Set<Solution> actual = new HashSet<>();
@@ -709,6 +750,76 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 results.forEachRemaining(actual::add);
             }
             assertEquals(actual, expected);
+        }
+    }
+
+    @DataProvider
+    public static Object[][] performanceListenerData() {
+        // use less queries, since we only need to test the PerformanceListener
+        List<List<Object>> basic = new ArrayList<>();
+        basic.addAll(singleEpQueryData());
+        basic.addAll(crossEpJoinsData());
+
+        List<List<Object>> withVariants = expandVariants(basic);
+        List<List<Object>> withListeners = new ArrayList<>();
+        for (TestModule module : moduleList) {
+            if (!module.hasStoringPerformanceListener())
+                continue; //only use the listeners that store data
+            for (List<Object> oldRow : withVariants) {
+                if (((Setup)oldRow.get(0)).requiresBindJoin() && module.cannotBindJoin())
+                    continue; //skip
+                List<Object> newRow = new ArrayList<>(oldRow);
+                newRow.add(0, module);
+                withListeners.add(newRow);
+            }
+        }
+        assertFalse(withListeners.isEmpty());
+        return withListeners.stream().map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "performanceListenerData")
+    public void testPerformanceListener(@Nonnull Module module, @Nonnull Setup setup,
+                                        @Nonnull CQuery query,  @Nullable Set<Solution> expected) {
+        Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
+                .with(module));
+        federation = injector.getInstance(Federation.class);
+        setup.accept(federation, target().getUri().toString());
+
+        PlanNode plan = federation.plan(query);
+        PerformanceListener perf = federation.getPerformanceListener();
+        perf.sync();
+
+        int sourcesCount = perf.getValue(Metrics.SOURCES_COUNT, -1);
+        double selectionMs = perf.getValue(Metrics.SELECTION_MS, -1.0);
+        double agglutinationMs = perf.getValue(Metrics.AGGLUTINATION_MS, -1.0);
+        double outPlanMs = perf.getValue(Metrics.OUT_PLAN_MS, -1.0);
+        double planMs = perf.getValue(Metrics.PLAN_MS, -1.0);
+        double optMs = perf.getValue(Metrics.OPT_MS, -1.0);
+
+        assertTrue(sourcesCount > 0);
+        assertTrue(selectionMs >= 0);
+        assertTrue(agglutinationMs >= 0);
+        assertTrue(outPlanMs >= 0);
+        assertTrue(planMs >= 0);
+        assertTrue(optMs >= 0);
+
+        if (expected != null) {
+            // consume just to make the machinery run
+            Set<Solution> actual = new HashSet<>();
+            try (Results results = federation.execute(query, plan)) {
+                results.forEachRemaining(actual::add);
+            }
+            perf.sync();
+
+            // values should not have changed
+            assertEquals(perf.getValue(Metrics.SOURCES_COUNT), Integer.valueOf(sourcesCount));
+            assertEquals(perf.getValue(Metrics.SELECTION_MS), selectionMs);
+            assertEquals(perf.getValue(Metrics.AGGLUTINATION_MS), agglutinationMs);
+            assertEquals(perf.getValue(Metrics.OUT_PLAN_MS), outPlanMs);
+            assertEquals(perf.getValue(Metrics.PLAN_MS), planMs);
+            assertEquals(perf.getValue(Metrics.OPT_MS), optMs);
+
+            assertEquals(actual.size(), expected.size()); //give an use to actual and expected
         }
     }
 }

@@ -1,5 +1,9 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
+import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
+import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
+import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
+import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
@@ -15,6 +19,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
+import javax.inject.Inject;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Objects;
@@ -26,21 +31,34 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.Integer.MAX_VALUE;
 
 public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
+    private final @Nonnull PerformanceListener performance;
+
+    @Inject
+    public GreedyJoinOrderPlanner(@Nonnull PerformanceListener performance) {
+        this.performance = performance;
+    }
+
+    public GreedyJoinOrderPlanner() {
+        this(NoOpPerformanceListener.INSTANCE);
+    }
 
     @Override
     public @Nonnull PlanNode plan(@Nonnull JoinGraph joinGraph,
                                   @Nonnull Collection<PlanNode> nodesCollection) {
-        checkArgument(!nodesCollection.isEmpty(), "Cannot optimize joins without nodes to join!");
-        IndexedSet<PlanNode> nodes = IndexedSet.from(nodesCollection);
-        IndexedSubset<PlanNode> pending = nodes.fullSubset();
-        Weigher weigher = new Weigher(takeInitialJoin(joinGraph, pending));
-        while (!pending.isEmpty()) {
-            PlanNode best = pending.stream().min(weigher.comparator).orElse(null);
-            pending.remove(best);
-            PlanNode clean = cleanEquivalents(best, OrderTuple.NODE_COMPARATOR);
-            weigher.root = JoinNode.builder(weigher.root, clean).build();
+        try (TimeSampler ignored = Metrics.OPT_MS.createThreadSampler(performance)) {
+            checkArgument(!nodesCollection.isEmpty(),
+                          "Cannot optimize joins without nodes to join!");
+            IndexedSet<PlanNode> nodes = IndexedSet.from(nodesCollection);
+            IndexedSubset<PlanNode> pending = nodes.fullSubset();
+            Weigher weigher = new Weigher(takeInitialJoin(joinGraph, pending));
+            while (!pending.isEmpty()) {
+                PlanNode best = pending.stream().min(weigher.comparator).orElse(null);
+                pending.remove(best);
+                PlanNode clean = cleanEquivalents(best, OrderTuple.NODE_COMPARATOR);
+                weigher.root = JoinNode.builder(weigher.root, clean).build();
+            }
+            return weigher.root;
         }
-        return weigher.root;
     }
 
     static @Nonnull PlanNode takeInitialJoin(@Nonnull JoinGraph graph,

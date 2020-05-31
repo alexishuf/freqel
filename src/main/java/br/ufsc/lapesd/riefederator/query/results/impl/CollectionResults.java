@@ -27,6 +27,10 @@ public class CollectionResults implements Results {
                                                 : ImmutableSet.copyOf(varNames);
     }
 
+    public static @Nonnull CollectionResults empty() {
+        return empty(Collections.emptySet());
+    }
+
     public static @Nonnull CollectionResults empty(@Nonnull Collection<String> varNames) {
         return new CollectionResults(Collections.emptyList(), varNames);
     }

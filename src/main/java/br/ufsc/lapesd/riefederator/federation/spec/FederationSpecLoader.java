@@ -1,10 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation.spec;
 
 import br.ufsc.lapesd.riefederator.federation.Federation;
+import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.spec.source.SourceLoader;
 import br.ufsc.lapesd.riefederator.federation.spec.source.SourceLoaderRegistry;
 import br.ufsc.lapesd.riefederator.query.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.util.DictTree;
+import com.google.inject.Module;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,10 +15,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import static com.google.inject.Guice.createInjector;
+
 public class FederationSpecLoader {
     private static final Logger logger = LoggerFactory.getLogger(FederationSpecLoader.class);
 
     private @Nonnull SourceLoaderRegistry loaderRegistry = SourceLoaderRegistry.getDefault();
+    private @Nonnull Module federationComponents = new SimpleFederationModule();
 
     public void setLoaderRegistry(@Nonnull SourceLoaderRegistry loaderRegistry) {
         this.loaderRegistry = loaderRegistry;
@@ -24,6 +29,14 @@ public class FederationSpecLoader {
 
     public @Nonnull SourceLoaderRegistry getLoaderRegistry() {
         return loaderRegistry;
+    }
+
+    public @Nonnull Module getFederationComponents() {
+        return federationComponents;
+    }
+
+    public void setFederationComponents(@Nonnull Module federationComponents) {
+        this.federationComponents = federationComponents;
     }
 
     public @Nonnull Federation load(@Nonnull File file)
@@ -37,7 +50,7 @@ public class FederationSpecLoader {
         List<Object> list = spec.getListNN("sources");
         if (list.isEmpty())
             throw new FederationSpecException("No sources listed!", spec);
-        Federation federation = Federation.createDefault();
+        Federation federation = createInjector(federationComponents).getInstance(Federation.class);
         federation.setEstimatePolicy(parseEstimatePolicy(spec));
         for (Object obj : list) {
             if (!(obj instanceof DictTree)) {

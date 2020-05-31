@@ -21,10 +21,7 @@ import org.apache.jena.sparql.path.*;
 import org.apache.jena.sparql.syntax.*;
 
 import javax.annotation.Nonnull;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -78,6 +75,12 @@ public class SPARQLQueryParser {
 
     public @Nonnull CQuery parse(@Nonnull InputStream stream) throws SPARQLParseException {
         return parse(new InputStreamReader(stream, StandardCharsets.UTF_8));
+    }
+
+    public @Nonnull CQuery parse(@Nonnull File file) throws SPARQLParseException, IOException {
+        try (FileInputStream stream = new FileInputStream(file)) {
+            return parse(stream);
+        }
     }
 
     private static class FeatureException extends RuntimeException {

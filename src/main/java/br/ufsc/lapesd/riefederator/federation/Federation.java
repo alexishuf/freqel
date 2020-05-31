@@ -41,15 +41,18 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private final @Nonnull OuterPlanner outerPlanner;
     private final @Nonnull DecompositionStrategy strategy;
     private final @Nonnull PlanExecutor executor;
+    private final @Nonnull PerformanceListener performanceListener;
     private @Nonnull TemplateExpander templateExpander;
 
     @Inject
     public Federation(@Nonnull OuterPlanner outerPlanner,
                       @Nonnull DecompositionStrategy strategy,
-                      @Nonnull PlanExecutor executor) {
+                      @Nonnull PlanExecutor executor,
+                      @Nonnull PerformanceListener performanceListener) {
         this.outerPlanner = outerPlanner;
         this.strategy = strategy;
         this.executor = executor;
+        this.performanceListener = performanceListener;
         this.templateExpander = new TemplateExpander();
     }
 
@@ -71,6 +74,10 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return templateExpander;
     }
 
+    public @Nonnull PerformanceListener getPerformanceListener() {
+        return performanceListener;
+    }
+
     @Contract("_ -> this") @CanIgnoreReturnValue
     public @Nonnull Federation addSource(@Nonnull Source source) {
         strategy.addSource(source);
@@ -90,6 +97,11 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         PlanNode plan = plan(expandTemplates(query));
+        return execute(query, plan);
+    }
+
+    @VisibleForTesting
+    @Nonnull Results execute(@Nonnull CQuery query, PlanNode plan) {
         Results results = executor.executePlan(plan);
 
         results = ProjectingResults.applyIf(results, query);
@@ -145,5 +157,10 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     @Override
     public boolean hasRemoteCapability(@Nonnull Capability capability) {
         return false;
+    }
+
+    @Override
+    public void close() {
+        performanceListener.close();
     }
 }

@@ -164,10 +164,10 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
     public void testProcurementOfContracts() throws Exception {
         File config = extractResource(RES_ROOT + "server/budget-scenario-test.yaml");
         int port = getAvailablePort();
-        server = ChildJVM.start(ServerMain.class,
-                "--address", "localhost",
-                "--port", String.valueOf(port),
-                "--config", config.getAbsolutePath());
+        server = ChildJVM.builder(ServerMain.class)
+                .addArguments("--address", "localhost")
+                .addArguments("--port", String.valueOf(port))
+                .addArguments("--config", config.getAbsolutePath()).start();
         String sparqlEp = waitForListening(server);
 
         ClassLoader cl = Thread.currentThread().getContextClassLoader();

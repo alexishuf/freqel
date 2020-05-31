@@ -1,5 +1,9 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
+import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
+import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
+import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
+import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
 import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
 import br.ufsc.lapesd.riefederator.federation.tree.ComponentNode;
@@ -16,6 +20,7 @@ import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.annotations.VisibleForTesting;
 
 import javax.annotation.Nonnull;
+import javax.inject.Inject;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,40 +29,54 @@ import java.util.Set;
 import static java.util.stream.Collectors.toSet;
 
 public class NaiveOuterPlanner implements OuterPlanner {
+    private final @Nonnull PerformanceListener performance;
+
+    @Inject
+    public NaiveOuterPlanner(@Nonnull PerformanceListener performance) {
+        this.performance = performance;
+    }
+
+    public NaiveOuterPlanner() {
+        this(NoOpPerformanceListener.INSTANCE);
+    }
+
     @Override
     public @Nonnull PlanNode plan(@Nonnull CQuery query) {
-        if (query.isEmpty())
-            return new EmptyNode(query);
-        IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.getMatchedTriples());
-        List<IndexedSet<Triple>> components = getCartesianComponents(full);
-        assert !components.isEmpty();
-        if (components.size() == 1)
-            return new ComponentNode(query);
+        try (TimeSampler ignored = Metrics.OUT_PLAN_MS.createThreadSampler(performance)) {
+            if (query.isEmpty())
+                return new EmptyNode(query);
+            IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.getMatchedTriples());
+            List<IndexedSet<Triple>> components = getCartesianComponents(full);
+            assert !components.isEmpty();
+            if (components.size() == 1)
+                return new ComponentNode(query);
 
-        Set<SPARQLFilter> filters = query.getModifiers().stream()
-                .filter(SPARQLFilter.class::isInstance).map(m -> (SPARQLFilter)m).collect(toSet());
-        List<PlanNode> componentNodes = new ArrayList<>();
-        for (IndexedSet<Triple> component : components) {
-            CQuery.WithBuilder builder = CQuery.with(component);
-            Set<String> allVars = builder.getList().stream().flatMap(Triple::stream)
-                    .filter(Term::isVar).map(v -> v.asVar().getName()).collect(toSet());
-            for (Modifier modifier : query.getModifiers()) {
-                if (modifier instanceof Distinct) {
-                    builder.modifier(modifier);
-                } else if (modifier instanceof SPARQLFilter) {
-                    SPARQLFilter filter = (SPARQLFilter) modifier;
-                    if (allVars.containsAll(filter.getVarTermNames())) {
+            Set<SPARQLFilter> filters = query.getModifiers().stream()
+                    .filter(SPARQLFilter.class::isInstance)
+                    .map(m -> (SPARQLFilter) m).collect(toSet());
+            List<PlanNode> componentNodes = new ArrayList<>();
+            for (IndexedSet<Triple> component : components) {
+                CQuery.WithBuilder builder = CQuery.with(component);
+                Set<String> allVars = builder.getList().stream().flatMap(Triple::stream)
+                        .filter(Term::isVar).map(v -> v.asVar().getName()).collect(toSet());
+                for (Modifier modifier : query.getModifiers()) {
+                    if (modifier instanceof Distinct) {
                         builder.modifier(modifier);
-                        filters.remove(filter);
+                    } else if (modifier instanceof SPARQLFilter) {
+                        SPARQLFilter filter = (SPARQLFilter) modifier;
+                        if (allVars.containsAll(filter.getVarTermNames())) {
+                            builder.modifier(modifier);
+                            filters.remove(filter);
+                        }
                     }
                 }
+                builder.copyAnnotations(query);
+                componentNodes.add(new ComponentNode(builder.build()));
             }
-            builder.copyAnnotations(query);
-            componentNodes.add(new ComponentNode(builder.build()));
+            CartesianNode root = new CartesianNode(componentNodes);
+            filters.forEach(root::addFilter);
+            return root;
         }
-        CartesianNode root = new CartesianNode(componentNodes);
-        filters.forEach(root::addFilter);
-        return root;
     }
 
     @VisibleForTesting

@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.Set;
 
 public class CSVResultsFormatter implements ResultsFormatter {
-    private static final MediaType
+    public static final @Nonnull MediaType
             CSV_TYPE = new MediaType("text", "csv"),
             TAB_SV_TYPE = new MediaType("text", "tab-separated-values"),
             TSV_TYPE = new MediaType("text", "tsv");

@@ -930,12 +930,6 @@ public class CQuery implements  List<Triple> {
 
     }
 
-    private boolean hasJoin(@Nonnull Triple a, @Nonnull Triple b) {
-        return  (a.getSubject().isVar()   && b.contains(a.getSubject()  )) ||
-                (a.getPredicate().isVar() && b.contains(a.getPredicate())) ||
-                (a.getObject().isVar()    && b.contains(a.getObject()   ));
-    }
-
     @Contract(value = "_, _ -> new", pure = true)
     public @Nonnull CQuery joinClosure(@Nonnull JoinType policy, @Nonnull Term joinTerm) {
         return joinClosure(policy, joinTerm, null);

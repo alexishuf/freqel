@@ -6,12 +6,10 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Set;
 
 public class QueryNode extends ComponentNode {
     private final @Nonnull TPEndpoint endpoint;
-    private @Nullable Set<String> allVars, resultVars, reqInputs, optInputs;
 
     public QueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
         this(endpoint, query, Cardinality.UNSUPPORTED);
