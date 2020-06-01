@@ -85,6 +85,8 @@ public class QueryResultsCleanup {
             }
             for (CSVRecord row : parser)
                 valid.add(row.get(BASENAME_HEADER));
+        } catch (FileNotFoundException e) {
+            return null;
         }
         return valid;
     }

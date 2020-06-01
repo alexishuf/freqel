@@ -188,7 +188,7 @@ public class QueryEvaluation {
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         try (ChildJVM child = builder.start()) {
             if (!child.getProcess().waitFor(1, TimeUnit.MINUTES))
-                throw new TimeoutException("Slow child process "+child);
+                logger.warn("Slow child process "+child);
             if (!child.getProcess().waitFor(14, TimeUnit.MINUTES))
                 throw new TimeoutException("Timeout for child process "+child);
         } catch (Exception e) {
