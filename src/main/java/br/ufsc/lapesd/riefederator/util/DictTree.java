@@ -644,7 +644,7 @@ public class DictTree {
                 }
             }
             if (!asMap.containsKey(step)) {
-                logger.debug("Current element does not have property {} (path {})", step, path);
+                logger.trace("Current element does not have property {} (path {})", step, path);
                 return fallback;
             }
             //get value for step and pass through getChild (process $ref)
@@ -777,7 +777,7 @@ public class DictTree {
     DictTree getMapNN(@Nonnull String path) {
         DictTree value = getMap(path);
         if (value == null)
-            logger.debug("No value for path {}. Expected an object", path);
+            logger.trace("No value for path {}. Expected an object", path);
         return value == null ? (DictTree)requireNonNull(getChild(emptyMap(), path)) : value;
     }
 

@@ -10,11 +10,11 @@ import javax.inject.Inject;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class InjectedExecutor implements PlanExecutor {
-    private @Nonnull QueryNodeExecutor queryNodeExecutor;
-    private @Nonnull MultiQueryNodeExecutor multiQueryNodeExecutor;
-    private @Nonnull JoinNodeExecutor joinNodeExecutor;
-    private @Nonnull CartesianNodeExecutor cartesianNodeExecutor;
-    private @Nonnull EmptyNodeExecutor emptyNodeExecutor;
+    private final @Nonnull QueryNodeExecutor queryNodeExecutor;
+    private final @Nonnull MultiQueryNodeExecutor multiQueryNodeExecutor;
+    private final @Nonnull JoinNodeExecutor joinNodeExecutor;
+    private final @Nonnull CartesianNodeExecutor cartesianNodeExecutor;
+    private final @Nonnull EmptyNodeExecutor emptyNodeExecutor;
 
     @Inject
     public InjectedExecutor(@Nonnull QueryNodeExecutor queryNodeExecutor,

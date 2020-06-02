@@ -9,7 +9,11 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.MissingCapabilityException;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.util.LogUtils;
+import com.google.common.base.Stopwatch;
 import org.apache.jena.vocabulary.RDF;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -23,6 +27,7 @@ import static java.util.Objects.requireNonNull;
  * (and possibly classes).
  */
 public class SelectDescription implements Description {
+    private static final Logger logger = LoggerFactory.getLogger(SelectDescription.class);
     protected static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
 
     private final @Nonnull
@@ -57,12 +62,17 @@ public class SelectDescription implements Description {
     }
 
     private Set<Term> fill(@Nonnull Triple query, @Nonnull String varName) {
+        Stopwatch sw = Stopwatch.createStarted();
         CQuery cQuery = CQuery.with(query).project(varName).distinct().build();
+        Set<Term> set = null;
         try (Results results = endpoint.query(cQuery)) {
-            Set<Term> set = new HashSet<>(results.getCardinality().getValue(128));
+            set = new HashSet<>(results.getCardinality().getValue(128));
             while (results.hasNext())
                 set.add(requireNonNull(results.next().get(varName)));
             return set;
+        } finally {
+            assert set != null;
+            LogUtils.logQuery(logger, cQuery, endpoint, set.size(), sw);
         }
     }
 

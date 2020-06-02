@@ -13,6 +13,6 @@ Configuration:
         - ref: Console_Appender
     logger:
       - name: br.ufsc.lapesd.riefederator
-        level: info
+        level: debug
         AppenderRef:
           - ref: Console_Appender

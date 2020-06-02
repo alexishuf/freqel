@@ -13,9 +13,11 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.IteratorResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.util.LogUtils;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.collections4.iterators.TransformIterator;
@@ -27,9 +29,12 @@ import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.system.Txn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -40,6 +45,8 @@ import static org.apache.jena.query.QueryExecutionFactory.create;
 import static org.apache.jena.query.QueryExecutionFactory.sparqlService;
 
 public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
+    private static final Logger logger = LoggerFactory.getLogger(ARQEndpoint.class);
+
     @SuppressWarnings("Immutable")
     private final @Nonnull Function<String, QueryExecution> executionFactory;
     @SuppressWarnings("Immutable")
@@ -145,16 +152,19 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     @Nonnull
     public Results doQuery(@Nonnull SPARQLString sparql) {
+        Stopwatch sw = Stopwatch.createStarted();
         if (sparql.getType() == SPARQLString.Type.ASK) {
             try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
-                if (exec.execAsk())
-                    return new CollectionResults(singleton(MapSolution.EMPTY), emptySet());
-                return new CollectionResults(emptySet(), emptySet());
+                boolean ans = exec.execAsk();
+                Set<Solution> solutions = ans ? singleton(MapSolution.EMPTY) : emptySet();
+                LogUtils.logQuery(logger, sparql, this, solutions.size(), sw);
+                return new CollectionResults(solutions, emptySet());
             }
         } else {
             QueryExecution exec = executionFactory.apply(sparql.getString());
             try {
                 ResultSet rs = exec.execSelect();
+                LogUtils.logQuery(logger, sparql, this, sw);
                 return new IteratorResults(new TransformIterator<>(rs, JenaSolution::new),
                                            sparql.getVarNames()) {
                     @Override

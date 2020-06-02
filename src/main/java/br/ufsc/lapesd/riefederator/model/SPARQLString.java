@@ -31,6 +31,7 @@ public class SPARQLString {
     static final @Nonnull Pattern SPARQL_VAR_NAME = Pattern.compile("^[a-zA-Z_0-9\\-]+$");
     private final @Nonnull Type type;
     private final @Nonnull String string;
+    private final int triplesCount;
     private final @Nonnull ImmutableSet<String> varNames;
     private final @Nonnull ImmutableSet<SPARQLFilter> filters;
 
@@ -67,6 +68,7 @@ public class SPARQLString {
                         @Nonnull Collection<Modifier> modifiers) {
         triples = removePureDescriptive(triples);
         Preconditions.checkArgument(!triples.isEmpty(), "triples cannot be empty");
+        triplesCount = triples.size();
         // find var names
         Set<String> varNames = new HashSet<>(triples.size() * 2);
         for (Triple triple : triples)
@@ -170,6 +172,9 @@ public class SPARQLString {
     }
     public @Nonnull String getString() {
         return string;
+    }
+    public int getTriplesCount() {
+        return triplesCount;
     }
     public @Nonnull ImmutableSet<String> getVarNames() {
         return varNames;

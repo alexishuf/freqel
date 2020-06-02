@@ -17,7 +17,9 @@ import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
+import br.ufsc.lapesd.riefederator.util.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableCollection;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.Guice;
@@ -30,6 +32,7 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -96,7 +99,13 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
+        Stopwatch sw = Stopwatch.createStarted();
         PlanNode plan = plan(expandTemplates(query));
+        if (logger.isDebugEnabled()) {
+            logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",
+                         sw.elapsed(TimeUnit.MILLISECONDS)/1000.0, LogUtils.toString(query),
+                         plan.prettyPrint());
+        }
         return execute(query, plan);
     }
 
