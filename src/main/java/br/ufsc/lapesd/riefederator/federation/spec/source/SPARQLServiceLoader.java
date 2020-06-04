@@ -37,6 +37,6 @@ public class SPARQLServiceLoader implements SourceLoader {
             throw new SourceLoadException("Bad SPARQL service URI: "+uri, e, spec);
         }
         ARQEndpoint ep = ARQEndpoint.forService(uri);
-        return singleton(new Source(new SelectDescription(ep, true), ep, uri));
+        return singleton(new Source(new SelectDescription(ep, false), ep, uri));
     }
 }

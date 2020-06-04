@@ -245,6 +245,8 @@ public class QueryExperiment {
             }
         }
         double queryMs = sw.elapsed(TimeUnit.MICROSECONDS) / 1000.0;
+        logger.info("Planned, built iterators and fetched all results for {} in {}ms",
+                    getName(), queryMs);
         perf.sync();
         String resultsBasename = saveResults(collResults);
         return new Result(getName(), timestamp, getPreheat(), getRuns(), run,
