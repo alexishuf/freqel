@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
 import br.ufsc.lapesd.riefederator.query.results.impl.CartesianResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -47,7 +48,9 @@ public class SimpleCartesianNodeExecutor extends SimpleNodeExecutor implements C
             if (child != max)
                 toFetch.add(executor.executeNode(child));
         }
-        return new CartesianResults(executor.executeNode(max), toFetch, node.getResultVars());
+        Results results = new CartesianResults(executor.executeNode(max), toFetch,
+                                               node.getResultVars());
+        return SPARQLFilterResults.applyIf(results, node);
     }
 
     @Override

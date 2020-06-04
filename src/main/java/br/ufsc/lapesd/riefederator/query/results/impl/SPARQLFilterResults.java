@@ -1,11 +1,13 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
+import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +28,11 @@ public class SPARQLFilterResults implements Results {
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
         List<SPARQLFilter> list = query.getModifiers().stream()
                 .filter(SPARQLFilter.class::isInstance).map(m -> (SPARQLFilter)m).collect(toList());
+        return list.isEmpty() ? in : new SPARQLFilterResults(in, list);
+    }
+
+    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull PlanNode node) {
+        ImmutableList<SPARQLFilter> list = ImmutableList.copyOf(node.getFilters());
         return list.isEmpty() ? in : new SPARQLFilterResults(in, list);
     }
 

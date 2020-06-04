@@ -136,7 +136,10 @@ public class SPARQLString {
         for (Triple triple : triples) {
             assert  aIt.hasNext();
             triple.forEach(t -> b.append(term2SPARQL(t, dict)).append(" "));
-            aIt.next().forEach(ann -> b.append(ann.getSparqlFilter()).append('\n'));
+            List<SPARQLFilter> filters = aIt.next();
+            filters.forEach(ann -> b.append(ann.getSparqlFilter()).append('\n'));
+            if (!filters.isEmpty())
+                b.setLength(b.length()-1); //undo \n of last FILTER()
             b.append(".\n");
         }
     }

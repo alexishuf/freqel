@@ -187,6 +187,7 @@ public class JoinNode extends AbstractInnerPlanNode {
                 .append("} ").append(getCardinality())
                 .append(isProjecting() ? ") " : "")
                 .append(getVarNamesString()).append('\n');
+        printFilters(builder, indent2);
         getLeft().prettyPrint(builder, indent2).append('\n');
         getRight().prettyPrint(builder, indent2);
         return builder;

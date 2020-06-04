@@ -1175,9 +1175,10 @@ public class CQuery implements  List<Triple> {
                     .append(t.getPredicate().toString(dict)).append(' ')
                     .append(t.getObject().toString(dict)).append(" . }").toString();
         }
-        b.append('\n');
+        boolean firstTriple = true;
         for (Triple t : list) {
-            b.append("  ").append(t.getSubject().toString(dict)).append(' ')
+            b.append(firstTriple ? " " : "  ")
+                    .append(t.getSubject().toString(dict)).append(' ')
                     .append(t.getPredicate().toString(dict)).append(' ')
                     .append(t.getObject().toString(dict)).append(" .\n");
         }
@@ -1186,7 +1187,7 @@ public class CQuery implements  List<Triple> {
                 b.append("  ").append(((SPARQLFilter) modifier).toString()).append("\n");
         }
         b.setLength(b.length()-1);
-        return b.append('}').toString();
+        return b.append(" }").toString();
     }
 
     /* ~~~ private methods & classes ~~~ */

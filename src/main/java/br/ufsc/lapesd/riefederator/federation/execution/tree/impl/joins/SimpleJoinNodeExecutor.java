@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.Bin
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -48,9 +49,9 @@ public class SimpleJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
             Cardinality.Reliability lr = lc.getReliability(), rr = rc.getReliability();
             if (lr.isAtLeast(UPPER_BOUND) && rr.isAtLeast(UPPER_BOUND)) {
                 if (comparator.min(lc, rc).getValue(Integer.MAX_VALUE) < 1024)
-                    return hashExecutor.execute(node);
+                    return SPARQLFilterResults.applyIf(hashExecutor.execute(node), node);
             }
-            return bindExecutor.execute(node);
+            return SPARQLFilterResults.applyIf(bindExecutor.execute(node), node);
         }
     }
 }

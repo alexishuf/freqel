@@ -172,6 +172,12 @@ public abstract class AbstractPlanNode implements PlanNode {
         return (isProjecting() ? "π" : "") + "[" + getVarNamesStringContent() + "]";
     }
 
+    protected @Nonnull StringBuilder printFilters(@Nonnull StringBuilder builder,
+                                                  @Nonnull String indent) {
+        getFilters().forEach(f -> builder.append(indent).append(f.getSparqlFilter()).append('\n'));
+        return builder;
+    }
+
     @Override
     public @Nonnull String toString() {
         return toString(new StringBuilder()).toString();

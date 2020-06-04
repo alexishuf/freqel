@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
+import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -36,7 +37,7 @@ public class FixedHashJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
             Results results = factory.createResults(list.get(0), list.get(1),
                                                     node.getJoinVars(), node.getResultVars());
             list.clear(); // ownership transferred
-            return results;
+            return SPARQLFilterResults.applyIf(results, node);
         }
     }
 }

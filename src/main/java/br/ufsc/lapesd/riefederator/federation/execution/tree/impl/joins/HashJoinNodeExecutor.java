@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
+import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -51,7 +52,7 @@ public class HashJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
                                                       joinVars, resultVars);
             }
             list.clear();
-            return results;
+            return SPARQLFilterResults.applyIf(results, node);
         }
     }
 }

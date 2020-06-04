@@ -5,8 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 
 public class ResourceOpener {
-    public static @Nonnull
-    InputStream getStream(@Nonnull String resourcePath) throws FileNotFoundException {
+    public static @Nonnull InputStream getStream(@Nonnull String resourcePath) throws FileNotFoundException {
         ClassLoader thread = Thread.currentThread().getContextClassLoader();
         InputStream stream = thread.getResourceAsStream(resourcePath.replaceAll("^/+", ""));
         if (stream != null)

@@ -8,10 +8,12 @@ import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
 import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.ParallelResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.*;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -19,6 +21,10 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
+import static java.util.Collections.singleton;
 
 public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
         implements QueryNodeExecutor, MultiQueryNodeExecutor, CartesianNodeExecutor {
@@ -50,7 +56,59 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
 
     @Override
     public @Nonnull Results execute(@Nonnull QueryNode node) {
-        return node.getEndpoint().query(node.getQuery());
+        CQuery query = node.getQuery();
+        TPEndpoint ep = node.getEndpoint();
+        boolean canFilter = ep.hasCapability(Capability.SPARQL_FILTER);
+        boolean hasCapabilities = query.getModifiers().stream()
+                .allMatch(m -> ep.hasCapability(m.getCapability()))
+                && (node.getFilters().isEmpty() || canFilter) ;
+
+        if (hasCapabilities) {
+            if (query.getModifiers().containsAll(node.getFilters()))
+                return ep.query(query);
+
+            CQuery.WithBuilder b = CQuery.with(query).copyModifiers(query).copyAnnotations(query);
+            for (SPARQLFilter filter : node.getFilters())
+                b.modifier(filter);
+            CQuery augmented = b.build();
+            assert augmented.getModifiers().containsAll(query.getModifiers());
+            return ep.query(augmented);
+        } else {
+            // endpoint cannot handle some modifiers, not even locally
+            Projection projection = null;
+            Distinct distinct = null;
+            Ask ask = null;
+            CQuery.WithBuilder b = CQuery.with(query.getList()).copyAnnotations(query);
+            for (Modifier m : query.getModifiers()) {
+                if (ep.hasCapability(m.getCapability())) b.modifier(m);
+                else if (m instanceof Ask)               ask = (Ask)m;
+                else if (m instanceof Projection)        projection = (Projection)m;
+                else if (m instanceof Distinct)          distinct = (Distinct)m;
+            }
+            if (canFilter) {
+                for (SPARQLFilter filter : node.getFilters())
+                    b.modifier(filter);
+            }
+            Results results = ep.query(b.build());
+
+            if (!canFilter) {
+                List<SPARQLFilter> filters = new ArrayList<>();
+                query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
+                                    .map(m -> (SPARQLFilter)m).forEach(filters::add);
+                filters.addAll(node.getFilters());
+                results = new SPARQLFilterResults(results, filters);
+            }
+            if (projection != null)
+                results = new ProjectingResults(results, projection.getVarNames());
+            if (ask != null) {
+                Set<String> vs = results.getVarNames();
+                return results.hasNext() ? new CollectionResults(singleton(MapSolution.EMPTY), vs)
+                                         : CollectionResults.empty(vs);
+            }
+            if (distinct != null)
+                results = new HashDistinctResults(results);
+            return results;
+        }
     }
 
     @CheckReturnValue
@@ -59,8 +117,10 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
             return new CollectionResults(Collections.emptyList(), node.getResultVars());
         ArrayList<Results> resultList = new ArrayList<>(node.getChildren().size());
         PlanExecutor executor = getPlanExecutor();
-        for (PlanNode child : node.getChildren())
+        for (PlanNode child : node.getChildren()) {
+            node.getFilters().forEach(child::addFilter);
             resultList.add(executor.executeNode(child));
+        }
         ParallelResults r = new ParallelResults(resultList);
         return node.isProjecting() ? new ProjectingResults(r, node.getResultVars()) : r;
     }

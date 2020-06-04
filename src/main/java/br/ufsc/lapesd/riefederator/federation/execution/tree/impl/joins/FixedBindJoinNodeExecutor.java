@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.Bin
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -48,7 +49,7 @@ public class FixedBindJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
             Results results = factory.createResults(leftResults, right,
                                                     node.getJoinVars(), node.getResultVars());
             leftResults = null;
-            return results;
+            return SPARQLFilterResults.applyIf(results, node);
         } finally {
             if (leftResults != null)
                 leftResults.close();

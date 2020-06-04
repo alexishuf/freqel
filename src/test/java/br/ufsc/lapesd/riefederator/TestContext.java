@@ -51,6 +51,9 @@ public interface TestContext {
     default @Nonnull Lit lit(String value) {
         return StdLit.fromUnescaped(String.valueOf(value), xsdString);
     }
+    default @Nonnull Lit lit(String value, String langTag) {
+        return StdLit.fromUnescaped(String.valueOf(value), langTag);
+    }
     default @Nonnull Lit date(String iso) {
         return JenaWrappers.fromJena(ResourceFactory.createTypedLiteral(iso, XSDDatatype.XSDdate));
     }

@@ -79,6 +79,7 @@ public class CartesianNode extends AbstractInnerPlanNode {
             return builder;
         else
             builder.append('\n');
+        printFilters(builder, indent2);
         for (PlanNode child : getChildren())
             child.prettyPrint(builder, indent2).append('\n');
         builder.setLength(builder.length()-1);
