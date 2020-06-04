@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
@@ -33,7 +33,7 @@ public abstract class JoinResults implements Results {
     @Override
     public @Nonnull Cardinality getCardinality() {
         Cardinality min = children.get(0).getCardinality();
-        CardinalityComparator comparator = new CardinalityComparator();
+        ThresholdCardinalityComparator comparator = new ThresholdCardinalityComparator();
         for (Results child : children) {
             Cardinality candidate = child.getCardinality();
             if (comparator.compare(candidate, min) < 0)

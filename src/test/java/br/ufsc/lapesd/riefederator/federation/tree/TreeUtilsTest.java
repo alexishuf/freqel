@@ -3,8 +3,12 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.DefaultInnerCardinalityComputer;
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.RelativeCardinalityAdder;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import org.testng.annotations.DataProvider;
@@ -260,6 +264,25 @@ public class TreeUtilsTest implements TestContext {
         assertNotSame(join2, join);
 
         assertEquals(join2.getChildren(), asList(qn1, qn3));
+    }
+
+    @Test
+    public void testReplaceChildAndRecompute() {
+        QueryNode qn1 = new QueryNode(ep, createQuery(Alice, knows, x), Cardinality.lowerBound(30));
+        QueryNode qn2 = new QueryNode(ep, createQuery(x, knows, y), Cardinality.guess(2000));
+        QueryNode qn3 = new QueryNode(ep, createQuery(x, knows, Bob), Cardinality.exact(3));
+
+        JoinNode join = JoinNode.builder(qn1, qn2).build();
+        Map<PlanNode, PlanNode> map = new HashMap<>();
+        map.put(qn2, qn3);
+        DefaultInnerCardinalityComputer computer =
+                new DefaultInnerCardinalityComputer(ThresholdCardinalityComparator.DEFAULT,
+                                                    RelativeCardinalityAdder.DEFAULT);
+        PlanNode join2 = replaceNodes(join, map, computer);
+        assertNotSame(join2, join);
+
+        assertEquals(join2.getChildren(), asList(qn1, qn3));
+        assertEquals(join2.getCardinality(), Cardinality.exact(3));
     }
 
     @Test

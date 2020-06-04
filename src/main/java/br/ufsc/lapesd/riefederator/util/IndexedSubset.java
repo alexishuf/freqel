@@ -4,6 +4,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkElementIndex;
 import static java.util.Spliterator.*;
 
 public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
@@ -189,6 +190,14 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     @Override
     public boolean addAll(@Nonnull Collection<? extends T> c) {
         return union(c) > 0;
+    }
+
+    public boolean removeIndex(int idx) {
+        checkElementIndex(idx, parent.size());
+        boolean old = bitSet.get(idx);
+        if (old)
+            bitSet.set(idx, false);
+        return old;
     }
 
     @Override

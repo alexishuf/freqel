@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.results;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,8 +17,15 @@ public class ResultsList extends ArrayList<Results> implements AutoCloseable {
 
     public ResultsList() { }
 
-    public ResultsList(@NotNull Collection<? extends Results> c) {
+    public ResultsList(@Nonnull Collection<? extends Results> c) {
         super(c);
+    }
+
+    public static @Nonnull ResultsList of(@Nonnull Collection<? extends Results> c) {
+        if (c instanceof ResultsList)
+            return (ResultsList)c;
+        else
+            return new ResultsList(c);
     }
 
     public @Nonnull ResultsList steal() {
@@ -39,9 +45,12 @@ public class ResultsList extends ArrayList<Results> implements AutoCloseable {
                 exceptionList.add(e);
             }
         }
-        if (exceptionList.size() == 1)
+        if (exceptionList.size() == 1) {
             throw exceptionList.get(0);
-        else if (exceptionList.size() > 1)
-            throw new ResultsCloseException(get(0), "Multiple exceptions", exceptionList.get(0));
+        } else if (exceptionList.size() > 1) {
+            ResultsCloseException e;
+            e = new ResultsCloseException(get(0), "Multiple exceptions", exceptionList.get(0));
+            exceptionList.subList(1, exceptionList.size()).forEach(e::addSuppressed);
+        }
     }
 }

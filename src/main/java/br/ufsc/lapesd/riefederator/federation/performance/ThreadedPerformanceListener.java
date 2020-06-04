@@ -64,7 +64,7 @@ public class ThreadedPerformanceListener implements PerformanceListener {
     @SuppressWarnings("unchecked")
     @Override
     public @Nonnull <T> List<T> getValues(@Nonnull Metric<T> metric) {
-        sync();
+//        sync();
         Class<?> vClass = metric.getValueClass();
         List<T> list = new ArrayList<>();
         synchronized (this) {
@@ -85,7 +85,7 @@ public class ThreadedPerformanceListener implements PerformanceListener {
     @SuppressWarnings("unchecked")
     @Override
     public @Nullable <T> T getValue(@Nonnull Metric<T> metric) {
-        sync();
+//        sync();
         Class<?> vClass = metric.getValueClass();
         synchronized (this) {
             List<Object> list = store.get(metric.getName());
@@ -114,10 +114,10 @@ public class ThreadedPerformanceListener implements PerformanceListener {
     @Override
     public synchronized void close() {
         executorService.shutdown();
-        try {
-            executorService.awaitTermination(10, TimeUnit.SECONDS);
-        } catch (InterruptedException ignored) {
-            Thread.currentThread().interrupt();
-        }
+//        try {
+//            executorService.awaitTermination(10, TimeUnit.SECONDS);
+//        } catch (InterruptedException ignored) {
+//            Thread.currentThread().interrupt();
+//        }
     }
 }

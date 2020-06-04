@@ -14,5 +14,6 @@ Configuration:
     logger:
       - name: br.ufsc.lapesd.riefederator
         level: info
+        additivity: false
         AppenderRef:
           - ref: Console_Appender

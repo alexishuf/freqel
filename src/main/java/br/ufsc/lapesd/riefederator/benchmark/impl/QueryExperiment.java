@@ -14,7 +14,6 @@ import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.server.sparql.impl.CSVResultsFormatter;
 import com.google.common.base.Stopwatch;
 import com.google.inject.AbstractModule;
-import com.google.inject.util.Modules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +38,7 @@ public class QueryExperiment {
 
     public static @Nonnull List<String> HEADERS = Arrays.asList("queryName", "timestamp",
             "preheatRuns", "runs", "run", "nSources", "nResults", "cooldownMs",
-            "selMs", "planMs", "execMs", "queryMs", "resultsBasename");
+            "initSourcesMs", "selMs", "planMs", "execMs", "queryMs", "resultsBasename");
 
     private final @Nonnull String name;
     private final @Nonnull CQuery query;
@@ -84,7 +83,7 @@ public class QueryExperiment {
         private @Nonnull LocalDateTime timestamp;
         private int preheat, runs, run;
         private int sourcesCount, resultsCount;
-        private double cooldownMs, selectionMs, planMs, execMs, queryMs;
+        private double cooldownMs, initSourcesMs, selectionMs, planMs, execMs, queryMs;
         private transient  @Nullable CollectionResults results;
         private @Nullable String resultsBasename;
 
@@ -92,13 +91,14 @@ public class QueryExperiment {
                       int preheat, int runs, int run) {
             this(name, timestamp, preheat, runs, run, Integer.MIN_VALUE, Integer.MIN_VALUE,
                  Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
-                 Integer.MIN_VALUE, null, null);
+                 Integer.MIN_VALUE, Integer.MIN_VALUE, null, null);
         }
 
         public Result(@Nonnull String name, @Nonnull LocalDateTime timestamp, int preheat,
                       int runs, int run, int sourcesCount, int resultsCount, double cooldownMs,
-                      double selectionMs, double planMs, double execMs, double queryMs,
-                      @Nullable CollectionResults results, @Nullable String resultsBasename) {
+                      double initSourcesMs, double selectionMs, double planMs, double execMs,
+                      double queryMs, @Nullable CollectionResults results,
+                      @Nullable String resultsBasename) {
             this.name = name;
             this.timestamp = timestamp;
             this.preheat = preheat;
@@ -107,6 +107,7 @@ public class QueryExperiment {
             this.sourcesCount = sourcesCount;
             this.resultsCount = resultsCount;
             this.cooldownMs = cooldownMs;
+            this.initSourcesMs = initSourcesMs;
             this.selectionMs = selectionMs;
             this.planMs = planMs;
             this.execMs = execMs;
@@ -142,6 +143,9 @@ public class QueryExperiment {
         }
         public double getCooldownMs() {
             return cooldownMs;
+        }
+        public double getInitSourcesMs() {
+            return initSourcesMs;
         }
         public double getSelectionMs() {
             return selectionMs;
@@ -186,6 +190,9 @@ public class QueryExperiment {
         public void setCooldownMs(double cooldownMs) {
             this.cooldownMs = cooldownMs;
         }
+        public void setInitSourcesMs(double initSourcesMs) {
+            this.initSourcesMs = initSourcesMs;
+        }
         public void setSelectionMs(double selectionMs) {
             this.selectionMs = selectionMs;
         }
@@ -208,7 +215,7 @@ public class QueryExperiment {
         public @Nonnull List<Object> toValueList() {
             return Arrays.asList(getName(), getISOTimestamp(),
                     getPreheat(), getRuns(), getRun(),
-                    getSourcesCount(), getResultsCount(), getCooldownMs(),
+                    getSourcesCount(), getResultsCount(), getCooldownMs(), getInitSourcesMs(),
                     getSelectionMs(), getPlanMs(), getExecMs(), getQueryMs(), getResultsBasename());
         }
     }
@@ -217,19 +224,20 @@ public class QueryExperiment {
         LocalDateTime timestamp = LocalDateTime.now(ZoneId.systemDefault());
         PerformanceListener perf = new ThreadedPerformanceListener();
         FederationSpecLoader loader = new FederationSpecLoader();
-        loader.setFederationComponents(Modules.override(loader.getFederationComponents()).with(
+        loader.overrideWith(
                 new AbstractModule() {
                     @Override
                     protected void configure() {
                         bind(PerformanceListener.class).toInstance(perf);
                     }
-                }));
+                });
         CollectionResults collResults;
         Stopwatch sw;
         try (TimeSampler ignored = Metrics.COOLDOWN_MS.createThreadSampler(perf)) {
             BenchmarkUtils.preheatCooldown();
         }
         try (Federation federation = loader.load(federationConfig)) {
+            federation.initAllSources(5, TimeUnit.MINUTES);
             sw = Stopwatch.createStarted();
             try (Results results = federation.query(query);
                  TimeSampler ignored = new TimeSampler(perf, Metrics.EXEC_MS)) {
@@ -237,11 +245,13 @@ public class QueryExperiment {
             }
         }
         double queryMs = sw.elapsed(TimeUnit.MICROSECONDS) / 1000.0;
+        perf.sync();
         String resultsBasename = saveResults(collResults);
         return new Result(getName(), timestamp, getPreheat(), getRuns(), run,
                 perf.getValue(Metrics.SOURCES_COUNT, Integer.MIN_VALUE),
                 collResults.getCollection().size(),
                 perf.getValue(Metrics.COOLDOWN_MS, (double)Integer.MIN_VALUE),
+                perf.getValue(Metrics.INIT_SOURCES_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.SELECTION_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.PLAN_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.EXEC_MS, (double)Integer.MIN_VALUE),

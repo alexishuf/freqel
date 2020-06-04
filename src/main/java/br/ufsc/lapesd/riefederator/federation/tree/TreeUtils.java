@@ -1,6 +1,10 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
+import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.CardinalityAdder;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ListMultimap;
@@ -111,12 +115,20 @@ public class TreeUtils {
                 DISTINCT | NONNULL), false);
     }
 
-    private static final class Replacer {
+    static final class PlanNodeReplacer {
         private final @Nonnull Map<PlanNode, PlanNode> replacements = new HashMap<>();
         private final @Nonnull Set<PlanNode> visited = new HashSet<>();
+        private final @Nullable
+        InnerCardinalityComputer computer;
 
-        public Replacer(@Nonnull Map<PlanNode, PlanNode> replacements) {
+        public PlanNodeReplacer(@Nonnull Map<PlanNode, PlanNode> replacements) {
+            this(replacements, null);
+        }
+
+        public PlanNodeReplacer(@Nonnull Map<PlanNode, PlanNode> replacements,
+                                @Nullable InnerCardinalityComputer computer) {
             this.replacements.putAll(replacements);
+            this.computer = computer;
             visited.addAll(replacements.values());
         }
 
@@ -129,6 +141,8 @@ public class TreeUtils {
             if (node.getChildren().stream().noneMatch(replacements::containsKey))
                 return node; // no work
             newNode = node.replacingChildren(replacements);
+            if (computer != null)
+                newNode.setCardinality(computer.compute(newNode));
             replacements.put(node, newNode); //replace this node in parents
             return newNode;
         }
@@ -136,7 +150,13 @@ public class TreeUtils {
 
     public static @Nonnull PlanNode replaceNodes(@Nonnull PlanNode root,
                                                  @Nonnull Map<PlanNode, PlanNode> replacements) {
-        return new Replacer(replacements).visit(root);
+        return replaceNodes(root, replacements, null);
+    }
+
+    public static @Nonnull PlanNode
+    replaceNodes(@Nonnull PlanNode root, @Nonnull Map<PlanNode, PlanNode> replacements,
+                 @Nullable InnerCardinalityComputer cardinalityComputer) {
+        return new PlanNodeReplacer(replacements, cardinalityComputer).visit(root);
     }
 
     static @Nonnull <T, I>
@@ -263,6 +283,21 @@ public class TreeUtils {
         } else {
             return node;
         }
+    }
+
+    public static @Nonnull Cardinality estimate(@Nonnull PlanNode node,
+                                                @Nonnull CardinalityEnsemble ensemble,
+                                                @Nonnull CardinalityAdder adder) {
+        if (node instanceof MultiQueryNode) {
+            for (PlanNode child : node.getChildren())
+                child.setCardinality(estimate(child, ensemble, adder));
+            return node.getChildren().stream().map(PlanNode::getCardinality)
+                                     .reduce(adder).orElse(Cardinality.EMPTY);
+        } else if (node instanceof QueryNode) {
+            QueryNode qn = (QueryNode) node;
+            return ensemble.estimate(qn.getQuery(), qn.getEndpoint());
+        }
+        return node.getCardinality();
     }
 
     public static  @Nonnull PlanNode flattenMultiQuery(@Nonnull PlanNode node) {

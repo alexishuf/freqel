@@ -82,6 +82,12 @@ public interface PlanNode {
     @Nonnull Cardinality getCardinality();
 
     /**
+     * Changes the cardinality of this {@link PlanNode} and returns the previous cardinality.
+     */
+    @CanIgnoreReturnValue
+    @Nonnull Cardinality setCardinality(@Nonnull Cardinality cardinality);
+
+    /**
      * Add a filter to this node.
      *
      * @param filter filter to add

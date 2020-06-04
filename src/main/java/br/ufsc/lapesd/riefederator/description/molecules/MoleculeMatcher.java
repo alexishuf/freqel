@@ -60,6 +60,27 @@ public class MoleculeMatcher implements SemanticDescription {
     }
 
     @Override
+    public void update() {
+        /* no op */
+    }
+
+    @Override
+    public void init() {
+        /* no op */
+    }
+
+    @Override
+    public boolean waitForInit(int timeoutMilliseconds) {
+        return true; /* alway initialized */
+    }
+
+    @Override
+    public boolean updateSync(int timeoutMilliseconds) {
+        return true; //no op
+    }
+
+
+    @Override
     public @Nonnull String toString() {
         return String.format("MoleculeMatcher(%s)", molecule.getCore().getName());
     }

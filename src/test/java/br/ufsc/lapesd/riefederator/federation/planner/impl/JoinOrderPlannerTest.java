@@ -3,6 +3,12 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
+import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
+import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityHeuristic;
+import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.PropertySelectivityCardinalityHeuristic;
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
@@ -17,6 +23,9 @@ import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Collections2;
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.multibindings.Multibinder;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -51,10 +60,10 @@ public class JoinOrderPlannerTest implements TestContext {
     private static final Var s = new StdVar("s");
     private static final Var t = new StdVar("t");
 
-    private static EmptyEndpoint e1 = new EmptyEndpoint(), e1a = new EmptyEndpoint(),
+    private static final EmptyEndpoint e1 = new EmptyEndpoint(), e1a = new EmptyEndpoint(),
                                  e2 = new EmptyEndpoint();
 
-    private static Atom Person = new Atom("Person");
+    private static final Atom Person = new Atom("Person");
 
     static {
         e1.addAlternative(e1a);
@@ -63,7 +72,30 @@ public class JoinOrderPlannerTest implements TestContext {
     public static final List<Supplier<JoinOrderPlanner>> suppliers =
             asList(
                     new NamedSupplier<>(ArbitraryJoinOrderPlanner.class),
-                    new NamedSupplier<>(GreedyJoinOrderPlanner.class)
+                    new NamedSupplier<>("GreedyJoinOrderPlanner, without estimation",
+                        () -> Guice.createInjector(new AbstractModule() {
+                            @Override
+                            protected void configure() {}
+                        }).getInstance(GreedyJoinOrderPlanner.class)),
+                    new NamedSupplier<>("GreedyJoinOrderPlanner+PropertySelectivityCardinalityHeuristic",
+                            () -> Guice.createInjector(new AbstractModule() {
+                                @Override
+                                protected void configure() {
+                                    bind(CardinalityEnsemble.class).to(WorstCaseCardinalityEnsemble.class);
+
+                                    Multibinder<CardinalityHeuristic> mb
+                                            = Multibinder.newSetBinder(binder(), CardinalityHeuristic.class);
+                                    mb.addBinding().to(PropertySelectivityCardinalityHeuristic.class);
+                                }
+                            }).getInstance(GreedyJoinOrderPlanner.class)),
+                    new NamedSupplier<>("GreedyJoinOrderPlanner+default estimation",
+                        () -> Guice.createInjector(new AbstractModule() {
+                            @Override
+                            protected void configure() {
+                                SimpleFederationModule.configureCardinalityEstimation(binder(),
+                                        EstimatePolicy.local(50));
+                            }
+                        }).getInstance(GreedyJoinOrderPlanner.class))
             );
 
     private void checkPlan(PlanNode root, Set<PlanNode> expectedLeaves) {

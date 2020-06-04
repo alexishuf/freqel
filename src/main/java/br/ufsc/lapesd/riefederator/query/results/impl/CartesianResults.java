@@ -3,40 +3,37 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.ResultsList;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 
 public class CartesianResults implements Results {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(CartesianResults.class);
 
-    private final @Nonnull Results largest;
-    private final @Nonnull List<? extends List<Solution>> fetched;
+    private @Nonnull Results largest;
+    private @Nullable List<List<Solution>> fetched;
     private final @Nonnull Set<String> varNames;
-    private final int productSize;
+    private int productSize = -1;
+    private @Nonnull final ResultsList toFetch;
     private int readyProduct;
     private Solution current;
     private Iterator<List<Solution>> cartesianIt;
 
     public CartesianResults(@Nonnull Results largest,
-                            @Nonnull List<? extends List<Solution>> fetched,
+                            @Nonnull List<Results> toFetch,
                             @Nonnull Set<String> varNames) {
-        if (fetched.stream().anyMatch(List::isEmpty)) {
-            logger.info("There are empty solution lists. Will ignore all and be an empty result");
-            fetched = Collections.emptyList(); // drop reference to allow GC
-            largest = new CollectionResults(Collections.emptyList(), largest.getVarNames());
-        }
         this.largest = largest;
-        this.fetched = fetched;
         this.varNames = varNames;
+        this.toFetch = ResultsList.of(toFetch);
         this.current = null;
-        this.productSize = fetched.stream().map(List::size).reduce((l, r) -> l * r).orElse(0);
         this.readyProduct = 0;
-        cartesianIt = new Iterator<List<Solution>>() {
+        this.cartesianIt = new Iterator<List<Solution>>() {
             @Override
             public boolean hasNext() { return false; }
             @Override
@@ -46,16 +43,20 @@ public class CartesianResults implements Results {
 
     @Override
     public int getReadyCount() {
+        if (fetched == null) return 0;
         return fetched.isEmpty() ? largest.getReadyCount() : readyProduct;
     }
 
     @Override
     public boolean hasNext() {
+        if (fetched == null) fetchAll();
         return cartesianIt.hasNext() || largest.hasNext();
     }
 
     @Override
     public @Nonnull Solution next() {
+        if (fetched == null)
+            fetchAll();
         if (fetched.isEmpty())
             return largest.next();
         if (current == null || !cartesianIt.hasNext()) {
@@ -71,10 +72,27 @@ public class CartesianResults implements Results {
         return builder.build();
     }
 
+    private void fetchAll() {
+        fetched = new ArrayList<>();
+        for (Results results : toFetch) {
+            List<Solution> list = new ArrayList<>();
+            results.forEachRemainingThenClose(list::add);
+            if (list.isEmpty()) {
+                logger.info("There are empty solution lists. Will ignore all and be an empty result");
+                fetched = Collections.emptyList(); // drop reference to allow GC
+                largest = new CollectionResults(Collections.emptyList(), largest.getVarNames());
+                productSize = 0;
+                largest = new CollectionResults(Collections.emptyList(), largest.getVarNames());
+                return;
+            }
+            fetched.add(list);
+        }
+        productSize = fetched.stream().map(List::size).reduce((l, r) -> l * r).orElse(0);
+    }
+
     @Override
-    public @Nonnull
-    Cardinality getCardinality() {
-        if (fetched.isEmpty())
+    public @Nonnull Cardinality getCardinality() {
+        if (fetched == null || fetched.isEmpty())
             return largest.getCardinality();
         Cardinality cardinality = largest.getCardinality();
         Cardinality.Reliability reliability = cardinality.getReliability();
@@ -91,6 +109,7 @@ public class CartesianResults implements Results {
 
     @Override
     public void close() throws ResultsCloseException {
+        toFetch.close();
         largest.close();
     }
 }

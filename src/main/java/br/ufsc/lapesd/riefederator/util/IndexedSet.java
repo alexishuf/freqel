@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.function.Predicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Spliterator.*;
@@ -113,6 +114,16 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     }
 
     @CheckReturnValue
+    public @Nonnull IndexedSubset<T> subset(@Nonnull Predicate<T> predicate) {
+        BitSet bitSet = new BitSet(size());
+        for (int i = 0; i < size(); i++) {
+            if (predicate.test(get(i)))
+                bitSet.set(i);
+        }
+        return new IndexedSubset<>(this, bitSet);
+    }
+
+    @CheckReturnValue
     public @Nonnull final IndexedSubset<T> subset(@Nonnull T value) {
         return subset(Collections.singletonList(value));
     }
@@ -149,6 +160,14 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     @Override
     public boolean contains(Object o) {
         return indexOf(o) >= 0;
+    }
+
+    @Override
+    public boolean containsAll(@Nonnull Collection<?> c) {
+        for (Object o : c) {
+            if (indexOf(o) < 0) return false;
+        }
+        return true;
     }
 
     public boolean containsAny(@Nonnull Collection<?> c) {

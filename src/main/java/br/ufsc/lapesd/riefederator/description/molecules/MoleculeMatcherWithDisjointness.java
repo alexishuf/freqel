@@ -332,6 +332,26 @@ public class MoleculeMatcherWithDisjointness implements Description {
     }
 
     @Override
+    public void update() {
+        /* no op */
+    }
+
+    @Override
+    public void init() {
+        /* no op */
+    }
+
+    @Override
+    public boolean waitForInit(int timeoutMilliseconds) {
+        return true; /* alway initialized */
+    }
+
+    @Override
+    public boolean updateSync(int timeoutMilliseconds) {
+        return true; //no op
+    }
+
+    @Override
     public @Nonnull String toString() {
         return String.format("MoleculeMatcherWithDisjointness(%s)", molecule.getCore().getName());
     }

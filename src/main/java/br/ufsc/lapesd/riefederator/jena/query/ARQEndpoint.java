@@ -38,7 +38,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-import static br.ufsc.lapesd.riefederator.query.EstimatePolicy.*;
+import static br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy.*;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.apache.jena.query.QueryExecutionFactory.create;
@@ -198,7 +198,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         SPARQLString sparql = new SPARQLString(query, dict, mods);
         if (sparql.getType() == SPARQLString.Type.ASK) {
             try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
-                return exec.execAsk() ? Cardinality.exact(1) : Cardinality.EMPTY;
+                return exec.execAsk() ? Cardinality.NON_EMPTY : Cardinality.EMPTY;
             }
         } else {
             String withLimit = sparql.getString() + "LIMIT "+ Math.max(limit(policy), 4) +"\n";
@@ -218,7 +218,6 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
                         : (exhausted ? Cardinality.exact(count) : Cardinality.lowerBound(count));
             }
         }
-//        return Cardinality.UNSUPPORTED;
     }
 
     @Override

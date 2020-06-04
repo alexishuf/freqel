@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.federation.cardinality;
 
 import com.google.common.base.Preconditions;
 

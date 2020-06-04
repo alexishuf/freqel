@@ -12,13 +12,15 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.EXACT;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 
 @NotThreadSafe
 public class CollectionResults implements Results {
     private final @Nonnull Collection<Solution> collection;
     private @LazyInit @Nullable Iterator<Solution> iterator = null;
     private @LazyInit int size = -1;
-    private @Nonnull Set<String> varNames;
+    private @Nonnull final Set<String> varNames;
 
     public CollectionResults(@Nonnull Collection<Solution> collection,
                              @Nonnull Collection<String> varNames) {
@@ -27,12 +29,18 @@ public class CollectionResults implements Results {
                                                 : ImmutableSet.copyOf(varNames);
     }
 
+    public static  @Nonnull CollectionResults wrapSameVars(Collection<Solution> collection) {
+        if (collection.isEmpty())
+            return new CollectionResults(emptyList(), emptySet());
+        return new CollectionResults(collection, collection.iterator().next().getVarNames());
+    }
+
     public static @Nonnull CollectionResults empty() {
-        return empty(Collections.emptySet());
+        return empty(emptySet());
     }
 
     public static @Nonnull CollectionResults empty(@Nonnull Collection<String> varNames) {
-        return new CollectionResults(Collections.emptyList(), varNames);
+        return new CollectionResults(emptyList(), varNames);
     }
 
     public static @Nonnull CollectionResults greedy(@Nonnull Results other) {

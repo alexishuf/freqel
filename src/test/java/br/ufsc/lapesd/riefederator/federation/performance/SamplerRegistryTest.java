@@ -95,6 +95,7 @@ public class SamplerRegistryTest {
         }
         assertEquals(new HashSet<>(r.getCurrentThreadSamplers()), emptySet());
 
+        listener.sync();
         assertEquals(listener.getValues(Metrics.OPT_MS).size(), 1);
         assertTrue(listener.getValues(Metrics.OPT_MS).get(0) <=  300);
 

@@ -64,7 +64,7 @@ public class TPEndpointTest extends EndpointTestBase {
                 port = serverSocket.getLocalPort();
             } catch (IOException ignored) { }
             try {
-                Thread.sleep(100);
+                Thread.sleep(300);
             } catch (InterruptedException ignored) { }
             FusekiServer server = FusekiServer.create().add("/ds", ds)
                     .loopback(true).port(port)

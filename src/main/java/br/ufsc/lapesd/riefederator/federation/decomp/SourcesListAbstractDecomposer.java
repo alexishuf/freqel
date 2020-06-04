@@ -10,7 +10,6 @@ import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableCollection;
@@ -30,7 +29,6 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     protected final @Nonnull List<Source> sources = new ArrayList<>();
     protected final @Nonnull Planner planner;
     protected final @Nonnull PerformanceListener performance;
-    protected int estimatePolicy = EstimatePolicy.local(50);
 
     public SourcesListAbstractDecomposer(@Nonnull Planner planner,
                                          @Nonnull PerformanceListener performance) {
@@ -41,11 +39,6 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     @Override
     public void addSource(@Nonnull Source source) {
         sources.add(source);
-    }
-
-    @Override
-    public void setEstimatePolicy(int estimatePolicy) {
-        this.estimatePolicy = estimatePolicy;
     }
 
     @Override
@@ -152,7 +145,7 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     protected @Nonnull QueryNode createQN(@Nonnull ProtoQueryNode proto) {
         TPEndpoint ep = proto.getEndpoint();
         CQuery query = proto.getQuery();
-        return new QueryNode(ep, query, ep.estimate(query, estimatePolicy));
+        return new QueryNode(ep, query);
     }
 
 }

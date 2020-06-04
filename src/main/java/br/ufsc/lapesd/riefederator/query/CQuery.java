@@ -85,15 +85,17 @@ public class CQuery implements  List<Triple> {
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<IndexedSet<Triple>> matchedTriples
             = new SoftReference<>(null);
+    private @SuppressWarnings("Immutable") @LazyInit Boolean joinConnected = null;
     private @LazyInit int hash = 0;
     private @LazyInit @Nullable Boolean ask = null;
 
     /* ~~~ constructor, builder & factories ~~~ */
 
-    public CQuery(@Nonnull ImmutableList<Triple> query, @Nonnull ImmutableSet<Modifier> modifiers,
-                  @Nullable PrefixDict prefixDict,
-                  @Nullable ImmutableSetMultimap<Term, TermAnnotation> termAnn,
-                  @Nullable ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnn) {
+    protected CQuery(@Nonnull ImmutableList<Triple> query, @Nonnull ImmutableSet<Modifier> modifiers,
+                     @Nullable PrefixDict prefixDict,
+                     @Nullable ImmutableSetMultimap<Term, TermAnnotation> termAnn,
+                     @Nullable ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnn,
+                     @Nullable Boolean joinConnected) {
         this.list = query;
         this.modifiers = modifiers;
         this.prefixDict = prefixDict;
@@ -124,7 +126,7 @@ public class CQuery implements  List<Triple> {
 
     public CQuery(@Nonnull ImmutableList<Triple> query,
                   @Nonnull ImmutableSet<Modifier> modifiers, @Nullable PrefixDict prefixDict) {
-        this(query, modifiers, prefixDict, null, null);
+        this(query, modifiers, prefixDict, null, null, null);
     }
 
     public CQuery(@Nonnull ImmutableList<Triple> query,
@@ -142,6 +144,7 @@ public class CQuery implements  List<Triple> {
         private @Nullable PrefixDict prefixDict = null;
         private @Nullable SetMultimap<Term, TermAnnotation> termAnn;
         private @Nullable SetMultimap<Triple, TripleAnnotation> tripleAnn;
+        private @Nullable Boolean joinConnected = null;
 
         protected WithBuilder() {
             this.list = null;
@@ -374,6 +377,11 @@ public class CQuery implements  List<Triple> {
             return this;
         }
 
+        public @Contract("_ -> this") @Nonnull WithBuilder setJoinConnected(boolean value) {
+            joinConnected = value;
+            return this;
+        }
+
         @CheckReturnValue
         public @Nonnull CQuery build() {
             ImmutableSet.Builder<Modifier> b = ImmutableSet.builder();
@@ -396,7 +404,7 @@ public class CQuery implements  List<Triple> {
             ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnn =
                     this.tripleAnn == null ? null : ImmutableSetMultimap.copyOf(this.tripleAnn);
             assert list != null;
-            return new CQuery(list, b.build(), prefixDict, termAnn, tripleAnn);
+            return new CQuery(list, b.build(), prefixDict, termAnn, tripleAnn, joinConnected);
         }
     }
 
@@ -617,6 +625,12 @@ public class CQuery implements  List<Triple> {
             return this;
         }
 
+        @Override @Contract("_ -> this")
+        public @Nonnull Builder setJoinConnected(boolean value) {
+            super.setJoinConnected(value);
+            return this;
+        }
+
         @Override
         public @Nonnull CQuery build() {
             list = ImmutableList.copyOf(mutableList);
@@ -677,7 +691,7 @@ public class CQuery implements  List<Triple> {
 
     public @Contract("_ -> new") @Nonnull CQuery withModifiers(@Nonnull CQuery other) {
         CQuery copy = new CQuery(list, other.getModifiers(), prefixDict,
-                                 termAnnotations, tripleAnnotations);
+                                 termAnnotations, tripleAnnotations, joinConnected);
         copy.ask = ask;
         copy.varsCache = varsCache;
         copy.set = set;
@@ -903,6 +917,24 @@ public class CQuery implements  List<Triple> {
      * @return true iff this query is join connected
      */
     public boolean isJoinConnected() {
+        if (joinConnected == null)
+            joinConnected = checkJoinConnected();
+        return joinConnected;
+    }
+
+    /**
+     * If a query has been determined to be join-connected externally (e.g., OuterPlanner),
+     * then this setter may be called to avoid recomputing connectedness.
+     *
+     * @param joinConnected
+     */
+    public void setJoinConnected(boolean joinConnected) {
+        assert this.joinConnected == null || this.joinConnected == joinConnected;
+        assert this.joinConnected != null || checkJoinConnected() == joinConnected;
+        this.joinConnected = joinConnected;
+    }
+
+    private boolean checkJoinConnected() {
         if (isEmpty()) return true;
 
         IndexedSet<Triple> triples = IndexedSet.fromDistinctCopy(getSet());
@@ -927,7 +959,6 @@ public class CQuery implements  List<Triple> {
             });
         }
         return visited.equals(triples);
-
     }
 
     @Contract(value = "_, _ -> new", pure = true)

@@ -30,9 +30,10 @@ public class SemanticSelectDescription extends SelectDescription implements Sema
 
     @Override
     public @Nonnull SemanticCQueryMatch semanticMatch(@Nonnull CQuery query) {
-        ensureHasData();
-        Set<Term> predicates = Objects.requireNonNull(this.predicates);
         SemanticCQueryMatch.Builder b = SemanticCQueryMatch.builder(query);
+        if (!ensureHasData())
+            return b.build();
+        Set<Term> predicates = Objects.requireNonNull(this.predicates);
         for (Triple triple : query) {
             Term p = triple.getPredicate(), o = triple.getObject();
             if (classes != null && p.equals(TYPE) && o.isURI()) {

@@ -1,7 +1,10 @@
 package br.ufsc.lapesd.riefederator.federation;
 
+import br.ufsc.lapesd.riefederator.description.Description;
+import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
+import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
 import br.ufsc.lapesd.riefederator.federation.tree.ComponentNode;
 import br.ufsc.lapesd.riefederator.federation.tree.EmptyNode;
@@ -34,6 +37,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics.INIT_SOURCES_MS;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 
 /**
  * A {@link CQEndpoint} that decomposes queries into the registered {@link Source}s.
@@ -45,17 +52,20 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private final @Nonnull DecompositionStrategy strategy;
     private final @Nonnull PlanExecutor executor;
     private final @Nonnull PerformanceListener performanceListener;
+    private final @Nonnull InnerCardinalityComputer cardinalityComputer;
     private @Nonnull TemplateExpander templateExpander;
 
     @Inject
     public Federation(@Nonnull OuterPlanner outerPlanner,
                       @Nonnull DecompositionStrategy strategy,
                       @Nonnull PlanExecutor executor,
-                      @Nonnull PerformanceListener performanceListener) {
+                      @Nonnull PerformanceListener performanceListener,
+                      @Nonnull InnerCardinalityComputer cardinalityComputer) {
         this.outerPlanner = outerPlanner;
         this.strategy = strategy;
         this.executor = executor;
         this.performanceListener = performanceListener;
+        this.cardinalityComputer = cardinalityComputer;
         this.templateExpander = new TemplateExpander();
     }
 
@@ -87,26 +97,54 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return this;
     }
 
-    @CanIgnoreReturnValue
-    public @Nonnull Federation setEstimatePolicy(int flags) {
-        strategy.setEstimatePolicy(flags);
-        return this;
-    }
-
     public @Nonnull ImmutableCollection<Source> getSources() {
         return strategy.getSources();
+    }
+
+    /**
+     * Starts parallel initialization of all source {@link Description}s and waits for
+     * at most timeout units until all initializations are complete.
+     *
+     * If the timeout expires, false will be returned, but query() can be safely called.
+     * All sources that did not yet completed background initialization will simple return
+     * empty results from their {@link Description#match(CQuery)} calls.
+     *
+     * @param timeout timeout value
+     * @param unit timeout unit
+     * @return true iff all sources completed initialization within the timeout
+     */
+    public boolean initAllSources(int timeout, @Nonnull TimeUnit unit) {
+        try (TimeSampler sampler = INIT_SOURCES_MS.createThreadSampler(performanceListener)) {
+            int timeoutMs = (int)MILLISECONDS.convert(timeout, unit);
+            Stopwatch sw = Stopwatch.createStarted();
+
+            for (Source source : getSources())
+                source.getDescription().init();
+
+            int allowed = timeoutMs - (int)sw.elapsed(MILLISECONDS);
+            int ok = 0, total = getSources().size();
+            for (Source source : getSources()) {
+                if (source.getDescription().waitForInit(allowed))
+                    ++ok;
+                allowed = timeoutMs - (int)sw.elapsed(MILLISECONDS);
+            }
+            logger.info("Initialized {}/{} source indices in {}ms", ok, total, sampler.getValue());
+            return ok == total;
+        }
     }
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         Stopwatch sw = Stopwatch.createStarted();
         PlanNode plan = plan(expandTemplates(query));
-        if (logger.isDebugEnabled()) {
-            logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",
-                         sw.elapsed(TimeUnit.MILLISECONDS)/1000.0, LogUtils.toString(query),
-                         plan.prettyPrint());
+        double planMs = sw.elapsed(MICROSECONDS)/1000.0;
+        sw.reset().start();
+        Results results = execute(query, plan);
+        if (!logger.isDebugEnabled()) {
+            logger.info("plan() took {}ms and iterators setup {}ms ",
+                        planMs, sw.elapsed(MICROSECONDS)/1000.0);
         }
-        return execute(query, plan);
+        return results;
     }
 
     @VisibleForTesting
@@ -115,6 +153,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
         results = ProjectingResults.applyIf(results, query);
         results = HashDistinctResults.applyIf(results, query);
+
         return results;
     }
 
@@ -126,6 +165,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
     @VisibleForTesting
     @Nonnull PlanNode plan(@Nonnull CQuery query) {
+        Stopwatch sw = Stopwatch.createStarted();
         ModifierUtils.check(this, query.getModifiers());
         PlanNode root = outerPlanner.plan(query);
 
@@ -141,9 +181,17 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
             }
             map.put(componentNode, componentPlan);
         });
+
         if (map.values().stream().anyMatch(EmptyNode.class::isInstance))
-            return new EmptyNode(query); //unsatisfiable
-        return TreeUtils.replaceNodes(root, map);
+            root = new EmptyNode(query); //unsatisfiable
+        root = TreeUtils.replaceNodes(root, map, cardinalityComputer);
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",
+                    sw.elapsed(MICROSECONDS)/1000.0, LogUtils.toString(query),
+                    root.prettyPrint());
+        }
+        return root;
     }
 
     @Override

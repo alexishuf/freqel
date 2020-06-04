@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
-import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
+import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.CardinalityAdder;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.WebApiEndpoint;
@@ -20,9 +21,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Objects;
+import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.cleanEquivalents;
 import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.*;
@@ -32,14 +31,56 @@ import static java.lang.Integer.MAX_VALUE;
 
 public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
     private final @Nonnull PerformanceListener performance;
+    private final @Nonnull CardinalityEnsemble cardEnsemble;
+    private final @Nonnull CardinalityAdder cardAdder;
 
     @Inject
-    public GreedyJoinOrderPlanner(@Nonnull PerformanceListener performance) {
+    public GreedyJoinOrderPlanner(@Nonnull PerformanceListener performance,
+                                  @Nonnull CardinalityEnsemble cardEnsemble,
+                                  @Nonnull CardinalityAdder cardinalityAdder) {
         this.performance = performance;
+        this.cardEnsemble = cardEnsemble;
+        this.cardAdder = cardinalityAdder;
     }
 
-    public GreedyJoinOrderPlanner() {
-        this(NoOpPerformanceListener.INSTANCE);
+    @VisibleForTesting
+    class Data {
+        private @Nonnull final JoinGraph graph;
+        public @Nonnull final IndexedSet<PlanNode> clean;
+        public @Nonnull final IndexedSubset<PlanNode> pending;
+        public @Nonnull final IndexedSubset<PlanNode> webApi;
+
+        public Data(@Nonnull JoinGraph graph, @Nonnull Collection<PlanNode> nodesCollection) {
+            this.graph = graph;
+            List<PlanNode> cleanList = new ArrayList<>();
+            for (PlanNode node : nodesCollection) {
+                PlanNode c = cleanEquivalents(node, OrderTuple.NODE_COMPARATOR);
+                c.setCardinality(TreeUtils.estimate(c, cardEnsemble, cardAdder));
+                cleanList.add(c);
+            }
+            this.clean = IndexedSet.fromDistinct(cleanList);
+            this.webApi = clean.subset(OrderTuple::hasWebApi);
+            this.pending = clean.fullSubset();
+
+        }
+
+        @Nullable JoinInfo weight(@Nonnull PlanNode a, @Nonnull PlanNode b) {
+            IndexedSet<PlanNode> nodes = graph.getNodes();
+            if (nodes.contains(a) && nodes.contains(b))
+                return graph.getWeight(a, b);
+            return JoinInfo.getPlainJoinability(a, b);
+        }
+
+        @Nonnull PlanNode take(@Nonnull PlanNode node) {
+            assert clean.contains(node);
+            assert pending.contains(node);
+            pending.remove(node);
+            return node;
+        }
+    }
+
+    @VisibleForTesting @Nonnull Data createData(JoinGraph graph) {
+        return new Data(graph, graph.getNodes());
     }
 
     @Override
@@ -48,72 +89,51 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
         try (TimeSampler ignored = Metrics.OPT_MS.createThreadSampler(performance)) {
             checkArgument(!nodesCollection.isEmpty(),
                           "Cannot optimize joins without nodes to join!");
-            IndexedSet<PlanNode> nodes = IndexedSet.from(nodesCollection);
-            IndexedSubset<PlanNode> pending = nodes.fullSubset();
-            Weigher weigher = new Weigher(takeInitialJoin(joinGraph, pending));
-            while (!pending.isEmpty()) {
-                PlanNode best = pending.stream().min(weigher.comparator).orElse(null);
-                pending.remove(best);
-                PlanNode clean = cleanEquivalents(best, OrderTuple.NODE_COMPARATOR);
-                weigher.root = JoinNode.builder(weigher.root, clean).build();
+            Data d = new Data(joinGraph, nodesCollection);
+            Weigher weigher = new Weigher(takeInitialJoin(d));
+            while (!d.pending.isEmpty()) {
+                PlanNode best = d.pending.stream().min(weigher.comparator).orElse(null);
+                weigher.root = JoinNode.builder(weigher.root, d.take(best)).build();
             }
             return weigher.root;
         }
     }
 
-    static @Nonnull PlanNode takeInitialJoin(@Nonnull JoinGraph graph,
-                                             @Nonnull IndexedSubset<PlanNode> pending) {
-        int size = graph.size();
-        if (GreedyJoinOrderPlanner.class.desiredAssertionStatus()) {
-            checkArgument(graph.getNodes().containsAll(pending), "The set of pending (" +
-                    pending.size() + ") nodes should be a subset of the JoinGraph");
-        }
-        checkArgument(size > 0, "Cannot find best join in empty JoinGraph!");
-        if (size == 1) {
-            PlanNode node = pending.iterator().next();
-            pending.remove(node);
-            return cleanEquivalents(node, OrderTuple.NODE_COMPARATOR); // no join to do
-        }
+    static @Nonnull PlanNode takeInitialJoin(@Nonnull Data d) {
+        assert d.pending.containsAll(d.clean) : "There are non-pending nodes!";
+        int size = d.pending.size();
+        checkArgument(size > 0, "No pending nodes, no join!");
+        if (size == 1)
+            return d.take(d.pending.iterator().next());
 
-        boolean[] hasWebApi = new boolean[size];
-        PlanNode[] clean = new PlanNode[size];
-        for (int i = 0; i < size; i++) {
-            clean[i] = TreeUtils.cleanEquivalents(graph.get(i), OrderTuple.NODE_COMPARATOR);
-            hasWebApi[i] = OrderTuple.hasWebApi(clean[i]);
-        }
-
-        int bestI = -1, bestJ = -1;
+        PlanNode bestOuter = null, bestInner = null;
         OrderTuple best = OrderTuple.MAX;
+
         for (int i = 0; i < size; i++) {
-            if (!pending.contains(graph.get(i))) continue;
+            PlanNode outer = d.clean.get(i);
             for (int j = i+1; j < size; j++) {
-                if (!pending.contains(graph.get(j))) continue;
-                JoinInfo info = graph.getWeight(i, j);
+                PlanNode inner = d.clean.get(j);
+                JoinInfo info = d.weight(outer, inner);
                 if (info == null || !info.isValid())
                     continue;
-
-                Cardinality lCard = clean[i].getCardinality(),
-                            rCard = clean[j].getCardinality();
+                Cardinality lCard = outer.getCardinality(),
+                            rCard = inner.getCardinality();
                 int cardDiff = OrderTuple.compareCardinality(lCard, rCard);
                 Cardinality bestCard = cardDiff <= 0 ? lCard : rCard;
-                boolean isWebApi = hasWebApi[i] || hasWebApi[j];
+                boolean isWebApi = d.webApi.contains(outer) || d.webApi.contains(inner);
                 int pendingInputs = info.getPendingRequiredInputs().size();
                 OrderTuple tuple = new OrderTuple(bestCard, pendingInputs, isWebApi);
                 if (tuple.compareTo(best) < 0) {
-                    bestI = i;
-                    bestJ = j;
+                    bestOuter = outer;
+                    bestInner = inner;
                     best = tuple;
                 }
             }
         }
 
-        checkArgument(bestI >= 0,
+        checkArgument(bestOuter != null,
                      "Found no joins in JoinGraph (with "+size+" nodes)!");
-        boolean removedBestI = pending.remove(graph.get(bestI));
-        assert removedBestI;
-        boolean removedBestJ = pending.remove(graph.get(bestJ));
-        assert removedBestJ;
-        return JoinNode.builder(clean[bestI], clean[bestJ]).build();
+        return JoinNode.builder(d.take(bestOuter), d.take(bestInner)).build();
     }
 
     @VisibleForTesting
@@ -155,7 +175,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
 
         private static final int SMALL = 8;
         private static final int BIG   = 64;
-        private static final int HUGE = 512;
+        private static final int HUGE = 10000;
         public @Nonnull Cardinality cardinality;
         public int pendingInputs;
         public boolean isWebApi;
@@ -221,9 +241,9 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
 
             if (isGuess(lr) && isGuess(rr)) {
                 // if values are close, but reliabilities differ, the most reliable is the smaller
-                if (lr != rr && Math.abs(lv - rv) <= BIG)
+                if (lr != rr && isClose(lv, rv, 0.05, BIG))
                     return -1 * Integer.compare(lr.ordinal(), rr.ordinal());
-                if (lr == rr && Math.abs(lv - rv) <= SMALL)
+                if (lr == rr && isClose(lv, rv, 0.01, SMALL))
                     return 0; //if same reliability with small difference, consider equal
                 // if values are not close or lr==rr, smaller value is smaller cardinality
                 return Integer.compare(lv, rv);
@@ -239,6 +259,14 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
             assert rr.ordinal() > LOWER_BOUND.ordinal();
             assert lr.ordinal() > LOWER_BOUND.ordinal();
             return Integer.compare(lv, rv);
+        }
+
+        private static boolean isClose(int l, int r, double proportion, int threshold) {
+            assert proportion >= 0;
+            assert proportion < 1;
+
+            int max = Math.max(l, r), min = Math.min(l, r);
+            return max-min <= threshold || min >= max*(1-proportion);
         }
 
         private static boolean isGuess(Cardinality.Reliability lr) {

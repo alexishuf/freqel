@@ -1,21 +1,31 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.federation.cardinality.impl;
+
+import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityComparator;
+import br.ufsc.lapesd.riefederator.query.Cardinality;
 
 import javax.annotation.Nonnull;
-import java.util.Comparator;
+import javax.inject.Provider;
 
 import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.*;
 
-public class CardinalityComparator implements Comparator<Cardinality> {
+public class ThresholdCardinalityComparator implements CardinalityComparator {
     private final int large;
     private final int huge;
 
-    public static final @Nonnull CardinalityComparator DEFAULT = new CardinalityComparator();
+    public static final @Nonnull ThresholdCardinalityComparator DEFAULT = new ThresholdCardinalityComparator();
 
-    public CardinalityComparator() {
+    public static class SingletonProvider implements Provider<CardinalityComparator> {
+        @Override
+        public @Nonnull ThresholdCardinalityComparator get() {
+            return DEFAULT;
+        }
+    }
+
+    public ThresholdCardinalityComparator() {
         this(256, 2048);
     }
 
-    public CardinalityComparator(int large, int huge) {
+    public ThresholdCardinalityComparator(int large, int huge) {
         this.large = large;
         this.huge = huge;
     }

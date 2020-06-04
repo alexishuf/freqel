@@ -41,6 +41,11 @@ public class NaiveOuterPlanner implements OuterPlanner {
     }
 
     @Override
+    public String toString() {
+        return "NaiveOuterPlanner";
+    }
+
+    @Override
     public @Nonnull PlanNode plan(@Nonnull CQuery query) {
         try (TimeSampler ignored = Metrics.OUT_PLAN_MS.createThreadSampler(performance)) {
             if (query.isEmpty())
@@ -48,8 +53,10 @@ public class NaiveOuterPlanner implements OuterPlanner {
             IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.getMatchedTriples());
             List<IndexedSet<Triple>> components = getCartesianComponents(full);
             assert !components.isEmpty();
-            if (components.size() == 1)
+            if (components.size() == 1) {
+                query.setJoinConnected(true);
                 return new ComponentNode(query);
+            }
 
             Set<SPARQLFilter> filters = query.getModifiers().stream()
                     .filter(SPARQLFilter.class::isInstance)
@@ -71,6 +78,7 @@ public class NaiveOuterPlanner implements OuterPlanner {
                     }
                 }
                 builder.copyAnnotations(query);
+                builder.setJoinConnected(true);
                 componentNodes.add(new ComponentNode(builder.build()));
             }
             CartesianNode root = new CartesianNode(componentNodes);

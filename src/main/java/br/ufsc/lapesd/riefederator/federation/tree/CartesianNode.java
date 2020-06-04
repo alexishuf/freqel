@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 
 import javax.annotation.Nonnull;
@@ -19,8 +19,8 @@ public class CartesianNode extends AbstractInnerPlanNode {
 
     private static @Nonnull Cardinality computeCardinality(@Nonnull Collection<PlanNode> children) {
         Cardinality max = children.stream().map(PlanNode::getCardinality)
-                .max(CardinalityComparator.DEFAULT).orElse(Cardinality.UNSUPPORTED);
-        if (max.getReliability().ordinal() >= Cardinality.Reliability.LOWER_BOUND.ordinal()) {
+                .max(ThresholdCardinalityComparator.DEFAULT).orElse(Cardinality.UNSUPPORTED);
+        if (max.getReliability().isAtLeast(Cardinality.Reliability.LOWER_BOUND)) {
             int value = max.getValue(Integer.MAX_VALUE);
             assert value != Integer.MAX_VALUE;
             double pow = Math.pow(value, children.size());

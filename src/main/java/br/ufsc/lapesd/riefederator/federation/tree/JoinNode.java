@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -163,7 +163,7 @@ public class JoinNode extends AbstractInnerPlanNode {
 
     private static @Nonnull Cardinality getCardinality(@Nonnull PlanNode l, @Nonnull PlanNode r) {
         Cardinality lc = l.getCardinality(), rc = r.getCardinality();
-        return CardinalityComparator.DEFAULT.compare(lc, rc) < 0 ? lc : rc;
+        return ThresholdCardinalityComparator.DEFAULT.compare(lc, rc) < 0 ? lc : rc;
     }
 
     @Override

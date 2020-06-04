@@ -45,6 +45,11 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @Override
+    public String toString() {
+        return "JoinPathsPlanner";
+    }
+
+    @Override
     public @Nonnull PlanNode plan(@Nonnull CQuery query, @Nonnull Collection<QueryNode> qns){
         checkArgument(!qns.isEmpty(), "Cannot plan without QueryNodes!");
         if (query.isEmpty())
@@ -59,9 +64,8 @@ public class JoinPathsPlanner implements Planner {
         /* throw instead of EmptyNode bcs allowJoinDisconnected(). Failing here means someone
            built a Federation using incompatible components. This is likely a bug in the
            Federation creator */
-        NaiveOuterPlanner outerPlanner = new NaiveOuterPlanner();
-        PlanNode plan = outerPlanner.plan(query);
-        if (!(plan instanceof ComponentNode)) {
+        if (!query.isJoinConnected()) {
+            PlanNode plan = new NaiveOuterPlanner().plan(query);
             logger.warn("JoinPathsPlanner was designed for handling conjunctive queries, yet " +
                         "the given query requires Cartesian products or unions. Will try to " +
                         "continue, but planning may fail. Query: {}", query);
@@ -83,6 +87,7 @@ public class JoinPathsPlanner implements Planner {
             }
             return TreeUtils.replaceNodes(plan, replacements);
         } else {
+
             PlanNode root = plan(qns, full);
             if (root == null) {
                 logger.info("No join path across endpoints for join-connected query {}. " +

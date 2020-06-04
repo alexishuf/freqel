@@ -26,6 +26,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 public class OuterPlannerTest implements TestContext {
@@ -127,5 +128,7 @@ public class OuterPlannerTest implements TestContext {
         assertTrue(actual.stream().allMatch(a -> expected.stream()
                 .anyMatch(e -> e.getSet().equals(a.getSet())
                         && e.getModifiers().equals(a.getModifiers()))));
+
+        assertEquals(query.isJoinConnected(), expectedComponents.size()==1);
     }
 }

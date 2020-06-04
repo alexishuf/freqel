@@ -2,17 +2,21 @@ package br.ufsc.lapesd.riefederator.federation.spec;
 
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
+import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.federation.spec.source.SourceLoader;
 import br.ufsc.lapesd.riefederator.federation.spec.source.SourceLoaderRegistry;
-import br.ufsc.lapesd.riefederator.query.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.util.DictTree;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.inject.Injector;
 import com.google.inject.Module;
+import com.google.inject.util.Modules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.inject.Guice.createInjector;
@@ -21,7 +25,8 @@ public class FederationSpecLoader {
     private static final Logger logger = LoggerFactory.getLogger(FederationSpecLoader.class);
 
     private @Nonnull SourceLoaderRegistry loaderRegistry = SourceLoaderRegistry.getDefault();
-    private @Nonnull Module federationComponents = new SimpleFederationModule();
+    private @Nonnull SimpleFederationModule federationComponents = new SimpleFederationModule();
+    private @Nonnull List<Module> overridingModules = new ArrayList<>();
 
     public void setLoaderRegistry(@Nonnull SourceLoaderRegistry loaderRegistry) {
         this.loaderRegistry = loaderRegistry;
@@ -31,12 +36,10 @@ public class FederationSpecLoader {
         return loaderRegistry;
     }
 
-    public @Nonnull Module getFederationComponents() {
-        return federationComponents;
-    }
-
-    public void setFederationComponents(@Nonnull Module federationComponents) {
-        this.federationComponents = federationComponents;
+    @CanIgnoreReturnValue
+    public @Nonnull FederationSpecLoader overrideWith(Module module) {
+        overridingModules.add(module);
+        return this;
     }
 
     public @Nonnull Federation load(@Nonnull File file)
@@ -50,8 +53,10 @@ public class FederationSpecLoader {
         List<Object> list = spec.getListNN("sources");
         if (list.isEmpty())
             throw new FederationSpecException("No sources listed!", spec);
-        Federation federation = createInjector(federationComponents).getInstance(Federation.class);
-        federation.setEstimatePolicy(parseEstimatePolicy(spec));
+        federationComponents.setLimitEstimatePolicy(parseEstimatePolicy(spec));
+        Injector injector = createInjector(Modules.override(federationComponents)
+                                                  .with(overridingModules));
+        Federation federation = injector.getInstance(Federation.class);
         for (Object obj : list) {
             if (!(obj instanceof DictTree)) {
                 logger.warn("Ignoring non-object entry {} in sources list", obj);

@@ -101,6 +101,13 @@ public abstract class AbstractPlanNode implements PlanNode {
     }
 
     @Override
+    public @Nonnull Cardinality setCardinality(@Nonnull Cardinality cardinality) {
+        Cardinality old = this.cardinality;
+        this.cardinality = cardinality;
+        return old;
+    }
+
+    @Override
     public boolean addFilter(@Nonnull SPARQLFilter filter) {
         return filters.add(filter);
     }

@@ -17,7 +17,7 @@ public class Cardinality  {
     public enum Reliability {
         UNSUPPORTED,
         /**
-         * No cardinality information byond the knwoledge that it is not empty. This differs
+         * No cardinality information beyond the knowledge that it is not empty. This differs
          * from LOWER_BOUND by always returning 1 as value.
          */
         NON_EMPTY,
@@ -36,7 +36,14 @@ public class Cardinality  {
         /**
          * Exact number of results
          */
-        EXACT
+        EXACT;
+
+        public boolean isAtLeast(@Nonnull Reliability reference) {
+            return ordinal() >= reference.ordinal();
+        }
+        public boolean isAtMost(@Nonnull Reliability reference) {
+            return ordinal() <= reference.ordinal();
+        }
     }
 
     private final @Nonnull Reliability reliability;
@@ -78,6 +85,13 @@ public class Cardinality  {
      */
     public int getValue(int fallback) {
         return reliability == Reliability.UNSUPPORTED ? fallback : value;
+    }
+
+    public @Nonnull Cardinality decrement() {
+        if (getReliability().isAtMost(Reliability.NON_EMPTY)) return this;
+        assert value >= 0;
+        if (value < 2) return this;
+        return new Cardinality(getReliability(), value-1);
     }
 
     public static @Nullable Cardinality parse(@Nonnull String string) {

@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import static br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults.wrapSameVars;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -64,7 +65,7 @@ public class CartesianResultsTest {
     public void testProductWithSingleSingleton() {
         CollectionResults largest = createResults(2, "x");
         List<Solution> list1 = createSolutions(1, "y");
-        CartesianResults r = new CartesianResults(largest, singletonList(list1),
+        CartesianResults r = new CartesianResults(largest, singletonList(wrapSameVars(list1)),
                                                   Sets.newHashSet("x", "y"));
 
         assertTrue(r.hasNext());
@@ -85,7 +86,7 @@ public class CartesianResultsTest {
     public void testProductWithSingle() {
         CollectionResults largest = createResults(2, "x");
         List<Solution> list1 = createSolutions(2, "y");
-        CartesianResults r = new CartesianResults(largest, singletonList(list1),
+        CartesianResults r = new CartesianResults(largest, singletonList(wrapSameVars(list1)),
                                                   Sets.newHashSet("x", "y"));
 
         assertTrue(r.hasNext());
@@ -112,7 +113,8 @@ public class CartesianResultsTest {
         CollectionResults largest = createResults(2, "x");
         List<Solution> list1 = createSolutions(2, "y");
         List<Solution> list2 = emptyList();
-        CartesianResults r = new CartesianResults(largest, asList(list1, list2),
+        CartesianResults r = new CartesianResults(largest,
+                                                  asList(wrapSameVars(list1), wrapSameVars(list2)),
                                                   Sets.newHashSet("x", "y"));
 
         assertFalse(r.hasNext());
@@ -125,7 +127,8 @@ public class CartesianResultsTest {
         CollectionResults largest = createResults(2, "x");
         List<Solution> list1 = createSolutions(2, "y");
         List<Solution> list2 = createSolutions(2, "z");
-        CartesianResults r = new CartesianResults(largest, asList(list1, list2),
+        CartesianResults r = new CartesianResults(largest,
+                                                  asList(wrapSameVars(list1), wrapSameVars(list2)),
                                                   Sets.newHashSet("x", "y", "z"));
 
         assertTrue(r.hasNext());

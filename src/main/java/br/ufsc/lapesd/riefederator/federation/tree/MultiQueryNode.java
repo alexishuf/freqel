@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
@@ -109,7 +109,7 @@ public class MultiQueryNode extends AbstractInnerPlanNode {
             }
             if (cardinality == null) {
                 cardinality = list.stream().map(PlanNode::getCardinality)
-                        .min(CardinalityComparator.DEFAULT).orElse(Cardinality.UNSUPPORTED);
+                        .min(ThresholdCardinalityComparator.DEFAULT).orElse(Cardinality.UNSUPPORTED);
             }
             return new MultiQueryNode(list, ImmutableSet.copyOf(resultVars),
                             resultVars.size() != all.size(),

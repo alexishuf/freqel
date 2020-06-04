@@ -11,7 +11,6 @@ import br.ufsc.lapesd.riefederator.util.ChildJVM;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -32,6 +31,9 @@ import java.net.ServerSocket;
 import java.net.URI;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -106,24 +108,43 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
             port = serverSocket.getLocalPort();
         } catch (IOException ignored) { }
         try {
-            Thread.sleep(200);
+            Thread.sleep(300);
         } catch (InterruptedException ignored) { }
         return port;
     }
 
     private String waitForListening(ChildJVM process) throws Exception {
         Pattern rx = Pattern.compile("SPARQL endpoint listening on (http://[^/]+/sparql/query)");
-        Stopwatch sw = Stopwatch.createStarted();
+
         BufferedReader reader = process.getStdOutReader();
-        while (sw.elapsed(SECONDS) < 30) {
-            String line = reader.readLine();
-            Matcher matcher = rx.matcher(line);
-            if (matcher.find())
-                return matcher.group(1);
+        CompletableFuture<String> uriFuture = new CompletableFuture<>();
+        Thread thread = new Thread(() -> {
+            try {
+                String line = reader.readLine();
+                for (; line != null; line = reader.readLine()) {
+                    Matcher matcher = rx.matcher(line);
+                    if (matcher.find()) {
+                        uriFuture.complete(matcher.group(1));
+                        break;
+                    }
+                }
+            } catch (IOException e) {
+                uriFuture.completeExceptionally(e);
+            }
+        });
+        thread.start();
+        try {
+            return uriFuture.get(30, SECONDS);
+        } catch (ExecutionException|TimeoutException e) {
+            try {
+                thread.interrupt();
+                process.close();
+                thread.join(10000);
+            } catch (Exception e2) {
+                e.addSuppressed(e2);
+            }
+            throw e;
         }
-        process.close(); //timeout!
-        String msg = "waitForListening timed out after " + sw.elapsed(SECONDS) + " seconds";
-        throw new AssertionError(msg);
     }
 
     @Test
@@ -167,7 +188,9 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
         server = ChildJVM.builder(ServerMain.class)
                 .addArguments("--address", "localhost")
                 .addArguments("--port", String.valueOf(port))
-                .addArguments("--config", config.getAbsolutePath()).start();
+                .addArguments("--config", config.getAbsolutePath())
+                .redirectError(ProcessBuilder.Redirect.INHERIT)
+                .start();
         String sparqlEp = waitForListening(server);
 
         ClassLoader cl = Thread.currentThread().getContextClassLoader();

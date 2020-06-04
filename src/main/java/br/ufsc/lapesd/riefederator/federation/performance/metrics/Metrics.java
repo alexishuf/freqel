@@ -11,6 +11,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 
 import javax.annotation.Nonnull;
+import java.util.concurrent.TimeUnit;
 
 public class Metrics {
     /**
@@ -18,6 +19,15 @@ public class Metrics {
      */
     public static final @Nonnull SimpleMetric<Integer> SOURCES_COUNT
             = SimpleMetric.builder("SOURCES_COUNT").create(Integer.class);
+
+    /**
+     * Time spent executing {@link Federation#initAllSources(int, TimeUnit)}.
+     *
+     * Note that samples of this metric will be cropped to the timeout given to
+     * {@link Federation#initAllSources(int, TimeUnit)}
+     */
+    public static final @Nonnull SimpleTimeMetric INIT_SOURCES_MS
+            = new SimpleTimeMetric("INIT_SOURCES_MS");
 
     /**
      * Time spent executing {@link Description#match(CQuery)}.

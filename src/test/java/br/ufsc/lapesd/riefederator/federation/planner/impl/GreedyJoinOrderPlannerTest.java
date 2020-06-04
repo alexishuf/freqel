@@ -2,6 +2,8 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.NoCardinalityEnsemble;
+import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
@@ -14,10 +16,10 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.RelativeCardinalityAdder;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.EmptyWebApiEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Collections2;
@@ -50,6 +52,10 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
 
     private static final EmptyEndpoint ep1 = new EmptyEndpoint(), ep2 = new EmptyEndpoint();
     private static final EmptyWebApiEndpoint wep = new EmptyWebApiEndpoint();
+    private static final GreedyJoinOrderPlanner planner = new GreedyJoinOrderPlanner(
+            NoOpPerformanceListener.INSTANCE, NoCardinalityEnsemble.INSTANCE,
+            RelativeCardinalityAdder.DEFAULT
+    );
 
     static {
         ep1.addAlternative(ep2);
@@ -106,9 +112,9 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
 
                 // prefer UNSUPPORTED if other side is guessed or known to be huge
                 asList(Cardinality.UNSUPPORTED, 0, false,
-                       exact(800), 0, false, -1),
+                       exact(10800), 0, false, -1),
                 asList(Cardinality.UNSUPPORTED, 0, false,
-                       Cardinality.guess(800), 0, false, -1),
+                       Cardinality.guess(10800), 0, false, -1),
 
                 // hierarchy of reliability (GUESS)
                 asList(Cardinality.guess(2), 0, false,
@@ -184,7 +190,7 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
     @Test(dataProvider = "compareTupleData")
     public void testReflexiveComparison(Cardinality lCard, int lPending, boolean lApi,
                                         Cardinality rCard, int rPending, boolean rApi,
-                                        int expected) {
+                                        int ignored) {
         GreedyJoinOrderPlanner.OrderTuple l, r;
         l = new GreedyJoinOrderPlanner.OrderTuple(lCard, lPending, lApi);
         r = new GreedyJoinOrderPlanner.OrderTuple(rCard, rPending, rApi);
@@ -220,10 +226,10 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
         JoinGraph graph = new JoinGraph(IndexedSet.from(singletonList(
                 n(ep1, NON_EMPTY, Alice, p1, x))
         ));
-        IndexedSubset<PlanNode> pending = graph.getNodes().fullSubset();
-        PlanNode node = GreedyJoinOrderPlanner.takeInitialJoin(graph, pending);
+        GreedyJoinOrderPlanner.Data data = planner.createData(graph);
+        PlanNode node = GreedyJoinOrderPlanner.takeInitialJoin(data);
         assertSame(node, graph.get(0));
-        assertTrue(pending.isEmpty());
+        assertTrue(data.pending.isEmpty());
     }
 
     @Test
@@ -231,9 +237,9 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
         JoinGraph graph = new JoinGraph(IndexedSet.from(singletonList(
                 m(n(ep1, NON_EMPTY, Alice, p1, x), n(ep2, NON_EMPTY, Alice, p1, x))
         )));
-        IndexedSubset<PlanNode> pending = graph.getNodes().fullSubset();
-        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(graph, pending);
-        assertTrue(pending.isEmpty());
+        GreedyJoinOrderPlanner.Data data = planner.createData(graph);
+        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data);
+        assertTrue(data.pending.isEmpty());
 
         assertNotSame(root, graph.get(0));
         assertTrue(graph.get(0).getChildren().contains(root));
@@ -251,9 +257,9 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
                 m(n(ep1, NON_EMPTY, x, p1, y), best.get(1)),
                 n(ep1, NON_EMPTY, y, p1, Bob)
         )));
-        IndexedSubset<PlanNode> pending = graph.getNodes().fullSubset();
-        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(graph, pending);
-        assertEquals(pending, singleton(graph.get(2)));
+        GreedyJoinOrderPlanner.Data data = planner.createData(graph);
+        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data);
+        assertEquals(data.pending, singleton(graph.get(2)));
         assertEquals(new HashSet<>(root.getChildren()), new HashSet<>(best));
     }
 
@@ -294,17 +300,20 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
         //noinspection UnstableApiUsage
         for (List<PlanNode> permutation : Collections2.permutations(Scenario1.nodes)) {
             JoinGraph graph = new JoinGraph(IndexedSet.from(permutation));
-            IndexedSubset<PlanNode> pending = graph.getNodes().fullSubset();
-            PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(graph, pending);
+            GreedyJoinOrderPlanner.Data data = planner.createData(graph);
+            PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data);
 
             assertEquals(new HashSet<>(root.getChildren()), expected, "i="+i);
-            assertTrue(expected.stream().noneMatch(pending::contains), "i="+i);
+            assertTrue(expected.stream().noneMatch(data.pending::contains), "i="+i);
         }
     }
 
     @Test
     public void testPlanForScenario() {
-        GreedyJoinOrderPlanner planner = new GreedyJoinOrderPlanner();
+        GreedyJoinOrderPlanner planner
+                = new GreedyJoinOrderPlanner(NoOpPerformanceListener.INSTANCE,
+                                             NoCardinalityEnsemble.INSTANCE,
+                                             RelativeCardinalityAdder.DEFAULT);
         JoinGraph graph = new JoinGraph(IndexedSet.from(Scenario1.nodes));
         PlanNode root = planner.plan(graph, Scenario1.nodes);
 

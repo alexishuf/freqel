@@ -69,6 +69,12 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public static @Nonnull List<Class<? extends JoinOrderPlanner>> joinOrderPlannerClasses
             = asList(ArbitraryJoinOrderPlanner.class, GreedyJoinOrderPlanner.class);
 
+    public static boolean isFast(@Nonnull Class<? extends Planner> planner,
+                                 @Nonnull Class<? extends JoinOrderPlanner> joinPlanner) {
+        return planner.equals(JoinPathsPlanner.class)
+                && !joinPlanner.equals(ArbitraryJoinOrderPlanner.class);
+    }
+
     public static @Nonnull List<Supplier<Planner>> suppliers;
 
     static {
