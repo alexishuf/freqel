@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,13 +46,14 @@ public class ChildJVM implements AutoCloseable {
 
     public static class Builder {
         private final @Nonnull Class<?> aClass;
-        private @Nonnull String java;
+        private @Nonnull final String java;
         private final List<String> appArguments = new ArrayList<>();
         private final List<String> jvmArguments = new ArrayList<>();
         private @Nonnull ProcessBuilder.Redirect inRedirect = ProcessBuilder.Redirect.PIPE,
                 outRedirect = ProcessBuilder.Redirect.PIPE,
                 errRedirect = ProcessBuilder.Redirect.PIPE;
-        private @Nonnull String classpath, xmx;
+        private @Nonnull final String classpath;
+        private @Nonnull String xmx;
         private @Nullable String xms;
         private boolean allowReflectiveJavaLang = true;
 
@@ -65,66 +67,80 @@ public class ChildJVM implements AutoCloseable {
             classpath = System.getProperty("java.class.path");
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull Builder inheritOutAndErr() {
             redirectOutput(ProcessBuilder.Redirect.INHERIT);
             redirectError(ProcessBuilder.Redirect.INHERIT);
             return this;
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull Builder redirectOutput(@Nonnull ProcessBuilder.Redirect redirect) {
             outRedirect = redirect;
             return this;
         }
+        @CanIgnoreReturnValue
         public @Nonnull Builder redirectError(@Nonnull ProcessBuilder.Redirect redirect) {
             errRedirect = redirect;
             return this;
         }
+        @CanIgnoreReturnValue
         public @Nonnull Builder redirectInput(@Nonnull ProcessBuilder.Redirect redirect) {
             inRedirect = redirect;
             return this;
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull Builder setAllowReflectiveJavaLang(boolean value) {
             allowReflectiveJavaLang = true;
             return this;
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull Builder setXmx(@Nonnull String value) {
             Matcher matcher = XM_RX.matcher(value);
             checkArgument(matcher.matches(), value + " is not valid for -Xmx");
             xmx = matcher.group(1);
             return this;
         }
+        @CanIgnoreReturnValue
         public @Nonnull Builder setXmx(long bytes) {
             return setXmx(String.valueOf(bytes));
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull Builder setXms(@Nonnull String value) {
             Matcher matcher = XM_RX.matcher(value);
             checkArgument(matcher.matches(), value + " is not valid for -Xms");
             xms = matcher.group(1);
             return this;
         }
+        @CanIgnoreReturnValue
         public @Nonnull Builder setXms(long bytes) {
             return setXmx(String.valueOf(bytes));
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull Builder addJavaArguments(@Nonnull Collection<String> args) {
             jvmArguments.addAll(args);
             return this;
         }
+        @CanIgnoreReturnValue
         public @Nonnull Builder addJavaArguments(@Nonnull String... args) {
             return addJavaArguments(asList(args));
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull Builder addArguments(@Nonnull Collection<String> args) {
             appArguments.addAll(args);
             return this;
         }
+        @CanIgnoreReturnValue
         public @Nonnull Builder addArguments(@Nonnull String... args) {
             return addArguments(asList(args));
         }
 
+        @CanIgnoreReturnValue
         public @Nonnull ChildJVM start() throws IOException {
             List<String> fullCommand = new ArrayList<>();
             fullCommand.add(java);
@@ -221,5 +237,10 @@ public class ChildJVM implements AutoCloseable {
         }
         b.setLength(b.length()-1);
         return b.toString();
+    }
+
+    @Override
+    public String toString() {
+        return "ChildJVM["+process.toString()+"]["+abbrevCommand()+"]";
     }
 }
