@@ -2,7 +2,6 @@ package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
@@ -11,7 +10,6 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static com.google.common.collect.Sets.newHashSet;
@@ -61,21 +59,6 @@ public class ProjectingResultsTest implements TestContext {
         assertEquals(actual,
                 singletonList(MapSolution.builder().put("x", Alice)
                                                    .put("w", null).build()));
-    }
-
-    @Test
-    public void testRetainsCardinality() {
-        CollectionResults empty = new CollectionResults(emptyList(), singleton("x"));
-        CollectionResults two = new CollectionResults(Arrays.asList(
-                MapSolution.build("x", uri(1)),
-                MapSolution.build("x", uri(2))
-        ), singleton("x"));
-
-        ProjectingResults p = new ProjectingResults(empty, singleton("x"));
-        assertEquals(p.getCardinality(), Cardinality.exact(0));
-
-        p = new ProjectingResults(two, singleton("x"));
-        assertEquals(p.getCardinality(), Cardinality.exact(2));
     }
 
     @Test

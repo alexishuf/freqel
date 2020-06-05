@@ -17,12 +17,10 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Function;
 
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.EXACT;
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.UPPER_BOUND;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
 
 public class ResultsTest implements TestContext {
     public static final @Nonnull List<NamedFunction<List<Solution>, Results>> factories;
@@ -59,17 +57,8 @@ public class ResultsTest implements TestContext {
         try (Results it = factory.apply(expected)) {
             HashSet<String> startVars = new HashSet<>(it.getVarNames());
 
-            assertNotNull(it.getCardinality());
-            int size = expected.size();
-            if (it.getCardinality().getReliability().ordinal() >= UPPER_BOUND.ordinal())
-                assertEquals(it.getCardinality().getValue(-1), size);
-
-            while (it.hasNext()) {
+            while (it.hasNext())
                 actual.add(it.next());
-                --size;
-                if (it.getCardinality().getReliability().ordinal() >= UPPER_BOUND.ordinal())
-                    assertEquals(it.getCardinality().getValue(-1), size);
-            }
             assertEquals(actual, new ArrayList<>(expected));
             assertEquals(it.getVarNames(), startVars);
         }
@@ -103,21 +92,11 @@ public class ResultsTest implements TestContext {
     @Test(dataProvider = "factoriesData")
     public void testExhaust(Function<Collection<Solution>, Results> fac) {
         try (Results it = fac.apply(expectedTWo)) {
-            int size = expectedTWo.size();
-            if (it.getCardinality().getReliability() == EXACT)
-                assertEquals(it.getReadyCount(), size);
-            if (it.getCardinality().getReliability().ordinal() >= UPPER_BOUND.ordinal())
-                assertEquals(it.getCardinality().getValue(-1), size);
             while (it.hasNext()) {
+                assertTrue(it.getReadyCount() > 0);
                 it.next();
-                --size;
-                if (it.getCardinality().getReliability().ordinal() >= UPPER_BOUND.ordinal())
-                    assertEquals(it.getCardinality().getValue(-1), size);
-                if (it.getCardinality().getReliability() == EXACT)
-                    assertEquals(it.getReadyCount(), size);
             }
             assertEquals(it.getReadyCount(), 0);
-            assertEquals(it.getCardinality(), new Cardinality(EXACT, 0));
         }
     }
 }

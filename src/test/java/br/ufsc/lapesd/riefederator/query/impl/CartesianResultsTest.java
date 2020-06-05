@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CartesianResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
@@ -46,7 +45,6 @@ public class CartesianResultsTest {
         CollectionResults in = createResults(0, "x");
         CartesianResults r = new CartesianResults(in, emptyList(), Sets.newHashSet("x"));
         assertFalse(r.hasNext());
-        assertEquals(r.getCardinality(), Cardinality.exact(0));
     }
 
     @Test
@@ -54,7 +52,6 @@ public class CartesianResultsTest {
         CollectionResults in = createResults(2, "x");
         CartesianResults r = new CartesianResults(in, emptyList(), Sets.newHashSet("x"));
         assertTrue(r.hasNext());
-        assertEquals(r.getCardinality(), Cardinality.exact(2));
 
         List<Solution> actual = new ArrayList<>();
         r.forEachRemainingThenClose(actual::add);
@@ -69,7 +66,6 @@ public class CartesianResultsTest {
                                                   Sets.newHashSet("x", "y"));
 
         assertTrue(r.hasNext());
-        assertEquals(r.getCardinality(), Cardinality.exact(2));
 
         List<Solution> list = new ArrayList<>();
         r.forEachRemaining(list::add);
@@ -79,7 +75,6 @@ public class CartesianResultsTest {
                 MapSolution.builder().put("x", uri("x", 1))
                                      .put("y", uri("y", 0)).build()
                 ));
-        assertEquals(r.getCardinality(), Cardinality.exact(0));
     }
 
     @Test
@@ -90,7 +85,6 @@ public class CartesianResultsTest {
                                                   Sets.newHashSet("x", "y"));
 
         assertTrue(r.hasNext());
-        assertEquals(r.getCardinality(), Cardinality.exact(4));
 
         List<Solution> list = new ArrayList<>();
         r.forEachRemaining(list::add);
@@ -104,7 +98,6 @@ public class CartesianResultsTest {
                 MapSolution.builder().put("x", uri("x", 1))
                                      .put("y", uri("y", 1)).build()
         ));
-        assertEquals(r.getCardinality(), Cardinality.exact(0));
     }
 
 
@@ -118,7 +111,6 @@ public class CartesianResultsTest {
                                                   Sets.newHashSet("x", "y"));
 
         assertFalse(r.hasNext());
-        assertEquals(r.getCardinality(), Cardinality.exact(0));
         expectThrows(NoSuchElementException.class, r::next);
     }
 
@@ -132,7 +124,6 @@ public class CartesianResultsTest {
                                                   Sets.newHashSet("x", "y", "z"));
 
         assertTrue(r.hasNext());
-        assertEquals(r.getCardinality(), Cardinality.exact(8));
 
         List<Solution> list = new ArrayList<>();
         r.forEachRemaining(list::add);
@@ -163,6 +154,5 @@ public class CartesianResultsTest {
                                      .put("y", uri("y", 1))
                                      .put("z", uri("z", 1)).build()
         ));
-        assertEquals(r.getCardinality(), Cardinality.exact(0));
     }
 }

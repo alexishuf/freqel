@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.HashJoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -15,7 +14,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.*;
 import static java.util.stream.Collectors.toSet;
 
 public class InMemoryHashJoinResults implements Results {
@@ -48,8 +46,7 @@ public class InMemoryHashJoinResults implements Results {
         Preconditions.checkArgument(allVars.containsAll(joinVars));
         Preconditions.checkArgument(allVars.containsAll(resultVars));
 
-        int expected = smaller.getCardinality().getValue(1024);
-        this.hashTable = new CrudeSolutionHashTable(joinVars, expected);
+        this.hashTable = new CrudeSolutionHashTable(joinVars, 512);
         this.smaller = smaller;
         this.larger = larger;
         this.resultsVars = resultVars instanceof Set ? (Set<String>)resultVars
@@ -122,18 +119,6 @@ public class InMemoryHashJoinResults implements Results {
         if (!hasNext())
             throw new NoSuchElementException("Results exhausted");
         return queue.remove();
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        if (atEnd)
-            return Cardinality.exact(0);
-        Cardinality larger = this.larger.getCardinality();
-        int value = getReadyCount() + larger.getValue(0);
-        if (larger.getReliability() == UPPER_BOUND || larger.getReliability() == EXACT)
-            return new Cardinality(UPPER_BOUND, value);
-        else
-            return new Cardinality(GUESS, value);
     }
 
     @Override

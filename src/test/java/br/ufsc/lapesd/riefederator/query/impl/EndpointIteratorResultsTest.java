@@ -4,7 +4,6 @@ import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -60,7 +59,6 @@ public class EndpointIteratorResultsTest implements TestContext {
             assertFalse(results.hasNext());
             expectThrows(NoSuchElementException.class, results::next);
             assertEquals(results.getReadyCount(), 0);
-            assertEquals(results.getCardinality(), Cardinality.UNSUPPORTED);
         }
     }
 
@@ -69,11 +67,9 @@ public class EndpointIteratorResultsTest implements TestContext {
         CQuery query = CQuery.from(new Triple(x, knows, y));
         try (Results results = new EndpointIteratorResults(singleton(e1).iterator(), query)) {
             assertFalse(results.hasNext());
-            assertEquals(results.getCardinality(), Cardinality.EMPTY);
         }
         try (Results results = new EndpointIteratorResults(asList(e1, e2).iterator(), query)) {
             assertFalse(results.hasNext());
-            assertEquals(results.getCardinality(), Cardinality.EMPTY);
         }
     }
 
@@ -98,7 +94,6 @@ public class EndpointIteratorResultsTest implements TestContext {
         try (Results results = new EndpointIteratorResults(asList(e1, rdf2, e2).iterator(), qry)) {
             assertEquals(results.getReadyCount(), 0);
             results.forEachRemaining(actual::add);
-            assertEquals(results.getCardinality(), Cardinality.EMPTY);
         }
         assertEquals(actual, Sets.newHashSet(MapSolution.build(x, Alice),
                                              MapSolution.build(x, Dave)));
@@ -119,7 +114,6 @@ public class EndpointIteratorResultsTest implements TestContext {
             assertTrue(results.hasNext());
             assertEquals(results.next(), MapSolution.build(x, Alice));
             assertFalse(results.hasNext());
-            assertEquals(results.getCardinality(), Cardinality.EMPTY);
         }
     }
 

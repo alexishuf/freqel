@@ -1,7 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.results;
 
-import br.ufsc.lapesd.riefederator.query.Cardinality;
-
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Iterator;
@@ -17,12 +15,6 @@ public interface Results extends Iterator<Solution>, AutoCloseable {
 
     @Override
     @Nonnull Solution next();
-
-    /**
-     * Get the cardinality of this iterator.
-     */
-    @Nonnull
-    Cardinality getCardinality();
 
     /**
      * Set of variable names (the x in ?x) that {@link Solution}s from next() may contain.

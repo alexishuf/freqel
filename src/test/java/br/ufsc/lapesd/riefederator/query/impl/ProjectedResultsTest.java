@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
@@ -36,7 +35,6 @@ public class ProjectedResultsTest {
         ProjectingResults p = new ProjectingResults(in, newHashSet("x"));
         assertEquals(p.getVarNames(), newHashSet("x"));
         assertEquals(p.getReadyCount(), 0);
-        assertEquals(p.getCardinality(), Cardinality.EMPTY);
     }
 
     @Test
@@ -45,11 +43,9 @@ public class ProjectedResultsTest {
         ProjectingResults p = new ProjectingResults(in, newHashSet("x", "y"));
 
         assertTrue(p.hasNext());
-        assertEquals(p.getCardinality(), Cardinality.exact(1));
         assertEquals(p.next(), MapSolution.builder().put("x", ex("x0"))
                                                     .put("y", ex("y0")).build());
         assertFalse(p.hasNext());
-        assertEquals(p.getCardinality(), Cardinality.EMPTY);
     }
 
     @Test
@@ -58,15 +54,12 @@ public class ProjectedResultsTest {
         ProjectingResults p = new ProjectingResults(in, Collections.singleton("x"));
 
         assertTrue(p.hasNext());
-        assertEquals(p.getCardinality(), Cardinality.exact(2));
         assertEquals(p.next(), MapSolution.build("x", ex("x0")));
 
         assertTrue(p.hasNext());
-        assertEquals(p.getCardinality(), Cardinality.exact(1));
         assertEquals(p.next(), MapSolution.build("x", ex("x1")));
 
         assertFalse(p.hasNext());
-        assertEquals(p.getCardinality(), Cardinality.EMPTY);
     }
 
 }

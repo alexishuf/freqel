@@ -2,7 +2,6 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -107,15 +106,6 @@ public class SPARQLFilterResults implements Results {
     public @Nonnull Solution next() {
         if (!hasNext()) throw new NoSuchElementException("No more Solutions!");
         return ready.remove();
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        Cardinality inner = this.input.getCardinality();
-        Cardinality.Reliability r = inner.getReliability();
-        if (r.ordinal() <= Cardinality.Reliability.NON_EMPTY.ordinal())
-            return inner;
-        return new Cardinality(r, inner.getValue(0) + getReadyCount());
     }
 
     @Override

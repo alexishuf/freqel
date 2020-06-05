@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -22,11 +21,6 @@ public class IteratorResults implements Results {
     @Override
     public int getReadyCount() {
         return iterator.hasNext() ? 1 : 0;
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        return iterator.hasNext() ? Cardinality.NON_EMPTY : Cardinality.EMPTY;
     }
 
     @Override

@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -121,11 +120,6 @@ public class SimpleBindJoinResults implements Results {
         Solution solution = next;
         next = null;
         return solution;
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        return smaller.getCardinality();
     }
 
     @Override

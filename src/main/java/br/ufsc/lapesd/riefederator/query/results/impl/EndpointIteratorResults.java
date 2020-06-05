@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -19,7 +18,6 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.LOWER_BOUND;
 import static java.util.stream.Collectors.toSet;
 
 public class EndpointIteratorResults implements Results {
@@ -111,16 +109,6 @@ public class EndpointIteratorResults implements Results {
             next = b.build();
         }
         return next;
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        if (current == null)
-            return Cardinality.UNSUPPORTED;
-        Cardinality card = current.getCardinality();
-        if (card.getReliability().ordinal() > LOWER_BOUND.ordinal() && epIterator.hasNext())
-            return new Cardinality(LOWER_BOUND, card.getValue(0));
-        return card;
     }
 
     @Override

@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -35,13 +34,11 @@ public class ParallelInMemoryHashJoinResults implements Results {
         private final @Nonnull Results results;
         private boolean complete = false;
         private final int idx;
-        public int remaining;
 
         public Side(@Nonnull Collection<String> joinVars, @Nonnull Results results, int idx) {
             this.results = results;
             this.idx = idx;
-            remaining = results.getCardinality().getValue(1024);
-            table = new CrudeSolutionHashTable(joinVars,  remaining);
+            table = new CrudeSolutionHashTable(joinVars,  512);
         }
 
         public void start() {
@@ -53,7 +50,6 @@ public class ParallelInMemoryHashJoinResults implements Results {
             try {
                 while (!stop && results.hasNext()) {
                     Solution next = results.next();
-                    --remaining;
                     synchronized (ParallelInMemoryHashJoinResults.this) {
                         if (!sides[otherIdx].complete)
                             table.add(next);
@@ -65,8 +61,6 @@ public class ParallelInMemoryHashJoinResults implements Results {
                             ParallelInMemoryHashJoinResults.this.notify();
                         }
                     }
-                    if (remaining == 0 || remaining == 10 || remaining == 100)
-                        remaining = results.getCardinality().getValue(remaining);
                 }
                 if (!stop) {
                     synchronized (ParallelInMemoryHashJoinResults.this) {
@@ -161,11 +155,6 @@ public class ParallelInMemoryHashJoinResults implements Results {
             if (interrupted)
                 Thread.currentThread().interrupt();
         }
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        return Cardinality.guess(queue.size() + sides[0].remaining + sides[1].remaining);
     }
 
     @Override

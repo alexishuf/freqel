@@ -2,7 +2,6 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
@@ -52,12 +51,6 @@ public class ProjectingResults implements Results {
             b.put(name, term);
         }
         return b.build();
-    }
-
-    @Nonnull
-    @Override
-    public Cardinality getCardinality() {
-        return delegate.getCardinality();
     }
 
     @Nonnull

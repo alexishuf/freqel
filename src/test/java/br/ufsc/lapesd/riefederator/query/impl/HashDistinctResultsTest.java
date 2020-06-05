@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
@@ -26,7 +25,6 @@ public class HashDistinctResultsTest {
         HashDistinctResults d = new HashDistinctResults(in);
         assertEquals(d.getVarNames(), singleton("x"));
         assertFalse(d.hasNext());
-        assertEquals(d.getCardinality(), in.getCardinality());
     }
 
     @Test
@@ -38,15 +36,12 @@ public class HashDistinctResultsTest {
         assertEquals(d.getVarNames(), singleton("x"));
 
         assertTrue(d.hasNext());
-        assertEquals(d.getCardinality(), Cardinality.exact(2));
         assertEquals(d.next(), MapSolution.build("x", ex(1)));
 
         assertTrue(d.hasNext());
-        assertEquals(d.getCardinality(), Cardinality.exact(1));
         assertEquals(d.next(), MapSolution.build("x", ex(2)));
 
         assertFalse(d.hasNext());
-        assertEquals(d.getCardinality(), Cardinality.EMPTY);
     }
 
     @Test
@@ -73,6 +68,5 @@ public class HashDistinctResultsTest {
                                                     .put("y", ex(1)).build());
 
         assertFalse(d.hasNext());
-        assertEquals(d.getCardinality(), Cardinality.EMPTY);
     }
 }

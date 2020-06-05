@@ -135,7 +135,7 @@ public class SelectDescription implements Description {
         CQuery cQuery = CQuery.with(query).project(varName).distinct().build();
         Set<Term> set = null;
         try (Results results = endpoint.query(cQuery)) {
-            set = new HashSet<>(results.getCardinality().getValue(128));
+            set = new HashSet<>();
             while (results.hasNext())
                 set.add(requireNonNull(results.next().get(varName)));
             return set;

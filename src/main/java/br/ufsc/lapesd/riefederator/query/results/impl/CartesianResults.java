@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
@@ -88,18 +87,6 @@ public class CartesianResults implements Results {
             fetched.add(list);
         }
         productSize = fetched.stream().map(List::size).reduce((l, r) -> l * r).orElse(0);
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        if (fetched == null || fetched.isEmpty())
-            return largest.getCardinality();
-        Cardinality cardinality = largest.getCardinality();
-        Cardinality.Reliability reliability = cardinality.getReliability();
-        if (reliability.ordinal() < Cardinality.Reliability.LOWER_BOUND.ordinal())
-            reliability = Cardinality.Reliability.LOWER_BOUND;
-        return new Cardinality(reliability,
-                readyProduct + cardinality.getValue(0) * productSize);
     }
 
     @Override

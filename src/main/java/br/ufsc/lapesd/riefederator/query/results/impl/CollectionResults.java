@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.collect.ImmutableSet;
@@ -11,7 +10,6 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
 
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.EXACT;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
@@ -53,13 +51,6 @@ public class CollectionResults implements Results {
     @Override
     public int getReadyCount() {
         return size == -1 ? collection.size() : size;
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        if (size == -1)
-            return new Cardinality(EXACT, collection.size());
-        return new Cardinality(EXACT, size);
     }
 
     @Override

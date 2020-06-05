@@ -97,7 +97,6 @@ public class TPEndpointTest extends EndpointTestBase {
             try (Results results = fixture.endpoint.query(query)) {
                 assertEquals(results.getVarNames(), varNames);
                 assertFalse(results.hasNext());
-                assertEquals(results.getCardinality(), Cardinality.EMPTY);
                 assertEquals(results.getReadyCount(), 0);
             }
         }

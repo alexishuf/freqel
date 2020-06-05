@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -50,15 +49,6 @@ public class HashDistinctResults implements Results {
         Solution current = this.next;
         this.next = null;
         return current;
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        Cardinality c = input.getCardinality();
-        if (c.getReliability().ordinal() < Cardinality.Reliability.GUESS.ordinal())
-            return c;
-        int extra = next != null ? 1 : 0;
-        return new Cardinality(c.getReliability(), c.getValue(0) + extra);
     }
 
     @Override

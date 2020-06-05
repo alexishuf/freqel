@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -13,8 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
-
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.*;
 
 public class ParallelResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(ParallelResults.class);
@@ -43,35 +40,6 @@ public class ParallelResults implements Results {
         Solution solution = this.next.next();
         next = null;
         return solution;
-    }
-
-    @Override
-    public @Nonnull Cardinality getCardinality() {
-        if (resultsList.size() == 1)
-            return resultsList.get(0).getCardinality();
-        boolean unsupported = false;
-        int guess = 0, upperBound = 0, lowerBound = 0, exact = 0;
-        for (Results child : resultsList) {
-            Cardinality card = child.getCardinality();
-            switch (card.getReliability()) {
-                case UNSUPPORTED: unsupported = true; break;
-                case   NON_EMPTY: ++lowerBound      ; break;
-                case       GUESS: guess      += card.getValue(0); break;
-                case LOWER_BOUND: lowerBound += card.getValue(0); break;
-                case UPPER_BOUND: upperBound += card.getValue(0); break;
-                case       EXACT: exact      += card.getValue(0); break;
-                default: break;
-            }
-        }
-        if (guess > 0)
-            return new Cardinality(GUESS, guess+lowerBound+upperBound+exact);
-        if (lowerBound > 0)
-            return new Cardinality(LOWER_BOUND, lowerBound+upperBound+exact);
-        if (upperBound > 0)
-            return new Cardinality(unsupported ? LOWER_BOUND : UPPER_BOUND, upperBound+exact);
-        if (exact > 0)
-            return new Cardinality(unsupported ? LOWER_BOUND : EXACT, exact);
-        return hasNext() ? Cardinality.NON_EMPTY : Cardinality.EMPTY;
     }
 
     @Override
