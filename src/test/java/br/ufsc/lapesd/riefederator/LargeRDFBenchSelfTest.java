@@ -89,6 +89,17 @@ public class LargeRDFBenchSelfTest {
         }
     }
 
+    public static @Nonnull Model loadData(@Nonnull String fileName) throws IOException {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        String queryPath = RESOURCE_DIR + "/data/" + fileName;
+        try (InputStream stream = cl.getResourceAsStream(queryPath)) {
+            assertNotNull(stream);
+            Model model = ModelFactory.createDefaultModel();
+            RDFDataMgr.read(model, stream, Lang.TTL);
+            return model;
+        }
+    }
+
     public static @Nonnull CollectionResults
     loadResults(@Nonnull String queryName) throws IOException {
         ClassLoader cl = Thread.currentThread().getContextClassLoader();

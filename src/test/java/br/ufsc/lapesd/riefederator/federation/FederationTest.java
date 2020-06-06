@@ -59,6 +59,7 @@ import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -101,10 +102,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest.DATA_FILENAMES;
-import static br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest.RESOURCE_DIR;
+import static br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest.*;
 import static br.ufsc.lapesd.riefederator.federation.SimpleFederationModule.configureCardinalityEstimation;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.*;
+import static br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint.forModel;
+import static br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint.forService;
 import static br.ufsc.lapesd.riefederator.webapis.TransparencyService.*;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
@@ -129,7 +131,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     private static  @Nonnull ARQEndpoint createEndpoint(@Nonnull String filename) {
         Model m = ModelFactory.createDefaultModel();
         RDFDataMgr.read(m, FederationTest.class.getResourceAsStream("../"+filename), Lang.TTL);
-        return ARQEndpoint.forModel(m);
+        return forModel(m);
     }
 
     private static @Nonnull Source createWebAPISource(@Nonnull Molecule molecule,
@@ -425,14 +427,14 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     } else {
                         Model model = ModelFactory.createDefaultModel();
                         RDFDataMgr.read(model, stream, Lang.NT);
-                        federation.addSource(wrap(ARQEndpoint.forModel(model, filename)));
+                        federation.addSource(wrap(forModel(model, filename)));
                     }
                 } catch (IOException e) {
                     fail("Unexpected exception", e);
                 }
             }
             if (variantIdx >= 4)
-                federation.addSource(wrap(ARQEndpoint.forModel(union)));
+                federation.addSource(wrap(forModel(union)));
         }
 
         @Override
@@ -958,5 +960,46 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
             assertEquals(actual.size(), expected.size()); //give an use to actual and expected
         }
+    }
+
+    @DataProvider
+    public static Object[][] modulesData() {
+        return moduleList.stream().map(m -> new Object[] {m}).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "modulesData")
+    public void testEmptyFederation(@Nonnull Module module) throws Exception {
+        Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
+                .with(module));
+        federation = injector.getInstance(Federation.class);
+        Stopwatch sw = Stopwatch.createStarted();
+        federation.initAllSources(20, TimeUnit.SECONDS);
+        assertTrue(sw.elapsed(TimeUnit.SECONDS) < 15); // no reason to block
+
+        CQuery cQuery = LargeRDFBenchSelfTest.loadQuery("S2");
+        try (Results results = federation.query(cQuery)) {
+            assertFalse(results.hasNext());
+        }
+        //pass if got here alive
+    }
+
+    @Test(dataProvider = "modulesData")
+    public void testUninitializedSources(@Nonnull Module module) throws Exception {
+        Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
+                .with(module));
+        federation = injector.getInstance(Federation.class);
+
+        ARQEndpoint dbpEp = forModel(loadData("DBPedia-Subset.nt"), "DBPedia-Subset");
+        Source dbp = new Source(new SelectDescription(dbpEp), dbpEp);
+        ARQEndpoint nytEp = forService("http://127.0.0.178:8897/sparql");
+        Source nyt = new Source(new SelectDescription(nytEp), nytEp);
+        federation.addSource(dbp);
+        federation.addSource(nyt);
+
+        federation.initAllSources(2, TimeUnit.SECONDS);
+        try (Results results = federation.query(loadQuery("S2"))) {
+            assertFalse(results.hasNext());
+        }
+        //pass if got here alive
     }
 }

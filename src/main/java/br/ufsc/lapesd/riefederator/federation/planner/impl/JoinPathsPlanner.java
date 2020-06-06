@@ -51,9 +51,12 @@ public class JoinPathsPlanner implements Planner {
 
     @Override
     public @Nonnull PlanNode plan(@Nonnull CQuery query, @Nonnull Collection<QueryNode> qns){
-        checkArgument(!qns.isEmpty(), "Cannot plan without QueryNodes!");
-        if (query.isEmpty())
+        if (query.isEmpty()) //empty query
             return new EmptyNode(query);
+        if (qns.isEmpty()) {
+            logger.info("No subqueries (lack of sources?). Query: \"\"\"{}\"\"\"", query);
+            return new EmptyNode(query);
+        }
         IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.getMatchedTriples());
         if (JoinPathsPlanner.class.desiredAssertionStatus()) {
             checkArgument(qns.stream().allMatch(n -> full.containsAll(n.getMatchedTriples())),
