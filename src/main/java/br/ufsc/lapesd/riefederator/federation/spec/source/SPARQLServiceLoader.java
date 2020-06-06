@@ -27,6 +27,13 @@ public class SPARQLServiceLoader implements SourceLoader {
         String loader = spec.getString("loader", "").trim().toLowerCase();
         if (!loader.equals("sparql"))
             throw new IllegalArgumentException(this+" does not support loader="+loader);
+        String uri = getURI(spec);
+        boolean fetchClasses = spec.getBoolean("fetchClasses", true);
+        ARQEndpoint ep = ARQEndpoint.forService(uri);
+        return singleton(new Source(new SelectDescription(ep, fetchClasses), ep, uri));
+    }
+
+    private @Nonnull String getURI(@Nonnull DictTree spec) throws SourceLoadException {
         String uri = spec.getString("uri", null);
         if (uri == null)
             throw new SourceLoadException("Missing SPARQL service uri", spec);
@@ -36,7 +43,6 @@ public class SPARQLServiceLoader implements SourceLoader {
         } catch (IllegalArgumentException e) {
             throw new SourceLoadException("Bad SPARQL service URI: "+uri, e, spec);
         }
-        ARQEndpoint ep = ARQEndpoint.forService(uri);
-        return singleton(new Source(new SelectDescription(ep, false), ep, uri));
+        return uri;
     }
 }

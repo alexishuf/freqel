@@ -29,7 +29,7 @@ public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer
 
     @Override
     public @Nonnull Cardinality compute(JoinNode n) {
-        Cardinality lc = n.getLeft().getCardinality(), rc = n.getRight().getCardinality(), c;
+        Cardinality lc = n.getLeft().getCardinality(), rc = n.getRight().getCardinality();
         if (lc.equals(Cardinality.EMPTY) || rc.equals(Cardinality.EMPTY))
             return Cardinality.EMPTY;
         return CardinalityUtils.worstAvg(comparator, lc, rc);
