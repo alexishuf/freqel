@@ -282,7 +282,7 @@ public class TreeUtilsTest implements TestContext {
         assertNotSame(join2, join);
 
         assertEquals(join2.getChildren(), asList(qn1, qn3));
-        assertEquals(join2.getCardinality(), Cardinality.exact(3));
+        assertEquals(join2.getCardinality(), Cardinality.lowerBound((int)Math.ceil((30+3)/2.0)));
     }
 
     @Test

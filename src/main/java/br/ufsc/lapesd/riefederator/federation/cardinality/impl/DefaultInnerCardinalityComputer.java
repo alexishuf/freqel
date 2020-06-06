@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.cardinality.impl;
 
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityComparator;
+import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
@@ -28,11 +29,10 @@ public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer
 
     @Override
     public @Nonnull Cardinality compute(JoinNode n) {
-        Cardinality lc = n.getLeft().getCardinality(), rc = n.getRight().getCardinality();
-        int diff = comparator.compare(lc, rc);
-        if (diff == 0)
-            return lc.getValue(0) < rc.getValue(0) ? lc : rc;
-        return diff < 0 ? lc : rc;
+        Cardinality lc = n.getLeft().getCardinality(), rc = n.getRight().getCardinality(), c;
+        if (lc.equals(Cardinality.EMPTY) || rc.equals(Cardinality.EMPTY))
+            return Cardinality.EMPTY;
+        return CardinalityUtils.worstAvg(comparator, lc, rc);
     }
 
     @Override

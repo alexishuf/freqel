@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
+import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityUtils;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
@@ -116,13 +117,21 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
                 JoinInfo info = d.weight(outer, inner);
                 if (info == null || !info.isValid())
                     continue;
-                Cardinality lCard = outer.getCardinality(),
-                            rCard = inner.getCardinality();
-                int cardDiff = OrderTuple.compareCardinality(lCard, rCard);
-                Cardinality bestCard = cardDiff <= 0 ? lCard : rCard;
+
+                // Estimate join cardinality using the worst reliability and average value
+                // Rationale: not all relationships underlying a join are 1:1 (where min
+                // would be the correct estimation).
+                Cardinality lc = outer.getCardinality(), rc = inner.getCardinality();
+                Cardinality avgCard;
+                if (lc.equals(Cardinality.EMPTY) || rc.equals(Cardinality.EMPTY))
+                    avgCard = Cardinality.EMPTY;
+                else
+                    avgCard = CardinalityUtils.worstAvg(OrderTuple::compareCardinality, lc, rc);
+
+                // Build OrderTuple for this hypothetical join and compare to best
                 boolean isWebApi = d.webApi.contains(outer) || d.webApi.contains(inner);
                 int pendingInputs = info.getPendingRequiredInputs().size();
-                OrderTuple tuple = new OrderTuple(bestCard, pendingInputs, isWebApi);
+                OrderTuple tuple = new OrderTuple(avgCard, pendingInputs, isWebApi);
                 if (tuple.compareTo(best) < 0) {
                     bestOuter = outer;
                     bestInner = inner;
