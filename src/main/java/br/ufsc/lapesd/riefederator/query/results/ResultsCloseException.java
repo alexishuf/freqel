@@ -13,6 +13,11 @@ public class ResultsCloseException extends RuntimeException {
         this.results = results;
     }
 
+    public ResultsCloseException(@Nonnull Results results, @Nonnull String message) {
+        super(message);
+        this.results = results;
+    }
+
     public ResultsCloseException(@Nonnull Results results, Throwable cause) {
         this(results, cause.getClass().getSimpleName()+" when close()ing "+results, cause);
     }

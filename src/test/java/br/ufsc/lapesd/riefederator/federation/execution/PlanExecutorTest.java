@@ -24,8 +24,10 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
@@ -86,6 +88,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
         @Override
         protected void configure() {
+            bind(ResultsExecutor.class).to(SequentialResultsExecutor.class);
             bind(QueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
             bind(MultiQueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
             bind(CartesianNodeExecutor.class).to(SimpleCartesianNodeExecutor.class);

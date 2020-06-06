@@ -13,7 +13,9 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
+import com.google.common.annotations.VisibleForTesting;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -28,14 +30,21 @@ import static java.util.Collections.singleton;
 
 public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
         implements QueryNodeExecutor, MultiQueryNodeExecutor, CartesianNodeExecutor {
+    private final @Nonnull
+    ResultsExecutor resultsExecutor;
 
     @Inject
-    public SimpleQueryNodeExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider) {
+    public SimpleQueryNodeExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider,
+                                   @Nonnull ResultsExecutor resultsExecutor) {
         super(planExecutorProvider);
+        this.resultsExecutor = resultsExecutor;
     }
 
-    public SimpleQueryNodeExecutor(@Nonnull PlanExecutor planExecutor) {
+    @VisibleForTesting
+    public SimpleQueryNodeExecutor(@Nonnull PlanExecutor planExecutor,
+                            @Nonnull ResultsExecutor resultsExecutor) {
         super(planExecutor);
+        this.resultsExecutor = resultsExecutor;
     }
 
     @Override
@@ -121,7 +130,7 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
             node.getFilters().forEach(child::addFilter);
             resultList.add(executor.executeNode(child));
         }
-        ParallelResults r = new ParallelResults(resultList);
+        Results r = resultsExecutor.async(resultList);
         return node.isProjecting() ? new ProjectingResults(r, node.getResultVars()) : r;
     }
 

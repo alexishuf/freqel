@@ -18,6 +18,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
 import br.ufsc.lapesd.riefederator.util.LogUtils;
@@ -53,6 +54,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private final @Nonnull PlanExecutor executor;
     private final @Nonnull PerformanceListener performanceListener;
     private final @Nonnull InnerCardinalityComputer cardinalityComputer;
+    private final @Nonnull ResultsExecutor resultsExecutor;
     private @Nonnull TemplateExpander templateExpander;
 
     @Inject
@@ -60,12 +62,14 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
                       @Nonnull DecompositionStrategy strategy,
                       @Nonnull PlanExecutor executor,
                       @Nonnull PerformanceListener performanceListener,
-                      @Nonnull InnerCardinalityComputer cardinalityComputer) {
+                      @Nonnull InnerCardinalityComputer cardinalityComputer,
+                      @Nonnull ResultsExecutor resultsExecutor) {
         this.outerPlanner = outerPlanner;
         this.strategy = strategy;
         this.executor = executor;
         this.performanceListener = performanceListener;
         this.cardinalityComputer = cardinalityComputer;
+        this.resultsExecutor = resultsExecutor;
         this.templateExpander = new TemplateExpander();
     }
 
@@ -218,6 +222,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public void close() {
+        resultsExecutor.close();
         performanceListener.close();
     }
 }

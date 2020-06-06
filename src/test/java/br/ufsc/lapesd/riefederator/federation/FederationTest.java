@@ -26,6 +26,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.Sim
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
+import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlannerTest;
@@ -45,8 +46,11 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
@@ -421,7 +425,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     } else {
                         Model model = ModelFactory.createDefaultModel();
                         RDFDataMgr.read(model, stream, Lang.NT);
-                        federation.addSource(wrap(ARQEndpoint.forModel(model)));
+                        federation.addSource(wrap(ARQEndpoint.forModel(model, filename)));
                     }
                 } catch (IOException e) {
                     fail("Unexpected exception", e);
@@ -509,6 +513,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 protected void configure() {
                     super.configure();
                     bind(CardinalityEnsemble.class).toInstance(NoCardinalityEnsemble.INSTANCE);
+//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
                 }
                 @Override
                 public String toString() { return asString(NoCardinalityEnsemble.class); }
@@ -522,26 +527,38 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     Multibinder<CardinalityHeuristic> mBinder
                             = Multibinder.newSetBinder(binder(), CardinalityHeuristic.class);
                     mBinder.addBinding().to(PropertySelectivityCardinalityHeuristic.class);
+//                    bind(ResultsExecutor.class).toInstance(new BufferedResultsExecutor());
                 }
                 @Override
                 public boolean isSlowModule() {
                     return !canBeFast();
                 }
                 @Override
-                public String toString() { return asString(PropertySelectivityCardinalityHeuristic.class); }
+                public String toString() { return asString(PropertySelectivityCardinalityHeuristic.class, BufferedResultsExecutor.class); }
             },
             (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
+                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
+                }
+                @Override
+                public String toString() { return asString(SequentialResultsExecutor.class); }
+            },
+            (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
+                @Override
+                protected void configure() {
+                    super.configure();
+                    configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
+                    bind(ResultsExecutor.class).toInstance(new BufferedResultsExecutor());
                 }
                 @Override
                 public boolean isSlowModule() {
-                    return !canBeFast();
+                    return !canBeFast() || !pl.equals(NoOpPerformanceListener.class);
                 }
                 @Override
-                public String toString() { return asString(); }
+                public String toString() { return asString(BufferedResultsExecutor.class); }
             },
             (op, ip, opt, dec, pl) -> new TestModule(false, op, ip, opt, dec, pl) {
                 @Override
@@ -550,6 +567,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
+//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
                 }
                 @Override
                 public String toString() { return asString(InMemoryHashJoinResults.class); }
@@ -561,6 +579,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
+//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
                 }
                 @Override
                 public String toString() { return asString(InMemoryHashJoinResults.class); }
@@ -572,6 +591,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults::new);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
+//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
                 }
                 @Override
                 public String toString() { return asString(ParallelInMemoryHashJoinResults.class); }
@@ -583,6 +603,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
+//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
                 }
                 @Override
                 public String toString() { return asString(SimpleBindJoinResults.class); }
@@ -594,6 +615,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
+//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
                 }
                 @Override
                 public String toString() { return asString(NoCardinalityEnsemble.class, SimpleBindJoinResults.class); }
