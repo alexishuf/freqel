@@ -1181,6 +1181,7 @@ public class CQuery implements  List<Triple> {
                     .append(t.getSubject().toString(dict)).append(' ')
                     .append(t.getPredicate().toString(dict)).append(' ')
                     .append(t.getObject().toString(dict)).append(" .\n");
+            firstTriple = false;
         }
         for (Modifier modifier : modifiers) {
             if (modifier instanceof SPARQLFilter)
