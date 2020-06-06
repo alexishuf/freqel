@@ -139,9 +139,13 @@ public class SelectDescription implements Description {
             while (results.hasNext())
                 set.add(requireNonNull(results.next().get(varName)));
             return set;
+        } catch (Exception e) {
+            logger.error("Problem fetching results from {} for {}", endpoint,
+                         LogUtils.toString(cQuery), e);
+            throw e;
         } finally {
-            assert set != null;
-            LogUtils.logQuery(logger, cQuery, endpoint, set.size(), sw);
+            if (set != null)
+                LogUtils.logQuery(logger, cQuery, endpoint, set.size(), sw);
         }
     }
 
