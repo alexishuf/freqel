@@ -23,7 +23,7 @@ public class PropertySelectivityCardinalityHeuristic implements CardinalityHeuri
     private static final int triplePenalty = 10000000;
     private static final int fallbackDoublePenalty = 25000;
     private static final int fallbackPredicatePenalty = 250;
-    private static final int fallbackSubjectPenalty = 100000;
+    private static final int fallbackSubjectPenalty = 5000;
     private static final int fallbackObjectPenalty = 1000;
     private static final Map<Term, Integer> doublePenalty;
     private static final Map<Term, Integer> subjectPenalty;
