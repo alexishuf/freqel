@@ -132,7 +132,13 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
         }
 
         checkArgument(bestOuter != null,
-                     "Found no joins in JoinGraph (with "+size+" nodes)!");
+                      "Found no joins in JoinGraph (with "+size+" nodes)!");
+        int diff = OrderTuple.NODE_COMPARATOR.compare(bestOuter, bestInner);
+        if (diff > 0) { // swap so that the best node is the left node
+            PlanNode tmp = bestOuter;
+            bestOuter = bestInner;
+            bestInner = tmp;
+        }
         return JoinNode.builder(d.take(bestOuter), d.take(bestInner)).build();
     }
 

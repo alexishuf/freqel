@@ -37,7 +37,7 @@ public class FixedBindJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
         PlanNode right = node.getRight();
         int leftWeight  = ( left.hasInputs() ? 1 : 0) + ( left.hasRequiredInputs() ? 1 : 0);
         int rightWeight = (right.hasInputs() ? 1 : 0) + (right.hasRequiredInputs() ? 1 : 0);
-        if (leftWeight > rightWeight) {
+        if (leftWeight > rightWeight) { //send node with inputs to the right
             PlanNode tmp = left;
             left = right;
             right = tmp;
