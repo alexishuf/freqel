@@ -49,7 +49,7 @@ public class SimpleJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
         } else {
             Cardinality lc = node.getLeft().getCardinality(), rc = node.getRight().getCardinality();
             int diff = comparator.compare(lc, rc);
-            Cardinality minC = diff <= 0 ? lc : rc, maxC = diff > 0 ? lc : rc;
+            Cardinality minC = diff <= 0 ? lc : rc;
             Cardinality.Reliability lr = lc.getReliability(), rr = rc.getReliability();
             if (lr.isAtLeast(UPPER_BOUND) && rr.isAtLeast(UPPER_BOUND)) {
                 if (minC.getValue(Integer.MAX_VALUE) < 1024)

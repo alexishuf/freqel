@@ -188,6 +188,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         if (map.values().stream().anyMatch(EmptyNode.class::isInstance))
             root = new EmptyNode(query); //unsatisfiable
         root = TreeUtils.replaceNodes(root, map, cardinalityComputer);
+        TreeUtils.nameNodes(root);
 
         if (logger.isDebugEnabled()) {
             logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",

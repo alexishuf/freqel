@@ -74,11 +74,16 @@ public class CartesianNode extends AbstractInnerPlanNode {
             builder.append(getPiWithNames()).append('(');
         builder.append(getChildren().isEmpty() ? "Empty" : "").append('×')
                 .append(isProjecting() ? ")" : getVarNamesString())
-                .append(' ').append(getCardinality());
+                .append(' ').append(getCardinality()).append(' ').append(getName());
+        if (!getFilters().isEmpty()) {
+            builder.append('\n');
+            printFilters(builder, indent2);
+        }
+
         if (getChildren().isEmpty())
             return builder;
-        else
-            builder.append('\n');
+
+        builder.append('\n');
         printFilters(builder, indent2);
         for (PlanNode child : getChildren())
             child.prettyPrint(builder, indent2).append('\n');

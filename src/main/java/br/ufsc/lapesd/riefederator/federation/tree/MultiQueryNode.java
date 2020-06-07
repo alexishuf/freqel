@@ -245,12 +245,12 @@ public class MultiQueryNode extends AbstractInnerPlanNode {
             builder.append(getPiWithNames()).append('(');
         builder.append(getChildren().isEmpty() ? "Empty" : "")
                 .append("Multi-node").append(isProjecting() ? ")" : getVarNamesString())
-                .append(' ').append(getCardinality());
+                .append(' ').append(getCardinality()).append(' ').append(getName());
+        printFilters(builder, indent2);
+
         if (getChildren().isEmpty())
             return builder;
-        else
-            builder.append('\n');
-        printFilters(builder, indent2);
+        builder.append('\n');
         for (PlanNode child : getChildren())
             child.prettyPrint(builder, indent2).append('\n');
         builder.setLength(builder.length()-1);

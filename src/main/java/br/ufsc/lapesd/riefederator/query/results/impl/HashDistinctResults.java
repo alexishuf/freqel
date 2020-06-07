@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -15,6 +16,7 @@ import java.util.Set;
 public class HashDistinctResults implements Results {
     private final @Nonnull HashSet<Solution> set = new HashSet<>();
     private final @Nonnull Results input;
+    private @Nullable String nodeName;
     private Solution next = null;
 
     public HashDistinctResults(@Nonnull Results input) {
@@ -25,6 +27,16 @@ public class HashDistinctResults implements Results {
         if (ModifierUtils.getFirst(Capability.DISTINCT, query.getModifiers()) != null)
             return new HashDistinctResults(in);
         return in;
+    }
+
+    @Override
+    public @Nullable String getNodeName() {
+        return nodeName;
+    }
+
+    @Override
+    public void setNodeName(@Nullable String nodeName) {
+        this.nodeName = nodeName;
     }
 
     @Override

@@ -15,6 +15,7 @@ import java.util.*;
 public class CartesianResults implements Results {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(CartesianResults.class);
 
+    private @Nullable String nodeName;
     private @Nonnull Results largest;
     private @Nullable List<List<Solution>> fetched;
     private final @Nonnull Set<String> varNames;
@@ -38,6 +39,16 @@ public class CartesianResults implements Results {
             @Override
             public List<Solution> next() { throw new NoSuchElementException(); }
         };
+    }
+
+    @Override
+    public @Nullable String getNodeName() {
+        return nodeName;
+    }
+
+    @Override
+    public void setNodeName(@Nullable String nodeName) {
+        this.nodeName = nodeName;
     }
 
     @Override

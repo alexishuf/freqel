@@ -8,10 +8,12 @@ import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import java.util.Collection;
@@ -19,9 +21,14 @@ import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 public class SimpleBindJoinResults implements Results {
     public static final @Nonnull Logger logger = LoggerFactory.getLogger(SimpleBindJoinResults.class);
+    public static final int NOTIFY_DELTA_MS = 5000;
 
+    private @Nullable String nodeName = null;
     private final @Nonnull PlanExecutor planExecutor;
     private final @Nonnull Results smaller;
     private final @Nonnull PlanNode rightTree;
@@ -29,6 +36,11 @@ public class SimpleBindJoinResults implements Results {
     private final @Nonnull Collection<String> joinVars;
     private final @Nonnull Set<String> resultVars;
     private Solution leftSolution = null, next = null;
+
+    private final @Nonnull Stopwatch age = Stopwatch.createUnstarted();
+    private final @Nonnull Stopwatch notifyWindow = Stopwatch.createUnstarted();
+    private int binds = 0, results = 0;
+    private double callBindMs = 0;
 
     public static class Factory implements BindJoinResultsFactory {
         private final @Nonnull Provider<PlanExecutor> planExecutorProvider;
@@ -62,16 +74,46 @@ public class SimpleBindJoinResults implements Results {
     }
 
     @Override
+    public @Nullable String getNodeName() {
+        return nodeName;
+    }
+
+    @Override
+    public void setNodeName(@Nonnull String name) {
+        nodeName = name;
+    }
+
+    @Override
     public int getReadyCount() {
         return next != null ? 1 : 0;
     }
 
+    private void logStatus(boolean exhausted) {
+        if (!logger.isDebugEnabled()) return;
+        if (!exhausted && !notifyWindow.isRunning()) {
+            notifyWindow.start();
+            return;
+        }
+        if (!exhausted && notifyWindow.elapsed(MILLISECONDS) < NOTIFY_DELTA_MS)
+            return;
+        notifyWindow.reset().start();
+        double resultsPerBind = binds > 0 ? results / (double)binds : 0;
+        double rewriteAvg = binds > 0 ? callBindMs / (double)binds : 0;
+        logger.debug("{}: {} {} results from {} binds (avg: {} results/bind). " +
+                     "Right-side rewrite avg: {}ms. Age: {}s",
+                     getNodeName(), exhausted ? "exhausted" : "", results, binds, resultsPerBind,
+                     rewriteAvg, age.elapsed(MILLISECONDS)/1000.0);
+    }
+
     private void advance() {
         assert next == null;
+        if (!age.isRunning()) age.start();
 
         while (rightResults == null || !rightResults.hasNext()) {
-            if (!smaller.hasNext())
+            if (!smaller.hasNext()) {
+                logStatus(true);
                 return;
+            }
             if (rightResults != null) {
                 try {
                     rightResults.close();
@@ -80,7 +122,10 @@ public class SimpleBindJoinResults implements Results {
                 }
             }
             leftSolution = smaller.next();
+            Stopwatch sw = Stopwatch.createStarted();
             PlanNode bound = bind(rightTree, leftSolution);
+            callBindMs += sw.elapsed(MICROSECONDS)/1000.0;
+            ++binds;
             rightResults = planExecutor.executeNode(bound);
         }
         Solution rightSolution = rightResults.next();
@@ -91,6 +136,8 @@ public class SimpleBindJoinResults implements Results {
                 builder.put(name, term);
         }
         next = builder.build();
+        ++results;
+        logStatus(false);
     }
 
     private @Nonnull PlanNode bind(@Nonnull PlanNode node, @Nonnull Solution values) {

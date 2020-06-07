@@ -321,4 +321,36 @@ public class TreeUtils {
         else
             builder.add(node);
     }
+
+    public static void nameNodes(@Nonnull PlanNode root) {
+        ArrayDeque<PlanNode> stack = new ArrayDeque<>();
+        stack.push(root);
+        Set<PlanNode> visited = new HashSet<>();
+        int joins = 0, queryNodes = 0, mqNodes = 0, cartesianNodes = 0, emptyNodes = 0, oNodes = 0;
+        while (!stack.isEmpty()) {
+            PlanNode node = stack.pop();
+            if (!visited.add(node))
+                continue;
+            node.getChildren().forEach(stack::push);
+            if (node instanceof JoinNode) {
+                ++joins;
+                node.setName("Join-"+joins);
+            } else if (node instanceof QueryNode) {
+                ++queryNodes;
+                node.setName("Query-"+queryNodes);
+            } else if (node instanceof MultiQueryNode) {
+                ++mqNodes;
+                node.setName("MultiQuery-"+mqNodes);
+            } else if (node instanceof CartesianNode) {
+                ++cartesianNodes;
+                node.setName("Cartesian-"+cartesianNodes);
+            } else if (node instanceof EmptyNode) {
+                ++emptyNodes;
+                node.setName("Empty-"+emptyNodes);
+            } else {
+                ++oNodes;
+                node.setName("Other-"+oNodes);
+            }
+        }
+    }
 }

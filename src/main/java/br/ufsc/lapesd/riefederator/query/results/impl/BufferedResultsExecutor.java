@@ -100,9 +100,10 @@ public class BufferedResultsExecutor implements ResultsExecutor {
     }
 
     protected static class ConsumingResults implements Results {
+        private @Nullable String nodeName;
         private @Nonnull final Set<String> varNames;
         private @Nonnull final List<FeedTask> tasks;
-        private @Nonnull BitSet activeTasks;
+        private @Nonnull final BitSet activeTasks;
         private boolean exhausted = false;
         private @Nonnull final BlockingQueue<FeedTask.Message> queue;
         private @Nullable Solution next = null;
@@ -115,6 +116,16 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             this.activeTasks.flip(0, tasks.size());
             this.queue = queue;
             this.varNames = varNames;
+        }
+
+        @Override
+        public @Nullable String getNodeName() {
+            return nodeName;
+        }
+
+        @Override
+        public void setNodeName(@Nullable String nodeName) {
+            this.nodeName = nodeName;
         }
 
         @Override

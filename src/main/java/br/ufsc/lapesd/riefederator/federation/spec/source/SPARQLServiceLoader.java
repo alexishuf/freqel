@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.util.DictTree;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static java.util.Collections.singleton;
 
@@ -39,7 +41,10 @@ public class SPARQLServiceLoader implements SourceLoader {
         SelectDescription description = null;
         if (cacheDir != null) {
             try {
+                Stopwatch sw = Stopwatch.createStarted();
                 description = SelectDescription.fromCache(ep, cacheDir, uri);
+                logger.debug("Loaded SelectDescription for {} from {} in {}ms",
+                             uri, cacheDir.getDir(), sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
             } catch (IOException e) {
                 logger.error("Failed to load SelectDescription from cache dir {}",
                              cacheDir.getDir(), e);

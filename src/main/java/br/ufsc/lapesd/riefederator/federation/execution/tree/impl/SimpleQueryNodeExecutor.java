@@ -30,8 +30,7 @@ import static java.util.Collections.singleton;
 
 public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
         implements QueryNodeExecutor, MultiQueryNodeExecutor, CartesianNodeExecutor {
-    private final @Nonnull
-    ResultsExecutor resultsExecutor;
+    private final @Nonnull ResultsExecutor resultsExecutor;
 
     @Inject
     public SimpleQueryNodeExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider,

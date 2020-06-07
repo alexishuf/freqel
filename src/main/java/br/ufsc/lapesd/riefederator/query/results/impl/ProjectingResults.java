@@ -10,11 +10,13 @@ import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Set;
 
 public class ProjectingResults implements Results {
     private final @Nonnull Results delegate;
     private final @Nonnull Set<String> varNames;
+    private @Nullable String nodeName;
 
     public ProjectingResults(@Nonnull Results delegate, @Nonnull Set<String> varNames) {
 //        Preconditions.checkArgument(delegate.getVarNames().containsAll(varNames),
@@ -29,6 +31,16 @@ public class ProjectingResults implements Results {
         if (projection != null)
             return new ProjectingResults(in, projection.getVarNames());
         return in;
+    }
+
+    @Override
+    public @Nullable String getNodeName() {
+        return nodeName;
+    }
+
+    @Override
+    public void setNodeName(@Nullable String nodeName) {
+        this.nodeName = nodeName;
     }
 
     @Override

@@ -104,6 +104,6 @@ public class EmptyNode extends AbstractPlanNode {
 
     @Override
     public @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder, @Nonnull String indent) {
-        return builder.append(indent).append(toString());
+        return builder.append(indent).append(toString()).append(' ').append(getName());
     }
 }

@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.results;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Iterator;
 import java.util.Set;
@@ -22,6 +23,15 @@ public interface Results extends Iterator<Solution>, AutoCloseable {
      * @return unmodifiable {@link Set} with var names
      */
     @Nonnull Set<String> getVarNames();
+
+    /**
+     * If this Results represents a plan node, this is the name of such node.
+     *
+     * Used for logging & debug.
+     */
+    @Nullable String getNodeName();
+
+    void setNodeName(@Nonnull String name);
 
     /**
      * Equivalent to {@link #forEachRemaining(Consumer)} followed by a call to {@link #close()}

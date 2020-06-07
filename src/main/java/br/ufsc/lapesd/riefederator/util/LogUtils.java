@@ -23,18 +23,18 @@ public class LogUtils {
         if (!logger.isDebugEnabled()) return;
         if (results >= 0) {
             if (sw != null) {
-                logger.debug("Got {} results from {} in {}ms for \"\"\"{}\"\"\"",
+                logger.trace("Got {} results from {} in {}ms for \"\"\"{}\"\"\"",
                              results, ep, sw.elapsed(TimeUnit.MICROSECONDS)/1000.0, query);
             } else {
-                logger.debug("Got {} results from {} for \"\"\"{}\"\"\"",
+                logger.trace("Got {} results from {} for \"\"\"{}\"\"\"",
                         results, ep, query);
             }
         } else {
             if (sw != null) {
-                logger.debug("Sent query to {} in {}ms. Query:\"\"\"{}\"\"\"",
+                logger.trace("Sent query to {} in {}ms. Query:\"\"\"{}\"\"\"",
                              ep, sw.elapsed(TimeUnit.MICROSECONDS)/1000.0, query);
             } else {
-                logger.debug("Sent query to {}: \"\"\"{}\"\"\"", ep, query);
+                logger.trace("Sent query to {}: \"\"\"{}\"\"\"", ep, query);
             }
         }
     }

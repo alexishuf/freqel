@@ -18,6 +18,16 @@ import java.util.function.BiConsumer;
 
 public interface PlanNode {
     /**
+     * Get the name for this node within its plan.
+     */
+    @Nonnull String getName();
+
+    /**
+     * Set the name for this node within its plan.
+     */
+    void setName(@Nonnull String name);
+
+    /**
      * Names of variables that will be results of this node.
      *
      * @return a subset of {@link PlanNode#getAllVars()}

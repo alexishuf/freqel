@@ -67,9 +67,10 @@ public class QueryNode extends ComponentNode {
         if (isProjecting())
             builder.append(getPiWithNames()).append('(');
         builder.append("Q(").append(getCardinality()).append(' ').append(getEndpoint())
-                .append(isProjecting() ? "))\n" : ")"+getVarNamesString()+"\n")
+                .append(isProjecting() ? "))" : ")"+getVarNamesString())
+                .append(' ').append(getName()).append('\n')
                 .append(indent2)
-                .append(getQuery().toString().replaceAll("\n", "\n"+indent2));
+                .append(getQuery().toString().replace("\n", "\n"+indent2));
         printFilters(builder, indent2);
         return builder;
     }

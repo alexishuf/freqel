@@ -208,9 +208,9 @@ public class ComponentNode extends AbstractPlanNode {
         if (isProjecting())
             builder.append(getPiWithNames()).append('(');
         builder.append("Q(")
-                .append(isProjecting() ? "))\n" : ")"+getVarNamesString()+"\n")
-                .append(indent2)
-                .append(getQuery().toString().replaceAll("\n", "\n"+indent2));
+                .append(isProjecting() ? ")) " : ")"+getVarNamesString()+" ")
+                .append(getName()).append('\n').append(indent2)
+                .append(getQuery().toString().replace("\n", "\n"+indent2));
         printFilters(builder, indent2);
         return builder;
     }

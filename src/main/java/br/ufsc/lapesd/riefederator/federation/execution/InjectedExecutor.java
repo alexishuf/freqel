@@ -39,16 +39,20 @@ public class InjectedExecutor implements PlanExecutor {
         checkArgument(TreeUtils.isAcyclic(node), "Node "+node+"is not a tree");
         checkArgument(node.getRequiredInputVars().isEmpty(), "Node "+node+" needs inputs");
         Class<? extends PlanNode> cls = node.getClass();
+        Results results;
         if (QueryNode.class.isAssignableFrom(cls))
-            return queryNodeExecutor.execute(node);
+            results = queryNodeExecutor.execute(node);
         else if (MultiQueryNode.class.isAssignableFrom(cls))
-            return multiQueryNodeExecutor.execute(node);
+            results = multiQueryNodeExecutor.execute(node);
         else if (JoinNode.class.isAssignableFrom(cls))
-            return joinNodeExecutor.execute(node);
+            results = joinNodeExecutor.execute(node);
         else if (CartesianNode.class.isAssignableFrom(cls))
-            return cartesianNodeExecutor.execute(node);
+            results = cartesianNodeExecutor.execute(node);
         else if (EmptyNode.class.isAssignableFrom(cls))
-            return emptyNodeExecutor.execute(node);
-        throw new UnsupportedOperationException("No executor for "+cls);
+            results = emptyNodeExecutor.execute(node);
+        else
+            throw new UnsupportedOperationException("No executor for "+cls);
+        results.setNodeName(node.getName());
+        return results;
     }
 }

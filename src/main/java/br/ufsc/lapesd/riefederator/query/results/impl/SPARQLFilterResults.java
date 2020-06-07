@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -19,6 +20,7 @@ import static java.util.stream.Collectors.toList;
 public class SPARQLFilterResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(SPARQLFilterResults.class);
 
+    private @Nullable String nodeName;
     private final @Nonnull Results input;
     private final @Nonnull List<SPARQLFilter> filters;
     private final @Nonnull ArrayDeque<Solution> ready = new ArrayDeque<>();
@@ -62,6 +64,15 @@ public class SPARQLFilterResults implements Results {
         return excluded;
     }
 
+    @Override
+    public @Nullable String getNodeName() {
+        return nodeName;
+    }
+
+    @Override
+    public void setNodeName(@Nullable String nodeName) {
+        this.nodeName = nodeName;
+    }
 
     @Override
     public int getReadyCount() {

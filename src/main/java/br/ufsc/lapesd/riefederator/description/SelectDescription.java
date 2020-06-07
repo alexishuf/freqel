@@ -31,6 +31,7 @@ import java.util.concurrent.*;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -152,7 +153,10 @@ public class SelectDescription implements Description {
         assert predicates != null;
         assert !fetchClasses || classes != null;
         try {
+            Stopwatch sw = Stopwatch.createStarted();
             saveSpec.save(predicates, classes);
+            logger.debug("Saved description for {} at {} in {}ms", endpoint,
+                         saveSpec.cache.getDir(), sw.elapsed(MICROSECONDS)/1000.0);
         } catch (IOException e) {
             logger.error("Problem saving SelectDescription for endpoint {} at cache dir {}",
                          saveSpec.endpointId, saveSpec.cache.getDir(), e);
@@ -197,12 +201,17 @@ public class SelectDescription implements Description {
 
     private void doUpdate() {
         StdVar s = new StdVar("s"), p = new StdVar("p"), o = new StdVar("o");
+        Stopwatch sw = Stopwatch.createStarted();
         Set<Term> predicates = fill(new Triple(s, p, o), "p");
+        logger.debug("Fetched {} predicates from {} in {}ms",
+                     predicates.size(), endpoint, sw.elapsed(MICROSECONDS)/1000.0);
         synchronized (this) {
             this.predicates = predicates;
         }
         if (fetchClasses) {
             Set<Term> classes = fill(new Triple(s, TYPE, o), "o");
+            logger.debug("Fetched {} classes from {} in {}ms",
+                         classes.size(), endpoint, sw.elapsed(MICROSECONDS)/1000.0);
             synchronized (this) {
                 this.classes = classes;
             }

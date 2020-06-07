@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Stream;
@@ -19,14 +20,14 @@ import static java.util.stream.Collectors.toSet;
 public class InMemoryHashJoinResults implements Results {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(HashJoinNodeExecutor.class);
 
-    private @Nonnull Results smaller, larger;
-    private @Nonnull Set<String> resultsVars;
-    private @Nonnull CrudeSolutionHashTable hashTable;
+    private @Nullable String nodeName;
+    private final @Nonnull Results smaller, larger;
+    private final @Nonnull Set<String> resultsVars;
+    private final @Nonnull CrudeSolutionHashTable hashTable;
     private boolean stop = false;
-    private @Nonnull ExecutorService executorService;
-    private @Nonnull Future<?> fetchTask;
-    private @Nonnull ArrayDeque<Solution> queue;
-    private boolean atEnd = false;
+    private final  @Nonnull ExecutorService executorService;
+    private final  @Nonnull Future<?> fetchTask;
+    private final  @Nonnull ArrayDeque<Solution> queue;
 
     public static class Factory implements HashJoinResultsFactory {
         @Override
@@ -83,7 +84,6 @@ public class InMemoryHashJoinResults implements Results {
                 if (tryJoin(larger.next()))
                     return true;
             }
-            atEnd = true;
             return false;
         } finally {
             if (interrupted)
@@ -102,6 +102,16 @@ public class InMemoryHashJoinResults implements Results {
             joined = true;
         }
         return joined;
+    }
+
+    @Override
+    public @Nullable String getNodeName() {
+        return nodeName;
+    }
+
+    @Override
+    public void setNodeName(@Nonnull String name) {
+        nodeName = name;
     }
 
     @Override

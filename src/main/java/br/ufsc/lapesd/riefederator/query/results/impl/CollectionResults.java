@@ -16,6 +16,7 @@ import static java.util.Collections.emptySet;
 @NotThreadSafe
 public class CollectionResults implements Results {
     private final @Nonnull Collection<Solution> collection;
+    private @Nullable String nodeName;
     private @LazyInit @Nullable Iterator<Solution> iterator = null;
     private @LazyInit int size = -1;
     private @Nonnull final Set<String> varNames;
@@ -46,6 +47,16 @@ public class CollectionResults implements Results {
         List<Solution> list = new ArrayList<>();
         other.forEachRemainingThenClose(list::add);
         return new CollectionResults(list, vars);
+    }
+
+    @Override
+    public @Nullable String getNodeName() {
+        return nodeName;
+    }
+
+    @Override
+    public void setNodeName(@Nullable String nodeName) {
+        this.nodeName = nodeName;
     }
 
     @Override

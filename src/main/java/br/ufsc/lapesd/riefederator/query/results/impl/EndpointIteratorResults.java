@@ -26,6 +26,7 @@ public class EndpointIteratorResults implements Results {
     private final @Nonnull Iterator<? extends TPEndpoint> epIterator;
     private final @Nonnull CQuery query;
     private final @Nonnull Set<String> varNames;
+    private @Nullable String nodeName;
     private final boolean projecting;
     private @Nullable Results current = null;
     private TPEndpoint currentEp;
@@ -55,6 +56,16 @@ public class EndpointIteratorResults implements Results {
     public EndpointIteratorResults(@Nonnull Iterator<? extends TPEndpoint> epIterator,
                                    @Nonnull CQuery query) {
         this(epIterator, query, computeVarNames(query), false);
+    }
+
+    @Override
+    public @Nullable String getNodeName() {
+        return nodeName;
+    }
+
+    @Override
+    public void setNodeName(@Nullable String nodeName) {
+        this.nodeName = nodeName;
     }
 
     @Override

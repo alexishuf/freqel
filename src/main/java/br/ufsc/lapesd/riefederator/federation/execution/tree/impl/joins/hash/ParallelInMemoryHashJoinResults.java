@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
@@ -22,6 +23,7 @@ public class ParallelInMemoryHashJoinResults implements Results {
     private static final @Nonnull Logger logger =
             LoggerFactory.getLogger(ParallelInMemoryHashJoinResults.class);
 
+    private @Nullable String nodeName;
     private final  @Nonnull Set<String> resultVars;
     private final @Nonnull Side[] sides;
     private boolean stop = false;
@@ -116,6 +118,16 @@ public class ParallelInMemoryHashJoinResults implements Results {
         sides = new Side[] {new Side(joinVars, left, 0), new Side(joinVars, right, 1)};
         sides[0].start();
         sides[1].start();
+    }
+
+    @Override
+    public @Nullable String getNodeName() {
+        return nodeName;
+    }
+
+    @Override
+    public void setNodeName(@Nonnull String name) {
+        nodeName = name;
     }
 
     @Override
