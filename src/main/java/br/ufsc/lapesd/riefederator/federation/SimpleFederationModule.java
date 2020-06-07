@@ -36,7 +36,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         return this;
     }
 
-    @Override
+    @Override @CanIgnoreReturnValue
     public @Nonnull SimpleExecutionModule forceBindJoins() {
         super.forceBindJoins();
         return this;

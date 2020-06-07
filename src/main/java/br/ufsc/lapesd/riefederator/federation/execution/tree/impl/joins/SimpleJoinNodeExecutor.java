@@ -1,10 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins;
 
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityComparator;
+import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
+import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
@@ -46,11 +48,20 @@ public class SimpleJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
             return bindExecutor.execute(node);
         } else {
             Cardinality lc = node.getLeft().getCardinality(), rc = node.getRight().getCardinality();
+            int diff = comparator.compare(lc, rc);
+            Cardinality minC = diff <= 0 ? lc : rc, maxC = diff > 0 ? lc : rc;
             Cardinality.Reliability lr = lc.getReliability(), rr = rc.getReliability();
             if (lr.isAtLeast(UPPER_BOUND) && rr.isAtLeast(UPPER_BOUND)) {
-                if (comparator.min(lc, rc).getValue(Integer.MAX_VALUE) < 1024)
+                if (minC.getValue(Integer.MAX_VALUE) < 1024)
                     return SPARQLFilterResults.applyIf(hashExecutor.execute(node), node);
             }
+
+            PlanNode m = comparator.compare(rc, lc) >= 0 ? node.getRight() : node.getLeft();
+            boolean askDegenerate = node.getJoinVars().containsAll(m.getPublicVars());
+            Cardinality askDegenCeil = CardinalityUtils.multiply(minC, 2);
+            if (askDegenerate && comparator.compare(m.getCardinality(), askDegenCeil) <= 0)
+                return SPARQLFilterResults.applyIf(hashExecutor.execute(node), node);
+
             return SPARQLFilterResults.applyIf(bindExecutor.execute(node), node);
         }
     }

@@ -47,16 +47,16 @@ public class PropertySelectivityCardinalityHeuristic implements CardinalityHeuri
 
         map.clear();
         map.put(JenaWrappers.fromURIResource(RDF.type),             50000);
-        map.put(JenaWrappers.fromURIResource(DCTerms.title),        250000);
-        map.put(JenaWrappers.fromURIResource(RDFS.label),           250000);
-        map.put(JenaWrappers.fromURIResource(DCTerms.description),  250000);
-        map.put(JenaWrappers.fromURIResource(FOAF.name),             30000);
-        map.put(JenaWrappers.fromURIResource(FOAF.familyName),       22500);
-        map.put(JenaWrappers.fromURIResource(FOAF.givenName),        22500);
-        map.put(JenaWrappers.fromURIResource(FOAF.mbox),             22500);
-        map.put(JenaWrappers.fromURIResource(FOAF.mbox_sha1sum),     22500);
-        map.put(JenaWrappers.fromURIResource(RDFS.seeAlso),           5000);
-        map.put(JenaWrappers.fromURIResource(OWL2.sameAs),             500);
+        map.put(JenaWrappers.fromURIResource(RDFS.label),            5000);
+        map.put(JenaWrappers.fromURIResource(FOAF.givenName),        5000);
+        map.put(JenaWrappers.fromURIResource(FOAF.name),             2500);
+        map.put(JenaWrappers.fromURIResource(DCTerms.title),         1000);
+        map.put(JenaWrappers.fromURIResource(DCTerms.description),   1000);
+        map.put(JenaWrappers.fromURIResource(FOAF.familyName),       1000);
+        map.put(JenaWrappers.fromURIResource(RDFS.seeAlso),           300);
+        map.put(JenaWrappers.fromURIResource(OWL2.sameAs),            150);
+        map.put(JenaWrappers.fromURIResource(FOAF.mbox),              100);
+        map.put(JenaWrappers.fromURIResource(FOAF.mbox_sha1sum),      100);
         subjectPenalty = ImmutableMap.copyOf(map);
 
         map.clear();
@@ -78,10 +78,7 @@ public class PropertySelectivityCardinalityHeuristic implements CardinalityHeuri
     public @Nonnull Cardinality estimate(@Nonnull CQuery query, @Nonnull TPEndpoint ignored) {
         int acc = -1;
         if (query.isJoinConnected()) {
-            for (Triple triple : query) {
-                int e = estimate(triple);
-                acc = min(acc, e);
-            }
+            for (Triple triple : query) acc = min(acc, estimate(triple));
         } else {
             for (Triple triple : query) acc = max(acc, estimate(triple));
         }

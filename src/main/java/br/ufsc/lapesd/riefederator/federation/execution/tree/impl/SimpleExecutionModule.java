@@ -9,14 +9,16 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.Bin
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.BufferedResultsExecutor;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.AbstractModule;
 
 import javax.annotation.Nonnull;
 
 public class SimpleExecutionModule extends AbstractModule {
-    protected boolean allowHashJoins;
+    protected boolean allowHashJoins = true;
 
-    public  @Nonnull SimpleExecutionModule forceBindJoins() {
+    @CanIgnoreReturnValue
+    public @Nonnull SimpleExecutionModule forceBindJoins() {
         allowHashJoins = false;
         return this;
     }
