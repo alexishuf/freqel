@@ -279,12 +279,6 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData")
-    public void testEmpty(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
-        expectThrows(IllegalArgumentException.class, () -> planner.plan(createQuery(), emptyList()));
-    }
-
-    @Test(dataProvider = "suppliersData")
     public void testSingleQuery(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
