@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
@@ -28,7 +29,7 @@ public class SwaggerSourceLoader implements SourceLoader {
     }
 
     @Override
-    public @Nonnull Set<Source> load(@Nonnull DictTree spec,
+    public @Nonnull Set<Source> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
                                      @Nonnull File reference) throws SourceLoadException {
         String loaderKey = spec.getString("loader", "").trim().toLowerCase();
         checkArgument(loaderKey.equals("swagger"), this+"does not support loader="+loaderKey);

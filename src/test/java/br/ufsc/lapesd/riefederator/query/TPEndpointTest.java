@@ -41,6 +41,34 @@ import static org.testng.Assert.*;
 public class TPEndpointTest extends EndpointTestBase {
     public static final @Nonnull List<NamedFunction<InputStream, Fixture<TPEndpoint>>> endpoints;
 
+    public static class FusekiEndpoint implements AutoCloseable {
+        public @Nonnull FusekiServer server;
+        public @Nonnull ARQEndpoint ep;
+        public @Nonnull String uri;
+
+        public FusekiEndpoint(@Nonnull Dataset ds) {
+            int port = 3331;
+            try (ServerSocket serverSocket = new ServerSocket(0, 50, getLocalHost())) {
+                port = serverSocket.getLocalPort();
+            } catch (IOException ignored) { }
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ignored) { }
+            server = FusekiServer.create().add("/ds", ds)
+                    .loopback(true).port(port)
+                    .build();
+            server.start();
+            uri = "http://localhost:" + server.getPort() + "/ds/query";
+            ep = ARQEndpoint.forService(uri);
+        }
+
+        @Override
+        public void close() {
+            server.stop();
+            server.join();
+        }
+    }
+
     static {
         endpoints = new ArrayList<>();
         endpoints.add(new NamedFunction<>("ARQEndpoint.forModel", stream -> {
@@ -59,24 +87,11 @@ public class TPEndpointTest extends EndpointTestBase {
             assertNotNull(stream);
             Dataset ds = DatasetFactory.createTxnMem();
             RDFDataMgr.read(ds, stream, "", Lang.TTL);
-            int port = 3331;
-            try (ServerSocket serverSocket = new ServerSocket(0, 50, getLocalHost())) {
-                port = serverSocket.getLocalPort();
-            } catch (IOException ignored) { }
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException ignored) { }
-            FusekiServer server = FusekiServer.create().add("/ds", ds)
-                    .loopback(true).port(port)
-                    .build();
-            server.start();
-            String uri = "http://localhost:" + server.getPort() + "/ds/query";
-            ARQEndpoint ep = ARQEndpoint.forService(uri);
-            return new Fixture<TPEndpoint>(ep) {
+            FusekiEndpoint fusekiEndpoint = new FusekiEndpoint(ds);
+            return new Fixture<TPEndpoint>(fusekiEndpoint.ep) {
                 @Override
                 public void close() {
-                    server.stop();
-                    server.join();
+                    fusekiEndpoint.close();
                 }
             };
         }));

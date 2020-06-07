@@ -31,7 +31,7 @@ public class RDFFileSourceLoader implements SourceLoader {
     }
 
     @Override
-    public @Nonnull Set<Source> load(@Nonnull DictTree sourceSpec,
+    public @Nonnull Set<Source> load(@Nonnull DictTree sourceSpec, @Nullable SourceCache ignored,
                                      @Nonnull File reference) throws SourceLoadException {
         String syntax = sourceSpec.getString("syntax", "").trim().toLowerCase();
         if (syntax.trim().isEmpty())

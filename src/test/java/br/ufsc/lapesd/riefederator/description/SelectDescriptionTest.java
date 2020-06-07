@@ -1,35 +1,69 @@
 package br.ufsc.lapesd.riefederator.description;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.federation.spec.source.SourceCache;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import org.apache.commons.io.FileUtils;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.sparql.core.Transactional;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static br.ufsc.lapesd.riefederator.model.term.std.StdLit.fromUnescaped;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.*;
 
 public class SelectDescriptionTest implements TestContext {
     public static final @Nonnull StdLit A_AGE = fromUnescaped("23", xsdInt);
 
-    ARQEndpoint rdf1;
+    private static class CountedARQEndpoint extends ARQEndpoint {
+        public int queries = 0;
+
+        protected CountedARQEndpoint(@Nullable String name,
+                                     @Nonnull Function<String, QueryExecution> executionFactory,
+                                     @Nullable Transactional transactional,
+                                     @Nonnull Runnable closer, boolean local) {
+            super(name, executionFactory, transactional, closer, local);
+        }
+
+        @Override
+        public @Nonnull Results doQuery(@Nonnull SPARQLString sparql) {
+            ++queries;
+            return super.doQuery(sparql);
+        }
+    }
+
+    CountedARQEndpoint rdf1;
 
     /* ~~~  data methods ~~~ */
 
@@ -99,9 +133,10 @@ public class SelectDescriptionTest implements TestContext {
     public void setUp() {
         Model model = ModelFactory.createDefaultModel();
         RDFDataMgr.read(model, getClass().getResourceAsStream("../rdf-1.nt"), Lang.TTL);
-        rdf1 = ARQEndpoint.forModel(model);
+        rdf1 = new CountedARQEndpoint("rdf-1.nt",
+                q -> QueryExecutionFactory.create(q, model), null,
+                () -> {}, true);
     }
-
 
     /* ~~~  test methods ~~~ */
 
@@ -131,5 +166,74 @@ public class SelectDescriptionTest implements TestContext {
         CQueryMatch match = description.match(query);
         assertEquals(match.getKnownExclusiveGroups(), emptyList());
         assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.getSet());
+    }
+
+    @Test(dataProvider = "fetchClassesData")
+    public void testSaveAndLoadDescription(boolean fetchClasses) throws IOException {
+        File dir = Files.createTempDirectory("riefederator").toFile();
+        try {
+            String uri = "http://rdf1.example.org/sparql";
+            SourceCache cache = new SourceCache(dir);
+            rdf1.queries = 0;
+            SelectDescription d1 = new SelectDescription(rdf1, fetchClasses);
+
+            d1.saveWhenReady(cache, uri);
+            rdf1.queries = 0;
+            d1.init();
+            assertTrue(d1.waitForInit(10000));
+            assertEquals(rdf1.queries, fetchClasses ? 2 : 1);
+
+            rdf1.queries = 0;
+            SelectDescription d2 = SelectDescription.fromCache(rdf1, cache, uri);
+            assertNotNull(d2);
+            assertTrue(d2.waitForInit(0)); //already initialized
+            assertEquals(rdf1.queries, 0); //no querying
+
+            // both answer match() correctly
+            CQuery q = createQuery(s, name, o);
+            assertEquals(d2.match(q).getNonExclusiveRelevant(), q.getList());
+            assertEquals(d1.match(q).getNonExclusiveRelevant(), q.getList());
+        } finally {
+            FileUtils.deleteDirectory(dir);
+        }
+    }
+
+    @Test(dataProvider = "fetchClassesData")
+    public void testParallelSaveAndLoadDescription(boolean fetchClasses) throws Exception {
+        for (int run = 0; run < 10; run++) {
+            ExecutorService outer = Executors.newCachedThreadPool();
+            File dir = Files.createTempDirectory("riefederator").toFile();
+            SourceCache cache = new SourceCache(dir);
+            List<Future<?>> futures = new ArrayList<>();
+            try {
+                for (int i = 0; i < 80; i++) {
+                    final int taskId = i;
+                    futures.add(outer.submit(() -> {
+                        String uri = "http://rdf-" + taskId + ".example.org/sparql";
+                        SelectDescription d1 = new SelectDescription(rdf1, fetchClasses);
+
+                        d1.saveWhenReady(cache, uri);
+                        d1.init();
+                        assertTrue(d1.waitForInit(60000));
+
+                        SelectDescription d2 = SelectDescription.fromCache(rdf1, cache, uri);
+                        assertNotNull(d2);
+                        assertTrue(d2.waitForInit(0)); //already initialized
+
+                        // both answer match() correctly
+                        CQuery q = createQuery(s, name, o);
+                        assertEquals(d2.match(q).getNonExclusiveRelevant(), q.getList());
+                        assertEquals(d1.match(q).getNonExclusiveRelevant(), q.getList());
+                        return null;
+                    }));
+                }
+                for (Future<?> f : futures)
+                    f.get(); //re-throws Exceptions and AssertionErrors
+                outer.shutdown();
+                outer.awaitTermination(10, TimeUnit.SECONDS);
+            } finally {
+                FileUtils.deleteDirectory(dir);
+            }
+        }
     }
 }

@@ -10,6 +10,7 @@ import org.apache.jena.tdb.TDBFactory;
 import org.apache.jena.tdb2.TDB2Factory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.File;
 import java.util.Set;
 
@@ -24,7 +25,7 @@ public class TDBSourceLoader implements SourceLoader {
     }
 
     @Override
-    public @Nonnull Set<Source> load(@Nonnull DictTree spec,
+    public @Nonnull Set<Source> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
                                      @Nonnull File reference) throws SourceLoadException {
         String loader = spec.getString("loader", "").trim().toLowerCase();
         String dirPath = spec.getString("dir", null);

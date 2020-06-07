@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.description;
 
+import br.ufsc.lapesd.riefederator.federation.spec.source.SourceCache;
+import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
@@ -10,19 +12,26 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.MissingCapabilityException;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.util.LogUtils;
+import com.esotericsoftware.yamlbeans.YamlReader;
+import com.esotericsoftware.yamlbeans.YamlWriter;
 import com.google.common.base.Stopwatch;
+import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.vocabulary.RDF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.*;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
 
 /**
  * A description that performs a SPARQL SELECT against the endpoint to get predicates
@@ -36,6 +45,8 @@ public class SelectDescription implements Description {
     private final boolean fetchClasses;
     protected @Nullable Set<Term> predicates, classes;
     private @Nullable Future<?> updateTask = null;
+    private @Nullable SaveSpec saveSpec = null;
+    private boolean isUpdated = false;
 
     public SelectDescription(@Nonnull CQEndpoint endpoint) throws MissingCapabilityException {
         this(endpoint, false);
@@ -49,9 +60,103 @@ public class SelectDescription implements Description {
         this.fetchClasses = fetchClasses;
     }
 
+    public SelectDescription(@Nonnull CQEndpoint endpoint, @Nonnull State state) {
+        this.endpoint = endpoint;
+        predicates = State.toSet(state.predicates);
+        fetchClasses = state.classes != null;
+        classes = fetchClasses ? State.toSet(state.classes) : null;
+        isUpdated = true;
+    }
+
+    private static class State {
+        public List<String> predicates = null;
+        public List<String> classes = null;
+
+        private static @Nonnull Set<Term> toSet(@Nonnull List<String> list) {
+            Set<Term> set = new HashSet<>(list.size());
+            for (String uri : list)
+                set.add(JenaWrappers.fromJena(ResourceFactory.createResource(uri)));
+            return set;
+        }
+    }
+
+    private static class SaveSpec {
+        @Nonnull SourceCache cache;
+        @Nonnull String endpointId;
+
+        public SaveSpec(@Nonnull SourceCache cache, @Nonnull String endpointId) {
+            this.cache = cache;
+            this.endpointId = endpointId;
+        }
+
+        void save(@Nonnull Set<Term> predicates, @Nullable Set<Term> classes) throws IOException {
+            cache.reloadIndex();
+            File file = cache.createFile("select-description", "yaml", endpointId);
+            try (FileOutputStream stream = new FileOutputStream(file);
+                 OutputStreamWriter writer = new OutputStreamWriter(stream, UTF_8)) {
+                YamlWriter yamlWriter = new YamlWriter(writer);
+                State st = new State();
+                st.predicates = predicates.stream().filter(Term::isURI)
+                                            .map(t -> t.asURI().getURI()).collect(toList());
+                if (classes != null) {
+                    st.classes = classes.stream().filter(Term::isURI).map(t -> t.asURI().getURI())
+                                         .collect(toList());
+                }
+                yamlWriter.write(st);
+                yamlWriter.close();
+            }
+        }
+    }
+
+    public static @Nullable SelectDescription
+    fromCache(@Nonnull CQEndpoint endpoint, @Nonnull SourceCache cache,
+              @Nonnull String endpointId) throws IOException {
+        File file = cache.getFile("select-description", endpointId);
+        if (file != null)
+            return fromYaml(endpoint, file);
+        return null;
+    }
+    public static @Nonnull SelectDescription
+    fromYaml(@Nonnull CQEndpoint endpoint, @Nonnull File file) throws IOException {
+        try (FileInputStream inputStream = new FileInputStream(file)) {
+            return fromYaml(endpoint, inputStream);
+        }
+    }
+    public static @Nonnull SelectDescription
+    fromYaml(@Nonnull CQEndpoint endpoint, @Nonnull InputStream inputStream) throws IOException {
+        try (InputStreamReader reader = new InputStreamReader(inputStream, UTF_8)) {
+            return fromYaml(endpoint, reader);
+        }
+    }
+    public static @Nonnull SelectDescription
+    fromYaml(@Nonnull CQEndpoint endpoint, @Nonnull Reader reader) throws IOException {
+        YamlReader yamlReader = new YamlReader(reader);
+        State state = yamlReader.read(State.class);
+        return new SelectDescription(endpoint, state);
+    }
+
     protected boolean ensureHasData() {
         init();
         return waitForInit(60000);
+    }
+
+    public synchronized void saveWhenReady(@Nonnull SourceCache sourceCache,
+                                           @Nonnull String endpointId) {
+        saveSpec = new SaveSpec(sourceCache, endpointId);
+        if (isUpdated)
+            doSaveSpec(); // do it now, since it is ready
+    }
+
+    private void doSaveSpec() {
+        if (saveSpec == null) return;
+        assert predicates != null;
+        assert !fetchClasses || classes != null;
+        try {
+            saveSpec.save(predicates, classes);
+        } catch (IOException e) {
+            logger.error("Problem saving SelectDescription for endpoint {} at cache dir {}",
+                         saveSpec.endpointId, saveSpec.cache.getDir(), e);
+        }
     }
 
     /**
@@ -61,12 +166,8 @@ public class SelectDescription implements Description {
     public boolean updateSync(int timeoutMilliseconds) {
         Future<?> localTask;
         synchronized (this) {
-            if (updateTask == null) {
-                if (predicates == null)
-                    updateTask = ForkJoinPool.commonPool().submit(this::doUpdate);
-                else
-                    return true;
-            }
+            update();
+            assert updateTask != null;
             localTask = this.updateTask;
         }
         try {
@@ -74,6 +175,7 @@ public class SelectDescription implements Description {
             synchronized (this) {
                 if (updateTask == localTask)
                     updateTask = null;
+                assert isUpdated;
             }
             return true;
         } catch (InterruptedException e) {
@@ -105,29 +207,40 @@ public class SelectDescription implements Description {
                 this.classes = classes;
             }
         }
+        doSaveSpec();
+        synchronized (this) {
+            updateTask = null;
+            isUpdated = true;
+        }
     }
 
     @Override
     public synchronized void update() {
-        if (updateTask == null)
+        if (updateTask == null) {
+            isUpdated = false;
             updateTask = ForkJoinPool.commonPool().submit(this::doUpdate);
+        }
     }
 
     @Override
     public synchronized void init() {
-        if (predicates == null) update();
+        if (!isUpdated && updateTask == null) update();
     }
 
     @Override
     public boolean waitForInit(int timeoutMilliseconds) {
         synchronized (this) {
-            boolean isInitialized = predicates != null && (!fetchClasses || classes != null);
-            if      (isInitialized)      return true; // is ready
-            else if (updateTask == null) return false; // init() not called
+            if  (isUpdated) {
+                assert predicates != null && (!fetchClasses || classes != null);
+                return true; // is ready
+            } else if (updateTask == null) {
+                return false; // init() not called
+            }
             // else: must wait (outside of the monitor)
         }
         updateSync(timeoutMilliseconds);
-        return predicates != null && (!fetchClasses || classes != null);
+        assert !isUpdated || ( predicates != null && (!fetchClasses || classes != null) );
+        return isUpdated;
     }
 
     private Set<Term> fill(@Nonnull Triple query, @Nonnull String varName) {

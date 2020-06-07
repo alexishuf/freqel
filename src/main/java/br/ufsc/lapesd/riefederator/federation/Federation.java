@@ -167,8 +167,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return templateExpander.apply(query);
     }
 
-    @VisibleForTesting
-    @Nonnull PlanNode plan(@Nonnull CQuery query) {
+    public @Nonnull PlanNode plan(@Nonnull CQuery query) {
         Stopwatch sw = Stopwatch.createStarted();
         ModifierUtils.check(this, query.getModifiers());
         PlanNode root = outerPlanner.plan(query);
