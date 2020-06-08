@@ -180,15 +180,15 @@ public class QueryEvaluation {
                 .addArguments("--preheat", String.valueOf(preheatRuns));
         if (usePath)
             builder.addArguments("--use-path");
-        if (noExec)
-            builder.addArguments("--only-plan");
         else if (queryResultsDir != null)
             builder.addArguments("--query-results-dir", queryResultsDir.getAbsolutePath());
-        builder.addArguments(q.file.getAbsolutePath());
+        if (noExec)
+            builder.addArguments("--only-plan");
         if (childXmx != null)
             builder.setXmx(childXmx);
         if (childXms != null)
             builder.setXms(childXms);
+        builder.addArguments(q.file.getAbsolutePath());
 
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         try (ChildJVM child = builder.start()) {
