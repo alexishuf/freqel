@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins;
 
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityComparator;
-import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
@@ -15,6 +14,7 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Provider;
 
+import static br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityUtils.multiply;
 import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.UPPER_BOUND;
 
 public class DefaultJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
@@ -57,7 +57,8 @@ public class DefaultJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
 
             PlanNode m = comparator.compare(rc, lc) >= 0 ? node.getRight() : node.getLeft();
             boolean askDegenerate = node.getJoinVars().containsAll(m.getPublicVars());
-            Cardinality askDegenCeil = CardinalityUtils.multiply(minC, 2);
+            Cardinality askDegenCeil = comparator.min(Cardinality.guess(2000),
+                                                      multiply(minC, 2));
             if (askDegenerate && comparator.compare(m.getCardinality(), askDegenCeil) <= 0)
                 return SPARQLFilterResults.applyIf(hashExecutor.execute(node), node);
 
