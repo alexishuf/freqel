@@ -14,6 +14,13 @@ public interface Results extends Iterator<Solution>, AutoCloseable {
      */
     int getReadyCount();
 
+    /**
+     * Indicates whether this Results object is accelerated by background processing.
+     *
+     * The hasNext()/next() remain not thread safe and must be used by a single thread.
+     */
+    boolean isAsync();
+
     @Override
     @Nonnull Solution next();
 

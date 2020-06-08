@@ -7,6 +7,8 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.Syntax;
 import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
@@ -47,6 +49,10 @@ public class LogUtils {
                                 @Nonnull TPEndpoint ep, int results, @Nullable Stopwatch sw) {
         logQuery(logger, toString(query), ep, results, sw);
     }
+    public static void logQuery(@Nonnull Logger logger, @Nonnull Query query,
+                                @Nonnull TPEndpoint ep, int results, @Nullable Stopwatch sw) {
+        logQuery(logger, toString(query), ep, results, sw);
+    }
     public static void logQuery(@Nonnull Logger logger, @Nonnull CQuery query,
                                 @Nonnull TPEndpoint ep, @Nullable Stopwatch sw) {
         logQuery(logger, toString(query), ep, -1, sw);
@@ -55,12 +61,17 @@ public class LogUtils {
                                 @Nonnull TPEndpoint ep, @Nullable Stopwatch sw) {
         logQuery(logger, toString(query), ep, -1, sw);
     }
-
+    public static void logQuery(@Nonnull Logger logger, @Nonnull Query query,
+                                @Nonnull TPEndpoint ep, @Nullable Stopwatch sw) {
+        logQuery(logger, toString(query), ep, -1, sw);
+    }
 
     public static @Nonnull String toString(CQuery query) {
         return toString(new SPARQLString(query, StdPrefixDict.STANDARD));
     }
-
+    public static @Nonnull String toString(Query query) {
+        return query.toString(Syntax.syntaxSPARQL_11);
+    }
     public static @Nonnull String toString(SPARQLString query) {
         PrefixDict d = StdPrefixDict.DEFAULT;
         boolean small = query.getTriplesCount() <= 2;

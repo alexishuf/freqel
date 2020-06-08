@@ -40,6 +40,11 @@ public class BufferedResultsExecutor implements ResultsExecutor {
 
     @Override
     public @Nonnull Results async(@Nonnull Collection<? extends Results> coll) {
+        return async(coll, perInputBufferSize);
+    }
+
+    @Override
+    public @Nonnull Results async(@Nonnull Collection<? extends Results> coll, int buffer) {
         Set<String> names = coll.stream().flatMap(r -> r.getVarNames().stream()).collect(toSet());
         if (executorService.isShutdown()) {
             logger.error("Calling async() after close()! Will return empty results");
@@ -50,10 +55,10 @@ public class BufferedResultsExecutor implements ResultsExecutor {
 
         List<FeedTask> list = new ArrayList<>(coll.size());
         BlockingQueue<FeedTask.Message> queue =
-                new ArrayBlockingQueue<>(coll.size()*(perInputBufferSize+1));
+                new ArrayBlockingQueue<>(coll.size()*(buffer+1));
         int idx = 0;
         for (Results results : coll) {
-            FeedTask task = new FeedTask(idx++, results, queue);
+            FeedTask task = new FeedTask(idx++, results, queue, buffer);
             list.add(task);
             task.schedule();
         }
@@ -116,6 +121,11 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             this.activeTasks.flip(0, tasks.size());
             this.queue = queue;
             this.varNames = varNames;
+        }
+
+        @Override
+        public boolean isAsync() {
+            return true;
         }
 
         @Override
@@ -205,8 +215,9 @@ public class BufferedResultsExecutor implements ResultsExecutor {
     protected class FeedTask implements Runnable {
         private final @Nonnull Results in;
         private final @Nonnull BlockingQueue<Message> queue;
-        private final @Nonnull AtomicInteger free = new AtomicInteger(perInputBufferSize);
-        private final int id, scheduleThreshold;
+        private final @Nonnull AtomicInteger free;
+        private final int id;
+        private final int scheduleThreshold;
         private boolean active = false;
         private boolean exhausted = false;
 
@@ -236,11 +247,13 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             }
         }
 
-        public FeedTask(int id, @Nonnull Results in, @Nonnull BlockingQueue<Message> queue) {
+        public FeedTask(int id, @Nonnull Results in, @Nonnull BlockingQueue<Message> queue,
+                        int bufferSize) {
             this.id = id;
             this.in = in;
             this.queue = queue;
-            this.scheduleThreshold = Math.max(1, perInputBufferSize-2);
+            this.free = new AtomicInteger(bufferSize);
+            this.scheduleThreshold = Math.max(1, bufferSize-2);
         }
 
         public boolean isExhausted() { return exhausted; }

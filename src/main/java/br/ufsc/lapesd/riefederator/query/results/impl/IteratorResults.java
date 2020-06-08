@@ -31,6 +31,11 @@ public class IteratorResults implements Results {
     }
 
     @Override
+    public boolean isAsync() {
+        return false;
+    }
+
+    @Override
     public int getReadyCount() {
         return iterator.hasNext() ? 1 : 0;
     }

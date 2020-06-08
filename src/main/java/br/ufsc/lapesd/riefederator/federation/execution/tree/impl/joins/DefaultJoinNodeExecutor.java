@@ -17,29 +17,28 @@ import javax.inject.Provider;
 
 import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.UPPER_BOUND;
 
-public class SimpleJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
-    private @Nonnull final HashJoinNodeExecutor hashExecutor;
+public class DefaultJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
+    private @Nonnull final DefaultHashJoinNodeExecutor hashExecutor;
     private @Nonnull final FixedBindJoinNodeExecutor bindExecutor;
     private @Nonnull final CardinalityComparator comparator;
 
     @Inject
-    public SimpleJoinNodeExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider,
-                                  @Nonnull BindJoinResultsFactory bindJoinResultsFactory,
-                                  @Nonnull CardinalityComparator cardinalityComparator) {
+    public DefaultJoinNodeExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider,
+                                   @Nonnull BindJoinResultsFactory bindJoinResultsFactory,
+                                   @Nonnull CardinalityComparator cardinalityComparator) {
         super(planExecutorProvider);
         this.comparator = cardinalityComparator;
-        this.hashExecutor = new HashJoinNodeExecutor(planExecutorProvider, comparator);
+        this.hashExecutor = new DefaultHashJoinNodeExecutor(planExecutorProvider, comparator);
         this.bindExecutor = new FixedBindJoinNodeExecutor(planExecutorProvider,
                                                           bindJoinResultsFactory);
     }
 
-    public SimpleJoinNodeExecutor(@Nonnull PlanExecutor planExecutor,
-                                  @Nonnull BindJoinResultsFactory bindJoinResultsFactory) {
+    public DefaultJoinNodeExecutor(@Nonnull PlanExecutor planExecutor,
+                                   @Nonnull BindJoinResultsFactory bindJoinResultsFactory) {
         super(planExecutor);
         this.comparator = ThresholdCardinalityComparator.DEFAULT;
-        this.hashExecutor = new HashJoinNodeExecutor(planExecutor, this.comparator);
+        this.hashExecutor = new DefaultHashJoinNodeExecutor(planExecutor, this.comparator);
         this.bindExecutor = new FixedBindJoinNodeExecutor(planExecutor, bindJoinResultsFactory);
-
     }
 
     @Override

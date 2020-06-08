@@ -60,6 +60,11 @@ public class CollectionResults implements Results {
     }
 
     @Override
+    public boolean isAsync() {
+        return false;
+    }
+
+    @Override
     public int getReadyCount() {
         return size == -1 ? collection.size() : size;
     }

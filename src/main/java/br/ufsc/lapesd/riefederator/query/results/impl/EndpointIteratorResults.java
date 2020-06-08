@@ -69,6 +69,11 @@ public class EndpointIteratorResults implements Results {
     }
 
     @Override
+    public boolean isAsync() {
+        return false;
+    }
+
+    @Override
     public int getReadyCount() {
         return current != null ? current.getReadyCount() : 0;
     }

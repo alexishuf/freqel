@@ -5,15 +5,12 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.Bin
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Provider;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
-public class FixedBindJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
+public class FixedBindJoinNodeExecutor extends AbstractBindJoinNodeExecutor {
     private final @Nonnull BindJoinResultsFactory factory;
 
     @Inject
@@ -30,29 +27,9 @@ public class FixedBindJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
     }
 
     @Override
-    public @Nonnull Results execute(@Nonnull JoinNode node) {
-        PlanExecutor planExecutor = getPlanExecutor();
-        Results leftResults = null;
-        PlanNode left = node.getLeft();
-        PlanNode right = node.getRight();
-        int leftWeight  = ( left.hasInputs() ? 1 : 0) + ( left.hasRequiredInputs() ? 1 : 0);
-        int rightWeight = (right.hasInputs() ? 1 : 0) + (right.hasRequiredInputs() ? 1 : 0);
-        if (leftWeight > rightWeight) { //send node with inputs to the right
-            PlanNode tmp = left;
-            left = right;
-            right = tmp;
-        }
-        checkArgument(!left.hasInputs(), "Both left and right children have required inputs. " +
-                                         "Cannot bind join "+node);
-        try {
-            leftResults = planExecutor.executeNode(left);
-            Results results = factory.createResults(leftResults, right,
-                                                    node.getJoinVars(), node.getResultVars());
-            leftResults = null;
-            return SPARQLFilterResults.applyIf(results, node);
-        } finally {
-            if (leftResults != null)
-                leftResults.close();
-        }
+    protected @Nonnull Results createResults(@Nonnull Results left, @Nonnull PlanNode right,
+                                             @Nonnull JoinNode node) {
+        return factory.createResults(left, right, node.getJoinVars(), node.getResultVars());
     }
+
 }

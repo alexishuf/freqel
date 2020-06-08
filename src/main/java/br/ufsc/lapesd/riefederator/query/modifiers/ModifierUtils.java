@@ -17,6 +17,17 @@ public class ModifierUtils {
         return null;
     }
 
+    public static @Nullable  <T extends Modifier>
+    T getFirst(@Nonnull Class<T> aClass, @Nonnull Collection<? extends Modifier> coll) {
+        for (Modifier mod : coll) {
+            if (aClass.isAssignableFrom(mod.getClass())) {
+                //noinspection unchecked
+                return (T) mod;
+            }
+        }
+        return null;
+    }
+
 
     /**
      * @throws IllegalArgumentException if endpoint does not support all

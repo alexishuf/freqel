@@ -131,6 +131,11 @@ public class ParallelInMemoryHashJoinResults implements Results {
     }
 
     @Override
+    public boolean isAsync() {
+        return true;
+    }
+
+    @Override
     public int getReadyCount() {
         return queue.size();
     }

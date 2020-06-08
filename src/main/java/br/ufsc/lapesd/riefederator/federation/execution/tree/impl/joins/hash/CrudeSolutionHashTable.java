@@ -8,13 +8,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * A Simple HashMap for use during hash-joins that does not use memory for the keys
  */
 public class CrudeSolutionHashTable {
-    private @Nonnull ArrayList<ArrayList<Solution>> buckets;
-    private @Nonnull Collection<String> varNames;
+    private final @Nonnull ArrayList<ArrayList<Solution>> buckets;
+    private final @Nonnull Collection<String> varNames;
     private final int nBuckets, bucketCapacity;
 
     public CrudeSolutionHashTable(@Nonnull Collection<String> varNames, int expectedValues) {
@@ -40,10 +41,8 @@ public class CrudeSolutionHashTable {
     }
 
     public void clear() {
-        for (ArrayList<Solution> b : buckets) {
+        for (ArrayList<Solution> b : buckets)
             b.clear();
-            b.trimToSize();
-        }
     }
 
     public void add(@Nonnull Solution solution) {
@@ -60,6 +59,22 @@ public class CrudeSolutionHashTable {
             }
             list.add(sol);
         }
+        return list;
+    }
+
+    public void forEach(@Nonnull Consumer<Solution> consumer) {
+        for (ArrayList<Solution> bucket : buckets) {
+            for (Solution solution : bucket) {
+                consumer.accept(solution);
+            }
+        }
+    }
+
+    public @Nonnull List<Solution> toList() {
+        ArrayList<Solution> list = new ArrayList<>(buckets.size()*bucketCapacity);
+        for (ArrayList<Solution> bucket : buckets)
+            list.addAll(bucket);
+        list.trimToSize();
         return list;
     }
 }

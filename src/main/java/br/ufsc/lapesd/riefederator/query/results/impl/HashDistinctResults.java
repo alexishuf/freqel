@@ -40,6 +40,11 @@ public class HashDistinctResults implements Results {
     }
 
     @Override
+    public boolean isAsync() {
+        return input.isAsync();
+    }
+
+    @Override
     public int getReadyCount() {
         return input.getReadyCount() + (next != null ? 1 : 0);
     }

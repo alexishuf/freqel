@@ -2,12 +2,15 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.NamedFunction;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import com.google.common.collect.Sets;
+import org.apache.jena.sparql.vocabulary.FOAF;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -95,6 +98,46 @@ public class CQEndpointTest extends EndpointTestBase {
         queryResourceTest(f, query,
                 newHashSet(MapSolution.builder().put(x, Alice).put(y, lit(23)).build(),
                            MapSolution.builder().put(x, Dave).put(y, lit(25)).build()));
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testRawSPARQLConjunctive(Function<InputStream, Fixture<CQEndpoint>> f) {
+        String sparql = "PREFIX foaf: <"+ FOAF.NS +">\n" +
+                "PREFIX ex: <"+EX+">\n" +
+                "SELECT * WHERE {\n" +
+                "  ?x foaf:knows ex:Bob ;" +
+                "     foaf:age ?age FILTER(?age <= 23) .\n" +
+                "}";
+        try (Fixture<CQEndpoint> fixture = f.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+            if (!fixture.endpoint.canQuerySPARQL())
+                return; //not a test target
+            Set<Term> actual = new HashSet<>();
+            Results results = fixture.endpoint.querySPARQL(sparql);
+            results.forEachRemainingThenClose(s -> actual.add(s.get(x)));
+            assertEquals(actual, Collections.singleton(Alice));
+        }
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testRawSPARQLUNION(Function<InputStream, Fixture<CQEndpoint>> f) {
+        String sparql = "PREFIX ex: <" + EX + ">\n" +
+                "PREFIX foaf: <"+ FOAF.NS +">\n" +
+                "SELECT * WHERE {\n" +
+                "  {\n" +
+                "    ?x foaf:knows ex:Bob ;" +
+                "       foaf:age ?age FILTER(?age <= 23) .\n" +
+                "  } UNION {\n" +
+                "    ?x foaf:name \"bob\"@en .\n" +
+                "  }\n" +
+                "}";
+        try (Fixture<CQEndpoint> fixture = f.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+            if (!fixture.endpoint.canQuerySPARQL())
+                return; //not a test target
+            Set<Term> actual = new HashSet<>();
+            Results results = fixture.endpoint.querySPARQL(sparql);
+            results.forEachRemainingThenClose(s -> actual.add(s.get(x)));
+            assertEquals(actual, Sets.newHashSet(Alice, Bob));
+        }
     }
 
     @Test(dataProvider = "fixtureFactories")

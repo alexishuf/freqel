@@ -7,10 +7,10 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleCartesianNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleEmptyNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleQueryNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultHashJoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.HashJoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.SimpleJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
@@ -126,7 +126,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(HashJoinNodeExecutor.class);
+                    bind(JoinNodeExecutor.class).to(DefaultHashJoinNodeExecutor.class);
                 }
                 @Override
                 public @Nonnull String toString() {
@@ -138,11 +138,11 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
                 protected void configure() {
                     super.configure();
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
-                    bind(JoinNodeExecutor.class).to(SimpleJoinNodeExecutor.class);
+                    bind(JoinNodeExecutor.class).to(DefaultJoinNodeExecutor.class);
                 }
                 @Override
                 public @Nonnull String toString() {
-                    return "SimpleJoinNodeExecutor";
+                    return "DefaultJoinNodeExecutor";
                 }
             },
             new SimpleModule(true) {

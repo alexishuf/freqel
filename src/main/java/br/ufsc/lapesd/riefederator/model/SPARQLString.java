@@ -1,14 +1,13 @@
 package br.ufsc.lapesd.riefederator.model;
 
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
@@ -22,6 +21,7 @@ import java.util.regex.Pattern;
 
 import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.ASK;
 import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.PROJECTION;
+import static java.util.stream.Collectors.joining;
 
 public class SPARQLString {
     public enum Type {
@@ -57,6 +57,10 @@ public class SPARQLString {
                 return list;
         }
         return triples;
+    }
+
+    public SPARQLString(@Nonnull CQuery query) {
+        this(query, query.getPrefixDict(StdPrefixDict.STANDARD));
     }
 
     public SPARQLString(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict) {
@@ -106,12 +110,20 @@ public class SPARQLString {
         }
 
         // add BGP
-        writeBGP(triples, dict, b);
+        ValuesModifier values = ModifierUtils.getFirst(ValuesModifier.class, modifiers);
+        if (values != null && !values.getVarNames().isEmpty()) {
+            b.append("  {\n");
+            writeBGP(triples, dict, b, "    ");
+            b.append("  } ");
+            writeAssignments(values, dict, b, "  ");
+        } else {
+            writeBGP(triples, dict, b, "  ");
+        }
         this.string = b.append("}\n").toString();
     }
 
     private void writeBGP(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict,
-                          @Nonnull StringBuilder b) {
+                          @Nonnull StringBuilder b, @Nonnull String indent) {
         SetMultimap<Term, SPARQLFilter> term2filter = HashMultimap.create();
         for (SPARQLFilter filter : filters)
             filter.getTerms().forEach(t -> term2filter.put(t, filter));
@@ -135,13 +147,35 @@ public class SPARQLString {
         Iterator<List<SPARQLFilter>> aIt = annotations.iterator();
         for (Triple triple : triples) {
             assert  aIt.hasNext();
+            b.append(indent);
             triple.forEach(t -> b.append(term2SPARQL(t, dict)).append(" "));
             List<SPARQLFilter> filters = aIt.next();
-            filters.forEach(ann -> b.append(ann.getSparqlFilter()).append('\n'));
-            if (!filters.isEmpty())
+            if (!filters.isEmpty()) {
+                String indent2 = indent + "  ";
+                b.append('\n');
+                filters.forEach(f -> b.append(indent2).append(f.getSparqlFilter()).append('\n'));
                 b.setLength(b.length()-1); //undo \n of last FILTER()
+            }
             b.append(".\n");
         }
+    }
+
+    static void writeAssignments(@Nonnull ValuesModifier values, @Nonnull PrefixDict dict,
+                                 @Nonnull StringBuilder b, @Nonnull String indent) {
+        assert !values.getVarNames().isEmpty();
+        String indent2 = indent + "  ";
+
+        String varList = values.getVarNames().stream().map(n -> "?" + n).collect(joining(" "));
+        b.append("VALUES ( ").append(varList).append(" ) {\n");
+        for (Solution assignment : values.getAssignments()) {
+            b.append(indent2).append("( ");
+            for (String var : values.getVarNames()) {
+                Term term = assignment.get(var);
+                b.append(term == null ? "UNDEF" : term2SPARQL(term, dict)).append(' ');
+            }
+            b.append(")\n");
+        }
+        b.append(indent).append("}\n");
     }
 
     static @Nonnull ImmutableSet<SPARQLFilter> getFilters(Collection<Triple> triples) {

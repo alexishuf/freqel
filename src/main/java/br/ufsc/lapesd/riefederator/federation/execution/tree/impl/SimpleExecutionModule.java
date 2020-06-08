@@ -3,8 +3,8 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree.impl;
 import br.ufsc.lapesd.riefederator.federation.execution.InjectedExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.SimpleJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
@@ -31,7 +31,7 @@ public class SimpleExecutionModule extends AbstractModule {
         bind(CartesianNodeExecutor.class).to(SimpleCartesianNodeExecutor.class);
         bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
         if (allowHashJoins)
-            bind(JoinNodeExecutor.class).to(SimpleJoinNodeExecutor.class);
+            bind(JoinNodeExecutor.class).to(DefaultJoinNodeExecutor.class);
         else
             bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
         bind(EmptyNodeExecutor.class).toInstance(SimpleEmptyNodeExecutor.INSTANCE);

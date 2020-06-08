@@ -1,12 +1,21 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind;
 
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.CrudeSolutionHashTable;
+import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
+import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.FlatMapResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.results.impl.TransformedResults;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
@@ -16,26 +25,30 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Provider;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
+import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class SimpleBindJoinResults implements Results {
-    public static final @Nonnull Logger logger = LoggerFactory.getLogger(SimpleBindJoinResults.class);
+    private static final @Nonnull Logger logger = LoggerFactory.getLogger(SimpleBindJoinResults.class);
     public static final int NOTIFY_DELTA_MS = 5000;
+    public static final int DEFAULT_VALUES_ROWS = 40;
 
     private @Nullable String nodeName = null;
     private final @Nonnull PlanExecutor planExecutor;
     private final @Nonnull Results smaller;
     private final @Nonnull PlanNode rightTree;
-    private Results rightResults = null;
+    private Results currentResults = null;
     private final @Nonnull Collection<String> joinVars;
     private final @Nonnull Set<String> resultVars;
-    private Solution leftSolution = null, next = null;
+    private Solution next = null;
+    private final int valuesRows = DEFAULT_VALUES_ROWS;
+
+    private final @Nonnull Supplier<Results> resultsSupplier;
 
     private final @Nonnull Stopwatch age = Stopwatch.createUnstarted();
     private final @Nonnull Stopwatch notifyWindow = Stopwatch.createUnstarted();
@@ -44,10 +57,13 @@ public class SimpleBindJoinResults implements Results {
 
     public static class Factory implements BindJoinResultsFactory {
         private final @Nonnull Provider<PlanExecutor> planExecutorProvider;
+        private final @Nonnull ResultsExecutor resultsExecutor;
 
         @Inject
-        public Factory(@Nonnull Provider<PlanExecutor> planExecutorProvider) {
+        public Factory(@Nonnull Provider<PlanExecutor> planExecutorProvider,
+                       @Nonnull ResultsExecutor resultsExecutor) {
             this.planExecutorProvider = planExecutorProvider;
+            this.resultsExecutor = resultsExecutor;
         }
 
         @Override
@@ -55,22 +71,31 @@ public class SimpleBindJoinResults implements Results {
                                               @Nonnull Collection<String> joinVars,
                                               @Nonnull Collection<String> resultVars) {
             PlanExecutor executor = planExecutorProvider.get();
-            return new SimpleBindJoinResults(executor, smaller, rightTree, joinVars, resultVars);
+            return new SimpleBindJoinResults(executor, smaller, rightTree, joinVars,
+                                             resultVars, resultsExecutor);
         }
     }
 
 
     public SimpleBindJoinResults(@Nonnull PlanExecutor planExecutor, @Nonnull Results smaller,
                                  @Nonnull PlanNode rightTree, @Nonnull Collection<String> joinVars,
-                                 @Nonnull Collection<String> resultVars) {
+                                 @Nonnull Collection<String> resultVars,
+                                 @Nullable ResultsExecutor resultsExecutor) {
         Preconditions.checkArgument(rightTree.getResultVars().containsAll(joinVars),
                 "There are joinVars missing on rightTree");
         this.planExecutor = planExecutor;
-        this.smaller = smaller;
         this.rightTree = rightTree;
         this.joinVars = joinVars;
         this.resultVars = resultVars instanceof Set ? (Set<String>)resultVars
                                                     : new HashSet<>(resultVars);
+        if (canValuesBind(rightTree)) {
+            if (!smaller.isAsync() && resultsExecutor != null)
+                smaller = resultsExecutor.async(singleton(smaller), valuesRows);
+            resultsSupplier = new ValuesBind();
+        } else {
+            resultsSupplier = new NaiveBind();
+        }
+        this.smaller = smaller;
     }
 
     @Override
@@ -81,6 +106,11 @@ public class SimpleBindJoinResults implements Results {
     @Override
     public void setNodeName(@Nonnull String name) {
         nodeName = name;
+    }
+
+    @Override
+    public boolean isAsync() {
+        return false;
     }
 
     @Override
@@ -105,51 +135,126 @@ public class SimpleBindJoinResults implements Results {
                      rewriteAvg, age.elapsed(MILLISECONDS)/1000.0);
     }
 
-    private void advance() {
-        assert next == null;
-        if (!age.isRunning()) age.start();
+    private class NaiveBind implements Supplier<Results> {
+        private @Nullable Solution leftSolution;
 
-        while (rightResults == null || !rightResults.hasNext()) {
-            if (!smaller.hasNext()) {
-                logStatus(true);
-                return;
-            }
-            if (rightResults != null) {
-                try {
-                    rightResults.close();
-                } catch (ResultsCloseException e) {
-                    logger.error("Problem closing rightResults of bound plan tree", e);
-                }
-            }
+        @Override
+        public Results get() {
             leftSolution = smaller.next();
             Stopwatch sw = Stopwatch.createStarted();
             PlanNode bound = bind(rightTree, leftSolution);
             callBindMs += sw.elapsed(MICROSECONDS)/1000.0;
-            ++binds;
-            rightResults = planExecutor.executeNode(bound);
+            Results rightResults = planExecutor.executeNode(bound);
+            return new TransformedResults(rightResults, resultVars, this::reassemble);
         }
-        Solution rightSolution = rightResults.next();
-        MapSolution.Builder builder = MapSolution.builder();
-        for (String name : resultVars) {
-            Term term = leftSolution.get(name, rightSolution.get(name));
-            if (term != null)
-                builder.put(name, term);
+
+        private @Nonnull PlanNode bind(@Nonnull PlanNode node, @Nonnull Solution values) {
+            MapSolution.Builder builder = MapSolution.builder();
+            for (String name : joinVars) {
+                Term term = values.get(name);
+                if (term == null)
+                    logger.warn("Left Solution is missing join variable {}", name);
+                else
+                    builder.put(name, term);
+            }
+            return node.createBound(builder.build());
         }
-        next = builder.build();
-        ++results;
-        logStatus(false);
+
+        private @Nonnull Solution reassemble(@Nonnull Solution right) {
+            assert leftSolution != null;
+            MapSolution.Builder builder = MapSolution.builder();
+            for (String name : resultVars) {
+                Term term = leftSolution.get(name, right.get(name));
+                if (term != null)
+                    builder.put(name, term);
+            }
+            return builder.build();
+        }
     }
 
-    private @Nonnull PlanNode bind(@Nonnull PlanNode node, @Nonnull Solution values) {
-        MapSolution.Builder builder = MapSolution.builder();
-        for (String name : joinVars) {
-            Term term = values.get(name);
-            if (term == null)
-                logger.warn("Left Solution is missing join variable {}", name);
-            else
-                builder.put(name, term);
+    private static Stream<QueryNode> streamQNs(PlanNode node) {
+        return node instanceof QueryNode ? Stream.of((QueryNode) node)
+                : node.getChildren().stream().map(n -> (QueryNode)n);
+    }
+
+    private static boolean canValuesBind(PlanNode node) {
+        // require a QN or a MQ of QN
+        boolean ok = node instanceof QueryNode ||
+                ( node instanceof MultiQueryNode
+                        && node.getChildren().stream().allMatch(QueryNode.class::isInstance) );
+        if (!ok) return false;
+        // require that all endpoints support VALUES
+        Stream<QueryNode> qns = node instanceof QueryNode ? Stream.of((QueryNode) node)
+                : node.getChildren().stream().map(n -> (QueryNode)n);
+        return qns.map(QueryNode::getEndpoint).allMatch(e -> e.hasCapability(Capability.VALUES));
+    }
+
+    private class ValuesBind implements Supplier<Results> {
+        CrudeSolutionHashTable table = new CrudeSolutionHashTable(joinVars, valuesRows*10);
+        Set<Solution> bindValues = new HashSet<>(valuesRows);
+
+        @Override
+        public Results get() {
+            table.clear();
+            bindValues.clear();
+            while (bindValues.size() < valuesRows && smaller.hasNext())
+                addLeftSolution(smaller.next());
+            ValuesModifier modifier = new ValuesModifier(joinVars, bindValues);
+            Stopwatch sw = Stopwatch.createStarted();
+            PlanNode rewritten = bind(rightTree, modifier);
+            callBindMs += sw.elapsed(MICROSECONDS)/1000.0;
+            Results rightResults = planExecutor.executeNode(rewritten);
+            return new FlatMapResults(rightResults, resultVars, this::expand);
         }
-        return node.createBound(builder.build());
+
+        private void addLeftSolution(@Nonnull Solution solution) {
+            table.add(solution);
+            MapSolution.Builder b = MapSolution.builder();
+            for (String name : joinVars)
+                b.put(name, solution.get(name));
+            bindValues.add(b.build());
+        }
+
+        private @Nonnull Results expand(@Nonnull Solution right) {
+            List<Solution> list = new ArrayList<>(valuesRows*2);
+            for (Solution left : table.getAll(right)) {
+                MapSolution.Builder builder = MapSolution.builder();
+                for (String name : resultVars)
+                    builder.put(name, left.get(name, right.get(name)));
+                list.add(builder.build());
+            }
+            return new CollectionResults(list, resultVars);
+        }
+
+        private @Nonnull PlanNode bind(@Nonnull PlanNode node, @Nonnull ValuesModifier modifier) {
+            MultiQueryNode.Builder b = MultiQueryNode.builder();
+            streamQNs(node).map(qn -> qn.createWithModifier(modifier)).forEach(b::add);
+            return b.buildIfMulti();
+        }
+    }
+
+    private void advance() {
+        assert next == null;
+        if (!age.isRunning()) age.start();
+
+        while (currentResults == null || !currentResults.hasNext()) {
+            if (!smaller.hasNext()) {
+                logStatus(true);
+                return;
+            }
+            if (currentResults != null) {
+                try {
+                    currentResults.close();
+                } catch (ResultsCloseException e) {
+                    logger.error("Problem closing rightResults of bound plan tree", e);
+                }
+            }
+            currentResults = resultsSupplier.get();
+            ++binds;
+        }
+        next = currentResults.next();
+        ++results;
+        logStatus(false);
     }
 
     @Override
@@ -179,8 +284,8 @@ public class SimpleBindJoinResults implements Results {
         try {
             smaller.close();
         } finally {
-            if (rightResults != null)
-                rightResults.close();
+            if (currentResults != null)
+                currentResults.close();
         }
     }
 }

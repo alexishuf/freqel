@@ -16,8 +16,16 @@ public interface ResultsExecutor extends AutoCloseable {
      * of this method.
      *
      * @param collection Set of {@link Results} objects to consume in parallel
+     * @param bufferSizeHint a hint of how many results should be kept in a buffer, per
+     *                       input Results. Can be ignored
      * @return A meta {@link Results} object for consuming the non-deduplicated results
      *         from the input objects
+     */
+    @Nonnull Results async(@Nonnull Collection<? extends Results> collection,
+                           int bufferSizeHint);
+
+    /**
+     * Same as {@link ResultsExecutor#async(Collection, int)}, but without buffer hint
      */
     @Nonnull Results async(@Nonnull Collection<? extends Results> collection);
 

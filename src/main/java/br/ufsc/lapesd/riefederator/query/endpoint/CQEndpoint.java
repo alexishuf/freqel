@@ -34,6 +34,26 @@ public interface CQEndpoint extends TPEndpoint {
     @Contract("_ -> new")
     @Nonnull Results query(@Nonnull CQuery query);
 
+    /**
+     * Indicates whether {@link CQEndpoint#querySPARQL(String)} is supported
+     */
+    default boolean canQuerySPARQL() {
+        return false;
+    }
+
+    /**
+     * In the case of endpoints wrapping SPARQL endpoints (or local RDF stores),
+     * this will sent the given SPARQL query directly. Results and Solutions will
+     * still be handled as if by {@link CQEndpoint#query(CQuery)}.
+     *
+     * @param sparqlQuery the query
+     * @throws UnsupportedOperationException if !{@link CQEndpoint#canQuerySPARQL()}
+     * @return Results object
+     */
+    default @Nonnull Results querySPARQL(@Nonnull String sparqlQuery) {
+        throw new UnsupportedOperationException("Cannot handle raw SPARQL queries");
+    }
+
     @Override
     @Contract("_ -> new")
     default @Nonnull Results query(@Nonnull Triple query) {

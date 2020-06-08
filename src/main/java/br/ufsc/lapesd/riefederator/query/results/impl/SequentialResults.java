@@ -34,6 +34,11 @@ class SequentialResults implements Results {
     }
 
     @Override
+    public boolean isAsync() {
+        return false;
+    }
+
+    @Override
     public int getReadyCount() {
         if (idx >= results.size()) return 0;
         return results.get(idx).getReadyCount();

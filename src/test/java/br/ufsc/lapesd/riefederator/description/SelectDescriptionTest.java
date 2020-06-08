@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import org.apache.commons.io.FileUtils;
+import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
@@ -50,7 +51,7 @@ public class SelectDescriptionTest implements TestContext {
         public int queries = 0;
 
         protected CountedARQEndpoint(@Nullable String name,
-                                     @Nonnull Function<String, QueryExecution> executionFactory,
+                                     @Nonnull Function<Query, QueryExecution> executionFactory,
                                      @Nullable Transactional transactional,
                                      @Nonnull Runnable closer, boolean local) {
             super(name, executionFactory, transactional, closer, local);

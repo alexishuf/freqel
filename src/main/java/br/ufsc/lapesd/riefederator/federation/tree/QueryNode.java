@@ -3,10 +3,13 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 
 import javax.annotation.Nonnull;
 import java.util.Set;
+
+import static java.util.Collections.singleton;
 
 public class QueryNode extends ComponentNode {
     private final @Nonnull TPEndpoint endpoint;
@@ -47,6 +50,13 @@ public class QueryNode extends ComponentNode {
                 : new QueryNode(endpoint, d.query, d.projection, getCardinality());
         boundNode.addBoundFiltersFrom(getFilters(), s);
         return boundNode;
+    }
+
+
+    public @Nonnull QueryNode createWithModifier(@Nonnull Modifier modifier) {
+        CQuery q = getQuery().withModifiers(singleton(modifier));
+        return isProjecting() ? new QueryNode(endpoint, q, getResultVars(), getCardinality())
+                              : new QueryNode(endpoint, q, getCardinality());
     }
 
     @Override

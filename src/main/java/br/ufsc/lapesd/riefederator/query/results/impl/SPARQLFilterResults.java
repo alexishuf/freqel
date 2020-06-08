@@ -75,6 +75,11 @@ public class SPARQLFilterResults implements Results {
     }
 
     @Override
+    public boolean isAsync() {
+        return input.isAsync();
+    }
+
+    @Override
     public int getReadyCount() {
         if (input.getReadyCount() > 0)
             filter(true);

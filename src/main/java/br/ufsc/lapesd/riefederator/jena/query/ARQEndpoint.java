@@ -23,9 +23,7 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.commons.collections4.iterators.TransformIterator;
 import org.apache.http.client.HttpClient;
 import org.apache.http.protocol.HttpContext;
-import org.apache.jena.query.Dataset;
-import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.ResultSet;
+import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.system.Txn;
@@ -34,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -48,7 +47,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(ARQEndpoint.class);
 
     @SuppressWarnings("Immutable")
-    private final @Nonnull Function<String, QueryExecution> executionFactory;
+    private final @Nonnull Function<Query, QueryExecution> executionFactory;
     @SuppressWarnings("Immutable")
     private final @Nullable Transactional transactional;
     @SuppressWarnings("Immutable")
@@ -57,7 +56,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private final boolean local;
 
     protected ARQEndpoint(@Nullable String name,
-                          @Nonnull Function<String, QueryExecution> executionFactory,
+                          @Nonnull Function<Query, QueryExecution> executionFactory,
                           @Nullable Transactional transactional,
                           @Nonnull Runnable closer, boolean local) {
         this.executionFactory = executionFactory;
@@ -76,7 +75,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public boolean isEmpty() {
-        try (QueryExecution execution = executionFactory.apply("ASK WHERE {?s ?p ?o.}")) {
+        try (QueryExecution execution = createExecution("ASK WHERE {?s ?p ?o.}")) {
             return !execution.execAsk();
         }
     }
@@ -128,10 +127,28 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             case PROJECTION:
             case DISTINCT:
             case SPARQL_FILTER:
+            case VALUES:
             case ASK:
                 return true;
             default:
                 return false;
+        }
+    }
+
+    @Override
+    public boolean canQuerySPARQL() {
+        return true;
+    }
+
+    @Override
+    public @Nonnull Results querySPARQL(@Nonnull String sparqlQuery) {
+        if (transactional != null) {
+            Results[] results = {null};
+            Txn.executeRead(transactional,
+                    () -> results[0] = CollectionResults.greedy(doSPARQLQuery(sparqlQuery)));
+            return results[0];
+        } else {
+            return doSPARQLQuery(sparqlQuery);
         }
     }
 
@@ -151,22 +168,37 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     @Nonnull
+    public Results doSPARQLQuery(@Nonnull String sparql) {
+        Query query = QueryFactory.create(sparql);
+        SPARQLString.Type type = query.isAskType() ? SPARQLString.Type.ASK
+                                                   : SPARQLString.Type.SELECT;
+        Set<String> varNames = new HashSet<>();
+        return doQuery(query, type, varNames);
+    }
+
+    @Nonnull
     public Results doQuery(@Nonnull SPARQLString sparql) {
+        Query query = QueryFactory.create(sparql.getString());
+        return doQuery(query, sparql.getType(), sparql.getVarNames());
+    }
+
+    @Nonnull
+    public Results doQuery(@Nonnull Query query, @Nonnull SPARQLString.Type type,
+                           @Nonnull Set<String> vars) {
         Stopwatch sw = Stopwatch.createStarted();
-        if (sparql.getType() == SPARQLString.Type.ASK) {
-            try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
+        if (type == SPARQLString.Type.ASK) {
+            try (QueryExecution exec = executionFactory.apply(query)) {
                 boolean ans = exec.execAsk();
                 Set<Solution> solutions = ans ? singleton(MapSolution.EMPTY) : emptySet();
-                LogUtils.logQuery(logger, sparql, this, solutions.size(), sw);
+                LogUtils.logQuery(logger, query, this, solutions.size(), sw);
                 return new CollectionResults(solutions, emptySet());
             }
         } else {
-            QueryExecution exec = executionFactory.apply(sparql.getString());
+            QueryExecution exec = executionFactory.apply(query);
             try {
                 ResultSet rs = exec.execSelect();
-                LogUtils.logQuery(logger, sparql, this, sw);
-                return new IteratorResults(new TransformIterator<>(rs, JenaSolution::new),
-                                           sparql.getVarNames()) {
+                LogUtils.logQuery(logger, query, this, sw);
+                return new IteratorResults(new TransformIterator<>(rs, JenaSolution::new), vars) {
                     @Override
                     public void close() throws ResultsCloseException {
                         exec.close();
@@ -177,6 +209,11 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
                 throw t;
             }
         }
+    }
+
+    private @Nonnull QueryExecution createExecution(@Nonnull String string) {
+        Query query = QueryFactory.create(string);
+        return executionFactory.apply(query);
     }
 
     @Override
@@ -197,12 +234,12 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
         SPARQLString sparql = new SPARQLString(query, dict, mods);
         if (sparql.getType() == SPARQLString.Type.ASK) {
-            try (QueryExecution exec = executionFactory.apply(sparql.getString())) {
+            try (QueryExecution exec = createExecution(sparql.getString())) {
                 return exec.execAsk() ? Cardinality.NON_EMPTY : Cardinality.EMPTY;
             }
         } else {
             String withLimit = sparql.getString() + "LIMIT "+ Math.max(limit(policy), 4) +"\n";
-            try (QueryExecution exec = executionFactory.apply(withLimit)) {
+            try (QueryExecution exec = createExecution(withLimit)) {
                 ResultSet results = exec.execSelect();
                 int count = 0;
                 boolean exhausted = false;

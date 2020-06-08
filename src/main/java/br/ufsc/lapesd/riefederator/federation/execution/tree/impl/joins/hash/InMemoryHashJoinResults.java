@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.HashJoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultHashJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -18,7 +18,7 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toSet;
 
 public class InMemoryHashJoinResults implements Results {
-    private static final @Nonnull Logger logger = LoggerFactory.getLogger(HashJoinNodeExecutor.class);
+    private static final @Nonnull Logger logger = LoggerFactory.getLogger(DefaultHashJoinNodeExecutor.class);
 
     private @Nullable String nodeName;
     private final @Nonnull Results smaller, larger;
@@ -112,6 +112,11 @@ public class InMemoryHashJoinResults implements Results {
     @Override
     public void setNodeName(@Nonnull String name) {
         nodeName = name;
+    }
+
+    @Override
+    public boolean isAsync() {
+        return true;
     }
 
     @Override

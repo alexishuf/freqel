@@ -52,6 +52,11 @@ public class CartesianResults implements Results {
     }
 
     @Override
+    public boolean isAsync() {
+        return false;
+    }
+
+    @Override
     public int getReadyCount() {
         if (fetched == null) return 0;
         return fetched.isEmpty() ? largest.getReadyCount() : readyProduct;

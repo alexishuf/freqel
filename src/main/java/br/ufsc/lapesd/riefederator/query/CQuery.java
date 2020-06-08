@@ -690,7 +690,14 @@ public class CQuery implements  List<Triple> {
     }
 
     public @Contract("_ -> new") @Nonnull CQuery withModifiers(@Nonnull CQuery other) {
-        CQuery copy = new CQuery(list, other.getModifiers(), prefixDict,
+        return withModifiers(other.getModifiers());
+    }
+    public @Contract("_ -> new") @Nonnull CQuery
+    withModifiers(@Nonnull Collection<Modifier> modifiers) {
+        ImmutableSet.Builder<Modifier> b = ImmutableSet.builder();
+        getModifiers().forEach(b::add);
+        modifiers.forEach(b::add);
+        CQuery copy = new CQuery(list, b.build(), prefixDict,
                                  termAnnotations, tripleAnnotations, joinConnected);
         copy.ask = ask;
         copy.varsCache = varsCache;

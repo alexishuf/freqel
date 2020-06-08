@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -39,7 +40,7 @@ public class AskDescriptionTest implements TestContext {
         public int calls = 0;
 
         public CountingARQEndpoint(@Nullable String name,
-                                   @Nonnull Function<String, QueryExecution> executionFactory,
+                                   @Nonnull Function<Query, QueryExecution> executionFactory,
                                    @Nonnull Runnable closer, boolean local) {
             super(name, executionFactory, null, closer, local);
         }

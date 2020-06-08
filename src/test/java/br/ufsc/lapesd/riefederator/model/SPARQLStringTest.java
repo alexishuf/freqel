@@ -2,6 +2,9 @@ package br.ufsc.lapesd.riefederator.model;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
+import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
+import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
@@ -10,12 +13,11 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
-import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import com.google.common.collect.Sets;
@@ -26,6 +28,8 @@ import org.apache.jena.query.QuerySolution;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDFS;
 import org.testng.annotations.DataProvider;
@@ -33,6 +37,9 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -171,5 +178,62 @@ public class SPARQLStringTest implements TestContext {
         Set<Triple> qry = singleton(new Triple(s, knows, o));
         String str = new SPARQLString(qry, EMPTY, singleton(Ask.REQUIRED)).toString();
         assertTrue(Pattern.compile("ASK +\\{").matcher(str).find());
+    }
+
+    private @Nonnull Model getRdf2() throws IOException {
+        Model model = ModelFactory.createDefaultModel();
+        try (InputStream stream = getClass().getResourceAsStream("../rdf-2.nt")) {
+            assertNotNull(stream);
+            RDFDataMgr.read(model, stream, Lang.TTL);
+        }
+        return model;
+    }
+
+    @Test
+    public void testValuesSingleRowSingleVar() throws IOException {
+        Model rdf2 = getRdf2();
+        ValuesModifier m = new ValuesModifier(singleton("y"),
+                                              singleton(MapSolution.build(y, lit(23))));
+        CQuery query = createQuery(x, age, y, m);
+        String sparql = new SPARQLString(query).getString();
+        Set<Term> actual = new HashSet<>();
+        try (QueryExecution ex = QueryExecutionFactory.create(sparql, rdf2)) {
+            ResultSet set = ex.execSelect();
+            while (set.hasNext())
+                actual.add(JenaWrappers.fromJena(set.next().get("x").asResource()));
+        }
+
+        assertEquals(actual, Sets.newHashSet(Alice, Charlie));
+    }
+
+    @Test
+    public void testValues3Rows2Columns() throws IOException {
+        Model rdf2 = getRdf2();
+        ValuesModifier m = new ValuesModifier(asList("y", "z"), asList(
+                MapSolution.builder().put(y, Person).put(z, lit(23)).build(),
+                MapSolution.builder().put(y, Person).put(z, lit(25)).build(),
+                MapSolution.builder().put(y, Person).put(z, lit(24)).build() //no result
+        ));
+        CQuery query = createQuery(x, type, y, x, age, z, m);
+        String sparql = new SPARQLString(query).getString();
+        Set<Solution> actual = new HashSet<>();
+        try (QueryExecution ex = QueryExecutionFactory.create(sparql, rdf2)) {
+            ResultSet set = ex.execSelect();
+            while (set.hasNext())
+                actual.add(new JenaSolution(set.next()));
+        }
+
+        Set<Solution> expected = Sets.newHashSet(
+                MapSolution.builder().put(x, Alice).put(y, Person).put(z, lit(23)).build(),
+                MapSolution.builder().put(x, Charlie).put(y, Person).put(z, lit(23)).build(),
+                MapSolution.builder().put(x, Dave).put(y, Person).put(z, lit(25)).build()
+        );
+        assertEquals(actual, expected);
+
+        // should also work through ARQEndpoint
+        actual.clear();
+        ARQEndpoint ep = ARQEndpoint.forModel(rdf2);
+        ep.query(query).forEachRemainingThenClose(actual::add);
+        assertEquals(actual, expected);
     }
 }

@@ -44,6 +44,11 @@ public class ProjectingResults implements Results {
     }
 
     @Override
+    public boolean isAsync() {
+        return delegate.isAsync();
+    }
+
+    @Override
     public int getReadyCount() {
         return delegate.getReadyCount();
     }

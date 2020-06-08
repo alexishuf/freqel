@@ -18,6 +18,11 @@ public class SequentialResultsExecutor implements ResultsExecutor {
     }
 
     @Override
+    public @Nonnull Results async(@Nonnull Collection<? extends Results> collection, int ignored) {
+        return async(collection);
+    }
+
+    @Override
     public void close() {
         /* nothing to do */
     }

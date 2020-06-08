@@ -16,18 +16,18 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import java.util.Set;
 
-public class HashJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
+public class DefaultHashJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
     private final @Nonnull CardinalityComparator comparator;
 
     @Inject
-    public HashJoinNodeExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider,
-                                @Nonnull CardinalityComparator comparator) {
+    public DefaultHashJoinNodeExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider,
+                                       @Nonnull CardinalityComparator comparator) {
         super(planExecutorProvider);
         this.comparator = comparator;
     }
 
-    public HashJoinNodeExecutor(@Nonnull PlanExecutor planExecutor,
-                                @Nonnull CardinalityComparator comparator) {
+    public DefaultHashJoinNodeExecutor(@Nonnull PlanExecutor planExecutor,
+                                       @Nonnull CardinalityComparator comparator) {
         super(planExecutor);
         this.comparator = comparator;
     }

@@ -8,12 +8,11 @@ public enum  Capability {
     ASK,
     PROJECTION,
     DISTINCT,
-    SPARQL_FILTER;
+    SPARQL_FILTER,
+    VALUES;
 
     @CanIgnoreReturnValue
-    public @Nonnull
-    TPEndpoint
-    requireFrom(@Nonnull TPEndpoint ep) throws MissingCapabilityException {
+    public @Nonnull TPEndpoint requireFrom(@Nonnull TPEndpoint ep) throws MissingCapabilityException {
         if (!ep.hasCapability(this))
             throw new MissingCapabilityException(this, ep);
         return ep;
