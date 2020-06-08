@@ -180,6 +180,8 @@ public class QueryEvaluation {
                 .addArguments("--preheat", String.valueOf(preheatRuns));
         if (usePath)
             builder.addArguments("--use-path");
+        if (noExec)
+            builder.addArguments("--only-plan");
         else if (queryResultsDir != null)
             builder.addArguments("--query-results-dir", queryResultsDir.getAbsolutePath());
         builder.addArguments(q.file.getAbsolutePath());
