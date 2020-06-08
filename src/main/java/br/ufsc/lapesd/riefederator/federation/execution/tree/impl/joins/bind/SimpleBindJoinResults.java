@@ -48,6 +48,8 @@ public class SimpleBindJoinResults implements Results {
     private final @Nonnull Set<String> resultVars;
     private Solution next = null;
     private final int valuesRows = DEFAULT_VALUES_ROWS;
+    private final Set<Solution> history = new HashSet<>();
+    private int discarded = 0;
 
     private final @Nonnull Supplier<Results> resultsSupplier;
 
@@ -131,9 +133,9 @@ public class SimpleBindJoinResults implements Results {
         double resultsPerBind = binds > 0 ? results / (double)binds : 0;
         double rewriteAvg = binds > 0 ? callBindMs / (double)binds : 0;
         logger.debug("{}: {} {} results from {} binds (avg: {} results/bind). " +
-                     "Right-side rewrite avg: {}ms. Age: {}s",
+                     "Right-side rewrite avg: {}ms. Age: {}s. {} duplicates discarded",
                      getNodeName(), exhausted ? "exhausted" : "", results, binds, resultsPerBind,
-                     rewriteAvg, age.elapsed(MILLISECONDS)/1000.0);
+                     rewriteAvg, age.elapsed(MILLISECONDS)/1000.0, discarded);
     }
 
     private class NaiveBind implements Supplier<Results> {
@@ -237,28 +239,33 @@ public class SimpleBindJoinResults implements Results {
     private void advance() {
         assert next == null;
         if (!age.isRunning()) age.start();
-
-        while (currentResults == null || !currentResults.hasNext()) {
-            if (!smaller.hasNext()) {
-                logStatus(true);
-                return;
-            }
-            if (currentResults != null) {
-                try {
-                    currentResults.close();
-                } catch (ResultsCloseException e) {
-                    logger.error("Problem closing rightResults of bound plan tree", e);
+        while (next == null) {
+            while (currentResults == null || !currentResults.hasNext()) {
+                if (!smaller.hasNext()) {
+                    logStatus(true);
+                    return;
                 }
+                if (currentResults != null) {
+                    try {
+                        currentResults.close();
+                    } catch (ResultsCloseException e) {
+                        logger.error("Problem closing rightResults of bound plan tree", e);
+                    }
+                }
+                try {
+                    currentResults = resultsSupplier.get();
+                } catch (QueryExecutionException e) {
+                    logger.error("Failed to execute bind-join query. Will ignore and " +
+                            "continue joining", e);
+                }
+                ++binds;
             }
-            try {
-                currentResults = resultsSupplier.get();
-            } catch (QueryExecutionException e) {
-                logger.error("Failed to execute bind-join query. Will ignore and " +
-                             "continue joining", e);
-            }
-            ++binds;
+            Solution tmp = currentResults.next();
+            if (history.add(MapSolution.builder(tmp).remove("Int").build()))
+                next = tmp;
+            else
+                ++discarded;
         }
-        next = currentResults.next();
         ++results;
         logStatus(false);
     }

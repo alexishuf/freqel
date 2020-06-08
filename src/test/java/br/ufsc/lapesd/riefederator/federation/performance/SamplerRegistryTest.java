@@ -84,22 +84,34 @@ public class SamplerRegistryTest {
         SamplerRegistry r = supplier.get();
         assertTrue(Metrics.OPT_MS.isContainedBy(Metrics.PLAN_MS));
         assertTrue(Metrics.PLAN_MS.contains(Metrics.OPT_MS));
-        try (TimeSampler planSampler = r.createSampler(Metrics.PLAN_MS, listener)) {
+        assertFalse(Metrics.OUT_PLAN_MS.contains(Metrics.PLAN_MS));
+        assertFalse(Metrics.OUT_PLAN_MS.contains(Metrics.OPT_MS));
+
+        try (TimeSampler outSampler = r.createSampler(Metrics.OUT_PLAN_MS, listener)) {
             Thread.sleep(200);
-            try (TimeSampler optSampler = r.createSampler(Metrics.OPT_MS, listener)) {
-                assertEquals(new HashSet<>(r.getCurrentThreadSamplers()),
-                             Sets.newHashSet(planSampler, optSampler));
+            try (TimeSampler planSampler = r.createSampler(Metrics.PLAN_MS, listener)) {
                 Thread.sleep(200);
+                try (TimeSampler optSampler = r.createSampler(Metrics.OPT_MS, listener)) {
+                    assertEquals(new HashSet<>(r.getCurrentThreadSamplers()),
+                            Sets.newHashSet(outSampler, planSampler, optSampler));
+                    Thread.sleep(200);
+                }
+                assertEquals(new HashSet<>(r.getCurrentThreadSamplers()),
+                             Sets.newHashSet(outSampler, planSampler));
             }
-            assertEquals(new HashSet<>(r.getCurrentThreadSamplers()), singleton(planSampler));
+            assertEquals(new HashSet<>(r.getCurrentThreadSamplers()), singleton(outSampler));
         }
         assertEquals(new HashSet<>(r.getCurrentThreadSamplers()), emptySet());
 
         listener.sync();
-        assertEquals(listener.getValues(Metrics.OPT_MS).size(), 1);
+        assertEquals(listener.getValues(Metrics.OPT_MS).size(), 1); // should be ~200
         assertTrue(listener.getValues(Metrics.OPT_MS).get(0) <=  300);
 
-        assertEquals(listener.getValues(Metrics.PLAN_MS).size(), 1);
-        assertTrue(listener.getValues(Metrics.PLAN_MS).get(0) <=  300);
+        assertEquals(listener.getValues(Metrics.PLAN_MS).size(), 1); // should be ~400
+        assertTrue(listener.getValues(Metrics.PLAN_MS).get(0) <=  500);
+        assertTrue(listener.getValues(Metrics.PLAN_MS).get(0) >=  350);
+
+        assertEquals(listener.getValues(Metrics.OUT_PLAN_MS).size(), 1); // should be ~200
+        assertTrue(listener.getValues(Metrics.OUT_PLAN_MS).get(0) <=  300);
     }
 }

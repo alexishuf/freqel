@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.impl.SimpleMetric;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.impl.SimpleTimeMetric;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
+import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -60,6 +61,13 @@ public class Metrics {
      */
     public static @Nonnull SimpleTimeMetric OPT_MS
             = SimpleTimeMetric.builder("OPT_MS").containedBy(PLAN_MS).create();
+
+    /**
+     * Double with the number of milliseconds spent converting a {@link CQuery} into a
+     * {@link PlanNode}. This metric <b>includes</b> any other metric.
+     */
+    public static @Nonnull SimpleTimeMetric FULL_PLAN_MS
+            = SimpleTimeMetric.builder("FULL_PLAN_MS").containsAnything().create();
 
     /**
      * Time used for fetching all results. This is not measured from within the federation.

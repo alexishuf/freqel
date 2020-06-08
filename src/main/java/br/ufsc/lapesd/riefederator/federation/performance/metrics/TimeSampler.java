@@ -15,6 +15,7 @@ public class TimeSampler implements AutoCloseable {
     private final @Nonnull TimeMetric metric;
     private final @Nonnull PerformanceListener listener;
     private final @Nonnull Stopwatch sw;
+    private int stopDepth = 0;
     private List<TimeSampler> stopped = null;
 
     public TimeSampler(@Nonnull PerformanceListener listener, @Nonnull TimeMetric metric) {
@@ -38,7 +39,8 @@ public class TimeSampler implements AutoCloseable {
         if (stopped == null)
             stopped = new ArrayList<>();
         for (TimeSampler old : listener.getSamplerRegistry().getCurrentThreadSamplers()) {
-            if (old.getMetric().contains(getMetric())) {
+            if (old == this) continue;
+            if (!old.getMetric().contains(getMetric()) && !old.stopped.contains(this)) {
                 old.stop();
                 stopped.add(old);
             }
@@ -50,9 +52,18 @@ public class TimeSampler implements AutoCloseable {
         return metric;
     }
 
+    public boolean isRunning() {
+        assert stopDepth > 0 || sw.isRunning();
+        return stopDepth == 0;
+    }
+
     @CanIgnoreReturnValue
     public @Nonnull TimeSampler stop() {
-        if (!sw.isRunning()) return this;
+        assert stopDepth >= 0;
+        ++stopDepth;
+        if (stopDepth > 1)
+            return this;
+        assert stopDepth == 1;
         sw.stop();
         if (stopped != null) {
             stopped.forEach(TimeSampler::resume);
@@ -63,9 +74,13 @@ public class TimeSampler implements AutoCloseable {
 
     @CanIgnoreReturnValue
     public @Nonnull TimeSampler resume()  {
-        if (sw.isRunning()) return this;
+        assert stopDepth > 0 : "resume() called with stopDepth="+stopDepth;
+        --stopDepth;
+        if (stopDepth > 0)
+            return this; // do not resume yet
         if (stopped != null) {
-            assert stopped.isEmpty() : "During resume(), stopped set should be empty";
+            assert stopped.isEmpty() : "During effective (depth=0) resume() the stopped set " +
+                    "should be empty. Most likely cause: missed a previous effective stop";
             stopContaining();
         }
         sw.start();
@@ -89,7 +104,9 @@ public class TimeSampler implements AutoCloseable {
 
     @Override
     public void close() {
-        stop().save();
+        if (isRunning())
+            stop();
+        save();
         listener.getSamplerRegistry().removeCurrentThreadSampler(this);
     }
 }

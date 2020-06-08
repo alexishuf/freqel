@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
+import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
@@ -37,24 +38,27 @@ public class QueryExperiment {
     private static final Logger logger = LoggerFactory.getLogger(QueryExperiment.class);
 
     public static @Nonnull List<String> HEADERS = Arrays.asList("queryName", "timestamp",
-            "preheatRuns", "runs", "run", "nSources", "nResults", "cooldownMs",
-            "initSourcesMs", "selMs", "planMs", "execMs", "queryMs", "resultsBasename");
+            "preheatRuns", "runs", "run", "onlyPlan", "nSources", "nResults", "cooldownMs",
+            "initSourcesMs", "selMs", "planMs", "outerPlanMs", "innerPlanMs", "optMs",
+            "execMs", "queryMs", "resultsBasename");
 
     private final @Nonnull String name;
     private final @Nonnull CQuery query;
     private final @Nonnull File federationConfig;
     private final int preheat;
     private final int runs;
+    private final boolean onlyPlan;
     private final @Nullable File queryResultsDir;
 
     public QueryExperiment(@Nonnull String name, @Nonnull CQuery query,
                            @Nonnull File federationConfig, int preheat, int runs,
-                           @Nullable File queryResultsDir) {
+                           boolean onlyPlan, @Nullable File queryResultsDir) {
         this.name = name;
         this.query = query;
         this.federationConfig = federationConfig;
         this.preheat = preheat;
         this.runs = runs;
+        this.onlyPlan = onlyPlan;
         this.queryResultsDir = queryResultsDir;
     }
 
@@ -78,38 +82,50 @@ public class QueryExperiment {
         return runs;
     }
 
+    public boolean isOnlyPlan() {
+        return onlyPlan;
+    }
+
     public static class Result {
         private @Nonnull String name;
         private @Nonnull LocalDateTime timestamp;
         private int preheat, runs, run;
+        private boolean onlyPlan;
         private int sourcesCount, resultsCount;
-        private double cooldownMs, initSourcesMs, selectionMs, planMs, execMs, queryMs;
+        private double cooldownMs, initSourcesMs, selectionMs, planMs;
+        private double outerPlanMs, innerPlanMs, optMs, execMs, queryMs;
         private transient  @Nullable CollectionResults results;
         private @Nullable String resultsBasename;
 
         public Result(@Nonnull String name, @Nonnull LocalDateTime timestamp,
-                      int preheat, int runs, int run) {
-            this(name, timestamp, preheat, runs, run, Integer.MIN_VALUE, Integer.MIN_VALUE,
+                      int preheat, int runs, int run, boolean onlyPlan) {
+            this(name, timestamp, preheat, runs, run, onlyPlan, Integer.MIN_VALUE,
                  Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
-                 Integer.MIN_VALUE, Integer.MIN_VALUE, null, null);
+                 Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
+                 Integer.MIN_VALUE, Integer.MIN_VALUE, null,null);
         }
 
         public Result(@Nonnull String name, @Nonnull LocalDateTime timestamp, int preheat,
-                      int runs, int run, int sourcesCount, int resultsCount, double cooldownMs,
-                      double initSourcesMs, double selectionMs, double planMs, double execMs,
-                      double queryMs, @Nullable CollectionResults results,
+                      int runs, int run, boolean onlyPlan, int sourcesCount, int resultsCount,
+                      double cooldownMs, double initSourcesMs, double selectionMs, double planMs,
+                      double outerPlanMs, double innerPlanMs, double optMs,
+                      double execMs, double queryMs, @Nullable CollectionResults results,
                       @Nullable String resultsBasename) {
             this.name = name;
             this.timestamp = timestamp;
             this.preheat = preheat;
             this.runs = runs;
             this.run = run;
+            this.onlyPlan = onlyPlan;
             this.sourcesCount = sourcesCount;
             this.resultsCount = resultsCount;
             this.cooldownMs = cooldownMs;
             this.initSourcesMs = initSourcesMs;
             this.selectionMs = selectionMs;
             this.planMs = planMs;
+            this.outerPlanMs = outerPlanMs;
+            this.innerPlanMs = innerPlanMs;
+            this.optMs = optMs;
             this.execMs = execMs;
             this.queryMs = queryMs;
             this.results = results;
@@ -135,6 +151,7 @@ public class QueryExperiment {
         public int getRun() {
             return run;
         }
+        public boolean isOnlyPlan() { return onlyPlan; }
         public int getSourcesCount() {
             return sourcesCount;
         }
@@ -152,6 +169,15 @@ public class QueryExperiment {
         }
         public double getPlanMs() {
             return planMs;
+        }
+        public double getOuterPlanMs() {
+            return outerPlanMs;
+        }
+        public double getInnerPlanMs() {
+            return innerPlanMs;
+        }
+        public double getOptMs() {
+            return optMs;
         }
         public double getExecMs() {
             return execMs;
@@ -181,6 +207,9 @@ public class QueryExperiment {
         public void setRun(int run) {
             this.run = run;
         }
+        public void setOnlyPlan(boolean value) {
+            this.onlyPlan = value;
+        }
         public void setSourcesCount(int sourcesCount) {
             this.sourcesCount = sourcesCount;
         }
@@ -199,6 +228,15 @@ public class QueryExperiment {
         public void setPlanMs(double planMs) {
             this.planMs = planMs;
         }
+        public void setOuterPlanMs(double outerPlanMs) {
+            this.outerPlanMs = outerPlanMs;
+        }
+        public void setInnerPlanMs(double innerPlanMs) {
+            this.innerPlanMs = innerPlanMs;
+        }
+        public void setOptMs(double optMs) {
+            this.optMs = optMs;
+        }
         public void setExecMs(double execMs) {
             this.execMs = execMs;
         }
@@ -213,10 +251,22 @@ public class QueryExperiment {
         }
 
         public @Nonnull List<Object> toValueList() {
+            double dNA = Integer.MIN_VALUE;
+            int iNA = Integer.MIN_VALUE;
             return Arrays.asList(getName(), getISOTimestamp(),
-                    getPreheat(), getRuns(), getRun(),
-                    getSourcesCount(), getResultsCount(), getCooldownMs(), getInitSourcesMs(),
-                    getSelectionMs(), getPlanMs(), getExecMs(), getQueryMs(), getResultsBasename());
+                    getPreheat(), getRuns(), getRun(), isOnlyPlan(),
+                    getSourcesCount()  == iNA ? null : getSourcesCount(),
+                    getResultsCount()  == iNA ? null : getResultsCount(),
+                    getCooldownMs()    == dNA ? null : getCooldownMs(),
+                    getInitSourcesMs() == dNA ? null : getInitSourcesMs(),
+                    getSelectionMs()   == dNA ? null : getSelectionMs(),
+                    getPlanMs()        == dNA ? null : getPlanMs(),
+                    getOuterPlanMs()   == dNA ? null : getOuterPlanMs(),
+                    getInnerPlanMs()   == dNA ? null : getInnerPlanMs(),
+                    getOptMs()         == dNA ? null : getOptMs(),
+                    getExecMs()        == dNA ? null : getExecMs(),
+                    getQueryMs()       == dNA ? null : getQueryMs(),
+                    getResultsBasename());
         }
     }
 
@@ -231,7 +281,7 @@ public class QueryExperiment {
                         bind(PerformanceListener.class).toInstance(perf);
                     }
                 });
-        CollectionResults collResults;
+        CollectionResults collResults = null;
         Stopwatch sw;
         try (TimeSampler ignored = Metrics.COOLDOWN_MS.createThreadSampler(perf)) {
             BenchmarkUtils.preheatCooldown();
@@ -239,23 +289,31 @@ public class QueryExperiment {
         try (Federation federation = loader.load(federationConfig)) {
             federation.initAllSources(5, TimeUnit.MINUTES);
             sw = Stopwatch.createStarted();
-            try (Results results = federation.query(query);
-                 TimeSampler ignored = new TimeSampler(perf, Metrics.EXEC_MS)) {
-                collResults = CollectionResults.greedy(results);
+            PlanNode plan = federation.plan(query);
+            if (!isOnlyPlan()) {
+                try (TimeSampler ignored = new TimeSampler(perf, Metrics.EXEC_MS)) {
+                    try (Results results = federation.execute(query, plan)) {
+                        collResults = CollectionResults.greedy(results);
+                    }
+                }
             }
         }
         double queryMs = sw.elapsed(TimeUnit.MICROSECONDS) / 1000.0;
-        logger.info("Planned, built iterators and fetched all results for {} in {}ms",
-                    getName(), queryMs);
+        logger.info("Results for {}: planMs={}, execMs={}, queryMs={}",
+                    getName(), perf.getValue(Metrics.FULL_PLAN_MS),
+                    perf.getValue(Metrics.EXEC_MS), queryMs);
         perf.sync();
-        String resultsBasename = saveResults(collResults);
-        return new Result(getName(), timestamp, getPreheat(), getRuns(), run,
+        String resultsBasename = collResults == null ? "" : saveResults(collResults);
+        return new Result(getName(), timestamp, getPreheat(), getRuns(), run, isOnlyPlan(),
                 perf.getValue(Metrics.SOURCES_COUNT, Integer.MIN_VALUE),
-                collResults.getCollection().size(),
+                collResults == null ? Integer.MIN_VALUE : collResults.getCollection().size(),
                 perf.getValue(Metrics.COOLDOWN_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.INIT_SOURCES_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.SELECTION_MS, (double)Integer.MIN_VALUE),
+                perf.getValue(Metrics.FULL_PLAN_MS, (double)Integer.MIN_VALUE),
+                perf.getValue(Metrics.OUT_PLAN_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.PLAN_MS, (double)Integer.MIN_VALUE),
+                perf.getValue(Metrics.OPT_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.EXEC_MS, (double)Integer.MIN_VALUE),
                 queryMs,
                 collResults,

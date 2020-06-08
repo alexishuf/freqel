@@ -13,13 +13,15 @@ public class SimpleTimeMetric extends SimpleMetric<Double> implements TimeMetric
     private final @Nonnull  TimeUnit timeUnit;
 
     public SimpleTimeMetric(@Nonnull String name) {
-        this(name, false, ImmutableSet.of(), ImmutableSet.of(), TimeUnit.MILLISECONDS);
+        this(name, false, ImmutableSet.of(),
+             ImmutableSet.of(), false, TimeUnit.MILLISECONDS);
     }
 
     public SimpleTimeMetric(@Nonnull String name, boolean singleValued,
                             @Nonnull ImmutableSet<String> contained,
-                            @Nonnull ImmutableSet<String> containedBy, @Nonnull TimeUnit timeUnit) {
-        super(name, singleValued, contained, containedBy, Double.class);
+                            @Nonnull ImmutableSet<String> containedBy, boolean containsAnything,
+                            @Nonnull TimeUnit timeUnit) {
+        super(name, singleValued, contained, containedBy, containsAnything, Double.class);
         this.timeUnit = timeUnit;
     }
 
@@ -65,20 +67,31 @@ public class SimpleTimeMetric extends SimpleMetric<Double> implements TimeMetric
             super.containedBy(other);  return this;
         }
 
-        @Override @CanIgnoreReturnValue
-        public @Nonnull Builder setSingleValued(boolean value) {
-            super.setSingleValued(value);  return this;
+        @Override
+        public @CanIgnoreReturnValue @Nonnull Builder containsAnything() {
+            super.containsAnything();
+            return this;
+        }
+        @Override
+        public @CanIgnoreReturnValue @Nonnull Builder containsAnything(boolean value) {
+            super.containsAnything(value);
+            return this;
         }
 
         @Override @CanIgnoreReturnValue
-        public @Nonnull Builder setSingleValued() {
-            super.setSingleValued();  return this;
+        public @Nonnull Builder singleValued(boolean value) {
+            super.singleValued(value);  return this;
+        }
+        @Override @CanIgnoreReturnValue
+        public @Nonnull Builder singleValued() {
+            super.singleValued();  return this;
         }
 
         @Override
         public @Nonnull SimpleTimeMetric create() {
             return new SimpleTimeMetric(name,  singleValued, ImmutableSet.copyOf(contained),
-                                        ImmutableSet.copyOf(containedBy), timeUnit);
+                                        ImmutableSet.copyOf(containedBy),
+                                        containsAnything, timeUnit);
         }
     }
 

@@ -32,7 +32,7 @@ public class PerformanceListenerTest {
 
 
     private static final SimpleMetric<Integer> singleMetric =
-            SimpleMetric.builder("singleTest").setSingleValued().create(Integer.class);
+            SimpleMetric.builder("singleTest").singleValued().create(Integer.class);
 
     private PerformanceListener listener = null;
 

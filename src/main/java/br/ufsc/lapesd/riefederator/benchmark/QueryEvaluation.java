@@ -84,6 +84,9 @@ public class QueryEvaluation {
             usage = "How many times to run each query before collecting results")
     private int preheatRuns = 2;
 
+    @Option(name = "--only-plan", usage = "Do not execute queries. Only create the plan")
+    private boolean noExec = false;
+
     @Option(name = "-sleep-ms", usage = "Simple sleep between experiments to avoid overheating " +
             "and cumulative outside interference (e.g., piling up tasks from other processes)")
     private int sleepMs = 1000;
@@ -193,7 +196,7 @@ public class QueryEvaluation {
                 throw new TimeoutException("Timeout for child process "+child);
         } catch (Exception e) {
             logger.error("Failed to execute run {} of experiment {}.", run, q.name, e);
-            return new QueryExperiment.Result(q.name, now, preheatRuns, runs, run);
+            return new QueryExperiment.Result(q.name, now, preheatRuns, runs, run, noExec);
         }
         try (InputStream stream = new FileInputStream(jsonFile);
              Reader r = new InputStreamReader(stream, UTF_8)) {
@@ -204,7 +207,7 @@ public class QueryEvaluation {
         } catch (IOException e) {
             logger.error("Failed to parse result of run {} of experiment {} from file {}.",
                          run, q.name, jsonFile.getAbsoluteFile(), e);
-            return new QueryExperiment.Result(q.name, now, preheatRuns, runs, run);
+            return new QueryExperiment.Result(q.name, now, preheatRuns, runs, run, noExec);
         }
     }
 
@@ -226,7 +229,7 @@ public class QueryEvaluation {
 
     private @Nonnull QueryExperiment createExperiment(String queryName, CQuery query,
                                                       boolean saveResults) {
-        return new QueryExperiment(queryName, query, configFile, preheatRuns, runs,
+        return new QueryExperiment(queryName, query, configFile, preheatRuns, runs, noExec,
                                    saveResults ? queryResultsDir : null);
     }
 

@@ -17,17 +17,19 @@ import static java.util.stream.Collectors.toList;
 
 public class SimpleMetric<T> extends AbstractMetric<T> {
     private final @Nonnull String name;
-    private final boolean singleValued;
+    private final boolean singleValued, containsAnything;
     private final @Nonnull ImmutableSet<String> contained, containedBy;
     private final @Nullable Class<T> valueClass;
 
     public SimpleMetric(@Nonnull String name, boolean singleValued,
                         @Nonnull ImmutableSet<String> contained,
-                        @Nonnull ImmutableSet<String> containedBy, @Nullable Class<T> valueClass) {
+                        @Nonnull ImmutableSet<String> containedBy, boolean containsAnything,
+                        @Nullable Class<T> valueClass) {
         this.name = name;
         this.singleValued = singleValued;
         this.contained = contained;
         this.containedBy = containedBy;
+        this.containsAnything = containsAnything;
         this.valueClass = valueClass;
     }
 
@@ -37,7 +39,7 @@ public class SimpleMetric<T> extends AbstractMetric<T> {
 
     public static class Builder {
         protected final @Nonnull String name;
-        protected boolean singleValued;
+        protected boolean singleValued, containsAnything;
         protected  @Nonnull Set<String> contained = new HashSet<>(), containedBy = new HashSet<>();
 
         public Builder(@Nonnull String name) {
@@ -66,23 +68,32 @@ public class SimpleMetric<T> extends AbstractMetric<T> {
             return containedBy(Stream.of(other).map(Metric::getName).collect(toList()));
         }
 
+        public @CanIgnoreReturnValue @Nonnull Builder containsAnything() {
+            return containsAnything(true);
+        }
+        public @CanIgnoreReturnValue @Nonnull Builder containsAnything(boolean value) {
+            this.containsAnything = value;
+            return this;
+        }
 
-        public @CanIgnoreReturnValue @Nonnull Builder setSingleValued(boolean value) {
+        public @CanIgnoreReturnValue @Nonnull Builder singleValued(boolean value) {
             singleValued = value;
             return this;
         }
-        public @CanIgnoreReturnValue @Nonnull Builder setSingleValued() {
-            return setSingleValued(true);
+        public @CanIgnoreReturnValue @Nonnull Builder singleValued() {
+            return singleValued(true);
         }
 
         public @Nonnull SimpleMetric<?> create() {
             return new SimpleMetric<>(name, singleValued, ImmutableSet.copyOf(contained),
-                                      ImmutableSet.copyOf(containedBy), null);
+                                      ImmutableSet.copyOf(containedBy),
+                                      containsAnything, null);
         }
 
         public @Nonnull <U> SimpleMetric<U> create(@Nonnull Class<U> valueClass) {
             return new SimpleMetric<>(name, singleValued, ImmutableSet.copyOf(contained),
-                                       ImmutableSet.copyOf(containedBy), valueClass);
+                                      ImmutableSet.copyOf(containedBy), containsAnything,
+                                      valueClass);
         }
     }
 
@@ -114,5 +125,15 @@ public class SimpleMetric<T> extends AbstractMetric<T> {
     @Override
     public @Nonnull Set<String> getContainedBy() {
         return containedBy;
+    }
+
+    @Override
+    public boolean containsAnything() {
+        return containsAnything;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
     }
 }

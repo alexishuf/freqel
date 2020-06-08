@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
+import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
 import br.ufsc.lapesd.riefederator.federation.tree.ComponentNode;
@@ -151,8 +152,9 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return results;
     }
 
-    @VisibleForTesting
-    @Nonnull Results execute(@Nonnull CQuery query, PlanNode plan) {
+    public @Nonnull Results execute(@Nonnull CQuery query, PlanNode plan) {
+        assert plan.getMatchedTriples().equals(query.getSet())
+                : "This plan does not correspond to this query!";
         Results results = executor.executePlan(plan);
 
         results = ProjectingResults.applyIf(results, query);
@@ -168,34 +170,36 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public @Nonnull PlanNode plan(@Nonnull CQuery query) {
-        Stopwatch sw = Stopwatch.createStarted();
-        ModifierUtils.check(this, query.getModifiers());
-        PlanNode root = outerPlanner.plan(query);
+        try (TimeSampler ignored = Metrics.FULL_PLAN_MS.createThreadSampler(performanceListener)) {
+            Stopwatch sw = Stopwatch.createStarted();
+            ModifierUtils.check(this, query.getModifiers());
+            PlanNode root = outerPlanner.plan(query);
 
-        Map<PlanNode, PlanNode> map = new HashMap<>();
-        TreeUtils.streamPreOrder(root)
-                .filter(ComponentNode.class::isInstance).forEach(n -> {
-            ComponentNode componentNode = (ComponentNode) n;
-            PlanNode componentPlan = strategy.decompose(componentNode.getQuery());
-            if (componentPlan instanceof EmptyNode) {
-                logger.info("Query is unsatisfiable because one component extracted by the " +
-                            "OuterPlanner is unsatisfiable. Query: {}. Component: {}",
+            Map<PlanNode, PlanNode> map = new HashMap<>();
+            TreeUtils.streamPreOrder(root)
+                    .filter(ComponentNode.class::isInstance).forEach(n -> {
+                ComponentNode componentNode = (ComponentNode) n;
+                PlanNode componentPlan = strategy.decompose(componentNode.getQuery());
+                if (componentPlan instanceof EmptyNode) {
+                    logger.info("Query is unsatisfiable because one component extracted by the " +
+                                    "OuterPlanner is unsatisfiable. Query: {}. Component: {}",
                             query, componentNode.getQuery());
+                }
+                map.put(componentNode, componentPlan);
+            });
+
+            if (map.values().stream().anyMatch(EmptyNode.class::isInstance))
+                root = new EmptyNode(query); //unsatisfiable
+            root = TreeUtils.replaceNodes(root, map, cardinalityComputer);
+            TreeUtils.nameNodes(root);
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",
+                        sw.elapsed(MICROSECONDS) / 1000.0, LogUtils.toString(query),
+                        root.prettyPrint());
             }
-            map.put(componentNode, componentPlan);
-        });
-
-        if (map.values().stream().anyMatch(EmptyNode.class::isInstance))
-            root = new EmptyNode(query); //unsatisfiable
-        root = TreeUtils.replaceNodes(root, map, cardinalityComputer);
-        TreeUtils.nameNodes(root);
-
-        if (logger.isDebugEnabled()) {
-            logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",
-                    sw.elapsed(MICROSECONDS)/1000.0, LogUtils.toString(query),
-                    root.prettyPrint());
+            return root;
         }
-        return root;
     }
 
     @Override

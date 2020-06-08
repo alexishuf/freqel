@@ -26,14 +26,17 @@ public interface Metric<T> {
 
     @Nonnull Set<String> getContained();
     @Nonnull Set<String> getContainedBy();
+    boolean containsAnything();
 
     default boolean contains(@Nonnull Metric<?> other) {
-        return getContained().contains(other.getName())
+        return containsAnything()
+                || getContained().contains(other.getName())
                 || other.getContainedBy().contains(this.getName());
     }
 
     default boolean isContainedBy(@Nonnull Metric<?> other) {
-        return getContainedBy().contains(other.getName())
+        return other.containsAnything()
+                || getContainedBy().contains(other.getName())
                 || other.getContained().contains(this.getName());
     }
 }
