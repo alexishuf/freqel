@@ -112,6 +112,11 @@ public class RDFUtils {
     }
 
     public static @Nonnull String toTurtle(@Nonnull URI uri, @Nonnull PrefixDict dict) {
-        return dict.shorten(uri).toString("<"+uri.getURI()+">");
+        String string = uri.getURI();
+        string = string.replace("<", "%3C").replace(">", "%3E").replace("`", "%60")
+                .replace("{", "%7B").replace("}", "%7D")
+                .replace("\"", "%22").replace("'", "%27")
+                .replace("|", "%7C").replace(" ", "%20");
+        return dict.shorten(string).toString("<"+ string +">");
     }
 }

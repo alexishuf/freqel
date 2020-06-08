@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -249,7 +250,12 @@ public class SimpleBindJoinResults implements Results {
                     logger.error("Problem closing rightResults of bound plan tree", e);
                 }
             }
-            currentResults = resultsSupplier.get();
+            try {
+                currentResults = resultsSupplier.get();
+            } catch (QueryExecutionException e) {
+                logger.error("Failed to execute bind-join query. Will ignore and " +
+                             "continue joining", e);
+            }
             ++binds;
         }
         next = currentResults.next();

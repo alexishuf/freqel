@@ -10,12 +10,15 @@ import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import com.google.common.annotations.VisibleForTesting;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -30,6 +33,7 @@ import static java.util.Collections.singleton;
 
 public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
         implements QueryNodeExecutor, MultiQueryNodeExecutor, CartesianNodeExecutor {
+    private static final Logger logger = LoggerFactory.getLogger(SimpleQueryNodeExecutor.class);
     private final @Nonnull ResultsExecutor resultsExecutor;
 
     @Inject
@@ -64,6 +68,16 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
 
     @Override
     public @Nonnull Results execute(@Nonnull QueryNode node) {
+        try {
+            return doExecute(node);
+        } catch (QueryExecutionException e) {
+            logger.error("Failed to execute query against {}. Will return an Empty result",
+                    node.getEndpoint(), e);
+            return CollectionResults.empty(node.getResultVars());
+        }
+    }
+
+    public @Nonnull Results doExecute(@Nonnull QueryNode node) {
         CQuery query = node.getQuery();
         TPEndpoint ep = node.getEndpoint();
         boolean canFilter = ep.hasCapability(Capability.SPARQL_FILTER);

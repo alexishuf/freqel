@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
@@ -38,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy.*;
+import static java.lang.String.format;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.apache.jena.query.QueryExecutionFactory.create;
@@ -83,7 +85,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     /* ~~~ static method factories over some common source types  ~~~ */
 
     public static ARQEndpoint forModel(@Nonnull Model model) {
-        String name = String.format("%s@%x", model.getClass().getSimpleName(),
+        String name = format("%s@%x", model.getClass().getSimpleName(),
                                              System.identityHashCode(model));
         return forModel(model, name);
     }
@@ -118,7 +120,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public String toString() {
-        return name != null ? String.format("ARQEndpoint(%s)", name) : super.toString();
+        return name != null ? format("ARQEndpoint(%s)", name) : super.toString();
     }
 
     @Override
@@ -192,6 +194,10 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
                 Set<Solution> solutions = ans ? singleton(MapSolution.EMPTY) : emptySet();
                 LogUtils.logQuery(logger, query, this, solutions.size(), sw);
                 return new CollectionResults(solutions, emptySet());
+            } catch (Throwable e) {
+                String msg = format("Failed to execute query. Reason: %s. Query: \"\"\"%s\"\"\"",
+                                    e.getMessage(), query);
+                throw new QueryExecutionException(msg, e);
             }
         } else {
             QueryExecution exec = executionFactory.apply(query);
@@ -205,8 +211,11 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
                     }
                 };
             } catch (Throwable t) {
-                exec.close();
-                throw t;
+                if (exec != null)
+                    exec.close();
+                String msg = format("Failed to execute query. Reason: %s. Query: \"\"\"%s\"\"\"",
+                                    t.getMessage(), query);
+                throw new QueryExecutionException(msg, t);
             }
         }
     }
