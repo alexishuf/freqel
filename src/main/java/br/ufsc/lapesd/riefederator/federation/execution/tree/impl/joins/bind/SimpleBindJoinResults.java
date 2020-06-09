@@ -48,8 +48,6 @@ public class SimpleBindJoinResults implements Results {
     private final @Nonnull Set<String> resultVars;
     private Solution next = null;
     private final int valuesRows = DEFAULT_VALUES_ROWS;
-    private final Set<Solution> history = new HashSet<>();
-    private int discarded = 0;
 
     private final @Nonnull Supplier<Results> resultsSupplier;
 
@@ -133,9 +131,9 @@ public class SimpleBindJoinResults implements Results {
         double resultsPerBind = binds > 0 ? results / (double)binds : 0;
         double rewriteAvg = binds > 0 ? callBindMs / (double)binds : 0;
         logger.debug("{}: {} {} results from {} binds (avg: {} results/bind). " +
-                     "Right-side rewrite avg: {}ms. Age: {}s. {} duplicates discarded",
+                     "Right-side rewrite avg: {}ms. Age: {}s.",
                      getNodeName(), exhausted ? "exhausted" : "", results, binds, resultsPerBind,
-                     rewriteAvg, age.elapsed(MILLISECONDS)/1000.0, discarded);
+                     rewriteAvg, age.elapsed(MILLISECONDS)/1000.0);
     }
 
     private class NaiveBind implements Supplier<Results> {
@@ -260,11 +258,7 @@ public class SimpleBindJoinResults implements Results {
                 }
                 ++binds;
             }
-            Solution tmp = currentResults.next();
-            if (history.add(MapSolution.builder(tmp).remove("Int").build()))
-                next = tmp;
-            else
-                ++discarded;
+            next = currentResults.next();
         }
         ++results;
         logStatus(false);
