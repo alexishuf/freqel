@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * Estimates cardinality by delegation to {@link TPEndpoint#estimate(CQuery, int)}.
@@ -24,7 +25,8 @@ public class LimitCardinalityHeuristic implements CardinalityHeuristic {
     }
 
     @Override
-    public @Nonnull Cardinality estimate(@Nonnull CQuery query, @Nonnull TPEndpoint endpoint) {
+    public @Nonnull Cardinality estimate(@Nonnull CQuery query, @Nullable TPEndpoint endpoint) {
+        if (endpoint == null) return Cardinality.UNSUPPORTED;
         return endpoint.estimate(query, policy);
     }
 }

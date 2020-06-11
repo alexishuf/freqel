@@ -1,5 +1,8 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.errorprone.annotations.CheckReturnValue;
+
 import javax.annotation.Nonnull;
 import java.util.*;
 
@@ -30,6 +33,10 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
 
     public @Nonnull BitSet getBitSet() {
         return bitSet;
+    }
+
+    public void complement() {
+        bitSet.flip(0, parent.size());
     }
 
     @SuppressWarnings("ReferenceEquality")
@@ -72,6 +79,12 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
         BitSet bitSet = new BitSet(parent.size());
         bitSet.or(this.bitSet);
         return new IndexedSubset<>(parent, bitSet);
+    }
+
+    public @Nonnull IndexedSubset<T> createComplement() {
+        IndexedSubset<T> copy = copy();
+        copy.complement();
+        return copy;
     }
 
     public @Nonnull IndexedSubset<T> createIntersection(@Nonnull Collection<? extends T> coll) {
@@ -129,6 +142,20 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
         //noinspection SuspiciousMethodCalls
         int idx = parent.indexOf(o);
         return idx >= 0 && bitSet.get(idx);
+    }
+
+    @CheckReturnValue @SuppressWarnings("ReferenceEquality")
+    public boolean hasIndex(int idx, @Nonnull IndexedSet<T> expectedParent) {
+        checkElementIndex(idx, parent.size());
+        assert parent == expectedParent;
+        return bitSet.get(idx);
+    }
+
+    @CheckReturnValue @SuppressWarnings("ReferenceEquality")
+    public T getAtIndex(int idx, @Nonnull IndexedSet<T> expectedParent) {
+        checkElementIndex(idx, parent.size());
+        assert parent == expectedParent;
+        return parent.get(idx);
     }
 
     public boolean containsAny(@Nonnull Collection<T> other) {
@@ -192,12 +219,45 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
         return union(c) > 0;
     }
 
-    public boolean removeIndex(int idx) {
+    /**
+     * Sets the bitset at index idx to value.
+     *
+     * only call this method if you are certain that idx correspond to the intended element
+     * index within {@link IndexedSubset#getParent()}. To improve reliability, an assert
+     * {@link IndexedSubset#getParent()}<code> == expectedParent</code> will be made by
+     * this method.
+     *
+     * @param idx index of the element in the parent {@link IndexedSet}
+     * @param value whether to set the bit (element is in the subset) or clear
+     *              it (the element is <b>not</b> in the subset)
+     * @param expectedParent non-null {@link IndexedSet} that should be the same object
+     *                       as {@link IndexedSubset#getParent()}
+     * @return true iff the subset was changed
+     */
+    @CanIgnoreReturnValue @SuppressWarnings("ReferenceEquality")
+    public boolean setIndex(int idx, boolean value, @Nonnull IndexedSet<T> expectedParent) {
+        assert parent == expectedParent : "removeIndex() received mismatching parent";
         checkElementIndex(idx, parent.size());
-        boolean old = bitSet.get(idx);
-        if (old)
-            bitSet.set(idx, false);
-        return old;
+        boolean change = bitSet.get(idx) != value;
+        if (change)
+            bitSet.set(idx, value);
+        return change;
+    }
+
+    /**
+     * Equivalent to <code>setIndex(idx, true, expectedParent)</code>.
+     */
+    @CanIgnoreReturnValue
+    public boolean setIndex(int idx, @Nonnull IndexedSet<T> expectedParent) {
+        return setIndex(idx, true, expectedParent);
+    }
+
+    /**
+     * Equivalent to <code>setIndex(idx, false, expectedParent)</code>.
+     */
+    @CanIgnoreReturnValue
+    public boolean clearIndex(int idx, @Nonnull IndexedSet<T> expectedParent) {
+        return setIndex(idx, false, expectedParent);
     }
 
     @Override

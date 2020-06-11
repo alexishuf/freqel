@@ -32,7 +32,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.JoinType.Position.OBJ;
@@ -40,6 +39,7 @@ import static br.ufsc.lapesd.riefederator.query.JoinType.Position.SUBJ;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.builderWithExpectedSize;
 import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
 
@@ -74,6 +74,9 @@ public class CQuery implements  List<Triple> {
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<Multimap<Term, Integer>> t2triple, s2triple, o2triple;
     @SuppressWarnings("Immutable")
+    private @LazyInit @Nonnull SoftReference<IndexedSet<Term>> termCache
+            = new SoftReference<>(null);
+    @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<IndexedSet<Var>> termVarsCache
             = new SoftReference<>(null);
     @SuppressWarnings("Immutable")
@@ -86,6 +89,9 @@ public class CQuery implements  List<Triple> {
     private @LazyInit @Nonnull SoftReference<IndexedSet<Triple>> matchedTriples
             = new SoftReference<>(null);
     private @SuppressWarnings("Immutable") @LazyInit Boolean joinConnected = null;
+    @SuppressWarnings("Immutable")
+    private @LazyInit SoftReference<List<IndexedSubset<Triple>>> var2triple
+            = new SoftReference<>(null);
     private @LazyInit int hash = 0;
     private @LazyInit @Nullable Boolean ask = null;
 
@@ -703,6 +709,7 @@ public class CQuery implements  List<Triple> {
         copy.varsCache = varsCache;
         copy.set = set;
         copy.matchedTriples = matchedTriples;
+        copy.var2triple = var2triple;
         copy.t2triple = t2triple;
         copy.s2triple = s2triple;
         copy.o2triple = o2triple;
@@ -882,12 +889,25 @@ public class CQuery implements  List<Triple> {
         return strong;
     }
 
-    public @Nonnull Set<Var> getTermVars() {
+    public @Nonnull IndexedSet<Term> getTerms() {
+        IndexedSet<Term> strong = termCache.get();
+        if (strong == null) {
+            Set<Term> set = list.stream().flatMap(Triple::stream).collect(toSet());
+            termCache = new SoftReference<>(strong = IndexedSet.fromDistinct(set));
+        }
+        return strong;
+    }
+
+    public @Nonnull IndexedSet<Var> getTermVars() {
         IndexedSet<Var> strong = termVarsCache.get();
         if (strong == null) {
-            Set<Var> set = list.stream().flatMap(Triple::stream)
-                               .filter(Term::isVar).map(Term::asVar).collect(toSet());
-            termVarsCache = new SoftReference<>(strong = IndexedSet.fromDistinct(set));
+            IndexedSet<Term> terms = getTerms();
+            ArrayList<Var> list = new ArrayList<>(terms.size());
+            for (Term term : terms) {
+                if (term.isVar()) list.add(term.asVar());
+            }
+            list.trimToSize();
+            termVarsCache = new SoftReference<>(strong = IndexedSet.fromDistinct(list));
         }
         return strong;
     }
@@ -932,8 +952,6 @@ public class CQuery implements  List<Triple> {
     /**
      * If a query has been determined to be join-connected externally (e.g., OuterPlanner),
      * then this setter may be called to avoid recomputing connectedness.
-     *
-     * @param joinConnected
      */
     public void setJoinConnected(boolean joinConnected) {
         assert this.joinConnected == null || this.joinConnected == joinConnected;
@@ -944,16 +962,7 @@ public class CQuery implements  List<Triple> {
     private boolean checkJoinConnected() {
         if (isEmpty()) return true;
 
-        IndexedSet<Triple> triples = IndexedSet.fromDistinctCopy(getSet());
-        IndexedSet<Var> vars = IndexedSet.fromDistinctCopy(getTermVars());
-        List<IndexedSubset<Triple>> var2triple = new ArrayList<>(vars.size());
-        for (int i = 0; i < vars.size(); i++) var2triple.add(triples.emptySubset());
-        for (Triple triple : triples) {
-            triple.forEach(t -> {
-                if (t.isVar()) var2triple.get(vars.indexOf(t.asVar())).add(triple);
-            });
-        }
-
+        IndexedSet<Triple> triples = getSet();
         IndexedSubset<Triple> visited = triples.emptySubset();
         ArrayDeque<Triple> queue = new ArrayDeque<>();
         queue.add(triples.get(0));
@@ -962,10 +971,40 @@ public class CQuery implements  List<Triple> {
             if (!visited.add(triple)) continue;
             triple.forEach(t -> {
                 if (t.isVar())
-                    queue.addAll(var2triple.get(vars.indexOf(t)));
+                    queue.addAll(getTriplesWithTerm(t));
             });
         }
         return visited.equals(triples);
+    }
+
+    public @Nonnull IndexedSubset<Triple> getTriplesWithTerm(@Nonnull Term term) {
+        List<IndexedSubset<Triple>> subsets = var2triple.get();
+        if (subsets == null) {
+            IndexedSet<Triple> triples = getSet();
+            IndexedSet<Term> terms = getTerms();
+            ArrayList<IndexedSubset<Triple>> list = new ArrayList<>(terms.size());
+            for (int i = 0; i < terms.size(); i++)
+                list.add(triples.emptySubset());
+            for (Triple triple : triples)
+                triple.forEach(t -> list.get(terms.indexOf(t)).add(triple));
+            subsets = list;
+            var2triple = new SoftReference<>(subsets);
+        }
+        int idx = getTerms().indexOf(term);
+        return idx < 0 ? getSet().emptySubset() : subsets.get(idx);
+    }
+
+    public @Nonnull IndexedSubset<Triple> getTriplesWithTermAt(@Nonnull Term term,
+                                                               @Nonnull Triple.Position position) {
+        IndexedSubset<Triple> set = getTriplesWithTerm(term);
+        IndexedSubset<Triple> subset = set.copy();
+        IndexedSet<Triple> parent = set.getParent();
+        BitSet bitSet = set.getBitSet();
+        for (int i = bitSet.nextSetBit(0); i >= 0; i = bitSet.nextSetBit(i+1)) {
+            if (!parent.get(i).get(position).equals(term))
+                subset.getBitSet().set(i, false);
+        }
+        return subset;
     }
 
     @Contract(value = "_, _ -> new", pure = true)
@@ -985,7 +1024,7 @@ public class CQuery implements  List<Triple> {
                                        @Nonnull JoinType policy) {
         if (triples.isEmpty()) return CQuery.EMPTY;
         JoinClosureWalker walker = new JoinClosureWalker(policy);
-        List<Integer> indices = triples.stream().map(list::indexOf).collect(Collectors.toList());
+        List<Integer> indices = triples.stream().map(list::indexOf).collect(toList());
         checkArgument(indices.stream().allMatch(i -> i >= 0),
                 "There are triples which are not part of this CQuery");
         if (!include)
@@ -1046,14 +1085,6 @@ public class CQuery implements  List<Triple> {
             }
         }
         Collections.sort(indices);
-        //noinspection UnstableApiUsage
-//        ImmutableList.Builder<Triple> builder = builderWithExpectedSize(indices.size());
-//        assert indices.stream().noneMatch(i -> i < 0) : "An index cannot be negative!";
-//        int last = -1;
-//        for (int i : indices) {
-//            if (i != last)
-//                builder.add(list.get(last = i));
-//        }
 
         Builder b = builder(indices.size());
         assert indices.stream().noneMatch(i -> i < 0) : "An index cannot be negative!";

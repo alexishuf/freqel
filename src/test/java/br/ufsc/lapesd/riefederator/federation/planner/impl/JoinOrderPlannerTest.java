@@ -7,7 +7,7 @@ import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
-import br.ufsc.lapesd.riefederator.federation.cardinality.impl.PropertySelectivityCardinalityHeuristic;
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
@@ -85,7 +85,7 @@ public class JoinOrderPlannerTest implements TestContext {
 
                                     Multibinder<CardinalityHeuristic> mb
                                             = Multibinder.newSetBinder(binder(), CardinalityHeuristic.class);
-                                    mb.addBinding().to(PropertySelectivityCardinalityHeuristic.class);
+                                    mb.addBinding().to(GeneralSelectivityHeuristic.class);
                                 }
                             }).getInstance(GreedyJoinOrderPlanner.class)),
                     new NamedSupplier<>("GreedyJoinOrderPlanner+default estimation",

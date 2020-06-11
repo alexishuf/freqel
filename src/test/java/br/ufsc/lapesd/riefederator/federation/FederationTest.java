@@ -11,8 +11,8 @@ import br.ufsc.lapesd.riefederator.description.semantic.SemanticSelectDescriptio
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.NoCardinalityEnsemble;
-import br.ufsc.lapesd.riefederator.federation.cardinality.impl.PropertySelectivityCardinalityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.EvenDecomposer;
@@ -528,7 +528,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
                     Multibinder<CardinalityHeuristic> mBinder
                             = Multibinder.newSetBinder(binder(), CardinalityHeuristic.class);
-                    mBinder.addBinding().to(PropertySelectivityCardinalityHeuristic.class);
+                    mBinder.addBinding().to(GeneralSelectivityHeuristic.class);
 //                    bind(ResultsExecutor.class).toInstance(new BufferedResultsExecutor());
                 }
                 @Override
@@ -536,7 +536,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     return !canBeFast();
                 }
                 @Override
-                public String toString() { return asString(PropertySelectivityCardinalityHeuristic.class, BufferedResultsExecutor.class); }
+                public String toString() { return asString(GeneralSelectivityHeuristic.class, BufferedResultsExecutor.class); }
             },
             (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
                 @Override

@@ -46,6 +46,14 @@ public class Triple {
     public @Nonnull Triple withObject(@Nonnull Term term) {
         return new Triple(getSubject(), getPredicate(), term);
     }
+    public @Nonnull Triple with(@Nonnull Position position, @Nonnull Term term) {
+        switch (position) {
+            case SUBJ: return withSubject(term);
+            case PRED: return withPredicate(term);
+            case  OBJ: return withObject(term);
+            default: throw new IllegalArgumentException("Bad position="+position);
+        }
+    }
 
     public @Nonnull Term getSubject() {
         return subject;

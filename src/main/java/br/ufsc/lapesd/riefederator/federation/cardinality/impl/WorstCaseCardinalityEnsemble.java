@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.Set;
 
@@ -32,7 +33,7 @@ public class WorstCaseCardinalityEnsemble implements CardinalityEnsemble {
     }
 
     @Override
-    public @Nonnull Cardinality estimate(@Nonnull CQuery query, @Nonnull TPEndpoint endpoint) {
+    public @Nonnull Cardinality estimate(@Nonnull CQuery query, @Nullable TPEndpoint endpoint) {
         Cardinality w = Cardinality.UNSUPPORTED, wExact = Cardinality.UNSUPPORTED;
         for (CardinalityHeuristic heuristic : heuristicSet) {
             Cardinality e = heuristic.estimate(query, endpoint);

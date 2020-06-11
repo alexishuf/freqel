@@ -21,10 +21,10 @@ public class CartesianNode extends AbstractInnerPlanNode {
         Cardinality max = children.stream().map(PlanNode::getCardinality)
                 .max(ThresholdCardinalityComparator.DEFAULT).orElse(Cardinality.UNSUPPORTED);
         if (max.getReliability().isAtLeast(Cardinality.Reliability.LOWER_BOUND)) {
-            int value = max.getValue(Integer.MAX_VALUE);
-            assert value != Integer.MAX_VALUE;
+            long value = max.getValue(Long.MAX_VALUE);
+            assert value != Long.MAX_VALUE;
             double pow = Math.pow(value, children.size());
-            return new Cardinality(max.getReliability(), (int)Math.min(Integer.MAX_VALUE, pow));
+            return new Cardinality(max.getReliability(), (long) Math.min(Long.MAX_VALUE, pow));
         }
         return max;
     }

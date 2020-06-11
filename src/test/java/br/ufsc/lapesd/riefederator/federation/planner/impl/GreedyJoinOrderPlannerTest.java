@@ -2,7 +2,8 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.federation.cardinality.impl.NoCardinalityEnsemble;
+import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.*;
 import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
@@ -52,13 +53,26 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
 
     private static final EmptyEndpoint ep1 = new EmptyEndpoint(), ep2 = new EmptyEndpoint();
     private static final EmptyWebApiEndpoint wep = new EmptyWebApiEndpoint();
-    private static final GreedyJoinOrderPlanner planner = new GreedyJoinOrderPlanner(
-            NoOpPerformanceListener.INSTANCE, NoCardinalityEnsemble.INSTANCE,
-            RelativeCardinalityAdder.DEFAULT
-    );
 
     static {
         ep1.addAlternative(ep2);
+    }
+
+    private static @Nonnull GreedyJoinOrderPlanner.Data createData(@Nonnull JoinGraph graph) {
+        GreedyJoinOrderPlanner planner = new GreedyJoinOrderPlanner(
+                NoOpPerformanceListener.INSTANCE, NoCardinalityEnsemble.INSTANCE,
+                RelativeCardinalityAdder.DEFAULT,
+                new AverageJoinCardinalityEstimator(ThresholdCardinalityComparator.DEFAULT));
+        return planner.createData(graph);
+    }
+
+    @DataProvider
+    public static @Nonnull Object[][] joinCardinalityEstimatorData() {
+        return Stream.of(
+                new AverageJoinCardinalityEstimator(ThresholdCardinalityComparator.DEFAULT),
+                new BindJoinCardinalityEstimator(
+                        new FixedCardinalityEnsemble(GeneralSelectivityHeuristic.DEFAULT))
+        ).map(e -> new Object[] {e}).toArray(Object[][]::new);
     }
 
     private static @Nonnull QueryNode n(@Nonnull CQEndpoint ep, Cardinality cardinality,
@@ -221,24 +235,24 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
         }
     }
 
-    @Test
-    public void testTakeInitialJoinSingletonGraph() {
+    @Test(dataProvider = "joinCardinalityEstimatorData")
+    public void testTakeInitialJoinSingletonGraph(@Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
         JoinGraph graph = new JoinGraph(IndexedSet.from(singletonList(
                 n(ep1, NON_EMPTY, Alice, p1, x))
         ));
-        GreedyJoinOrderPlanner.Data data = planner.createData(graph);
-        PlanNode node = GreedyJoinOrderPlanner.takeInitialJoin(data);
+        GreedyJoinOrderPlanner.Data data = createData(graph);
+        PlanNode node = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
         assertSame(node, graph.get(0));
         assertTrue(data.pending.isEmpty());
     }
 
-    @Test
-    public void testTakeInitialJoinSingletonGraphCleansEquivalents() {
+    @Test(dataProvider = "joinCardinalityEstimatorData")
+    public void testTakeInitialJoinSingletonGraphCleansEquivalents(@Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
         JoinGraph graph = new JoinGraph(IndexedSet.from(singletonList(
                 m(n(ep1, NON_EMPTY, Alice, p1, x), n(ep2, NON_EMPTY, Alice, p1, x))
         )));
-        GreedyJoinOrderPlanner.Data data = planner.createData(graph);
-        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data);
+        GreedyJoinOrderPlanner.Data data = createData(graph);
+        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
         assertTrue(data.pending.isEmpty());
 
         assertNotSame(root, graph.get(0));
@@ -246,8 +260,8 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
     }
 
 
-    @Test
-    public void testTakeInitialJoinCleansEquivalents() {
+    @Test(dataProvider = "joinCardinalityEstimatorData")
+    public void testTakeInitialJoinCleansEquivalents(@Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
         List<QueryNode> best = asList(
                 n(ep2, guess(16), Alice, p1, x),
                 n(ep2, exact(3), x, p1, y)
@@ -257,8 +271,8 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
                 m(n(ep1, NON_EMPTY, x, p1, y), best.get(1)),
                 n(ep1, NON_EMPTY, y, p1, Bob)
         )));
-        GreedyJoinOrderPlanner.Data data = planner.createData(graph);
-        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data);
+        GreedyJoinOrderPlanner.Data data = createData(graph);
+        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
         assertEquals(data.pending, singleton(graph.get(2)));
         assertEquals(new HashSet<>(root.getChildren()), new HashSet<>(best));
     }
@@ -292,28 +306,28 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
                 modalities, procurementByUMN);
     }
 
-    @Test
-    public void testTakeInitialJoin() {
+    @Test(dataProvider = "joinCardinalityEstimatorData")
+    public void testTakeInitialJoin(@Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
         HashSet<QueryNode> expected = Sets.newHashSet(Scenario1.organizationByName,
                                                       Scenario1.contracts);
         int i = 0;
         //noinspection UnstableApiUsage
         for (List<PlanNode> permutation : Collections2.permutations(Scenario1.nodes)) {
             JoinGraph graph = new JoinGraph(IndexedSet.from(permutation));
-            GreedyJoinOrderPlanner.Data data = planner.createData(graph);
-            PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data);
+            GreedyJoinOrderPlanner.Data data = createData(graph);
+            PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
 
             assertEquals(new HashSet<>(root.getChildren()), expected, "i="+i);
             assertTrue(expected.stream().noneMatch(data.pending::contains), "i="+i);
         }
     }
 
-    @Test
-    public void testPlanForScenario() {
+    @Test(dataProvider = "joinCardinalityEstimatorData")
+    public void testPlanForScenario(@Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
         GreedyJoinOrderPlanner planner
                 = new GreedyJoinOrderPlanner(NoOpPerformanceListener.INSTANCE,
                                              NoCardinalityEnsemble.INSTANCE,
-                                             RelativeCardinalityAdder.DEFAULT);
+                                             RelativeCardinalityAdder.DEFAULT, joinCardinalityEstimator);
         JoinGraph graph = new JoinGraph(IndexedSet.from(Scenario1.nodes));
         PlanNode root = planner.plan(graph, Scenario1.nodes);
 

@@ -17,7 +17,7 @@ public class CardinalityUtils {
         int diff = comparator.compare(l, r);
         Reliability lr = l.getReliability(), rr = r.getReliability();
         if (lr.isAtLeast(GUESS) && rr.isAtLeast(GUESS)) {
-            int lv = l.getValue(-1), rv = r.getValue(-1);
+            long lv = l.getValue(-1), rv = r.getValue(-1);
             assert lv >= 0;
             assert rv >= 0;
             return new Cardinality(diff >= 0 ? lr : rr, (int)Math.ceil((lv+rv)/2.0));
@@ -29,7 +29,7 @@ public class CardinalityUtils {
         Preconditions.checkArgument(factor > 0);
         if (c.getReliability().isAtMost(NON_EMPTY))
             return c;
-        int value = c.getValue(-1);
+        long value = c.getValue(-1);
         assert value >= 0;
         return new Cardinality(c.getReliability(), (int)Math.ceil(value *factor));
     }

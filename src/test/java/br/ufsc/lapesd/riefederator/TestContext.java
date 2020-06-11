@@ -11,6 +11,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.vocabulary.FOAF;
+import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 
@@ -30,6 +31,7 @@ public interface TestContext {
     @Nonnull URI Class3    = new StdURI(EX+"Class3");
 
     @Nonnull URI type = new StdURI(RDF.type.getURI());
+    @Nonnull URI sameAs = new StdURI(OWL2.sameAs.getURI());
 
     @Nonnull URI subPropertyOf = new StdURI(RDFS.subPropertyOf.getURI());
 

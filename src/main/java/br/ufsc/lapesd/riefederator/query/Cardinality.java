@@ -1,13 +1,14 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import com.google.common.base.Objects;
-import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 @Immutable
 public class Cardinality  {
@@ -47,29 +48,40 @@ public class Cardinality  {
     }
 
     private final @Nonnull Reliability reliability;
-    private final int value;
+    private final long value;
     public static final @Nonnull Cardinality
             UNSUPPORTED  = new Cardinality(Reliability.UNSUPPORTED, -1),
             EMPTY = new Cardinality(Reliability.EXACT, 0),
             NON_EMPTY = new Cardinality(Reliability.NON_EMPTY, 1);
 
-    public Cardinality(@Nonnull Reliability reliability, int value) {
-        Preconditions.checkArgument(reliability != Reliability.UNSUPPORTED || value == -1,
+    public Cardinality(@Nonnull Reliability reliability, long value) {
+        checkArgument(reliability != Reliability.UNSUPPORTED || value == -1,
                 "If reliability is UNSUPPORTED, value must be -1.");
+        checkArgument(reliability == Reliability.UNSUPPORTED || value != -1,
+                "Value cannot be -1 if reliability >UNSUPPORTED");
         this.reliability = reliability;
-        this.value = value;
+        if (reliability != Reliability.UNSUPPORTED && value < -1) {
+            assert false : "Overflow detected! With asserts disabled, would use MAX_VALUE";
+            this.value = Long.MAX_VALUE; //overflow protection
+        } else {
+            this.value = value;
+        }
     }
 
-    public static @Nonnull Cardinality guess(int value) {
+    public static @Nonnull Cardinality guess(long value) {
+        assert value >= 0;
         return new Cardinality(Reliability.GUESS, value);
     }
-    public static @Nonnull Cardinality lowerBound(int value) {
+    public static @Nonnull Cardinality lowerBound(long value) {
+        assert value >= 0;
         return new Cardinality(Reliability.LOWER_BOUND, value);
     }
-    public static @Nonnull Cardinality upperBound(int value) {
+    public static @Nonnull Cardinality upperBound(long value) {
+        assert value >= 0;
         return new Cardinality(Reliability.UPPER_BOUND, value);
     }
-    public static @Nonnull Cardinality exact(int value) {
+    public static @Nonnull Cardinality exact(long value) {
+        assert value >= 0;
         return new Cardinality(Reliability.EXACT, value);
     }
 
@@ -83,7 +95,7 @@ public class Cardinality  {
      * @param fallback value to return if <code>getReliability()==UNSUPPORTED</code>
      * @return value or fallback
      */
-    public int getValue(int fallback) {
+    public long getValue(long fallback) {
         return reliability == Reliability.UNSUPPORTED ? fallback : value;
     }
 

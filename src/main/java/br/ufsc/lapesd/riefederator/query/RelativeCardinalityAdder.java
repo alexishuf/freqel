@@ -42,16 +42,18 @@ public class RelativeCardinalityAdder implements CardinalityAdder {
         } else if (lr.isAtLeast(UPPER_BOUND)
                 && rr.isAtLeast(UPPER_BOUND)) {
             Cardinality.Reliability r = lr == rr && lr == EXACT ? EXACT
-                                                                : UPPER_BOUND;
+                    : UPPER_BOUND;
             return new Cardinality(r, left.getValue(0) + right.getValue(0));
+        } else if (lr.isAtMost(GUESS) || rr.isAtMost(GUESS)) {
+            return Cardinality.guess(getValue(left, right) + getValue(right, left));
         } else {
-            assert lr.isAtLeast(NON_EMPTY) && rr.isAtLeast(NON_EMPTY);
+            assert lr.isAtLeast(LOWER_BOUND) && rr.isAtLeast(LOWER_BOUND);
             assert lr.isAtMost(LOWER_BOUND) && rr.isAtMost(LOWER_BOUND);
             return Cardinality.lowerBound(getValue(left, right) + getValue(right, left));
         }
     }
 
-    private int getValue(@Nonnull Cardinality cardinality, @Nonnull Cardinality other) {
+    private long getValue(@Nonnull Cardinality cardinality, @Nonnull Cardinality other) {
         assert cardinality.getReliability() != UNSUPPORTED
                 || other.getReliability() != UNSUPPORTED;
         if (cardinality.getReliability() == NON_EMPTY) {
@@ -59,7 +61,7 @@ public class RelativeCardinalityAdder implements CardinalityAdder {
         } else if (cardinality.getReliability() == UNSUPPORTED) {
             return (int)(other.getValue(1)*unsupportedProportion);
         }
-        int value = cardinality.getValue(-1);
+        long value = cardinality.getValue(-1);
         assert value >= 0;
         return value;
     }

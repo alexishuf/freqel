@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
-import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityUtils;
+import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
@@ -28,20 +28,23 @@ import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.cleanEquival
 import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static java.lang.Integer.MAX_VALUE;
+import static java.lang.Long.MAX_VALUE;
 
 public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
     private final @Nonnull PerformanceListener performance;
     private final @Nonnull CardinalityEnsemble cardEnsemble;
     private final @Nonnull CardinalityAdder cardAdder;
+    private final @Nonnull JoinCardinalityEstimator joinCardinalityEstimator;
 
     @Inject
     public GreedyJoinOrderPlanner(@Nonnull PerformanceListener performance,
                                   @Nonnull CardinalityEnsemble cardEnsemble,
-                                  @Nonnull CardinalityAdder cardinalityAdder) {
+                                  @Nonnull CardinalityAdder cardinalityAdder,
+                                  @Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
         this.performance = performance;
         this.cardEnsemble = cardEnsemble;
         this.cardAdder = cardinalityAdder;
+        this.joinCardinalityEstimator = joinCardinalityEstimator;
     }
 
     @VisibleForTesting
@@ -91,7 +94,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
             checkArgument(!nodesCollection.isEmpty(),
                           "Cannot optimize joins without nodes to join!");
             Data d = new Data(joinGraph, nodesCollection);
-            Weigher weigher = new Weigher(takeInitialJoin(d));
+            Weigher weigher = new Weigher(takeInitialJoin(d, joinCardinalityEstimator));
             while (!d.pending.isEmpty()) {
                 PlanNode best = d.pending.stream().min(weigher.comparator).orElse(null);
                 weigher.root = JoinNode.builder(weigher.root, d.take(best)).build();
@@ -100,7 +103,8 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
         }
     }
 
-    static @Nonnull PlanNode takeInitialJoin(@Nonnull Data d) {
+    static @Nonnull PlanNode takeInitialJoin(@Nonnull Data d,
+                                      @Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
         assert d.pending.containsAll(d.clean) : "There are non-pending nodes!";
         int size = d.pending.size();
         checkArgument(size > 0, "No pending nodes, no join!");
@@ -121,17 +125,12 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
                 // Estimate join cardinality using the worst reliability and average value
                 // Rationale: not all relationships underlying a join are 1:1 (where min
                 // would be the correct estimation).
-                Cardinality lc = outer.getCardinality(), rc = inner.getCardinality();
-                Cardinality avgCard;
-                if (lc.equals(Cardinality.EMPTY) || rc.equals(Cardinality.EMPTY))
-                    avgCard = Cardinality.EMPTY;
-                else
-                    avgCard = CardinalityUtils.worstAvg(OrderTuple::compareCardinality, lc, rc);
+                Cardinality joinCard = joinCardinalityEstimator.estimate(info);
 
                 // Build OrderTuple for this hypothetical join and compare to best
                 boolean isWebApi = d.webApi.contains(outer) || d.webApi.contains(inner);
                 int pendingInputs = info.getPendingRequiredInputs().size();
-                OrderTuple tuple = new OrderTuple(avgCard, pendingInputs, isWebApi);
+                OrderTuple tuple = new OrderTuple(joinCard, pendingInputs, isWebApi);
                 if (tuple.compareTo(best) < 0) {
                     bestOuter = outer;
                     bestInner = inner;
@@ -184,7 +183,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
 
     static class OrderTuple implements Comparable<OrderTuple> {
         public static final @Nonnull OrderTuple MAX =
-                new OrderTuple(Cardinality.lowerBound(MAX_VALUE), MAX_VALUE, false);
+                new OrderTuple(Cardinality.lowerBound(MAX_VALUE), Integer.MAX_VALUE, false);
         public static final @Nonnull Comparator<PlanNode> NODE_COMPARATOR
                 = Comparator.comparing(OrderTuple::new);
 
@@ -247,7 +246,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
 
         public static int compareCardinality(@Nonnull Cardinality l, @Nonnull Cardinality r) {
             Cardinality.Reliability lr = l.getReliability(), rr = r.getReliability();
-            int lv = l.getValue(MAX_VALUE), rv = r.getValue(MAX_VALUE);
+            long lv = l.getValue(MAX_VALUE), rv = r.getValue(MAX_VALUE);
 
             if (lr == UNSUPPORTED && rr == UNSUPPORTED) return 0;
             // If we guess or know a side has a HUGE value, prefer the side with UNSUPPORTED card
@@ -261,7 +260,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
                 if (lr == rr && isClose(lv, rv, 0.01, SMALL))
                     return 0; //if same reliability with small difference, consider equal
                 // if values are not close or lr==rr, smaller value is smaller cardinality
-                return Integer.compare(lv, rv);
+                return Long.compare(lv, rv);
             } else if (isGuess(lr)) {
                 assert rr.ordinal() > LOWER_BOUND.ordinal();
                 return 1;
@@ -273,14 +272,14 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
             // at this point we have reliable values on both sides. Compare by value
             assert rr.ordinal() > LOWER_BOUND.ordinal();
             assert lr.ordinal() > LOWER_BOUND.ordinal();
-            return Integer.compare(lv, rv);
+            return Long.compare(lv, rv);
         }
 
-        private static boolean isClose(int l, int r, double proportion, int threshold) {
+        private static boolean isClose(long l, long r, double proportion, int threshold) {
             assert proportion >= 0;
             assert proportion < 1;
 
-            int max = Math.max(l, r), min = Math.min(l, r);
+            long max = Math.max(l, r), min = Math.min(l, r);
             return max-min <= threshold || min >= max*(1-proportion);
         }
 

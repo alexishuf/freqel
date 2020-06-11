@@ -13,6 +13,7 @@ import br.ufsc.lapesd.riefederator.query.CardinalityAdder;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
+import java.math.BigInteger;
 
 import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.*;
 
@@ -44,7 +45,7 @@ public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer
 
         // general case:
         Reliability r = null;
-        int v = 0;
+        long v = 0;
         for (PlanNode child : n.getChildren()) {
             Cardinality c = child.getCardinality();
             if (r == null) {
@@ -57,12 +58,16 @@ public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer
                 if (c.getReliability().isAtMost(LOWER_BOUND))
                     r = r.isAtLeast(c.getReliability()) ? r : c.getReliability();
                 assert c.getValue(-1) >= 0;
-                v *= c.getValue(v); // if unsupported, square
+                BigInteger ov = BigInteger.valueOf(c.getValue(v)); // if unsupported, square
+                BigInteger m = BigInteger.valueOf(v).multiply(ov);
+                v = m.bitLength() <= 63 ? m.longValue() : Long.MAX_VALUE;
             } else {
                 assert r.isAtLeast(UPPER_BOUND);
                 // get worst reliability
                 r = c.getReliability().isAtMost(r) ? c.getReliability() : r;
-                v *= c.getValue(v); // if unsupported, square
+                BigInteger ov = BigInteger.valueOf(c.getValue(v)); // if unsupported, square
+                BigInteger m = BigInteger.valueOf(v).multiply(ov);
+                v = m.bitLength() <= 63 ? m.longValue() : Long.MAX_VALUE;
             }
         }
         assert r != null; //due to special case
