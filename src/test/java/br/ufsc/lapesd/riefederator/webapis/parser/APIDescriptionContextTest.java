@@ -11,6 +11,7 @@ import java.util.Collections;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertSame;
 
+@Test(groups = {"fast"})
 public class APIDescriptionContextTest {
 
     @Test

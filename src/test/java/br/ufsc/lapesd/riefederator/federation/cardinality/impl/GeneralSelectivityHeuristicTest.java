@@ -11,6 +11,7 @@ import org.testng.annotations.Test;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class GeneralSelectivityHeuristicTest implements TestContext {
     private final GeneralSelectivityHeuristic heuristic
             = new GeneralSelectivityHeuristic();

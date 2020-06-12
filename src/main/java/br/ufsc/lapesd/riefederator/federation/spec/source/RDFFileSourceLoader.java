@@ -47,12 +47,15 @@ public class RDFFileSourceLoader implements SourceLoader {
         Model model = ModelFactory.createDefaultModel();
         String name;
         String loader = sourceSpec.getString("loader", "");
-        if (loader.equals("rdf-file")) {
+        if (!loader.equals("rdf-file")) {
+            throw new IllegalArgumentException("Loader "+loader+" not supported by "+this);
+        } else if (sourceSpec.containsKey("file")) {
             name = loadFile(sourceSpec, lang, model, reference);
-        } else if (loader.equals("rdf-url")) {
+        } else if (sourceSpec.containsKey("url")) {
             name = loadUrl(sourceSpec, lang, model);
         } else {
-            throw new IllegalArgumentException("Loader "+loader+" not supported by "+this);
+            throw new SourceLoadException("Neither file nor url properties present " +
+                                          "in this source spec!", sourceSpec);
         }
 
         ARQEndpoint ep = ARQEndpoint.forModel(model, name);
@@ -86,14 +89,14 @@ public class RDFFileSourceLoader implements SourceLoader {
 
     private @Nonnull String loadUrl(@Nonnull DictTree spec, @Nullable Lang lang,
                                    @Nonnull Model model) throws SourceLoadException {
-        String uri = spec.getString("uri", "");
+        String url = spec.getString("url", "");
         try {
-            RDFDataMgr.read(model, uri, lang);
-            return uri;
+            RDFDataMgr.read(model, url, lang);
+            return url;
         } catch (RiotException e) {
-            throw new SourceLoadException("Syntax error on URI "+uri+": "+ e.getMessage(), e, spec);
+            throw new SourceLoadException("Syntax error on URL "+url+": "+ e.getMessage(), e, spec);
         } catch (RuntimeException e) {
-            String m = "Failed to parse URI" + uri + " due to Exception: " + e.getMessage();
+            String m = "Failed to parse URL" + url + " due to Exception: " + e.getMessage();
             throw new SourceLoadException(m, e, spec);
         }
     }

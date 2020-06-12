@@ -2,7 +2,6 @@ package br.ufsc.lapesd.riefederator.server.endpoints;
 
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
 import br.ufsc.lapesd.riefederator.query.parse.UnsupportedSPARQLFeatureException;
@@ -48,26 +47,27 @@ public class SPARQLEndpoint {
             return ResultsFormatterDispatcher.getDefault()
                     .format(results, cQuery.isAsk(), headers, uriInfo)
                     .toResponse().build();
-        } catch (QueryExecutionException e) {
-            StringBuilderWriter stringBuilderWriter = new StringBuilderWriter();
-            e.printStackTrace(new PrintWriter(stringBuilderWriter));
-            String trace = stringBuilderWriter.toString();
-            String message = format("Execution of query failed: %s\n" +
-                    "Query:\n" +
-                    "%s\n" +
-                    "Traceback:\n" +
-                    "%s\n", e.getMessage(), query, trace);
-            return Response.status(500, "Query execution failed")
-                    .type(TEXT_PLAIN_TYPE).entity(message).build();
         } catch (UnsupportedSPARQLFeatureException e) {
-            return Response.status(500, "Unsupported SPARQL feature")
-                    .type(TEXT_PLAIN_TYPE)
-                    .entity(e.getMessage() + "\nQuery:\n" + query).build();
+            return createExceptionResponse(query, "Unsupported SPARQL Feature", e);
         } catch (SPARQLParseException e) {
-            return Response.status(500, "Bad query syntax")
-                    .type(TEXT_PLAIN_TYPE)
-                    .entity(e.getMessage() + "\n Query:\n" + query).build();
+            return createExceptionResponse(query, "Query Syntax Error", e);
+        } catch (Throwable t) { //includes QueryExecutionException
+            return createExceptionResponse(query, "Query Execution Failed", t);
         }
+    }
+
+    private @Nonnull Response createExceptionResponse(@Nonnull String query,
+                                                      @Nonnull String reason,
+                                                      @Nonnull Throwable t) {
+        StringBuilderWriter stringBuilderWriter = new StringBuilderWriter();
+        t.printStackTrace(new PrintWriter(stringBuilderWriter));
+        String trace = stringBuilderWriter.toString();
+        String message = format("Execution of query failed: %s\n" +
+                "Query:\n" +
+                "%s\n" +
+                "Traceback:\n" +
+                "%s\n", t.getMessage(), query, trace);
+        return Response.status(500, reason).type(TEXT_PLAIN_TYPE).entity(message).build();
     }
 
     @GET

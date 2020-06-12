@@ -15,6 +15,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class PrefixDictTest {
     public static List<NamedSupplier<? extends MutablePrefixDict>> nativeMutable, mutable;
 

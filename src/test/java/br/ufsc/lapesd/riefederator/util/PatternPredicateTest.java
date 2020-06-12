@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 import static java.util.Arrays.asList;
 import static org.testng.Assert.assertEquals;
 
+@Test(groups = {"fast"})
 public class PatternPredicateTest {
 
     @DataProvider

@@ -1,1 +1,171 @@
-/home/alexis/ufsc/riefederator/src/test/resources/br/ufsc/lapesd/riefederator/webapis/portal_transparencia-ext.yaml
+#################################################
+# This file applies extensions described in $PROJECT_ROOT/doc/SWAGGER_EXT.md
+# to the Swagger file of the brazilian federal government swagger file.
+#################################################
+# This is a reference to the original swagger description. It would be
+# inconvenient to directly edit the swagger (that may be updated
+# independently). Therefore we load it here and overwrite specific
+# elements with "overlay:"
+baseSwagger:
+  $ref: "/portal_transparencia.json"
+# Applies these changes over the loaded swagger file.
+# The maps set here will contain only a few keys, and this will
+# not cause the removal of keys in the source swagger.
+# To REMOVE a element from the source swagger, set it to null here
+overlay:
+  # Declares parsers (which transform JSON into RDF) that apply globally to all endpoints
+  x-parser:
+    - parser: "date"
+      # This is a parser that applies to any element the JSON schema declares
+      # to have format "date". "date-format" defines the SimpleDateFormat in
+      # which such elements will be present in the JSON. In RDF all dates
+      # are represented as xsd:date, which uses the ISO format
+      date-format: "dd/MM/yyyy"
+  # Declares a paging strategy that applies globally. This strategy will start
+  # from &page=1 and will increment that number at each requests.
+  # the requests will stop when the server replies with an error, or when
+  # the server sends an empty response (after conversion to RDF).
+  x-paging:
+    param: pagina
+    start: 1
+    increment: 1
+  # Assorted definitions of things that are referenced from within endpoints below
+  # In this example, all definitions are of serializers (of RDF into URL parameters).
+  x-definitions:
+    # Controls how RDF dates are sent to the Web API, uses the Java SimpleDateFormat syntax
+    date-serializer:
+      serializer: date
+      date-format: "dd/MM/yyyy"
+    # This serializer takes a RDF literal and removes anything that is not a digit
+    only-numbers:
+      serializer: "only-numbers"
+    # Same as above, but sets a minumum size and inserts '0's as needed on the left side
+    only-numbers-9:
+      serializer: "only-numbers"
+      width: 9
+  # This is plain Swagger, not an extension. The original swagger has a bug
+  # and swaps produces with consumes
+  produces:
+    - application/json
+  # Adds details to some schema definition in the swagger
+  definitions:
+    # Add a property required by the codigoModalidade input from
+    # /api-de-dados/licitacoes/por-uasg-modalidade-numero
+    # Every input must be mapped to an atom, even if that atom is not returned
+    # in responses (see the "missing: true" added to the parameter of the
+    # aforementioned endpoint)
+    ModalidadeCompra:
+      properties:
+        codigo:
+          type: number
+  paths:
+    /api-de-dados/licitacoes:
+      get:
+        responses:
+          200:
+            # Assign a cardinality to API calls. When the optimizer sees a
+            # query to this endpoint it will assume this as the expected
+            # cardinality when evaluating joins
+            x-cardinality: LOWER_BOUND(3)
+        # Add extensions to parameters. Parameters not listed here remain
+        # unaltered as parameters
+        parameters:
+          - name: dataInicial                           # The parameter, as in the JSON
+            x-serializer:                               # How to write a RDF value into the URL
+              $ref: "#/x-definitions/date-serializer"
+            x-path:                                     # How the parameter relates to the response
+              # The path is a sequence of edges (JSON schema properties) traversed
+              # from the molecule core atom (i.e., the root object/array of the
+              # response schema) that will lead to an atom (JSON element) that
+              # corresponds to this input
+              path: ["dataAbertura"]
+              # This is a filter parameter, the sparql filter below says that the
+              # response value at the previously specified path will be greater or
+              # equal than the value given as input.
+              filter:
+                sparql: "FILTER($actual >= $input)"
+          - name: dataFinal
+            x-serializer:
+              $ref: "#/x-definitions/date-serializer"
+            x-path:
+              path: ["dataAbertura"]
+              filter:
+                sparql: "FILTER($actual <= $input)"
+          - name: codigoOrgao
+            x-serializer:
+              $ref: "#/x-definitions/only-numbers"
+            x-path:
+              path: ["unidadeGestora", "orgaoVinculado", "codigoSIAFI"]
+    /api-de-dados/licitacoes/{id}:
+      parameters:
+        - name: id
+          x-path:
+            path: ["id"]
+    /api-de-dados/licitacoes/por-uasg-modalidade-numero:
+      get:
+        parameters:
+          - name: codigoUASG
+            x-path:
+              path: [unidadeGestora, codigo]
+          - name: numero
+            x-path:
+              path: [licitacao, numero]
+            x-serializer:
+              $ref: "#/x-definitions/only-numbers-9"
+          - name: codigoModalidade
+            x-path:
+              # codigoModalidade is an input of this endpoint, but does not
+              # appear in the response. Thus it must be marked as missing.
+              # Without doing this, the mediator would wrongly discard responses
+              # from the sever since the SPARQL query would not match the
+              # reconstructed RDF
+              missing: true
+              path: [modalidadeLicitacao, codigo]
+    /api-de-dados/contratos:
+      get:
+        # This endpoint has a bug: although the schema advertises a
+        # modalidadeCompra property, this property is not present in
+        # responses. Overlaying #/definitions/Contrato is not OK because
+        # /contratos/{id} does have the property. The overlaying done here
+        # will only affect this endpoint
+        responses:
+          200:
+            schema:
+              $ref: "#/definitions/Contrato"
+              # Extension: create a copy of the $ref'ed object and apply this overlay over it
+              $overlay:
+                properties:
+                  modalidadeCompra: #null -- erases this property
+        parameters:
+          - name: dataInicial
+            x-serializer:
+              $ref: "#/x-definitions/date-serializer"
+            x-path:
+              path: [dataInicioVigencia]
+              filter:
+                sparql: "FILTER($actual >= $input)"
+          - name: dataFinal
+            x-serializer:
+              $ref: "#/x-definitions/date-serializer"
+            x-path:
+              path: [dataFimVigencia]
+              filter:
+                sparql: "FILTER($actual <= $input)"
+          - name: codigoOrgao
+            x-path:
+              path: [unidadeGestora, orgaoVinculado, codigoSIAFI]
+    /api-de-dados/contratos/id:
+      get:
+        parameters:
+          - name: id
+            x-path:
+              path: [id]
+    /api-de-dados/orgaos-siafi:
+      get:
+        parameters:
+          - name: codigo
+            x-path:
+              path: [codigo]
+          - name: descricao
+            x-path:
+              path: [descricao]

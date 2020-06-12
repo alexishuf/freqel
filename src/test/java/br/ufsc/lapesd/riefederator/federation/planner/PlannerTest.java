@@ -278,7 +278,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         return suppliers.stream().map(s -> new Object[]{s}).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testSingleQuery(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
@@ -288,7 +288,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertPlanAnswers(node, query);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testDuplicateQuery(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
@@ -303,7 +303,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertPlanAnswers(root, query);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testSingleJoin(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(Alice, knows, x),
@@ -325,7 +325,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertPlanAnswers(root, query);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testDoNotJoinSameVarsDifferentQueries(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(
@@ -344,7 +344,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertPlanAnswers(root, query);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testCartesianProduct(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(Alice, knows, x), new Triple(y, knows, Bob));
@@ -365,7 +365,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertPlanAnswers(root, query);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testLargeTree(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(
@@ -424,7 +424,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testBookShop(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
 
@@ -450,7 +450,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertPlanAnswers(root, query);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testSameQuerySameEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
@@ -469,7 +469,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testSameQueryEquivalentEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
@@ -486,7 +486,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void booksByAuthorWithIncompatibleService(Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
@@ -534,17 +534,17 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testBooksByAuthorARQWithService(@Nonnull Supplier<Planner> supplier) {
         booksByAuthorWithServiceTest(supplier.get(), false, false);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testBooksByAuthorAlternativeService(@Nonnull Supplier<Planner> supplier) {
         booksByAuthorWithServiceTest(supplier.get(), true, true);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testBooksByAuthorLeftoverService(@Nonnull Supplier<Planner> supplier) {
         booksByAuthorWithServiceTest(supplier.get(), false, true);
     }
@@ -636,7 +636,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testDiscardMiddleNodeInPath(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
@@ -651,7 +651,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testUnsatisfiablePlan(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty1);
@@ -666,7 +666,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testNonLinearPath(@Nonnull Supplier<Planner> supplier) {
         QueryNode orgByDesc = new QueryNode(empty1, CQuery.from(
                 new Triple(x, p1, t)
@@ -737,7 +737,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         return list.toArray(new Object[0][]);
     }
 
-    @Test(dataProvider = "optionalQueriesData")
+    @Test(dataProvider = "optionalQueriesData", groups={"fast"})
     public void testJoinArqWithOptionalInputs(@Nonnull Supplier<Planner> supplier,
                                               @Nonnull CQuery webQuery) throws IOException {
         Model model = ModelFactory.createDefaultModel();

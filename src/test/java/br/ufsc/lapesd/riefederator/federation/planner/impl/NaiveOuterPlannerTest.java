@@ -17,6 +17,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.assertEquals;
 
+@Test(groups = {"fast"})
 public class NaiveOuterPlannerTest implements TestContext {
 
     @DataProvider

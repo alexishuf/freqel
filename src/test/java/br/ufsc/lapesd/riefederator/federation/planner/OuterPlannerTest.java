@@ -29,6 +29,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = {"fast"})
 public class OuterPlannerTest implements TestContext {
 
     public static @Nonnull List<Class<? extends OuterPlanner>> classes = singletonList(

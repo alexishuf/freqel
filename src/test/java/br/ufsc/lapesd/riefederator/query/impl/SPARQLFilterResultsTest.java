@@ -23,6 +23,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.assertEquals;
 
+@Test(groups = {"fast"})
 public class SPARQLFilterResultsTest implements TestContext {
 
     @DataProvider

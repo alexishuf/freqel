@@ -33,6 +33,7 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class QueryNodeTest implements TestContext {
     public static final @Nonnull StdLit i23 = StdLit.fromUnescaped("23", new StdURI(XSD.xint.getURI()));
     private static final EmptyEndpoint empty = new EmptyEndpoint();

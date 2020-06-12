@@ -44,6 +44,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class APIMoleculeMatcherTest implements TestContext {
     public static final @Nonnull String EX = "http://example.org/";
     public static final @Nonnull URI author1 = new StdURI(EX+"authors/1");

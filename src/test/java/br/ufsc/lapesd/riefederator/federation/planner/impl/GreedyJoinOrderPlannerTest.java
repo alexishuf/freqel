@@ -42,6 +42,7 @@ import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class GreedyJoinOrderPlannerTest implements TestContext {
     private static final Var t = new StdVar("t");
     private static final Var b = new StdVar("b");

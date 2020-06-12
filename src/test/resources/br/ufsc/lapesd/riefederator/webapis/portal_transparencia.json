@@ -1,17 +1,17 @@
 {
-    "swagger": "2.0",
+  "swagger": "2.0",
     "info": {
-        "description": "API de servi\u00e7os do Portal da Transpar\u00eancia do Governo Federal",
+        "description": "API de serviços do Portal da Transparência do Governo Federal",
         "version": "1.0",
-        "title": "API REST do Portal da Transpar\u00eancia do Governo Federal",
+        "title": "API REST do Portal da Transparência do Governo Federal",
         "termsOfService": "http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/decreto/D8777.htm",
         "contact": {
-            "name": "Diretoria de Tecnologia da Informa\u00e7\u00e3o - DTI",
+            "name": "Diretoria de Tecnologia da Informação - DTI",
             "url": "http://www.cgu.gov.br",
             "email": "listaapitransparencia@cgu.gov.br"
         },
         "license": {
-            "name": "Decreto n\u00ba 8.777, de 11 de maio de 2016",
+            "name": "Decreto nº 8.777, de 11 de maio de 2016",
             "url": "http://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/decreto/D8777.htm"
         }
     },
@@ -93,16 +93,20 @@
         {
             "name": "api-bolsa-familia-controller",
             "description": "Api Bolsa Familia Controller"
+        },
+        {
+            "name": "api-auxilio-emergencial-controller",
+            "description": "Api Auxilio Emergencial Controller"
         }
     ],
     "paths": {
         "/api-de-dados/acordos-leniencia": {
             "get": {
                 "tags": [
-                    "Acordos de Leni\u00eancia"
+                    "Acordos de Leniência"
                 ],
-                "summary": "Consulta os registros de Acordos de Leni\u00eancia por Nome ou CNPJ do Sancionado/Situa\u00e7\u00e3o/Per\u00edodo",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "summary": "Consulta os registros de Acordos de Leniência por Nome ou CNPJ do Sancionado/Situação/Período",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "acordosLenienciaUsingGET",
                 "consumes": [
                     "application/json"
@@ -121,35 +125,35 @@
                     {
                         "name": "nomeSancionado",
                         "in": "query",
-                        "description": "Nome, nome fantasia ou raz\u00e3o social do sancionado",
+                        "description": "Nome, nome fantasia ou razão social do sancionado",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "situacao",
                         "in": "query",
-                        "description": "Situa\u00e7\u00e3o do acordo",
+                        "description": "Situação do acordo",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataInicialSancao",
                         "in": "query",
-                        "description": "Data inicial da san\u00e7\u00e3o (DD/MM/AAAA)",
+                        "description": "Data inicial da sanção (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataFinalSancao",
                         "in": "query",
-                        "description": "Data final da san\u00e7\u00e3o (DD/MM/AAAA)",
+                        "description": "Data final da sanção (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -181,10 +185,10 @@
         "/api-de-dados/acordos-leniencia/{id}": {
             "get": {
                 "tags": [
-                    "Acordos de Leni\u00eancia"
+                    "Acordos de Leniência"
                 ],
-                "summary": "Consulta um registro de Acordo de Leni\u00eancia pelo id",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "summary": "Consulta um registro de Acordo de Leniência pelo id",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "acordoLenienciaUsingGET",
                 "consumes": [
                     "application/json"
@@ -221,13 +225,136 @@
                 }
             }
         },
+        "/api-de-dados/auxilio-emergencial-por-cpf-ou-nis": {
+            "get": {
+                "tags": [
+                    "Auxílio emergencial"
+                ],
+                "summary": "Consulta os registros de auxílio emergencial por CPF/NIS",
+                "description": "Filtros mínimos:    Página (padrão = 1);    CPF / NIS; ",
+                "operationId": "auxilioEmergencialPorNisOuCPFUsingGET",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "*/*"
+                ],
+                "parameters": [
+                    {
+                        "name": "codigoBeneficiario",
+                        "in": "query",
+                        "description": "CPF/NIS Beneficiário",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "codigoResponsavelFamiliar",
+                        "in": "query",
+                        "description": "CPF/NIS Responsável Familiar",
+                        "required": false,
+                        "type": "string"
+                    },
+                    {
+                        "name": "pagina",
+                        "in": "query",
+                        "description": "Página consultada",
+                        "required": true,
+                        "type": "integer",
+                        "default": 1,
+                        "format": "int32"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/AuxilioEmergencial"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
+        "/api-de-dados/auxilio-emergencial-por-municipio": {
+            "get": {
+                "tags": [
+                    "Auxílio emergencial"
+                ],
+                "summary": "Consulta os registros de auxílio emergencial por Município",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Ano/Mês (YYYYMM); Código IBGE (https://cidades.ibge.gov.br/brasil); ",
+                "operationId": "auxilioEmergencialPorMunicipioUsingGET",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "*/*"
+                ],
+                "parameters": [
+                    {
+                        "name": "mesAno",
+                        "in": "query",
+                        "description": "Mês e Ano de referência (AAAAMM)",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    {
+                        "name": "codigoIbge",
+                        "in": "query",
+                        "description": "Código IBGE",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "pagina",
+                        "in": "query",
+                        "description": "Página consultada",
+                        "required": true,
+                        "type": "integer",
+                        "default": 1,
+                        "format": "int32"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/BeneficioPorMunicipio"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
         "/api-de-dados/bolsa-familia-disponivel-por-cpf-ou-nis": {
             "get": {
                 "tags": [
-                    "Bolsa Fam\u00edlia"
+                    "Bolsa Família"
                 ],
-                "summary": "Consulta as parcelas disponibilizadas pelo Bolsa Fam\u00edlia pelo CPF/NIS",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  CPF / NIS;  Ano e m\u00eas de compet\u00eancia (AAAAMM) ou Ano e m\u00eas de refer\u00eancia (AAAAMM); ",
+                "summary": "Consulta as parcelas disponibilizadas pelo Bolsa Família pelo CPF/NIS",
+                "description": "Filtros mínimos:    Página (padrão = 1);    CPF / NIS;    Ano e mês de competência (AAAAMM) ou Ano e mês de referência (AAAAMM); ",
                 "operationId": "bolsaFamiliaDisponivelPorCpfOuNisUsingGET",
                 "consumes": [
                     "application/json"
@@ -239,14 +366,14 @@
                     {
                         "name": "codigo",
                         "in": "query",
-                        "description": "CPF/NIS (sem m\u00e1scara, somente n\u00fameros)",
+                        "description": "CPF/NIS (sem máscara, somente números)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "anoMesReferencia",
                         "in": "query",
-                        "description": "Ano e m\u00eas de refer\u00eancia (AAAAMM)",
+                        "description": "Ano e mês de referência (AAAAMM)",
                         "required": false,
                         "type": "integer",
                         "format": "int32"
@@ -254,7 +381,7 @@
                     {
                         "name": "anoMesCompetencia",
                         "in": "query",
-                        "description": "Ano e m\u00eas de compet\u00eancia (AAAAMM)",
+                        "description": "Ano e mês de competência (AAAAMM)",
                         "required": false,
                         "type": "integer",
                         "format": "int32"
@@ -262,7 +389,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -294,10 +421,10 @@
         "/api-de-dados/bolsa-familia-por-municipio": {
             "get": {
                 "tags": [
-                    "Bolsa Fam\u00edlia"
+                    "Bolsa Família"
                 ],
-                "summary": "Consulta as parcelas do Bolsa Fam\u00edlia por Munic\u00edpio",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Ano/M\u00eas (YYYYMM); C\u00f3digo IBGE (https://cidades.ibge.gov.br/brasil); ",
+                "summary": "Consulta as parcelas do Bolsa Família por Município",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Ano/Mês (YYYYMM); Código IBGE (https://cidades.ibge.gov.br/brasil); ",
                 "operationId": "bolsaFamiliaPorMunicipioUsingGET",
                 "consumes": [
                     "application/json"
@@ -309,7 +436,7 @@
                     {
                         "name": "mesAno",
                         "in": "query",
-                        "description": "M\u00eas e Ano de refer\u00eancia (AAAAMM)",
+                        "description": "Mês e Ano de referência (AAAAMM)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -317,14 +444,14 @@
                     {
                         "name": "codigoIbge",
                         "in": "query",
-                        "description": "C\u00f3digo IBGE",
+                        "description": "Código IBGE",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -356,10 +483,10 @@
         "/api-de-dados/bolsa-familia-sacado-por-nis": {
             "get": {
                 "tags": [
-                    "Bolsa Fam\u00edlia"
+                    "Bolsa Família"
                 ],
-                "summary": "Consulta as parcelas sacadas pelo Bolsa Fam\u00edlia pelo NIS",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  NIS; Ano e m\u00eas de compet\u00eancia (AAAAMM) ou Ano e m\u00eas de refer\u00eancia (AAAAMM); ",
+                "summary": "Consulta as parcelas sacadas pelo Bolsa Família pelo NIS",
+                "description": "Filtros mínimos:    Página (padrão = 1);    NIS; Ano e mês de competência (AAAAMM) ou Ano e mês de referência (AAAAMM); ",
                 "operationId": "bolsaFamiliaSacadoPorNisUsingGET",
                 "consumes": [
                     "application/json"
@@ -371,14 +498,14 @@
                     {
                         "name": "nis",
                         "in": "query",
-                        "description": "NIS (sem m\u00e1scara, somente n\u00fameros)",
+                        "description": "NIS (sem máscara, somente números)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "anoMesReferencia",
                         "in": "query",
-                        "description": "Ano e m\u00eas de refer\u00eancia (AAAAMM)",
+                        "description": "Ano e mês de referência (AAAAMM)",
                         "required": false,
                         "type": "integer",
                         "format": "int32"
@@ -386,7 +513,7 @@
                     {
                         "name": "anoMesCompetencia",
                         "in": "query",
-                        "description": "Ano e m\u00eas de compet\u00eancia (AAAAMM)",
+                        "description": "Ano e mês de competência (AAAAMM)",
                         "required": false,
                         "type": "integer",
                         "format": "int32"
@@ -394,7 +521,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -426,10 +553,10 @@
         "/api-de-dados/bpc-por-cpf-ou-nis": {
             "get": {
                 "tags": [
-                    "Benef\u00edcio de Presta\u00e7\u00e3o Continuada (BPC)"
+                    "Benefício de Prestação Continuada (BPC)"
                 ],
-                "summary": "Consulta os registros de Benef\u00edcio de Presta\u00e7\u00e3o Continuada por CPF/NIS",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  CPF / NIS; ",
+                "summary": "Consulta os registros de Benefício de Prestação Continuada por CPF/NIS",
+                "description": "Filtros mínimos:    Página (padrão = 1);    CPF / NIS; ",
                 "operationId": "bpcPorNisOuCPFUsingGET",
                 "consumes": [
                     "application/json"
@@ -448,7 +575,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -480,10 +607,10 @@
         "/api-de-dados/bpc-por-municipio": {
             "get": {
                 "tags": [
-                    "Benef\u00edcio de Presta\u00e7\u00e3o Continuada (BPC)"
+                    "Benefício de Prestação Continuada (BPC)"
                 ],
-                "summary": "Consulta os registros de Benef\u00edcio de Presta\u00e7\u00e3o Continuada por Munic\u00edpio",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Ano/M\u00eas (YYYYMM); C\u00f3digo IBGE (https://cidades.ibge.gov.br/brasil); ",
+                "summary": "Consulta os registros de Benefício de Prestação Continuada por Município",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Ano/Mês (YYYYMM); Código IBGE (https://cidades.ibge.gov.br/brasil); ",
                 "operationId": "bpcUsingGET",
                 "consumes": [
                     "application/json"
@@ -495,7 +622,7 @@
                     {
                         "name": "mesAno",
                         "in": "query",
-                        "description": "M\u00eas e Ano de refer\u00eancia (AAAAMM)",
+                        "description": "Mês e Ano de referência (AAAAMM)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -503,14 +630,14 @@
                     {
                         "name": "codigoIbge",
                         "in": "query",
-                        "description": "C\u00f3digo IBGE",
+                        "description": "Código IBGE",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -542,10 +669,10 @@
         "/api-de-dados/cartoes": {
             "get": {
                 "tags": [
-                    "Gastos por meio de cart\u00e3o de pagamento"
+                    "Gastos por meio de cartão de pagamento"
                 ],
-                "summary": "Consulta os registros de Cart\u00f5es de Pagamento",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Per\u00edodo de at\u00e9 12 meses ou um \u00f3rg\u00e3o ou um portador ou um favorecido espec\u00edfico;",
+                "summary": "Consulta os registros de Cartões de Pagamento",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Período de até 12 meses ou um órgão ou um portador ou um favorecido específico;",
                 "operationId": "cartaoUsingGET",
                 "consumes": [
                     "application/json"
@@ -557,35 +684,35 @@
                     {
                         "name": "mesExtratoInicio",
                         "in": "query",
-                        "description": "M\u00eas extrato in\u00edcio (MM/AAAA)",
+                        "description": "Mês extrato início (MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "mesExtratoFim",
                         "in": "query",
-                        "description": "M\u00eas extrato fim (MM/AAAA)",
+                        "description": "Mês extrato fim (MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataTransacaoInicio",
                         "in": "query",
-                        "description": "Data transa\u00e7\u00e3o in\u00edcio (DD/MM/AAAA)",
+                        "description": "Data transação início (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataTransacaoFim",
                         "in": "query",
-                        "description": "Data transa\u00e7\u00e3o fim (DD/MM/AAAA)",
+                        "description": "Data transação fim (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "tipoCartao",
                         "in": "query",
-                        "description": "Tipo de cart\u00e3o (CPGF=1 ou CPCC=2 ou CPDC=3)",
+                        "description": "Tipo de cartão (CPGF=1 ou CPCC=2 ou CPDC=3)",
                         "required": false,
                         "type": "integer",
                         "format": "int32"
@@ -593,7 +720,7 @@
                     {
                         "name": "codigoOrgao",
                         "in": "query",
-                        "description": "\u00d3rg\u00e3o/Entidade (C\u00f3digo SIAFI)",
+                        "description": "Órgão/Entidade (Código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
@@ -621,14 +748,14 @@
                     {
                         "name": "valorAte",
                         "in": "query",
-                        "description": "Valor at\u00e9 (####,##)",
+                        "description": "Valor até (####,##)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -660,10 +787,10 @@
         "/api-de-dados/ceaf": {
             "get": {
                 "tags": [
-                    "Cadastro de Expuls\u00f5es da Administra\u00e7\u00e3o Federal (CEAF)"
+                    "Cadastro de Expulsões da Administração Federal (CEAF)"
                 ],
-                "summary": "Consulta os registros do CEAF por CPF/\u00d3rg\u00e3o de Lota\u00e7\u00e3o/Per\u00edodo",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "summary": "Consulta os registros do CEAF por CPF/Órgão de Lotação/Período",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "ceafUsingGET_1",
                 "consumes": [
                     "application/json"
@@ -689,28 +816,28 @@
                     {
                         "name": "orgaoLotacao",
                         "in": "query",
-                        "description": "\u00d3rg\u00e3o de lota\u00e7\u00e3o",
+                        "description": "Órgão de lotação",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataPublicacaoInicio",
                         "in": "query",
-                        "description": "Data publica\u00e7\u00e3o in\u00edcio (DD/MM/AAAA)",
+                        "description": "Data publicação início (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataPublicacaoFim",
                         "in": "query",
-                        "description": "Data publica\u00e7\u00e3o fim (DD/MM/AAAA)",
+                        "description": "Data publicação fim (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -742,10 +869,10 @@
         "/api-de-dados/ceaf/{id}": {
             "get": {
                 "tags": [
-                    "Cadastro de Expuls\u00f5es da Administra\u00e7\u00e3o Federal (CEAF)"
+                    "Cadastro de Expulsões da Administração Federal (CEAF)"
                 ],
                 "summary": "Consulta um registro do CEAF pelo id",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "ceafUsingGET",
                 "consumes": [
                     "application/json"
@@ -785,10 +912,10 @@
         "/api-de-dados/ceis": {
             "get": {
                 "tags": [
-                    "Cadastro Nacional de Empresas Inid\u00f4neas e Suspensas (CEIS)"
+                    "Cadastro Nacional de Empresas Inidôneas e Suspensas (CEIS)"
                 ],
-                "summary": "Consulta os registros do CEIS por CNPJ ou CPF Sancionado/\u00d3rg\u00e3o Sancionador/Per\u00edodo",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "summary": "Consulta os registros do CEIS por CNPJ ou CPF Sancionado/Órgão Sancionador/Período",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "ceisUsingGET_1",
                 "consumes": [
                     "application/json"
@@ -807,35 +934,35 @@
                     {
                         "name": "nomeSancionado",
                         "in": "query",
-                        "description": "Nome, nome fantasia ou raz\u00e3o social do Sancionado",
+                        "description": "Nome, nome fantasia ou razão social do Sancionado",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "orgaoSancionador",
                         "in": "query",
-                        "description": "\u00d3rg\u00e3o Sancionador",
+                        "description": "Órgão Sancionador",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataInicialSancao",
                         "in": "query",
-                        "description": "Data Inicial da San\u00e7\u00e3o (DD/MM/AAAA)",
+                        "description": "Data Inicial da Sanção (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataFinalSancao",
                         "in": "query",
-                        "description": "Data Final da San\u00e7\u00e3o (DD/MM/AAAA)",
+                        "description": "Data Final da Sanção (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -867,10 +994,10 @@
         "/api-de-dados/ceis/{id}": {
             "get": {
                 "tags": [
-                    "Cadastro Nacional de Empresas Inid\u00f4neas e Suspensas (CEIS)"
+                    "Cadastro Nacional de Empresas Inidôneas e Suspensas (CEIS)"
                 ],
                 "summary": "Consulta um registro do CEIS pelo id",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "ceisUsingGET",
                 "consumes": [
                     "application/json"
@@ -912,8 +1039,8 @@
                 "tags": [
                     "Entidades Privadas sem Fins Lucrativos Impedidas (CEPIM)"
                 ],
-                "summary": "Consulta os registros do CEPIM por CNPJ ou CPF Sancionado/\u00d3rg\u00e3o superior",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "summary": "Consulta os registros do CEPIM por CNPJ ou CPF Sancionado/Órgão superior",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "cepimUsingGET_1",
                 "consumes": [
                     "application/json"
@@ -932,7 +1059,7 @@
                     {
                         "name": "nomeSancionado",
                         "in": "query",
-                        "description": "Nome, nome fantasia ou raz\u00e3o social do Sancionado",
+                        "description": "Nome, nome fantasia ou razão social do Sancionado",
                         "required": false,
                         "type": "string"
                     },
@@ -946,14 +1073,14 @@
                     {
                         "name": "orgaoEntidade",
                         "in": "query",
-                        "description": "\u00d3rg\u00e3o/Entidade",
+                        "description": "Órgão/Entidade",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -988,7 +1115,7 @@
                     "Entidades Privadas sem Fins Lucrativos Impedidas (CEPIM)"
                 ],
                 "summary": "Consulta um registro do CEPIM pelo id",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "cepimUsingGET",
                 "consumes": [
                     "application/json"
@@ -1030,8 +1157,8 @@
                 "tags": [
                     "Cadastro Nacional de Empresas Punidas (CNEP)"
                 ],
-                "summary": "Consulta os registros do CNEP por CNPJ ou CPF Sancionado/\u00d3rg\u00e3o Sancionador/Per\u00edodo",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "summary": "Consulta os registros do CNEP por CNPJ ou CPF Sancionado/Órgão Sancionador/Período",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "cnepUsingGET_1",
                 "consumes": [
                     "application/json"
@@ -1050,35 +1177,35 @@
                     {
                         "name": "nomeSancionado",
                         "in": "query",
-                        "description": "Nome, nome fantasia ou raz\u00e3o social do Sancionado",
+                        "description": "Nome, nome fantasia ou razão social do Sancionado",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "orgaoSancionador",
                         "in": "query",
-                        "description": "\u00d3rg\u00e3o Sancionador",
+                        "description": "Órgão Sancionador",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataInicialSancao",
                         "in": "query",
-                        "description": "Data Inicial da San\u00e7\u00e3o (DD/MM/AAAA)",
+                        "description": "Data Inicial da Sanção (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataFinalSancao",
                         "in": "query",
-                        "description": "Data Final da San\u00e7\u00e3o (DD/MM/AAAA)",
+                        "description": "Data Final da Sanção (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -1113,7 +1240,7 @@
                     "Cadastro Nacional de Empresas Punidas (CNEP)"
                 ],
                 "summary": "Consulta um registro do CNEP pelo id",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "cnepUsingGET",
                 "consumes": [
                     "application/json"
@@ -1156,7 +1283,7 @@
                     "Contratos do Poder Executivo Federal"
                 ],
                 "summary": "Consulta os todos contratos do Poder Executivo Federal",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); C\u00f3digo do \u00d3rg\u00e3o (SIAFI); Data vig\u00eancia in\u00edcio; Data vig\u00eancia fim",
+                "description": "Filtros mínimos:    Página (padrão = 1); Código do Órgão (SIAFI); Data vigência início; Data vigência fim",
                 "operationId": "contratosUsingGET",
                 "consumes": [
                     "application/json"
@@ -1168,28 +1295,28 @@
                     {
                         "name": "dataInicial",
                         "in": "query",
-                        "description": "Data vig\u00eancia in\u00edcio (DD/MM/AAAA)",
+                        "description": "Data vigência início (DD/MM/AAAA)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "dataFinal",
                         "in": "query",
-                        "description": "Data vig\u00eancia fim (DD/MM/AAAA)",
+                        "description": "Data vigência fim (DD/MM/AAAA)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "codigoOrgao",
                         "in": "query",
-                        "description": "C\u00f3digo do \u00d3rg\u00e3o (SIAFI)",
+                        "description": "Código do Órgão (SIAFI)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -1224,7 +1351,7 @@
                     "Contratos do Poder Executivo Federal"
                 ],
                 "summary": "Consulta os apostilamentos do contrato pelo id do contrato",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "apostilamentosDoContratoUsingGET",
                 "consumes": [
                     "application/json"
@@ -1270,7 +1397,7 @@
                     "Contratos do Poder Executivo Federal"
                 ],
                 "summary": "Consulta os documentos relacionados a um contrato pelo id do contrato",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "documentosRelacionadosAoContratoUsingGET",
                 "consumes": [
                     "application/json"
@@ -1316,7 +1443,7 @@
                     "Contratos do Poder Executivo Federal"
                 ],
                 "summary": "Consulta um contrato do Poder Executivo Federal pelo id",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "contratoUsingGET",
                 "consumes": [
                     "application/json"
@@ -1358,8 +1485,8 @@
                 "tags": [
                     "Contratos do Poder Executivo Federal"
                 ],
-                "summary": "Consulta um contrato do Poder Executivo Federal pelo n\u00famero do contrato",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  N\u00famero; ",
+                "summary": "Consulta um contrato do Poder Executivo Federal pelo número do contrato",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Número; ",
                 "operationId": "contratosPorNumeroUsingGET",
                 "consumes": [
                     "application/json"
@@ -1371,14 +1498,14 @@
                     {
                         "name": "numero",
                         "in": "query",
-                        "description": "N\u00famero do contrato",
+                        "description": "Número do contrato",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -1413,7 +1540,7 @@
                     "Contratos do Poder Executivo Federal"
                 ],
                 "summary": "Consulta os termos aditivos do contrato pelo id do contrato",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "termosAditivosDoContratoUsingGET",
                 "consumes": [
                     "application/json"
@@ -1456,10 +1583,10 @@
         "/api-de-dados/convenios": {
             "get": {
                 "tags": [
-                    "Conv\u00eanios do Poder Executivo Federal"
+                    "Convênios do Poder Executivo Federal"
                 ],
-                "summary": "Consulta todos conv\u00eanios do Poder Executivo Federal",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Per\u00edodo de no m\u00e1ximo 1 dia; ",
+                "summary": "Consulta todos convênios do Poder Executivo Federal",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Período de no máximo 1 dia; ",
                 "operationId": "conveniosUsingGET",
                 "consumes": [
                     "application/json"
@@ -1471,42 +1598,42 @@
                     {
                         "name": "dataInicial",
                         "in": "query",
-                        "description": "Data refer\u00eancia in\u00edcio (DD/MM/AAAA)",
+                        "description": "Data referência início (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataFinal",
                         "in": "query",
-                        "description": "Data refer\u00eancia fim (DD/MM/AAAA)",
+                        "description": "Data referência fim (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataUltimaLiberacaoInicial",
                         "in": "query",
-                        "description": "Data da \u00faltima libera\u00e7\u00e3o de recurso in\u00edcio (DD/MM/AAAA)",
+                        "description": "Data da última liberação de recurso início (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataUltimaLiberacaoFinal",
                         "in": "query",
-                        "description": "Data da \u00faltima libera\u00e7\u00e3o de recurso fim (DD/MM/AAAA)",
+                        "description": "Data da última liberação de recurso fim (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataVigenciaInicial",
                         "in": "query",
-                        "description": "Data de vig\u00eancia in\u00edcio (DD/MM/AAAA)",
+                        "description": "Data de vigência início (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataVigenciaFinal",
                         "in": "query",
-                        "description": "Data de vig\u00eancia fim (DD/MM/AAAA)",
+                        "description": "Data de vigência fim (DD/MM/AAAA)",
                         "required": false,
                         "type": "string"
                     },
@@ -1527,21 +1654,21 @@
                     {
                         "name": "numero",
                         "in": "query",
-                        "description": "N\u00famero do conv\u00eanio",
+                        "description": "Número do convênio",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "numeroOriginal",
                         "in": "query",
-                        "description": "N\u00famero original do conv\u00eanio",
+                        "description": "Número original do convênio",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "codigoOrgao",
                         "in": "query",
-                        "description": "C\u00f3digo do \u00d3rg\u00e3o (SIAFI)",
+                        "description": "Código do Órgão (SIAFI)",
                         "required": false,
                         "type": "string"
                     },
@@ -1555,35 +1682,35 @@
                     {
                         "name": "codigoIBGE",
                         "in": "query",
-                        "description": "Munic\u00edpio (C\u00f3digo IBGE)",
+                        "description": "Município (Código IBGE)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "situacao",
                         "in": "query",
-                        "description": "C\u00f3digo Situa\u00e7\u00e3o",
+                        "description": "Código Situação",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "tipoInstrumento",
                         "in": "query",
-                        "description": "C\u00f3digo Tipo de Instrumento",
+                        "description": "Código Tipo de Instrumento",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "funcao",
                         "in": "query",
-                        "description": "C\u00f3digo Fun\u00e7\u00e3o",
+                        "description": "Código Função",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "subfuncao",
                         "in": "query",
-                        "description": "C\u00f3digo Subfun\u00e7\u00e3o",
+                        "description": "Código Subfunção",
                         "required": false,
                         "type": "string"
                     },
@@ -1597,7 +1724,7 @@
                     {
                         "name": "valorLiberadoAte",
                         "in": "query",
-                        "description": "Valor liberado at\u00e9 (Formato: 1.000,00)",
+                        "description": "Valor liberado até (Formato: 1.000,00)",
                         "required": false,
                         "type": "string"
                     },
@@ -1611,14 +1738,14 @@
                     {
                         "name": "valorTotalAte",
                         "in": "query",
-                        "description": "Valor total at\u00e9 (Formato: 1.000,00)",
+                        "description": "Valor total até (Formato: 1.000,00)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": false,
                         "type": "integer",
                         "default": 1,
@@ -1650,10 +1777,10 @@
         "/api-de-dados/convenios/id": {
             "get": {
                 "tags": [
-                    "Conv\u00eanios do Poder Executivo Federal"
+                    "Convênios do Poder Executivo Federal"
                 ],
-                "summary": "Consulta um conv\u00eanio do Poder Executivo Federal pelo id",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "summary": "Consulta um convênio do Poder Executivo Federal pelo id",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "convenioUsingGET",
                 "consumes": [
                     "application/json"
@@ -1693,10 +1820,10 @@
         "/api-de-dados/convenios/numero": {
             "get": {
                 "tags": [
-                    "Conv\u00eanios do Poder Executivo Federal"
+                    "Convênios do Poder Executivo Federal"
                 ],
-                "summary": "Consulta um conv\u00eanio do Poder Executivo Federal pelo n\u00famero do contrato",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  N\u00famero; ",
+                "summary": "Consulta um convênio do Poder Executivo Federal pelo número do contrato",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Número; ",
                 "operationId": "conveniosPorNumeroUsingGET",
                 "consumes": [
                     "application/json"
@@ -1708,14 +1835,14 @@
                     {
                         "name": "numero",
                         "in": "query",
-                        "description": "N\u00famero do conv\u00eanio",
+                        "description": "Número do convênio",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -1747,10 +1874,10 @@
         "/api-de-dados/convenios/numero-original": {
             "get": {
                 "tags": [
-                    "Conv\u00eanios do Poder Executivo Federal"
+                    "Convênios do Poder Executivo Federal"
                 ],
-                "summary": "Consulta um conv\u00eanio do Poder Executivo Federal pelo n\u00famero original do contrato",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  N\u00famero; ",
+                "summary": "Consulta um convênio do Poder Executivo Federal pelo número original do contrato",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Número; ",
                 "operationId": "conveniosPorNumeroOriginalUsingGET",
                 "consumes": [
                     "application/json"
@@ -1762,14 +1889,14 @@
                     {
                         "name": "numeroOriginal",
                         "in": "query",
-                        "description": "N\u00famero original do conv\u00eanio",
+                        "description": "Número original do convênio",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -1801,9 +1928,9 @@
         "/api-de-dados/convenios/tipo-instrumento": {
             "get": {
                 "tags": [
-                    "Conv\u00eanios do Poder Executivo Federal"
+                    "Convênios do Poder Executivo Federal"
                 ],
-                "summary": "Consulta os tipos de instrumentos usados nos conv\u00eanios",
+                "summary": "Consulta os tipos de instrumentos usados nos convênios",
                 "operationId": "listaTiposDeInstrumentoUsingGET",
                 "consumes": [
                     "application/json"
@@ -1836,10 +1963,10 @@
         "/api-de-dados/despesas/documentos": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
                 "summary": "Consulta todos os documentos de despesas",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Per\u00edodo de no m\u00e1ximo 1 dia;  Fase da despesa;  Ao menos um dos demais filtros; ",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Período de no máximo 1 dia;    Fase da despesa;    Ao menos um dos demais filtros; ",
                 "operationId": "documentosUsingGET",
                 "consumes": [
                     "application/json"
@@ -1851,28 +1978,28 @@
                     {
                         "name": "unidadeGestora",
                         "in": "query",
-                        "description": "Unidade gestora emitente (c\u00f3digo SIAFI)",
+                        "description": "Unidade gestora emitente (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "gestao",
                         "in": "query",
-                        "description": "Gest\u00e3o (c\u00f3digo SIAFI)",
+                        "description": "Gestão (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "dataEmissao",
                         "in": "query",
-                        "description": "Data de emiss\u00e3o (DD/MM/AAAA)",
+                        "description": "Data de emissão (DD/MM/AAAA)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "fase",
                         "in": "query",
-                        "description": "Fase da despesa (1 - Empenho, 2 - Liquida\u00e7\u00e3o, 3 - Pagamento)",
+                        "description": "Fase da despesa (1 - Empenho, 2 - Liquidação, 3 - Pagamento)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -1880,7 +2007,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -1912,10 +2039,10 @@
         "/api-de-dados/despesas/documentos-por-favorecido": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
-                "summary": "Consulta Empenhos, Liquida\u00e7\u00f5es e Pagamentos emitidos para um favorecido",
-                "description": "A informa\u00e7\u00e3o favorecidoIntermediario indica se o documento foi emitido para o favorecido ou se ele \u00e9 apenas um intermedi\u00e1rio que recebe o recurso e repassa-o para os favorecidos finais",
+                "summary": "Consulta Empenhos, Liquidações e Pagamentos emitidos para um favorecido",
+                "description": "A informação favorecidoIntermediario indica se o documento foi emitido para o favorecido ou se ele é apenas um intermediário que recebe o recurso e repassa-o para os favorecidos finais",
                 "operationId": "documentosPorFavorecidoUsingGET",
                 "consumes": [
                     "application/json"
@@ -1927,14 +2054,14 @@
                     {
                         "name": "codigoPessoa",
                         "in": "query",
-                        "description": "C\u00f3digo do Favorecido (CPF, CNPJ ou c\u00f3digo do SIAFI)",
+                        "description": "Código do Favorecido (CPF, CNPJ ou código do SIAFI)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "fase",
                         "in": "query",
-                        "description": "Fase da despesa (1 - Empenho, 2 - Liquida\u00e7\u00e3o, 3 - Pagamento)",
+                        "description": "Fase da despesa (1 - Empenho, 2 - Liquidação, 3 - Pagamento)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -1942,7 +2069,7 @@
                     {
                         "name": "ano",
                         "in": "query",
-                        "description": "Ano de emiss\u00e3o do documento",
+                        "description": "Ano de emissão do documento",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -1950,21 +2077,21 @@
                     {
                         "name": "ug",
                         "in": "query",
-                        "description": "C\u00f3digo da unidade gestora emissora do documento",
+                        "description": "Código da unidade gestora emissora do documento",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "gestao",
                         "in": "query",
-                        "description": "C\u00f3digo da gest\u00e3o do documento",
+                        "description": "Código da gestão do documento",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -1996,9 +2123,9 @@
         "/api-de-dados/despesas/documentos-relacionados": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
-                "summary": "Consulta os documentos relacionados a um Empenho, Liquida\u00e7\u00e3o ou Pagamento",
+                "summary": "Consulta os documentos relacionados a um Empenho, Liquidação ou Pagamento",
                 "operationId": "documentosRelacionadosUsingGET",
                 "consumes": [
                     "application/json"
@@ -2010,14 +2137,14 @@
                     {
                         "name": "codigoDocumento",
                         "in": "query",
-                        "description": "C\u00f3digo do documento (Unidade Gestora + Gest\u00e3o + N\u00famero do documento)",
+                        "description": "Código do documento (Unidade Gestora + Gestão + Número do documento)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "fase",
                         "in": "query",
-                        "description": "Fase da despesa (1 - Empenho, 2 - Liquida\u00e7\u00e3o, 3 - Pagamento)",
+                        "description": "Fase da despesa (1 - Empenho, 2 - Liquidação, 3 - Pagamento)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -2048,10 +2175,10 @@
         "/api-de-dados/despesas/documentos/{codigo}": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
-                "summary": "Consulta um documento pelo c\u00f3digo (Unidade Gestora + Gest\u00e3o + N\u00famero do documento)",
-                "description": "Filtros m\u00ednimos: C\u00f3digo do registro",
+                "summary": "Consulta um documento pelo código (Unidade Gestora + Gestão + Número do documento)",
+                "description": "Filtros mínimos: Código do registro",
                 "operationId": "documentoPorCodigoUsingGET",
                 "consumes": [
                     "application/json"
@@ -2063,7 +2190,7 @@
                     {
                         "name": "codigo",
                         "in": "path",
-                        "description": "C\u00f3digo do registro",
+                        "description": "Código do registro",
                         "required": true,
                         "type": "string"
                     }
@@ -2090,10 +2217,10 @@
         "/api-de-dados/despesas/empenhos-impactados": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
                 "summary": "Consulta empenhos impactados por documento/fase",
-                "description": "Filtros m\u00ednimos: C\u00f3digo do registro e fase da despesa (liquida\u00e7\u00e3o ou pagamento somente)",
+                "description": "Filtros mínimos: Código do registro e fase da despesa (liquidação ou pagamento somente)",
                 "operationId": "empenhosImpactadosUsingGET",
                 "consumes": [
                     "application/json"
@@ -2105,14 +2232,14 @@
                     {
                         "name": "codigoDocumento",
                         "in": "query",
-                        "description": "C\u00f3digo do documento (Unidade Gestora + Gest\u00e3o + N\u00famero do documento)",
+                        "description": "Código do documento (Unidade Gestora + Gestão + Número do documento)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "fase",
                         "in": "query",
-                        "description": "Fase da despesa (2 - Liquida\u00e7\u00e3o, 3 - Pagamento)",
+                        "description": "Fase da despesa (2 - Liquidação, 3 - Pagamento)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -2120,7 +2247,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -2152,10 +2279,10 @@
         "/api-de-dados/despesas/favorecidos-finais-por-documento": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
                 "summary": "Consulta favorecidos finais por documento",
-                "description": "Filtros m\u00ednimos: C\u00f3digo do registro",
+                "description": "Filtros mínimos: Código do registro",
                 "operationId": "favorecidosFinaisPorDocumentoUsingGET",
                 "consumes": [
                     "application/json"
@@ -2167,14 +2294,14 @@
                     {
                         "name": "codigoDocumento",
                         "in": "query",
-                        "description": "C\u00f3digo do documento (Unidade Gestora + Gest\u00e3o + N\u00famero do documento)",
+                        "description": "Código do documento (Unidade Gestora + Gestão + Número do documento)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -2206,10 +2333,10 @@
         "/api-de-dados/despesas/por-funcional-programatica": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
-                "summary": "Consulta as despesas do Poder Executivo Federal pela classifica\u00e7\u00e3o funcional program\u00e1tica",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Ano do registro;  Ao menos um dos demais filtros; ",
+                "summary": "Consulta as despesas do Poder Executivo Federal pela classificação funcional programática",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Ano do registro;    Ao menos um dos demais filtros; ",
                 "operationId": "despesasPorFuncaoUsingGET",
                 "consumes": [
                     "application/json"
@@ -2229,35 +2356,35 @@
                     {
                         "name": "funcao",
                         "in": "query",
-                        "description": "Fun\u00e7\u00e3o (c\u00f3digo SIAFI)",
+                        "description": "Função (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "subfuncao",
                         "in": "query",
-                        "description": "Subfun\u00e7\u00e3o (c\u00f3digo SIAFI)",
+                        "description": "Subfunção (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "programa",
                         "in": "query",
-                        "description": "Programa (c\u00f3digo SIAFI)",
+                        "description": "Programa (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "acao",
                         "in": "query",
-                        "description": "A\u00e7\u00e3o (c\u00f3digo SIAFI)",
+                        "description": "Ação (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -2289,10 +2416,10 @@
         "/api-de-dados/despesas/por-orgao": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
-                "summary": "Consulta as despesas dos \u00f3rg\u00e3o do Poder Executivo Federal",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Ano do registro;  Ao menos um dos demais filtros; ",
+                "summary": "Consulta as despesas dos órgão do Poder Executivo Federal",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Ano do registro;    Ao menos um dos demais filtros; ",
                 "operationId": "despesasPorOrgaoUsingGET",
                 "consumes": [
                     "application/json"
@@ -2312,21 +2439,21 @@
                     {
                         "name": "orgaoSuperior",
                         "in": "query",
-                        "description": "\u00d3rg\u00e3o superior (c\u00f3digo SIAFI)",
+                        "description": "Órgão superior (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "orgao",
                         "in": "query",
-                        "description": "\u00d3rg\u00e3o/Entidade vinculada (c\u00f3digo SIAFI)",
+                        "description": "Órgão/Entidade vinculada (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -2358,7 +2485,7 @@
         "/api-de-dados/despesas/recursos-recebidos": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
                 "summary": "Recebimento de recursos por favorecido",
                 "operationId": "recursosRecebidosUsingGET",
@@ -2372,14 +2499,14 @@
                     {
                         "name": "mesAnoInicio",
                         "in": "query",
-                        "description": "M\u00eas ano in\u00edcio (MM/AAAA)",
+                        "description": "Mês ano início (MM/AAAA)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "mesAnoFim",
                         "in": "query",
-                        "description": "M\u00eas ano fim (MM/AAAA)",
+                        "description": "Mês ano fim (MM/AAAA)",
                         "required": true,
                         "type": "string"
                     },
@@ -2393,7 +2520,7 @@
                     {
                         "name": "codigoFavorecido",
                         "in": "query",
-                        "description": "CNPJ / CPF / C\u00f3digo do favorecido",
+                        "description": "CNPJ / CPF / Código do favorecido",
                         "required": false,
                         "type": "string"
                     },
@@ -2414,35 +2541,35 @@
                     {
                         "name": "codigoIBGE",
                         "in": "query",
-                        "description": "Munic\u00edpio",
+                        "description": "Município",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "orgaoSuperior",
                         "in": "query",
-                        "description": "\u00d3rg\u00e3o superior (c\u00f3digo SIAFI)",
+                        "description": "Órgão superior (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "orgao",
                         "in": "query",
-                        "description": "\u00d3rg\u00e3o/Entidade vinculada (c\u00f3digo SIAFI)",
+                        "description": "Órgão/Entidade vinculada (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "unidadeGestora",
                         "in": "query",
-                        "description": "Unidade gestora (c\u00f3digo SIAFI)",
+                        "description": "Unidade gestora (código SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -2474,7 +2601,7 @@
         "/api-de-dados/despesas/subitens-de-empenho": {
             "get": {
                 "tags": [
-                    "Despesas P\u00fablicas"
+                    "Despesas Públicas"
                 ],
                 "summary": "Consulta os subitens de um Empenho",
                 "operationId": "subitensDeEmpenhoUsingGET",
@@ -2488,7 +2615,7 @@
                     {
                         "name": "codigoDocumento",
                         "in": "query",
-                        "description": "C\u00f3digo do empenho (Unidade Gestora + Gest\u00e3o + N\u00famero do documento)",
+                        "description": "Código do empenho (Unidade Gestora + Gestão + Número do documento)",
                         "required": true,
                         "type": "string"
                     }
@@ -2521,7 +2648,7 @@
                     "Emendas parlamentares"
                 ],
                 "summary": "Consulta as emendas parlamentares",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "emendasUsingGET",
                 "consumes": [
                     "application/json"
@@ -2533,14 +2660,14 @@
                     {
                         "name": "codigoEmenda",
                         "in": "query",
-                        "description": "C\u00f3digo da Emenda",
+                        "description": "Código da Emenda",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "numeroEmenda",
                         "in": "query",
-                        "description": "N\u00famero da emenda",
+                        "description": "Número da emenda",
                         "required": false,
                         "type": "string"
                     },
@@ -2562,21 +2689,21 @@
                     {
                         "name": "codigoFuncao",
                         "in": "query",
-                        "description": "C\u00f3digo da fun\u00e7\u00e3o",
+                        "description": "Código da função",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "codigoSubfuncao",
                         "in": "query",
-                        "description": "C\u00f3digo da subfun\u00e7\u00e3o",
+                        "description": "Código da subfunção",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -2610,8 +2737,8 @@
                 "tags": [
                     "Emendas parlamentares"
                 ],
-                "summary": "Consulta os documentos relacionados \u00e0 emenda parlamentar pelo c\u00f3digo da emenda",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "summary": "Consulta os documentos relacionados à emenda parlamentar pelo código da emenda",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "documentosRelacionadosAEmendaUsingGET",
                 "consumes": [
                     "application/json"
@@ -2623,14 +2750,14 @@
                     {
                         "name": "codigo",
                         "in": "path",
-                        "description": "C\u00f3digo da emenda",
+                        "description": "Código da emenda",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -2662,10 +2789,10 @@
         "/api-de-dados/licitacoes": {
             "get": {
                 "tags": [
-                    "Licita\u00e7\u00f5es do Poder Executivo Federal"
+                    "Licitações do Poder Executivo Federal"
                 ],
-                "summary": "Consulta todas as licita\u00e7\u00f5es do Poder Executivo Federal",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Per\u00edodo de no m\u00e1ximo 1 m\u00eas; C\u00f3digo do \u00d3rg\u00e3o (SIAFI)",
+                "summary": "Consulta todas as licitações do Poder Executivo Federal",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Período de no máximo 1 mês; Código do Órgão (SIAFI)",
                 "operationId": "licitacoesUsingGET",
                 "consumes": [
                     "application/json"
@@ -2691,14 +2818,14 @@
                     {
                         "name": "codigoOrgao",
                         "in": "query",
-                        "description": "C\u00f3digo do \u00d3rg\u00e3o (SIAFI)",
+                        "description": "Código do Órgão (SIAFI)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -2730,10 +2857,10 @@
         "/api-de-dados/licitacoes/empenhos": {
             "get": {
                 "tags": [
-                    "Licita\u00e7\u00f5es do Poder Executivo Federal"
+                    "Licitações do Poder Executivo Federal"
                 ],
-                "summary": "Consulta os empenhos de uma licita\u00e7\u00e3o",
-                "description": "O n\u00famero da licita\u00e7\u00e3o deve conter somente n\u00fameros, por exemplo, para a licita\u00e7\u00e3o 2/2020 o par\u00e2metro deve ter o valor 22020",
+                "summary": "Consulta os empenhos de uma licitação",
+                "description": "O número da licitação deve conter somente números, por exemplo, para a licitação 2/2020 o parâmetro deve ter o valor 22020",
                 "operationId": "empenhosUsingGET",
                 "consumes": [
                     "application/json"
@@ -2745,21 +2872,21 @@
                     {
                         "name": "codigoUASG",
                         "in": "query",
-                        "description": "<a href='/swagger-ui.html#!/Servidores32do32Poder32Executivo32Federal/listarFuncoesECargosUsingGET' >C\u00f3digo da UASG</a>",
+                        "description": "<a href='/swagger-ui.html#!/Servidores32do32Poder32Executivo32Federal/listarFuncoesECargosUsingGET' >Código da UASG</a>",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "numero",
                         "in": "query",
-                        "description": "N\u00famero da Licita\u00e7\u00e3o (NNNNNAAAA)",
+                        "description": "Número da Licitação (NNNNNAAAA)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "codigoModalidade",
                         "in": "query",
-                        "description": "<a href='swagger-ui.html#!/Licita231245es32do32Poder32Executivo32Federal/uasgsUsingGET' >C\u00f3digo da Modalidade da Licita\u00e7\u00e3o</a>",
+                        "description": "<a href='swagger-ui.html#!/Licita231245es32do32Poder32Executivo32Federal/uasgsUsingGET' >Código da Modalidade da Licitação</a>",
                         "required": true,
                         "type": "string"
                     }
@@ -2789,9 +2916,9 @@
         "/api-de-dados/licitacoes/modalidades": {
             "get": {
                 "tags": [
-                    "Licita\u00e7\u00f5es do Poder Executivo Federal"
+                    "Licitações do Poder Executivo Federal"
                 ],
-                "summary": "Consulta as modalidades de licita\u00e7\u00e3o",
+                "summary": "Consulta as modalidades de licitação",
                 "operationId": "modalidadesUsingGET",
                 "consumes": [
                     "application/json"
@@ -2824,10 +2951,10 @@
         "/api-de-dados/licitacoes/por-uasg-modalidade-numero": {
             "get": {
                 "tags": [
-                    "Licita\u00e7\u00f5es do Poder Executivo Federal"
+                    "Licitações do Poder Executivo Federal"
                 ],
-                "summary": "Consulta uma licita\u00e7\u00e3o pelo c\u00f3digo da UASG, n\u00famero e modalidade",
-                "description": "O n\u00famero da licita\u00e7\u00e3o deve conter somente n\u00fameros, por exemplo, para a licita\u00e7\u00e3o 2/2020 o par\u00e2metro deve ter o valor 22020",
+                "summary": "Consulta uma licitação pelo código da UASG, número e modalidade",
+                "description": "O número da licitação deve conter somente números, por exemplo, para a licitação 2/2020 o parâmetro deve ter o valor 22020",
                 "operationId": "licitacoesPorUgModalidadeENumeroUsingGET",
                 "consumes": [
                     "application/json"
@@ -2839,21 +2966,21 @@
                     {
                         "name": "codigoUASG",
                         "in": "query",
-                        "description": "<a href='/swagger-ui.html#!/Servidores32do32Poder32Executivo32Federal/listarFuncoesECargosUsingGET' >C\u00f3digo da UASG</a>",
+                        "description": "<a href='/swagger-ui.html#!/Servidores32do32Poder32Executivo32Federal/listarFuncoesECargosUsingGET' >Código da UASG</a>",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "numero",
                         "in": "query",
-                        "description": "N\u00famero da Licita\u00e7\u00e3o (NNNNNAAAA)",
+                        "description": "Número da Licitação (NNNNNAAAA)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "codigoModalidade",
                         "in": "query",
-                        "description": "<a href='swagger-ui.html#!/Licita231245es32do32Poder32Executivo32Federal/uasgsUsingGET' >C\u00f3digo da Modalidade da Licita\u00e7\u00e3o</a>",
+                        "description": "<a href='swagger-ui.html#!/Licita231245es32do32Poder32Executivo32Federal/uasgsUsingGET' >Código da Modalidade da Licitação</a>",
                         "required": true,
                         "type": "string"
                     }
@@ -2883,9 +3010,9 @@
         "/api-de-dados/licitacoes/uasgs": {
             "get": {
                 "tags": [
-                    "Licita\u00e7\u00f5es do Poder Executivo Federal"
+                    "Licitações do Poder Executivo Federal"
                 ],
-                "summary": "Consulta as UASGs que realizaram licita\u00e7\u00f5es",
+                "summary": "Consulta as UASGs que realizaram licitações",
                 "operationId": "uasgsUsingGET",
                 "consumes": [
                     "application/json"
@@ -2918,10 +3045,10 @@
         "/api-de-dados/licitacoes/{id}": {
             "get": {
                 "tags": [
-                    "Licita\u00e7\u00f5es do Poder Executivo Federal"
+                    "Licitações do Poder Executivo Federal"
                 ],
-                "summary": "Consulta uma licita\u00e7\u00e3o do Poder Executivo Federal pelo id",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "summary": "Consulta uma licitação do Poder Executivo Federal pelo id",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "licitacaoUsingGET",
                 "consumes": [
                     "application/json"
@@ -2961,10 +3088,10 @@
         "/api-de-dados/orgaos-siafi": {
             "get": {
                 "tags": [
-                    "\u00d3rg\u00e3os"
+                    "Órgãos"
                 ],
-                "summary": "Consulta de \u00f3rg\u00e3os cadastrados no Sistema Integrado de Administra\u00e7\u00e3o Financeira do Governo Federal (SIAFI)",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "summary": "Consulta de órgãos cadastrados no Sistema Integrado de Administração Financeira do Governo Federal (SIAFI)",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "orgaosSiafiUsingGET",
                 "consumes": [
                     "application/json"
@@ -2976,21 +3103,21 @@
                     {
                         "name": "codigo",
                         "in": "query",
-                        "description": "C\u00f3digo do \u00d3rg\u00e3o (SIAFI)",
+                        "description": "Código do Órgão (SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "descricao",
                         "in": "query",
-                        "description": "Descri\u00e7\u00e3o do \u00d3rg\u00e3o (SIAFI)",
+                        "description": "Descrição do Órgão (SIAFI)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3022,10 +3149,10 @@
         "/api-de-dados/orgaos-siape": {
             "get": {
                 "tags": [
-                    "\u00d3rg\u00e3os"
+                    "Órgãos"
                 ],
-                "summary": "Consulta de \u00f3rg\u00e3os cadastrados no Sistema Integrado de Administra\u00e7\u00e3o de Pessoal (SIAPE)",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Per\u00edodo de no m\u00e1ximo 1 m\u00eas; ",
+                "summary": "Consulta de órgãos cadastrados no Sistema Integrado de Administração de Pessoal (SIAPE)",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Período de no máximo 1 mês; ",
                 "operationId": "orgaosSiapeUsingGET",
                 "consumes": [
                     "application/json"
@@ -3037,21 +3164,21 @@
                     {
                         "name": "codigo",
                         "in": "query",
-                        "description": "C\u00f3digo do \u00d3rg\u00e3o (SIAPE)",
+                        "description": "Código do Órgão (SIAPE)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "descricao",
                         "in": "query",
-                        "description": "Descri\u00e7\u00e3o do \u00d3rg\u00e3o (SIAPE)",
+                        "description": "Descrição do Órgão (SIAPE)",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3083,10 +3210,10 @@
         "/api-de-dados/peti-por-cpf-ou-nis": {
             "get": {
                 "tags": [
-                    "Programa de Erradica\u00e7\u00e3o do Trabalho Infantil (Peti)"
+                    "Programa de Erradicação do Trabalho Infantil (Peti)"
                 ],
-                "summary": "Consulta os registros Programa de Erradica\u00e7\u00e3o do Trabalho Infantil por CPF/NIS",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  CPF / NIS; ",
+                "summary": "Consulta os registros Programa de Erradicação do Trabalho Infantil por CPF/NIS",
+                "description": "Filtros mínimos:    Página (padrão = 1);    CPF / NIS; ",
                 "operationId": "petiUsingGET",
                 "consumes": [
                     "application/json"
@@ -3105,7 +3232,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3137,10 +3264,10 @@
         "/api-de-dados/peti-por-municipio": {
             "get": {
                 "tags": [
-                    "Programa de Erradica\u00e7\u00e3o do Trabalho Infantil (Peti)"
+                    "Programa de Erradicação do Trabalho Infantil (Peti)"
                 ],
-                "summary": "Consulta os registros Programa de Erradica\u00e7\u00e3o do Trabalho Infantil",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Ano/M\u00eas (YYYYMM); C\u00f3digo IBGE (https://cidades.ibge.gov.br/brasil); ",
+                "summary": "Consulta os registros Programa de Erradicação do Trabalho Infantil",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Ano/Mês (YYYYMM); Código IBGE (https://cidades.ibge.gov.br/brasil); ",
                 "operationId": "petiUsingGET_1",
                 "consumes": [
                     "application/json"
@@ -3152,7 +3279,7 @@
                     {
                         "name": "mesAno",
                         "in": "query",
-                        "description": "M\u00eas e Ano de refer\u00eancia (AAAAMM)",
+                        "description": "Mês e Ano de referência (AAAAMM)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -3160,14 +3287,14 @@
                     {
                         "name": "codigoIbge",
                         "in": "query",
-                        "description": "C\u00f3digo IBGE",
+                        "description": "Código IBGE",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3202,7 +3329,7 @@
                     "Garantia-Safra"
                 ],
                 "summary": "Consulta os registros Garantia-Safra por CPF/NIS",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  CPF / NIS; ",
+                "description": "Filtros mínimos:    Página (padrão = 1);    CPF / NIS; ",
                 "operationId": "safraPorNisOuCPFUsingGET",
                 "consumes": [
                     "application/json"
@@ -3221,7 +3348,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3256,7 +3383,7 @@
                     "Garantia-Safra"
                 ],
                 "summary": "Consulta os registros Garantia-Safra",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Ano/M\u00eas (YYYYMM); C\u00f3digo IBGE (https://cidades.ibge.gov.br/brasil); ",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Ano/Mês (YYYYMM); Código IBGE (https://cidades.ibge.gov.br/brasil); ",
                 "operationId": "safraUsingGET",
                 "consumes": [
                     "application/json"
@@ -3268,7 +3395,7 @@
                     {
                         "name": "mesAno",
                         "in": "query",
-                        "description": "M\u00eas e Ano de refer\u00eancia (AAAAMM)",
+                        "description": "Mês e Ano de referência (AAAAMM)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -3276,14 +3403,14 @@
                     {
                         "name": "codigoIbge",
                         "in": "query",
-                        "description": "C\u00f3digo IBGE",
+                        "description": "Código IBGE",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3318,7 +3445,7 @@
                     "Seguro Defeso"
                 ],
                 "summary": "Consulta os registros Seguro Defeso por CPF/NIS",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  CPF / NIS; ",
+                "description": "Filtros mínimos:    Página (padrão = 1);    CPF / NIS; ",
                 "operationId": "seguroDefesosPorCodigoUsingGET",
                 "consumes": [
                     "application/json"
@@ -3337,7 +3464,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3372,7 +3499,7 @@
                     "Seguro Defeso"
                 ],
                 "summary": "Consulta os registros Seguro Defeso",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Ano/M\u00eas (YYYYMM); C\u00f3digo IBGE (https://cidades.ibge.gov.br/brasil); ",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Ano/Mês (YYYYMM); Código IBGE (https://cidades.ibge.gov.br/brasil); ",
                 "operationId": "seguroDefesosUsingGET",
                 "consumes": [
                     "application/json"
@@ -3384,7 +3511,7 @@
                     {
                         "name": "mesAno",
                         "in": "query",
-                        "description": "M\u00eas e Ano de refer\u00eancia (AAAAMM)",
+                        "description": "Mês e Ano de referência (AAAAMM)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -3392,14 +3519,14 @@
                     {
                         "name": "codigoIbge",
                         "in": "query",
-                        "description": "C\u00f3digo IBGE",
+                        "description": "Código IBGE",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3434,7 +3561,7 @@
                     "Servidores do Poder Executivo Federal"
                 ],
                 "summary": "Consulta todos servidores do Poder Executivo Federal",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); <a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >C\u00f3digo \u00d3rg\u00e3o Exerc\u00edcio (SIAPE)</a>  OU <a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >C\u00f3digo \u00d3rg\u00e3o Lota\u00e7\u00e3o (SIAPE)</a>  OU CPF;",
+                "description": "Filtros mínimos:    Página (padrão = 1); <a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >Código Órgão Exercício (SIAPE)</a> OU <a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >Código Órgão Lotação (SIAPE)</a> OU CPF;",
                 "operationId": "dadosServidoresUsingGET",
                 "consumes": [
                     "application/json"
@@ -3454,7 +3581,7 @@
                     {
                         "name": "codigoSituacaoVinculo",
                         "in": "query",
-                        "description": "C\u00f3digo da Situa\u00e7\u00e3o do V\u00ednculo",
+                        "description": "Código da Situação do Vínculo",
                         "required": false,
                         "type": "string"
                     },
@@ -3475,28 +3602,28 @@
                     {
                         "name": "codigoFuncaoCargo",
                         "in": "query",
-                        "description": "<a href='/swagger-ui.html#!/Servidores32do32Poder32Executivo32Federal/listarFuncoesECargosUsingGET' >C\u00f3digo da Fun\u00e7\u00e3o ou Cargo de Confian\u00e7a</a> ",
+                        "description": "<a href='/swagger-ui.html#!/Servidores32do32Poder32Executivo32Federal/listarFuncoesECargosUsingGET' >Código da Função ou Cargo de Confiança</a>",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "orgaoServidorExercicio",
                         "in": "query",
-                        "description": "<a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >C\u00f3digo \u00d3rg\u00e3o Lota\u00e7\u00e3o (SIAPE)</a> ",
+                        "description": "<a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >Código Órgão Lotação (SIAPE)</a>",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "orgaoServidorLotacao",
                         "in": "query",
-                        "description": "<a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >C\u00f3digo \u00d3rg\u00e3o Exerc\u00edcio (SIAPE)</a> ",
+                        "description": "<a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >Código Órgão Exercício (SIAPE)</a>",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3530,8 +3657,8 @@
                 "tags": [
                     "Servidores do Poder Executivo Federal"
                 ],
-                "summary": "C\u00f3digo da Fun\u00e7\u00e3o ou Cargo de Confian\u00e7a",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "summary": "Código da Função ou Cargo de Confiança",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "listarFuncoesECargosUsingGET",
                 "consumes": [
                     "application/json"
@@ -3566,8 +3693,8 @@
                 "tags": [
                     "Servidores do Poder Executivo Federal"
                 ],
-                "summary": "Consulta de servidores agregados por \u00f3rg\u00e3o",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1); ",
+                "summary": "Consulta de servidores agregados por órgão",
+                "description": "Filtros mínimos:    Página (padrão = 1); ",
                 "operationId": "servidorAgregadoPorOrgaoUsingGET",
                 "consumes": [
                     "application/json"
@@ -3579,14 +3706,14 @@
                     {
                         "name": "orgaoLotacao",
                         "in": "query",
-                        "description": "<a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >C\u00f3digo \u00d3rg\u00e3o Exerc\u00edcio (SIAPE)</a> ",
+                        "description": "<a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >Código Órgão Exercício (SIAPE)</a>",
                         "required": false,
                         "type": "string"
                     },
                     {
                         "name": "orgaoExercicio",
                         "in": "query",
-                        "description": "<a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >C\u00f3digo \u00d3rg\u00e3o Lota\u00e7\u00e3o (SIAPE)</a> ",
+                        "description": "<a href='/swagger-ui.html#!/211rg227os/orgaosSiapeUsingGET' >Código Órgão Lotação (SIAPE)</a>",
                         "required": false,
                         "type": "string"
                     },
@@ -3601,7 +3728,7 @@
                     {
                         "name": "tipoVinculo",
                         "in": "query",
-                        "description": "Tipo v\u00ednculo (Fun\u00e7\u00e3o: 1; Cargo: 2; Outros: 3; Militares: 4",
+                        "description": "Tipo vínculo (Função: 1; Cargo: 2; Outros: 3; Militares: 4",
                         "required": false,
                         "type": "integer",
                         "format": "int32"
@@ -3609,7 +3736,7 @@
                     {
                         "name": "licenca",
                         "in": "query",
-                        "description": "Licen\u00e7a (Sim: 1; N\u00e3o: 0)",
+                        "description": "Licença (Sim: 1; Não: 0)",
                         "required": false,
                         "type": "integer",
                         "format": "int32"
@@ -3617,7 +3744,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3651,8 +3778,8 @@
                 "tags": [
                     "Servidores do Poder Executivo Federal"
                 ],
-                "summary": "Consulta remunera\u00e7\u00f5es de um servidor do Poder Executivo Federal pelo CPF e m\u00eas/ano",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  CPF;  Ano/M\u00eas (YYYYMM); ",
+                "summary": "Consulta remunerações de um servidor do Poder Executivo Federal pelo CPF e mês/ano",
+                "description": "Filtros mínimos:    Página (padrão = 1);    CPF;    Ano/Mês (YYYYMM); ",
                 "operationId": "remuneracoesServidoresUsingGET",
                 "consumes": [
                     "application/json"
@@ -3671,7 +3798,7 @@
                     {
                         "name": "mesAno",
                         "in": "query",
-                        "description": "M\u00eas e Ano de refer\u00eancia (AAAAMM)",
+                        "description": "Mês e Ano de referência (AAAAMM)",
                         "required": true,
                         "type": "integer",
                         "format": "int32"
@@ -3679,7 +3806,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3714,7 +3841,7 @@
                     "Servidores do Poder Executivo Federal"
                 ],
                 "summary": "Consulta um servidor do Poder Executivo Federal pelo id",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "servidorUsingGET",
                 "consumes": [
                     "application/json"
@@ -3754,10 +3881,10 @@
         "/api-de-dados/viagens": {
             "get": {
                 "tags": [
-                    "Viagens a servi\u00e7o"
+                    "Viagens a serviço"
                 ],
-                "summary": "Consulta viagens por per\u00edodo",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  Per\u00edodo de no m\u00e1ximo 1 m\u00eas; C\u00f3digo do \u00d3rg\u00e3o (SIAFI)",
+                "summary": "Consulta viagens por período",
+                "description": "Filtros mínimos:    Página (padrão = 1);    Período de no máximo 1 mês; Código do Órgão (SIAFI)",
                 "operationId": "viagensPorPeriodoEOrgaoUsingGET",
                 "consumes": [
                     "application/json"
@@ -3776,7 +3903,7 @@
                     {
                         "name": "dataIdaAte",
                         "in": "query",
-                        "description": "Data de ida at\u00e9 (DD/MM/AAAA)",
+                        "description": "Data de ida até (DD/MM/AAAA)",
                         "required": true,
                         "type": "string"
                     },
@@ -3790,21 +3917,21 @@
                     {
                         "name": "dataRetornoAte",
                         "in": "query",
-                        "description": "Data de retorno at\u00e9 (DD/MM/AAAA)",
+                        "description": "Data de retorno até (DD/MM/AAAA)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "codigoOrgao",
                         "in": "query",
-                        "description": "C\u00f3digo do \u00d3rg\u00e3o (SIAFI)",
+                        "description": "Código do Órgão (SIAFI)",
                         "required": true,
                         "type": "string"
                     },
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3836,10 +3963,10 @@
         "/api-de-dados/viagens-por-cpf": {
             "get": {
                 "tags": [
-                    "Viagens a servi\u00e7o"
+                    "Viagens a serviço"
                 ],
                 "summary": "Consulta viagens por CPF",
-                "description": "Filtros m\u00ednimos:  P\u00e1gina (padr\u00e3o = 1);  CPF; ",
+                "description": "Filtros mínimos:    Página (padrão = 1);    CPF; ",
                 "operationId": "viagensPorCpfUsingGET",
                 "consumes": [
                     "application/json"
@@ -3858,7 +3985,7 @@
                     {
                         "name": "pagina",
                         "in": "query",
-                        "description": "P\u00e1gina consultada",
+                        "description": "Página consultada",
                         "required": true,
                         "type": "integer",
                         "default": 1,
@@ -3890,10 +4017,10 @@
         "/api-de-dados/viagens/{id}": {
             "get": {
                 "tags": [
-                    "Viagens a servi\u00e7o"
+                    "Viagens a serviço"
                 ],
                 "summary": "Consulta uma viagem pelo ID",
-                "description": "Filtros m\u00ednimos: ID do registro",
+                "description": "Filtros mínimos: ID do registro",
                 "operationId": "viagemUsingGET",
                 "consumes": [
                     "application/json"
@@ -3904,7 +4031,7 @@
                 "parameters": [
                     {
                         "name": "id",
-                        "in": "query",
+                        "in": "path",
                         "description": "ID do registro",
                         "required": true,
                         "type": "integer",
@@ -4000,6 +4127,31 @@
                 }
             }
         },
+        "AuxilioEmergencial": {
+            "type": "object",
+            "properties": {
+                "beneficiario": {
+                    "$ref": "#/definitions/BeneficiarioAuxEmergencial"
+                },
+                "id": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "mesDisponibilizacao": {
+                    "type": "string",
+                    "format": "date"
+                },
+                "municipio": {
+                    "$ref": "#/definitions/Municipio"
+                },
+                "responsavelAuxilioEmergencial": {
+                    "$ref": "#/definitions/ResponsavelAuxilioEmergencial"
+                },
+                "valor": {
+                    "type": "number"
+                }
+            }
+        },
         "Beneficiario": {
             "type": "object",
             "properties": {
@@ -4012,6 +4164,26 @@
                 "id": {
                     "type": "integer",
                     "format": "int32"
+                },
+                "nome": {
+                    "type": "string"
+                },
+                "nomeSemAcento": {
+                    "type": "string"
+                }
+            }
+        },
+        "BeneficiarioAuxEmergencial": {
+            "type": "object",
+            "properties": {
+                "cpfFormatado": {
+                    "type": "string"
+                },
+                "multiploCadastro": {
+                    "type": "boolean"
+                },
+                "nis": {
+                    "type": "string"
                 },
                 "nome": {
                     "type": "string"
@@ -5101,6 +5273,9 @@
                 "nomeFavorecido": {
                     "type": "string"
                 },
+                "numeroProcesso": {
+                    "type": "string"
+                },
                 "observacao": {
                     "type": "string"
                 },
@@ -6121,7 +6296,19 @@
                 "nome": {
                     "type": "string"
                 },
+                "nomeOriginal": {
+                    "type": "string"
+                },
+                "nomeSemAcento": {
+                    "type": "string"
+                },
                 "sigla": {
+                    "type": "string"
+                },
+                "siglaOriginal": {
+                    "type": "string"
+                },
+                "siglaSemAcento": {
                     "type": "string"
                 }
             }
@@ -6589,6 +6776,23 @@
                     "type": "string"
                 },
                 "verbasIndenizatoriasReferentesPDVDolar": {
+                    "type": "string"
+                }
+            }
+        },
+        "ResponsavelAuxilioEmergencial": {
+            "type": "object",
+            "properties": {
+                "cpfFormatado": {
+                    "type": "string"
+                },
+                "nis": {
+                    "type": "string"
+                },
+                "nome": {
+                    "type": "string"
+                },
+                "nomeSemAcento": {
                     "type": "string"
                 }
             }

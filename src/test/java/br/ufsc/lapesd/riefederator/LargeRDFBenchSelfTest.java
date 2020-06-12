@@ -129,7 +129,7 @@ public class LargeRDFBenchSelfTest {
 
     private Model allData = null;
 
-    @BeforeClass
+    @BeforeClass(groups = {"fast"})
     public void setUp() {
         Model model = ModelFactory.createDefaultModel();
         ClassLoader cl = getClass().getClassLoader();
@@ -181,7 +181,7 @@ public class LargeRDFBenchSelfTest {
                                        .toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "queryNameData")
+    @Test(dataProvider = "queryNameData", groups = {"fast"})
     public void testParseQueries(String queryName) throws Exception {
         String path = RESOURCE_DIR + "/queries/" + queryName;
         try (InputStream stream = getClass().getClassLoader().getResourceAsStream(path)) {
@@ -213,7 +213,7 @@ public class LargeRDFBenchSelfTest {
         }
     }
 
-    @Test(dataProvider = "queryNameData")
+    @Test(dataProvider = "queryNameData", groups = {"fast"})
     public void testRunQueries(String queryName) throws Exception {
         assertNotNull(allData);
         String queryPath = RESOURCE_DIR + "/queries/" + queryName;

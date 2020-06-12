@@ -44,6 +44,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class QueryNodeExecutorTest implements TestContext {
     private static final PlanExecutor failExecutor = new PlanExecutor() {
         @Override

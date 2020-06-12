@@ -75,13 +75,13 @@ public class UndirectedIrreflexiveArrayGraphTest {
         };
     }
 
-    @Test(dataProvider = "rowOffsetData")
+    @Test(dataProvider = "rowOffsetData", groups = {"fast"})
     public void testRowOffset(int size, int idx, int expected) {
         IntegerGraph g = new IntegerGraph(size);
         assertEquals(g.rowOffset(idx), expected);
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testRemoveFromSingleton() {
         IntegerGraph g1 = new IntegerGraph(1);
         g1.removeAt(0);
@@ -92,7 +92,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
         assertEquals(g2.indexOf(0), -1);
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testRemoveFrom2() {
         IntegerGraph g1 = new IntegerGraph(2);
         g1.removeAt(0);
@@ -105,7 +105,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
         assertEquals(g2.indexOf(1), -1);
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testRemoveFirstFrom3() {
         IntegerGraph g = new IntegerGraph(3);
         g.removeAt(0);
@@ -115,7 +115,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
         assertEquals(g.getWeight(0, 1), 1.0f);
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testRemoveSecondFrom3() {
         IntegerGraph g = new IntegerGraph(3);
         g.removeAt(1);
@@ -167,7 +167,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
         }
     }
 
-    @Test(dataProvider = "sizesData")
+    @Test(dataProvider = "sizesData", groups = {"fast"})
     public void testRemoveAllFromLeft(int size) {
         IntegerGraph g = new IntegerGraph(size);
         for (int start = 1; start < size; start++) {
@@ -231,7 +231,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
         }
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testIsEmptyAndSize() {
         for (int size = 1; size < 64; size++) {
             IntegerGraph g = new IntegerGraph(size);
@@ -246,14 +246,14 @@ public class UndirectedIrreflexiveArrayGraphTest {
         }
     }
 
-    @Test(dataProvider = "sizesData")
+    @Test(dataProvider = "sizesData", groups = {"fast"})
     public void testGetNode(int size) {
         IntegerGraph g = new IntegerGraph(size);
         for (int i = 0; i < size; i++)
             assertEquals(g.get(i), Integer.valueOf(i));
     }
 
-    @Test(dataProvider = "sizesData")
+    @Test(dataProvider = "sizesData", groups = {"fast"})
     public void testGetNodeAfterRemovingFirst(int size) {
         IntegerGraph g = new IntegerGraph(size);
         g.removeAt(0);
@@ -261,7 +261,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
             assertEquals(g.get(i), Integer.valueOf(i+1));
     }
 
-    @Test(dataProvider = "sizesData")
+    @Test(dataProvider = "sizesData", groups = {"fast"})
     public void testGetNodes(int size) {
         IntegerGraph g = new IntegerGraph(size);
         ArrayList<Integer> expected = new ArrayList<>();
@@ -270,7 +270,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
         assertEquals(g.getNodes(), expected);
     }
 
-    @Test(dataProvider = "sizesData")
+    @Test(dataProvider = "sizesData", groups = {"fast"})
     public void testReplaceFromLeftToRight(int size) {
         IntegerGraph g = new IntegerGraph(size);
         for (int replaceIdx = 0; replaceIdx < size; replaceIdx++) {
@@ -350,7 +350,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
         }
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testCreateEmpty() {
         IntegerGraph g = new IntegerGraph();
         assertEquals(g.size(), 0);
@@ -390,7 +390,7 @@ public class UndirectedIrreflexiveArrayGraphTest {
         return rows.toArray(new Object[0][]);
     }
 
-    @Test(dataProvider = "subsetData")
+    @Test(dataProvider = "subsetData", groups = {"fast"})
     void testSubset(int size, BitSet subset, List<Integer> indices) {
         assertTrue(subset.cardinality() < size); //sanity
         assertEquals(subset.cardinality(), indices.size()); //sanity

@@ -17,6 +17,7 @@ import static org.apache.jena.datatypes.xsd.XSDDatatype.XSDdateTime;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class DatePrimitiveParserTest {
 
     @DataProvider

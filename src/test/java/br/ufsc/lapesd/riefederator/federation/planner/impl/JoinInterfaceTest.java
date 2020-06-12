@@ -27,6 +27,7 @@ import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 
+@Test(groups = {"fast"})
 public class JoinInterfaceTest implements TestContext {
 
     private static final Atom Person = new Atom("Person"), Atom1 = new Atom("Atom1");

@@ -77,7 +77,7 @@ public class JoinOrderPlannerTest implements TestContext {
                             @Override
                             protected void configure() {}
                         }).getInstance(GreedyJoinOrderPlanner.class)),
-                    new NamedSupplier<>("GreedyJoinOrderPlanner+PropertySelectivityCardinalityHeuristic",
+                    new NamedSupplier<>("GreedyJoinOrderPlanner+GeneralSelectivityHeuristic",
                             () -> Guice.createInjector(new AbstractModule() {
                                 @Override
                                 protected void configure() {
@@ -243,7 +243,7 @@ public class JoinOrderPlannerTest implements TestContext {
     }
 
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups = {"fast"})
     public void testPlanGivenNodesNonLinearPath(Supplier<JoinOrderPlanner> supplier) {
         QueryNode orgByDesc = new QueryNode(e1, createQuery(o1, p1, t));
         QueryNode contract = new QueryNode(e1, CQuery.with(

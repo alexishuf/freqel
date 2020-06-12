@@ -27,6 +27,7 @@ import static java.util.Collections.singleton;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class MappedJsonResponseParserTest implements TestContext {
     private static final @Nonnull String EX = "http://example.org/";
     private static final @Nonnull String AEX = "http://auto.example.org/";

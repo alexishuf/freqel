@@ -11,6 +11,7 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class AtomTest implements TestContext {
     public static final @Nonnull Atom a1 = new Atom("a", false, false, false, emptySet(), emptySet());
     public static final @Nonnull Atom a2 = new Atom("a", false, false, false, emptySet(), emptySet());

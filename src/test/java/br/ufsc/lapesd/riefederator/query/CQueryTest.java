@@ -37,6 +37,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class CQueryTest implements TestContext {
     public static final @Nonnull StdURI ageEx = new StdURI("http://example.org/age");
     public static final @Nonnull StdLit AGE_1 =

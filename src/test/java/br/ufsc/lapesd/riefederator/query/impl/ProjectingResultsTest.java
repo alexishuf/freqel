@@ -17,6 +17,7 @@ import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 
+@Test(groups = {"fast"})
 public class ProjectingResultsTest implements TestContext {
     private @Nonnull StdURI uri(int i) {
         return new StdURI("http://example.oth/"+i);

@@ -31,6 +31,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class TermFactoryTest {
     public static List<NamedFunction<TermFactory, TermFactory>> wrappers =
             asList(new NamedFunction<>("SynchronizedTermFactory", SynchronizedTermFactory::new),

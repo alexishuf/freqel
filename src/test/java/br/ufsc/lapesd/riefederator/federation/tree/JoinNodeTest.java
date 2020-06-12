@@ -21,6 +21,7 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class JoinNodeTest implements TestContext {
     private static final EmptyEndpoint empty = new EmptyEndpoint();
 

@@ -14,6 +14,7 @@ import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class HashDistinctResultsTest {
     private static @Nonnull StdURI ex(int local) {
         return new StdURI("http://example.org/"+local);

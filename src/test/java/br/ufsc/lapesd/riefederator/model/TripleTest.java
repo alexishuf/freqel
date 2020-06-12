@@ -24,6 +24,7 @@ import static org.apache.jena.rdf.model.ResourceFactory.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 
+@Test(groups = {"fast"})
 public class TripleTest {
 
     @DataProvider

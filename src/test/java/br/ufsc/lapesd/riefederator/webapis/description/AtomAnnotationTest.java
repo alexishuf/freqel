@@ -5,6 +5,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class AtomAnnotationTest {
     private static final Atom BOOK = new Atom("Book");
     private static final Atom AUTHOR = new Atom("Author");

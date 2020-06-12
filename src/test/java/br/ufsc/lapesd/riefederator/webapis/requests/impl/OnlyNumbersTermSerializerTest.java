@@ -16,6 +16,7 @@ import static java.util.Arrays.asList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = {"fast"})
 public class OnlyNumbersTermSerializerTest implements TestContext {
     private static final StdLit cnpjFormatado = StdLit.fromUnescaped("04.196.645/0001-00", xsdString);
     private static final StdLit cnpjFormatadoNome = StdLit.fromUnescaped("04.196.645/0001-00 MATRIZ", xsdString);

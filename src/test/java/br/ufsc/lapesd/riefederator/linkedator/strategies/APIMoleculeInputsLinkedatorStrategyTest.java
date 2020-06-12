@@ -43,6 +43,7 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class APIMoleculeInputsLinkedatorStrategyTest implements TestContext,
         TransparencyServiceTestContext {
     private static final Molecule Person, Book, ISBN;

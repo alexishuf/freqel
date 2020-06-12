@@ -19,8 +19,8 @@ import static org.apache.jena.rdf.model.ResourceFactory.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = {"fast"})
 public class SimpleDateSerializerTest {
-    @SuppressWarnings("ConstantConditions")
     @DataProvider
     public static @Nonnull Object[][] data() {
         Lit d1 = fromJena(createTypedLiteral("2020-01-08", XSDdate));

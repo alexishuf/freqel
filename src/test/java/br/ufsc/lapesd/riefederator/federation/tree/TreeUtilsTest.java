@@ -28,6 +28,7 @@ import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class TreeUtilsTest implements TestContext {
     private static EmptyEndpoint ep = new EmptyEndpoint();
     private final Atom person = Molecule.builder("Person").buildAtom();

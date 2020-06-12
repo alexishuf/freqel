@@ -22,6 +22,7 @@ import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = {"fast"})
 public class ResultsTest implements TestContext {
     public static final @Nonnull List<NamedFunction<List<Solution>, Results>> factories;
     public static final @Nonnull List<Solution> expectedNone, expectedOne, expectedTWo;

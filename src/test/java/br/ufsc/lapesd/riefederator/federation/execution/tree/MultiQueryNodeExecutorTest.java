@@ -35,6 +35,7 @@ import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class MultiQueryNodeExecutorTest implements TestContext {
 
     private static final List<NamedSupplier<MultiQueryNodeExecutor>> suppliers = singletonList(

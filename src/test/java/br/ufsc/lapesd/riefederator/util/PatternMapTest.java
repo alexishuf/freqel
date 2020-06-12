@@ -11,6 +11,7 @@ import static java.util.Arrays.asList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNull;
 
+@Test(groups = {"fast"})
 public class PatternMapTest {
 
     @DataProvider

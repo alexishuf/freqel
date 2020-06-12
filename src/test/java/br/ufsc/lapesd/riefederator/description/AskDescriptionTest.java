@@ -32,6 +32,7 @@ import static org.apache.jena.query.QueryExecutionFactory.create;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = {"fast"})
 public class AskDescriptionTest implements TestContext {
     private Model rdf1;
 

@@ -29,6 +29,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class SPARQLFilterTest implements TestContext {
 
     @DataProvider

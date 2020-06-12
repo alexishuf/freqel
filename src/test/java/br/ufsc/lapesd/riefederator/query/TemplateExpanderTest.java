@@ -19,6 +19,7 @@ import static br.ufsc.lapesd.riefederator.query.TemplateExpander.expandTemplates
 import static java.util.Arrays.asList;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class TemplateExpanderTest implements TestContext {
     private static final URI r1 = new StdURI("https://example.org/r1");
 

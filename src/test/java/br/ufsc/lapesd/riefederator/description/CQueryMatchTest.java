@@ -13,6 +13,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class CQueryMatchTest implements TestContext {
 
     @Test

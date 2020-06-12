@@ -19,6 +19,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 
+@Test(groups = {"fast"})
 public class MoleculeTest implements TestContext {
     public static final @Nonnull Atom a1 = new Atom("a");
     public static final @Nonnull Atom a2 = new Atom("a");

@@ -20,6 +20,7 @@ import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJena;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class SolutionTest implements TestContext {
     private static final @Nonnull List<NamedSupplier<Solution>> empty;
     private static final @Nonnull List<NamedSupplier<Solution>> nonEmpty;

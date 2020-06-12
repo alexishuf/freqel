@@ -40,7 +40,7 @@ public class ResultsExecutorTest implements TestContext {
                 .map(s -> new Object[]{s}).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups = {"fast"})
     public void testNoInput(Supplier<ResultsExecutor> supplier) {
         ResultsExecutor executor = supplier.get();
         try (Results results = executor.async(emptyList())) {
@@ -48,7 +48,7 @@ public class ResultsExecutorTest implements TestContext {
         }
     }
 
-    @Test(dataProvider = "suppliersData")
+    @Test(dataProvider = "suppliersData", groups = {"fast"})
     public void testSingleEmptyInput(Supplier<ResultsExecutor> supplier) {
         ResultsExecutor executor = supplier.get();
         try (Results r = executor.async(singletonList(CollectionResults.empty(singleton("x"))))) {

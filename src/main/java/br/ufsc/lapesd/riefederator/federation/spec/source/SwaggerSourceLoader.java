@@ -58,7 +58,7 @@ public class SwaggerSourceLoader implements SourceLoader {
 
         logger.info("Loaded {} endpoints (discarded {} and {} failed parsing) from {}",
                     sources.size(), discarded, failed,
-                    spec.getString("file", spec.getString("uri", null)));
+                    spec.getString("file", spec.getString("url", null)));
         return sources;
     }
 
@@ -78,7 +78,7 @@ public class SwaggerSourceLoader implements SourceLoader {
                                              @Nonnull File reference) throws SourceLoadException {
         SwaggerParser.Factory factory = SwaggerParser.getFactory();
         String file = spec.getString("file", null);
-        String uri = spec.getString("uri", null);
+        String url = spec.getString("url", null);
         if (file != null) {
             try {
                 File child = new File(file);
@@ -88,15 +88,15 @@ public class SwaggerSourceLoader implements SourceLoader {
                 String message = "Could not load from file" + file + ": " + e.getMessage();
                 throw new SourceLoadException(message, e, spec);
             }
-        } else if (uri != null) {
+        } else if (url != null) {
             try {
-                return factory.fromURL(uri);
+                return factory.fromURL(url);
             } catch (IOException e) {
-                String message = "Could not load from URI" + uri + ": " + e.getMessage();
+                String message = "Could not load from URL" + url + ": " + e.getMessage();
                 throw new SourceLoadException(message, e, spec);
             }
         } else {
-            throw new SourceLoadException("Neither file not uri properties are present", spec);
+            throw new SourceLoadException("Neither file nor url properties are present", spec);
         }
     }
 }

@@ -1,6 +1,30 @@
+###################################################
+# This file describes a federation.
+###################################################
+
+# Instances of Description (which perform subquery matching against sources)
+# will store caches of their internal descriptions in this directory (path
+# is relative to this yaml file). Not all Description implementations do
+# this. Currently, only SelectDescription stores the result of the
+# "list predicates" and "list classes" queries
+sources-cache: cache
+# List sources participating in the federation. Each source must have a
+# loader specified. Further required properties and their meaning is
+# defined by each SourceLoader implementation. The default list of
+# implementations is kept in  SourceLoaderRegistry.INSTANCE
 sources:
-  - loader: swagger
+  - loader: swagger  # Load a swagger json/yaml file
+    # Swagger files usually have many endpoints and often only a few are used.
+    # If you provide the required extensions for only a few endpoints, the remainder
+    # will throw errors. Setting this to false turn those errors into warnings.
+    # The default is true
     stop-on-error: false,
+    # Load from an URI.
+    url: http://www.transparencia.gov.br/v2/api-docs
+    # Load from a file relative to this yaml file. This takes precedence over url
     file: "portal_da_transparencia/portal_transparencia-ext.yaml"
-  - loader: rdf-file
+  - loader: rdf-file #Load from a local or remote RDF file (any syntax)
+    # relative file path to load. Syntax is derived from file extension
+    # as in swagger sources, "file:" has precedence over "url", which
+    # is also allowed
     file: "rdf/modalidades.ttl"

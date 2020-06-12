@@ -24,6 +24,7 @@ import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 
+@Test(groups = {"fast"})
 public class AtomSignatureTest implements TestContext {
 
     private final static Molecule Person;

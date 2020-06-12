@@ -8,6 +8,7 @@ import org.testng.annotations.Test;
 import static br.ufsc.lapesd.riefederator.model.RDFUtils.*;
 import static org.testng.Assert.assertEquals;
 
+@Test(groups = {"fast"})
 public class RDFUtilsTest {
 
     @DataProvider

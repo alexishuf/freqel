@@ -14,6 +14,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class MultiQueryNodeTest implements TestContext {
     public static final @Nonnull EmptyEndpoint empty = new EmptyEndpoint();
 

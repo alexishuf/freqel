@@ -26,8 +26,7 @@ import javax.inject.Inject;
 import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 public class JoinPathsPlanner implements Planner {
     private static final Logger logger = LoggerFactory.getLogger(JoinPathsPlanner.class);
@@ -79,8 +78,8 @@ public class JoinPathsPlanner implements Planner {
                         .filter(qn -> component.containsAny(qn.getMatchedTriples()))
                         .collect(toList());
                 PlanNode subPlan = plan(relevant, component);
-                if (subPlan instanceof EmptyNode)
-                    logger.info("Unsatisfiable query component: {} ", component);
+                if (subPlan == null)
+                    subPlan = new EmptyNode(n.getResultVars());
                 replacements.put(n, subPlan);
             });
             if (replacements.values().stream().anyMatch(EmptyNode.class::isInstance)) {
@@ -90,11 +89,10 @@ public class JoinPathsPlanner implements Planner {
             }
             return TreeUtils.replaceNodes(plan, replacements);
         } else {
-
             PlanNode root = plan(qns, full);
             if (root == null) {
                 logger.info("No join path across endpoints for join-connected query {}. " +
-                        "Returning EmptyNode", query);
+                            "Returning EmptyNode", query);
                 return new EmptyNode(query);
             }
             return root;
@@ -276,6 +274,33 @@ public class JoinPathsPlanner implements Planner {
             return Collections.emptyList();
         PathsContext context = new PathsContext(full, g);
         context.run();
+        if (context.result.isEmpty() && logger.isInfoEnabled()) {
+            StringBuilder b1 = new StringBuilder();
+            context.missingSmall.forEach(s -> b1.append("  ").append(s).append('\n'));
+
+            StringBuilder b2 = new StringBuilder();
+            for (IndexedSubset<PlanNode> c : context.unresolvedInputsComponents) {
+                b2.append("  {")
+                        .append(c.stream().map(n -> String.valueOf(g.getNodes().indexOf(n)))
+                                          .collect(joining(", ")))
+                        .append("}\n");
+            }
+
+            StringBuilder b3 = new StringBuilder();
+            g.getNodes().forEach(n ->
+                    n.prettyPrint(b3.append("[[")
+                                    .append(g.getNodes().indexOf(n)).append("]] "), "  "
+                    ).append('\n'));
+            logger.info("No effectively join-connected sub-component satisfies all {} " +
+                        "triples of the query.\n{} triples are not satisfied by any " +
+                        "sub-component: {}\nSmall sets of triples left unsatisfied by some " +
+                        "sub-components: {}\nComponents with unresolved inputs (see [[n]] " +
+                        "below for nodes):\n{}\nLeaf nodes considered for building effective " +
+                        "join-connected sub-components:\n{}",
+                        full.size(), context.globallyUnsatisfied.size(),
+                        context.globallyUnsatisfied, b1.toString(), b2.toString(), b3.toString());
+        }
+
         return context.result;
     }
 
@@ -286,6 +311,9 @@ public class JoinPathsPlanner implements Planner {
         private final @Nonnull IndexedSet<Triple> full;
         private final @Nonnull JoinGraph g;
         private final @Nonnull Cache<State, Boolean> recent;
+        private final @Nonnull IndexedSubset<Triple> globallyUnsatisfied;
+        private final @Nonnull Set<IndexedSubset<Triple>> missingSmall;
+        private final @Nonnull Set<IndexedSubset<PlanNode>> unresolvedInputsComponents;
 
         private static final class State {
             final @Nonnull ImmutableIndexedSubset<PlanNode> nodes;
@@ -384,8 +412,11 @@ public class JoinPathsPlanner implements Planner {
         public PathsContext(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g) {
             this.full = full;
             this.g = g;
-            result = new ArrayList<>();
-            recent = CacheBuilder.newBuilder().maximumSize(4096).initialCapacity(512).build();
+            this.globallyUnsatisfied = full.fullSubset();
+            this.result = new ArrayList<>();
+            this.recent = CacheBuilder.newBuilder().maximumSize(4096).initialCapacity(512).build();
+            this.missingSmall = new HashSet<>();
+            this.unresolvedInputsComponents = new HashSet<>();
         }
 
         void run() {
@@ -406,6 +437,8 @@ public class JoinPathsPlanner implements Planner {
                         assert component.getNodes().getParent().equals(g.getNodes());
                         result.add(component);
                         continue;
+                    } else {
+                        unresolvedInputsComponents.add(state.nodes);
                     }
                 }
                 advance(state);
@@ -414,8 +447,9 @@ public class JoinPathsPlanner implements Planner {
         }
 
         private State createState(@Nonnull PlanNode node) {
-            return new State(g.getNodes().immutableSubset(node),
-                             full.immutableSubset(node.getMatchedTriples()));
+            ImmutableIndexedSubset<Triple> matched = full.immutableSubset(node.getMatchedTriples());
+            globallyUnsatisfied.removeAll(matched);
+            return new State(g.getNodes().immutableSubset(node), matched);
         }
 
         private boolean checkRecent(@Nonnull State state) {
@@ -433,7 +467,13 @@ public class JoinPathsPlanner implements Planner {
                     State next = state.tryAdvance(neighbor);
                     if (next != null) {
                         assert next.nodes.size() > state.nodes.size(); //invariant
+                        globallyUnsatisfied.removeAll(neighbor.getMatchedTriples());
                         queue.add(next);
+                    } else {
+                        IndexedSubset<Triple> m = full.fullSubset();
+                        m.difference(state.matched);
+                        if (!m.isEmpty() && (m.size() <= 4 || m.size() < full.size()/4))
+                            missingSmall.add(m);
                     }
                 });
             }

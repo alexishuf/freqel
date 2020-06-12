@@ -18,6 +18,7 @@ import static java.util.Collections.singleton;
 import static java.util.Objects.requireNonNull;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class TransformedResultsTest implements TestContext {
 
     @DataProvider

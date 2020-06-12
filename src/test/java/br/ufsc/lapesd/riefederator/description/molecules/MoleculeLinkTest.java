@@ -8,6 +8,7 @@ import javax.annotation.Nonnull;
 
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class MoleculeLinkTest implements TestContext {
     public static final @Nonnull Atom a1 = new Atom("a");
     public static final @Nonnull Atom a2 = new Atom("a");

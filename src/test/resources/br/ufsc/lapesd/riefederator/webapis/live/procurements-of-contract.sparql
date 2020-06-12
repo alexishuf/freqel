@@ -1,0 +1,29 @@
+prefix : <urn:plain:>
+prefix mod: <https://alexishuf.bitbucket.io/dexa-2020/modalidades.ttl#>
+prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+prefix owl: <http://www.w3.org/2002/07/owl#>
+prefix xsd: <http://www.w3.org/2001/XMLSchema#>
+prefix foaf: <http://xmlns.com/foaf/0.1/>
+prefix dct: <http://purl.org/dc/terms/>
+
+SELECT ?id ?startDate ?openDate ?modDescr WHERE {
+    ?contract :id ?id ;
+              :unidadeGestora ?ug ;
+              :dimCompra/:numero ?numProc ;
+              :dataInicioVigencia ?startDate ;
+              :dataFimVigencia ?endDate ;
+              FILTER(?startDate >= "2019-12-01"^^xsd:date)
+              FILTER(?endDate <= "2020-12-02"^^xsd:date) .
+    ?ug :codigo ?codUG ;
+        :orgaoVinculado/:codigoSIAFI "26246" .
+    ?fullContract :id ?id ;
+                  :modalidadeCompra/:descricao ?modDescr .
+    ?descr mod:hasDescription ?modDescr ;
+           mod:hasCode ?modCode .
+    ?proc :id ?procId;
+          :unidadeGestora/:codigo ?codUG;
+          :licitacao/:numero ?numProc;
+          :modalidadeLicitacao/:codigo ?modCode;
+          :dataAbertura ?openDate .
+}

@@ -28,6 +28,7 @@ import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = {"fast"})
 public class LinkedatorTest implements TransparencyServiceTestContext {
 
     @Test

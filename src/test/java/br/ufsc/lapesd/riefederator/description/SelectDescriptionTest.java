@@ -44,6 +44,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
+
 public class SelectDescriptionTest implements TestContext {
     public static final @Nonnull StdLit A_AGE = fromUnescaped("23", xsdInt);
 
@@ -130,7 +131,7 @@ public class SelectDescriptionTest implements TestContext {
 
     /* ~~~  setUp/tearDown ~~~ */
 
-    @BeforeClass
+    @BeforeClass(groups = {"fast"})
     public void setUp() {
         Model model = ModelFactory.createDefaultModel();
         RDFDataMgr.read(model, getClass().getResourceAsStream("../rdf-1.nt"), Lang.TTL);
@@ -141,7 +142,7 @@ public class SelectDescriptionTest implements TestContext {
 
     /* ~~~  test methods ~~~ */
 
-    @Test(dataProvider = "matchData")
+    @Test(dataProvider = "matchData", groups = {"fast"})
     public void testMatch(boolean fetchClasses, @Nonnull List<Triple> query,
                           @Nonnull List<Triple> expected) {
         SelectDescription description = new SelectDescription(rdf1, fetchClasses);
@@ -157,7 +158,7 @@ public class SelectDescriptionTest implements TestContext {
         return new Object[][] { new Object[]{true}, new Object[]{false} };
     }
 
-    @Test(dataProvider = "fetchClassesData")
+    @Test(dataProvider = "fetchClassesData", groups = {"fast"})
     public void testMatchWithFilter(boolean fetchClasses) {
         CQuery query = createQuery(
                 Alice, knows, x,
@@ -169,7 +170,7 @@ public class SelectDescriptionTest implements TestContext {
         assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.getSet());
     }
 
-    @Test(dataProvider = "fetchClassesData")
+    @Test(dataProvider = "fetchClassesData", groups = {"fast"})
     public void testSaveAndLoadDescription(boolean fetchClasses) throws IOException {
         File dir = Files.createTempDirectory("riefederator").toFile();
         try {

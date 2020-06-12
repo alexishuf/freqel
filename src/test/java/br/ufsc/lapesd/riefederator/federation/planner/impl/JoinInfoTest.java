@@ -34,6 +34,7 @@ import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class JoinInfoTest implements TestContext {
     private static final Atom X = new Atom("X");
     private static final Atom Y = new Atom("Y");

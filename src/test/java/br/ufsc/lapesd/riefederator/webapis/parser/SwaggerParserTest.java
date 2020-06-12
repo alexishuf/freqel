@@ -66,14 +66,14 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         ).map(s -> new Object[] {s}).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "resourcePathData")
+    @Test(dataProvider = "resourcePathData", groups = {"fast"})
     public void testParse(String resourcePath) throws IOException {
         SwaggerParser parser = SwaggerParser.getFactory().fromResource(resourcePath);
         assertTrue(parser.getEndpoints().stream().noneMatch(Objects::isNull));
     }
 
 
-    @Test
+    @Test(groups = {"fast"})
     public void testEndpoints() throws IOException {
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         Collection<String> endpoints = parser.getEndpoints();
@@ -82,7 +82,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertTrue(endpoints.contains("/api-de-dados/licitacoes/{id}"));
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testDefaultPagingStrategy() throws IOException {
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         String endpoint = "/api-de-dados/licitacoes";
@@ -105,14 +105,14 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertEquals(strategy.getParametersUsed(), singletonList("pagina"));
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testDoNotApplyDefaultPagingStrategyOnMissingParameters() throws IOException {
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         String endpoint = "/api-de-dados/licitacoes/{id}";
         assertNull(parser.getPagingStrategy(endpoint, null));
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testGetParsedCardinality() throws IOException {
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         String ep = "/api-de-dados/licitacoes";
@@ -122,7 +122,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertEquals(parser.getCardinality(ep, Cardinality.UNSUPPORTED), Cardinality.UNSUPPORTED);
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testGetMolecule() throws IOException {
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         Molecule molecule = parser.getMolecule("/api-de-dados/licitacoes");
@@ -135,7 +135,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertTrue(link.getAtom().getName().contains("valor"));
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testDateParser() throws IOException {
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         JsonSchemaMoleculeParser schemaParser = parser.parseSchema("/api-de-dados/licitacoes");
@@ -149,7 +149,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertSame(schemaParser.getParsersRegistry().get(singletonList("dataAbertura")), global);
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testMappedJsonResponseParserParsesDate() throws IOException {
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         String endpoint = "/api-de-dados/licitacoes";
@@ -163,7 +163,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertTrue(registry.get(singletonList("dataAbertura")) instanceof DatePrimitiveParser);
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testGetParametersLicitacaoById() throws IOException {
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         String endpoint = "/api-de-dados/licitacoes/{id}";
@@ -184,7 +184,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertNull(parameters.getParamPath("id").getAtomFilter());
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testGetParametersLicitacoes() throws IOException {
         SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
         String endpoint = "/api-de-dados/licitacoes";

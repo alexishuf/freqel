@@ -27,6 +27,7 @@ import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.concat;
 import static org.testng.Assert.assertEquals;
 
+@Test(groups = {"fast"})
 public class MoleculeMatcherTest implements TestContext {
 
     /* ~~~ single-atom molecules ~~~ */

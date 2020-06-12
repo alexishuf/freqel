@@ -24,6 +24,7 @@ import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class DictTreeTest {
 
     private final String yamlWithSlashProperty =

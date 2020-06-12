@@ -17,6 +17,7 @@ import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class AtomPathTest implements TestContext {
 
     private static final Molecule Person = Molecule.builder("Person")

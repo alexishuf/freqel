@@ -18,6 +18,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class ParameterPathTest {
 
     private DictTree tree;

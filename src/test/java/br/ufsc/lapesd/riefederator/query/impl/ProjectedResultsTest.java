@@ -13,6 +13,7 @@ import java.util.*;
 import static com.google.common.collect.Sets.newHashSet;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class ProjectedResultsTest {
     private static @Nonnull StdURI ex(@Nonnull String local) {
         return new StdURI("http://example.org/"+local);

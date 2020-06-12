@@ -13,6 +13,7 @@ import static java.util.Collections.singletonList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNull;
 
+@Test(groups = {"fast"})
 public class PrimitiveParsersRegistryTest {
 
     private static class DummyParser implements PrimitiveParser, Comparable<DummyParser> {

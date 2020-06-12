@@ -89,7 +89,7 @@ public class TreeUtils {
 
     public static @Nonnull Iterator<PlanNode> iteratePreOrder(@Nonnull PlanNode root) {
         if (TreeUtils.class.desiredAssertionStatus())
-            Preconditions.checkArgument(isTree(root, true), "Plan is not a tree!");
+            Preconditions.checkArgument(isAcyclic(root), "Plan is not a tree!");
         ArrayDeque<PlanNode> stack = new ArrayDeque<>();
         stack.push(root);
         return new Iterator<PlanNode>() {

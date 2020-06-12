@@ -25,6 +25,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.apache.jena.rdf.model.ResourceFactory.createResource;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class TBoxSpecTest {
     private TBoxSpec fullSpec, emptySpec;
     private ExtractedResource provo, time;

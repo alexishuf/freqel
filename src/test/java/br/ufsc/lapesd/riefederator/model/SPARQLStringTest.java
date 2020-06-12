@@ -51,6 +51,7 @@ import static java.util.Collections.*;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class SPARQLStringTest implements TestContext {
     private static final Atom A1 = new Atom("A1");
 

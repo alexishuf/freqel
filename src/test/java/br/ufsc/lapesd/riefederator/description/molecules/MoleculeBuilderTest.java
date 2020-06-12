@@ -10,6 +10,7 @@ import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class MoleculeBuilderTest implements TestContext {
     public static final @Nonnull Atom a1 = new Atom("a");
     public static final @Nonnull Atom b  = new Atom("b");

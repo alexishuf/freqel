@@ -14,6 +14,7 @@ import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 
+@Test(groups = {"fast"})
 public class EmptyEndpointTest implements TestContext {
 
     @Test

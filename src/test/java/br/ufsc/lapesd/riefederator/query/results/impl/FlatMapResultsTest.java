@@ -19,6 +19,7 @@ import static java.lang.Integer.parseInt;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class FlatMapResultsTest implements TestContext {
 
     @DataProvider

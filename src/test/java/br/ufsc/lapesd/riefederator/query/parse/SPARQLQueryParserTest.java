@@ -24,6 +24,7 @@ import static br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser.hidden;
 import static java.util.Arrays.asList;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class SPARQLQueryParserTest implements TestContext {
 
     @DataProvider

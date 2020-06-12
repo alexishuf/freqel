@@ -10,6 +10,7 @@ import javax.annotation.Nonnull;
 import static br.ufsc.lapesd.riefederator.query.JoinType.*;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class JoinTypeTest  implements TestContext {
     public static final @Nonnull Triple    BOUND = new Triple(Alice, knows, Bob);
     public static final @Nonnull Triple S_TRIPLE = new Triple(x, knows, Bob);

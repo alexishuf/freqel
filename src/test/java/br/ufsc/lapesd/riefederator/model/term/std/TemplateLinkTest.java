@@ -10,6 +10,7 @@ import static org.apache.jena.rdf.model.ResourceFactory.createResource;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = {"fast"})
 public class TemplateLinkTest implements TestContext {
 
     @SuppressWarnings("SimplifiedTestNGAssertion")

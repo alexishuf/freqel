@@ -28,6 +28,7 @@ import static java.util.Collections.emptyIterator;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class EndpointIteratorResultsTest implements TestContext {
     private @Nullable
     CQEndpoint e1, e2, rdf1, rdf2;

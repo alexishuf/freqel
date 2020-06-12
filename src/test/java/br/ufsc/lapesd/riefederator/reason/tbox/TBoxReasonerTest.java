@@ -18,6 +18,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
+@Test(groups = {"fast"})
 public class TBoxReasonerTest {
     public static final List<NamedSupplier<TBoxReasoner>> suppliers = Arrays.asList(
             new NamedSupplier<>("HermiT", OWLAPITBoxReasoner::hermit),

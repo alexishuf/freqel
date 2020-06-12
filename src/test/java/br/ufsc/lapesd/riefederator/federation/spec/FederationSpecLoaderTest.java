@@ -31,6 +31,7 @@ import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class FederationSpecLoaderTest implements TestContext {
     private Model rdf1;
     private File dir;

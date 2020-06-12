@@ -11,6 +11,7 @@ import static java.util.Arrays.asList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotEquals;
 
+@Test(groups = {"fast"})
 public class MediaTypePredicateTest {
     @DataProvider
     public static Object[][] data() {

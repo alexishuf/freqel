@@ -15,6 +15,7 @@ import static java.util.stream.Collectors.toSet;
 import static java.util.stream.IntStream.range;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class IndexedSetTest {
     private static final int VALUES_BASE = 1000;
 

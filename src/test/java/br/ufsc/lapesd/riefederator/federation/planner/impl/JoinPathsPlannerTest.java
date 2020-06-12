@@ -39,6 +39,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
+
 @SuppressWarnings("UnstableApiUsage")
 public class JoinPathsPlannerTest implements TestContext {
     private static final Atom Person = new Atom("Person"), Atom1 = new Atom("Atom1");
@@ -87,7 +88,7 @@ public class JoinPathsPlannerTest implements TestContext {
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "pathEqualsData")
+    @Test(dataProvider = "pathEqualsData", groups = {"fast"})
     public void testPathEquals(@Nonnull JoinComponent a, @Nonnull JoinComponent b, boolean expected) {
         if (expected) {
             assertEquals(a, b);
@@ -142,7 +143,7 @@ public class JoinPathsPlannerTest implements TestContext {
 //        assertFalse(s0.hasInputs());
 //    }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testBuildPath() {
         QueryNode n1 = node(e1, Alice, p1, x);
         QueryNode n2 = node(e1, x, p2, y);
@@ -231,7 +232,7 @@ public class JoinPathsPlannerTest implements TestContext {
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "groupNodesData")
+    @Test(dataProvider = "groupNodesData", groups = {"fast"})
     public void testGroupNodes(Collection<QueryNode> in, Collection<PlanNode> expected) {
         for (List<QueryNode> permutation : permutations(in)) {
             JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
@@ -439,7 +440,7 @@ public class JoinPathsPlannerTest implements TestContext {
         ).map(l -> new Object[] {l}).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "indexedSetForDuplicatesData")
+    @Test(dataProvider = "indexedSetForDuplicatesData", groups = {"fast"})
     public void testIndexedSetForDuplicates(List<JoinComponent> paths) {
         assertTrue(paths.stream().noneMatch(Objects::isNull));
         List<JoinComponent> oldPaths = new ArrayList<>(paths);
@@ -521,7 +522,7 @@ public class JoinPathsPlannerTest implements TestContext {
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "removeAlternativePathsData")
+    @Test(dataProvider = "removeAlternativePathsData", groups = {"fast"})
     public void testRemoveAlternativePaths(List<Collection<PlanNode>> nodesList,
                                            List<List<Integer>> equivIndices) {
         JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
