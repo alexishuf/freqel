@@ -101,11 +101,8 @@ public abstract class CQueryContext {
                 boolean processed = false;
                 boolean isTermAnnotation = next instanceof TermAnnotation;
                 boolean isTripleAnnotation = next instanceof TripleAnnotation;
-                if (isTermAnnotation && isTripleAnnotation) {
-                    logger.info("{} will annotate both the object and the whole previous triple!",
-                            next);
-                    processed = true;
-                }
+                if (isTermAnnotation && isTripleAnnotation)
+                    logger.info("{} will annotate both the previous object and triple!", next);
                 if (isTermAnnotation) {
                     Term term;
                     if (window.isEmpty()) {
@@ -116,6 +113,7 @@ public abstract class CQueryContext {
                         term = window.get(window.size() - 1);
                     }
                     builder.annotate(term, (TermAnnotation) next);
+                    processed = true;
                 }
                 if (isTripleAnnotation) {
                     List<Triple> triples = builder.getList();
@@ -127,6 +125,7 @@ public abstract class CQueryContext {
                         checkState(isTermAnnotation, "Annotation "+next+" only implements " +
                                 "TripleAnnotation but is positioned after a subject or predicate");
                     }
+                    processed = true;
                 }
                 if (next instanceof Modifier) {
                     builder.modifier((Modifier) next);
