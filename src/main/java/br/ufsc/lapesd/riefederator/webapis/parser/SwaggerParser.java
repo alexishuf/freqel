@@ -43,10 +43,25 @@ public class SwaggerParser implements APIDescriptionParser {
     private static final Logger logger = LoggerFactory.getLogger(SwaggerParser.class);
     private static final List<String> reqRootProps = asList("swagger", "paths");
 
-    private @Nonnull
-    DictTree swagger;
-    private @Nonnull ImmutableList<String> endpoints;
-    private @Nonnull APIDescriptionContext fallbackContext = new APIDescriptionContext();
+    private static final List<String> DO_NOT_NULLIFY =
+            asList("paths", "definitions", "parameters", "responses");
+
+    private @Nonnull final DictTree swagger;
+    private @Nonnull final ImmutableList<String> endpoints;
+    private @Nonnull final APIDescriptionContext fallbackContext = new APIDescriptionContext();
+
+    private static DictTree doOverlay(@Nonnull DictTree baseSwagger, @Nonnull DictTree overlay) {
+        List<List<String>> idPaths = singletonList(asList("parameters", "name"));
+        for (String key : DO_NOT_NULLIFY) {
+            if (overlay.containsKey(key) && overlay.get(key) == null)
+                logger.warn("Swagger root property {} is nullified by overlay {}", key, overlay);
+        }
+        return DictTree.overlay(baseSwagger, overlay, idPaths).asRoot();
+    }
+
+    public SwaggerParser(@Nonnull DictTree baseSwagger, @Nonnull DictTree overlay) {
+        this(doOverlay(baseSwagger, overlay));
+    }
 
     public SwaggerParser(@Nonnull DictTree swagger) {
         this.swagger = swagger;
@@ -543,10 +558,9 @@ public class SwaggerParser implements APIDescriptionParser {
                 if (obj.containsKey("swagger"))
                     return new SwaggerParser(obj.asRoot());
                 if (obj.containsKey("baseSwagger")) {
-                    List<List<String>> idPaths = singletonList(asList("parameters", "name"));
                     DictTree base = obj.getMapNN("baseSwagger");
                     DictTree overlay = obj.getMapNN("overlay");
-                    return new SwaggerParser(DictTree.overlay(base, overlay, idPaths).asRoot());
+                    return new SwaggerParser(base, overlay);
                 }
                 for (String key : obj.keySet()) {
                     DictTree map = obj.getMap(key);
