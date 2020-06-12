@@ -98,11 +98,14 @@ public abstract class CQueryContext {
                     window.clear();
                 }
             } else {
+                boolean processed = false;
                 boolean isTermAnnotation = next instanceof TermAnnotation;
                 boolean isTripleAnnotation = next instanceof TripleAnnotation;
-                if (isTermAnnotation && isTripleAnnotation)
+                if (isTermAnnotation && isTripleAnnotation) {
                     logger.info("{} will annotate both the object and the whole previous triple!",
                             next);
+                    processed = true;
+                }
                 if (isTermAnnotation) {
                     Term term;
                     if (window.isEmpty()) {
@@ -125,17 +128,23 @@ public abstract class CQueryContext {
                                 "TripleAnnotation but is positioned after a subject or predicate");
                     }
                 }
-                if (next instanceof Modifier)
+                if (next instanceof Modifier) {
                     builder.modifier((Modifier) next);
+                    processed = true;
+                }
                 if (next instanceof PrefixDict) {
                     if (prefixDict != null)
                         logger.warn("Will overwrite PrefixDict {} with {}", prefixDict, next);
                     prefixDict = (PrefixDict) next;
+                    processed = true;
                 }
                 if (next instanceof TermAnnotationPair) {
                     TermAnnotationPair pair = (TermAnnotationPair) next;
                     builder.annotate(pair.getTerm(), pair.getAnnotation());
+                    processed = true;
                 }
+                if (!processed)
+                    throw new IllegalArgumentException("Unsupported type for "+next);
             }
         }
         builder.prefixDict(prefixDict == null ? StdPrefixDict.STANDARD : prefixDict);
