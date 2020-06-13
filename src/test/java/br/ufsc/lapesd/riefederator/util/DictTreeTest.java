@@ -558,5 +558,9 @@ public class DictTreeTest {
         assertNull(tree.getString("child/ref/prop_a")); // removed property
         assertEquals(tree.getString("definitions/def_a/prop_a"), "value_a"); // no side effect
         assertNull(tree.getString("child/ref_2/prop_a")); // no side effect
+
+        assertEquals(tree.getDouble("child/ref/sub_ref/x"), 23.5); //deref after overlay
+        DictTree sub = tree.getMapNN("child/ref/sub_ref");
+        assertEquals(sub.getDouble("subsub_ref/y"), 52.3);
     }
 }

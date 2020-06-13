@@ -797,8 +797,10 @@ public class DictTree {
                 Object ref = getRoot().get(map.get("$ref").toString());
                 if (map.containsKey("$overlay")) {
                     Object overlay = getChild(map.get("$overlay"), path+"/$overlay");
-                    if (ref instanceof DictTree && overlay instanceof DictTree)
-                        return DictTree.overlay((DictTree)ref, (DictTree)overlay);
+                    if (ref instanceof DictTree && overlay instanceof DictTree) {
+                        overlay = DictTree.overlay((DictTree) ref, (DictTree) overlay);
+                        ((DictTree)overlay).root = this.root;
+                    }
                     return overlay;
                 }
                 return ref;

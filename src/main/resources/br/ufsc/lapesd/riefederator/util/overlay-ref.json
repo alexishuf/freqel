@@ -5,7 +5,19 @@
       "prop_b": [1, 2, 3],
       "prob_c": {
         "value": 23
+      },
+      "sub_ref": {
+        "$ref": "#/definitions/def_b"
       }
+    },
+    "def_b": {
+      "x": 23.5,
+      "subsub_ref": {
+        "$ref": "#/definitions/def_c"
+      }
+    },
+    "def_c": {
+      "y": 52.3
     }
   },
   "child": {
