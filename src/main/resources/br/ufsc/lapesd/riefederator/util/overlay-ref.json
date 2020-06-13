@@ -1,0 +1,20 @@
+{
+  "definitions": {
+    "def_a": {
+      "prop_a": "value_a",
+      "prop_b": [1, 2, 3],
+      "prob_c": {
+        "value": 23
+      }
+    }
+  },
+  "child": {
+    "ref": {
+      "$ref": "#/definitions/def_a",
+      "$overlay": {
+        "prop_d": 5,
+        "prop_a": null
+      }
+    }
+  }
+}

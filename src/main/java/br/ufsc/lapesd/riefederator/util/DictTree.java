@@ -794,7 +794,14 @@ public class DictTree {
         if (object instanceof Map) {
             Map<String, Object> map = (Map<String, Object>) object;
             if (map.containsKey("$ref")) {
-                return getRoot().get(map.get("$ref").toString());
+                Object ref = getRoot().get(map.get("$ref").toString());
+                if (map.containsKey("$overlay")) {
+                    Object overlay = getChild(map.get("$overlay"), path+"/$overlay");
+                    if (ref instanceof DictTree && overlay instanceof DictTree)
+                        return DictTree.overlay((DictTree)ref, (DictTree)overlay);
+                    return overlay;
+                }
+                return ref;
             } else {
                 StringBuilder b = new StringBuilder();
                 if (name != null) b.append(name);

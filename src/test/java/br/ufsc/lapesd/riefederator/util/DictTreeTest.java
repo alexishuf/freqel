@@ -549,4 +549,14 @@ public class DictTreeTest {
         assertEquals(dict.get("x/y"), "a");
         assertNull(dict.get("x/z"));
     }
+
+    @Test
+    public void testOverlayRef() throws IOException {
+        DictTree tree = DictTree.load().fromResource(getClass(), "overlay-ref.json");
+        assertEquals(tree.getString("definitions/def_a/prop_a"), "value_a");
+        assertEquals(tree.getLong("child/ref/prop_d"), 5); //added property
+        assertNull(tree.getString("child/ref/prop_a")); // removed property
+        assertEquals(tree.getString("definitions/def_a/prop_a"), "value_a"); // no side effect
+        assertNull(tree.getString("child/ref_2/prop_a")); // no side effect
+    }
 }
