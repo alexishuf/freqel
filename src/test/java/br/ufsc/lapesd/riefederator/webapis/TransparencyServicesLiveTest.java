@@ -26,13 +26,6 @@ import static org.testng.Assert.*;
 @Test
 public class TransparencyServicesLiveTest implements TransparencyServiceTestContext {
 
-    /**
-     * This method is a workaround to avoid the IDE hiding the "Run Test" command
-     * from other methods if "enabled = false" is applied directly to them.
-     */
-    @Test(enabled = false)
-    public void dummyEnabler() { }
-
     private @Nonnull CQuery loadQuery(@Nonnull String filename)
             throws IOException, SPARQLParseException {
         try (InputStream in = getClass().getResourceAsStream(filename)) {
@@ -46,7 +39,7 @@ public class TransparencyServicesLiveTest implements TransparencyServiceTestCont
         return new FederationSpecLoader().load(configFile);
     }
 
-    @Test(dependsOnMethods = {"dummyEnabler"}, ignoreMissingDependencies = true)
+    @Test(enabled = false)
     public void testProcurementsOfContractsPlan() throws Exception {
         Federation federation = getBudgetFederation();
         CQuery query = loadQuery("live/procurements-of-contract.sparql");
@@ -54,7 +47,7 @@ public class TransparencyServicesLiveTest implements TransparencyServiceTestCont
         PlannerTest.assertPlanAnswers(plan, query);
     }
 
-    @Test(dependsOnMethods = {"dummyEnabler"}, ignoreMissingDependencies = true)
+    @Test(enabled = false)
     public void testProcurementsOfContracts() throws Exception {
         Federation federation = getBudgetFederation();
         CQuery query = loadQuery("live/procurements-of-contract.sparql");
