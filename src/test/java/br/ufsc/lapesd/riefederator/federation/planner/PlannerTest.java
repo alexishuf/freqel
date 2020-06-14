@@ -385,7 +385,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
                                         new QueryNode(empty1, q4), new QueryNode(empty2, q4));
         Random random = new Random(79812531);
         for (int i = 0; i < 16; i++) {
-            ArrayList<QueryNode> shuffled = new ArrayList<>(leaves);
+            ArrayList<PlanNode> shuffled = new ArrayList<>(leaves);
             Collections.shuffle(shuffled, random);
             PlanNode root = planner.plan(query, shuffled);
 
@@ -459,7 +459,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         QueryNode q3 = new QueryNode(empty1, CQuery.from(query.get(1)));
 
         //noinspection UnstableApiUsage
-        for (List<QueryNode> permutation : permutations(asList(q1, q2, q3))) {
+        for (List<PlanNode> permutation : permutations(asList((PlanNode)q1, q2, q3))) {
             PlanNode plan = planner.plan(query, permutation);
             Set<PlanNode> qns = streamPreOrder(plan)
                     .filter(QueryNode.class::isInstance).collect(toSet());
@@ -478,7 +478,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         QueryNode q3 = new QueryNode(empty1 , CQuery.from(query.get(1)));
 
         //noinspection UnstableApiUsage
-        for (List<QueryNode> permutation : permutations(asList(q1, q2, q3))) {
+        for (List<PlanNode> permutation : permutations(asList((PlanNode)q1, q2, q3))) {
             PlanNode plan = planner.plan(query, permutation);
             Set<PlanNode> qns = streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet());
             assertTrue(qns.contains(q3));
@@ -495,7 +495,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
                 .annotate(y, AtomAnnotation.of(Person)).build());
         CQuery query = CQuery.from(new Triple(y, name, author1), new Triple(x, author, y));
 
-        for (List<QueryNode> nodes : asList(asList(q1, q2), asList(q2, q1))) {
+        for (List<PlanNode> nodes : asList(asList((PlanNode)q1, q2), asList((PlanNode)q2, q1))) {
             PlanNode plan = planner.plan(query, nodes);
             assertTrue(plan instanceof EmptyNode);
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
@@ -517,13 +517,13 @@ public class PlannerTest implements TransparencyServiceTestContext {
         QueryNode q3 = new QueryNode(e3, CQuery.with(new Triple(x, author, y))
                 .annotate(x, AtomAnnotation.of(Book))
                 .annotate(y, AtomInputAnnotation.asRequired(Person, "Person").get()).build());
-        List<QueryNode> nodes = addFromSubject ? asList(q1, q2, q3) : asList(q1, q3);
+        List<PlanNode> nodes = addFromSubject ? asList(q1, q2, q3) : asList(q1, q3);
         CQuery query = CQuery.from(new Triple(y, name, author1),
                                    new Triple(x, author, y),
                                    new Triple(x, author, y));
 
         //noinspection UnstableApiUsage
-        for (List<QueryNode> permutation : permutations(nodes)) {
+        for (List<PlanNode> permutation : permutations(nodes)) {
             PlanNode root = planner.plan(query, permutation);
             Set<PlanNode> leaves = streamPreOrder(root)
                     .filter(n -> n instanceof QueryNode).collect(toSet());
@@ -551,8 +551,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
 
     private static class TwoServicePathsNodes {
         QueryNode q1, q2, q3, p1, p2, p3;
-        List<QueryNode> all, fromAlice, fromBob, fromAlice2, fromBob2;
-        Set<Set<QueryNode>> allowedAnswers;
+        List<PlanNode> all, fromAlice, fromBob, fromAlice2, fromBob2;
+        Set<Set<PlanNode>> allowedAnswers;
         CQuery query;
 
         public TwoServicePathsNodes(@Nonnull CQEndpoint epFromAlice,
@@ -599,7 +599,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         TwoServicePathsNodes f = new TwoServicePathsNodes(ep1, ep2);
 
         //noinspection UnstableApiUsage
-        for (List<QueryNode> permutation : permutations(f.all)) {
+        for (List<PlanNode> permutation : permutations(f.all)) {
             PlanNode plan = planner.plan(f.query, permutation);
             Set<QueryNode> qns = streamPreOrder(plan).filter(QueryNode.class::isInstance)
                     .map(n -> (QueryNode)n).collect(toSet());
@@ -624,7 +624,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
         //noinspection UnstableApiUsage
-        for (List<QueryNode> permutation : permutations(f.all)) {
+        for (List<PlanNode> permutation : permutations(f.all)) {
             PlanNode plan = planner.plan(f.query, permutation);
             assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
                          new HashSet<>(f.all));
@@ -640,9 +640,9 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testDiscardMiddleNodeInPath(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
-        List<QueryNode> nodes = asList(f.q1, f.q2, f.q3, f.p2);
+        List<PlanNode> nodes = asList(f.q1, f.q2, f.q3, f.p2);
         //noinspection UnstableApiUsage
-        for (List<QueryNode> permutation : permutations(nodes)) {
+        for (List<PlanNode> permutation : permutations(nodes)) {
             PlanNode plan = planner.plan(f.query, permutation);
             assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
                          Sets.newHashSet(f.fromAlice));
@@ -655,9 +655,9 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testUnsatisfiablePlan(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty1);
-        List<QueryNode> nodes = asList(f.q1, f.p2, f.q3);
+        List<PlanNode> nodes = asList(f.q1, f.p2, f.q3);
         //noinspection UnstableApiUsage
-        for (List<QueryNode> permutation : permutations(nodes)) {
+        for (List<PlanNode> permutation : permutations(nodes)) {
             PlanNode plan = planner.plan(f.query, permutation);
             assertTrue(plan instanceof EmptyNode);
             assertEquals(plan.getRequiredInputVars(), emptySet());
@@ -705,7 +705,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         );
 
         Planner planner = supplier.get();
-        List<QueryNode> nodes = asList(contractorByName, procurementsOfContractor,
+        List<PlanNode> nodes = asList(contractorByName, procurementsOfContractor,
                 contractById, modalities, procurementById, orgByDesc, contract);
         assertTrue(nodes.stream().allMatch(n -> query.getSet().containsAll(n.getMatchedTriples())));
 

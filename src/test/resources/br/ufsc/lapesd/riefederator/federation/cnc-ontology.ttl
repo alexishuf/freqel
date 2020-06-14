@@ -1,0 +1,420 @@
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix : <https://frank.prof.ufsc.br/industry4.0/cnc.ttl#>.
+
+<https://frank.prof.ufsc.br/industry4.0/cnc.ttl> a owl:Ontology .
+
+# Digital Twin
+:DigitalTwin a rdfs:Class , owl:Class .
+
+# Digital Twin of a Product Type
+:DigitalTwinType
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :DigitalTwin .
+
+:hasProductCategory
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinType ;
+    rdfs:range xsd:string .
+
+:hasProductName
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinType ;
+    rdfs:range xsd:string .
+
+:hasProductModel
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinType ;
+    rdfs:range xsd:string .
+
+:hasProductDescription
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinType ;
+    rdfs:range xsd:string .
+
+:hasTechnicalSpecs
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinType ;
+    rdfs:range xsd:string .
+
+:hasPhysicalModel
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinType ;
+    rdfs:range xsd:string .
+
+# Digital Twin of a Product Instance
+:DigitalTwinInstance
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :DigitalTwin .
+
+:hasType
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinInstance ;
+    rdfs:range :DigitalTwinType .
+
+:hasSerialNumber
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinInstance ;
+    rdfs:range xsd:string .
+
+:hasState
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinInstance ;
+    rdfs:range xsd:string .
+
+:hasSample
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :DigitalTwinInstance ;
+    rdfs:range :Sample .
+
+# Collection of monitored parameters
+:Sample a rdfs:Class, owl:Class .
+
+:hasParameter
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :Sample ;
+    rdfs:range :Parameter .
+
+# Parent Class of all monitored parameters
+:Parameter a rdfs:Class , owl:Class .
+
+:hasDescription
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :Parameter ;
+    rdfs:range xsd:string .
+
+:hasValue
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :Parameter ;
+    rdfs:range xsd:string .
+
+:hasUnit
+    a rdf:Property , owl:DatatypeProperty ;
+    rdfs:domain :Parameter ;
+    rdfs:range xsd:string .
+
+# Subclasses with Categories of Monitored Parameters
+:Position
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Parameter .
+
+:Velocity
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Parameter .
+
+#:Speed owl:sameAs :Velocity .
+
+:Acceleration
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Parameter .
+
+:Current
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Parameter .
+
+:Voltage
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Parameter .
+
+:Power
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Parameter .
+
+:Inertia
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Parameter .
+
+:ConfigData
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Parameter .
+
+# The Actual Monitored Parameters
+:X1_ActualPosition
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Position ;
+    :hasDescription "actual x position of part"^^xsd:string ;
+    :hasUnit "mm"^^xsd:string .
+
+:X1_ActualVelocity
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Velocity ;
+    :hasDescription "actual x velocity of part"^^xsd:string ;
+    :hasUnit "mm/s"^^xsd:string .
+
+:X1_ActualAcceleration
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Acceleration ;
+    :hasDescription "actual x acceleration of part"^^xsd:string;
+    :hasUnit "mm/s^2"^^xsd:string .
+
+:X1_CommandPosition
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Position ;
+    :hasDescription "reference x position of part"^^xsd:string ;
+    :hasUnit "mm"^^xsd:string .
+
+:X1_CommandVelocity
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Velocity ;
+    :hasDescription "reference x velocity of part"^^xsd:string ;
+    :hasUnit "mm/s"^^xsd:string .
+
+:X1_CommandAcceleration
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Acceleration ;
+    :hasDescription "reference x acceleration of part"^^xsd:string;
+    :hasUnit "mm/s^2"^^xsd:string .
+
+:X1_CurrentFeedback
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Current ;
+    :hasDescription "current feedback"^^xsd:string ;
+    :hasUnit "A"^^xsd:string .
+
+:X1_DCBusVoltage
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Voltage ;
+    :hasDescription "voltage of DC bus"^^xsd:string ;
+    :hasUnit "V"^^xsd:string .
+
+:X1_OutputCurrent
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Current ;
+    :hasDescription "output current"^^xsd:string ;
+    :hasUnit "A"^^xsd:string .
+
+:X1_OutputVoltage
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Voltage ;
+    :hasDescription "output voltage"^^xsd:string ;
+    :hasUnit "V"^^xsd:string .
+
+:X1_OutputPower
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Power ;
+    :hasDescription "power"^^xsd:string ;
+    :hasUnit "kW"^^xsd:string .
+
+:Y1_ActualPosition
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Position ;
+    :hasDescription "actual y position of part"^^xsd:string ;
+    :hasUnit "mm"^^xsd:string .
+
+:Y1_ActualVelocity
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Velocity ;
+    :hasDescription "actual y velocity of part"^^xsd:string ;
+    :hasUnit "mm/s"^^xsd:string .
+
+:Y1_ActualAcceleration
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Acceleration ;
+    :hasDescription "actual y acceleration of part"^^xsd:string;
+    :hasUnit "mm/s^2"^^xsd:string .
+
+:Y1_CommandPosition
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Position ;
+    :hasDescription "reference y position of part"^^xsd:string ;
+    :hasUnit "mm"^^xsd:string .
+
+:Y1_CommandVelocity
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Velocity ;
+    :hasDescription "reference y velocity of part"^^xsd:string ;
+    :hasUnit "mm/s"^^xsd:string .
+
+:Y1_CommandAcceleration
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Acceleration ;
+    :hasDescription "reference y acceleration of part"^^xsd:string;
+    :hasUnit "mm/s^2"^^xsd:string .
+
+:Y1_CurrentFeedback
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Current ;
+    :hasDescription "current feedback"^^xsd:string ;
+    :hasUnit "A"^^xsd:string .
+
+:Y1_DCBusVoltage
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Voltage ;
+    :hasDescription "voltage of DC bus"^^xsd:string ;
+    :hasUnit "V"^^xsd:string .
+
+:Y1_OutputCurrent
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Current ;
+    :hasDescription "output current"^^xsd:string ;
+    :hasUnit "A"^^xsd:string .
+
+:Y1_OutputVoltage
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Voltage ;
+    :hasDescription "output voltage"^^xsd:string ;
+    :hasUnit "V"^^xsd:string .
+
+:Y1_OutputPower
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Power ;
+    :hasDescription "power"^^xsd:string ;
+    :hasUnit "kW"^^xsd:string .
+
+:Z1_ActualPosition
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Position ;
+    :hasDescription "actual z position of part"^^xsd:string ;
+    :hasUnit "mm"^^xsd:string .
+
+:Z1_ActualVelocity
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Velocity ;
+    :hasDescription "actual z velocity of part"^^xsd:string;
+    :hasUnit "mm/s"^^xsd:string .
+
+:Z1_ActualAcceleration
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Acceleration ;
+    :hasDescription "actual z acceleration of part"^^xsd:string;
+    :hasUnit "mm/s^2"^^xsd:string .
+
+:Z1_CommandPosition
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Position ;
+    :hasDescription "reference z position of part"^^xsd:string ;
+    :hasUnit "mm"^^xsd:string .
+
+:Z1_CommandVelocity
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Velocity ;
+    :hasDescription "reference z velocity of part"^^xsd:string;
+    :hasUnit "mm/s"^^xsd:string .
+
+:Z1_CommandAcceleration
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Acceleration ;
+    :hasDescription "reference z acceleration of part"^^xsd:string;
+    :hasUnit "mm/s^2"^^xsd:string .
+
+:Z1_CurrentFeedback
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Current ;
+    :hasDescription "current feedback"^^xsd:string ;
+    :hasUnit "A"^^xsd:string .
+
+:Z1_DCBusVoltage
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Voltage ;
+    :hasDescription "voltage of DC bus"^^xsd:string ;
+    :hasUnit "V"^^xsd:string .
+
+:Z1_OutputCurrent
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Current ;
+    :hasDescription "output current"^^xsd:string ;
+    :hasUnit "A"^^xsd:string .
+
+:Z1_OutputVoltage
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Voltage ;
+    :hasDescription "output voltage"^^xsd:string ;
+    :hasUnit "V"^^xsd:string .
+
+:S1_ActualPosition
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Position ;
+    :hasDescription "actual position of spindle"^^xsd:string ;
+    :hasUnit "mm"^^xsd:string .
+
+:S1_ActualVelocity
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Velocity ;
+    :hasDescription "actual velocity of spindle"^^xsd:string;
+    :hasUnit "mm/s"^^xsd:string .
+
+:S1_ActualAcceleration
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Acceleration ;
+    :hasDescription "actual acceleration of spindle"^^xsd:string;
+    :hasUnit "mm/s^2"^^xsd:string .
+
+:S1_CommandPosition
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Position ;
+    :hasDescription "reference position of spindle"^^xsd:string ;
+    :hasUnit "mm"^^xsd:string .
+
+:S1_CommandVelocity
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Velocity ;
+    :hasDescription "reference velocity of spindle"^^xsd:string;
+    :hasUnit "mm/s"^^xsd:string .
+
+:S1_CommandAcceleration
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Acceleration ;
+    :hasDescription "reference acceleration of spindle"^^xsd:string;
+    :hasUnit "mm/s^2"^^xsd:string .
+
+:S1_CurrentFeedback
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Current ;
+    :hasDescription "current feedback"^^xsd:string ;
+    :hasUnit "A"^^xsd:string .
+
+:S1_DCBusVoltage
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Voltage ;
+    :hasDescription "voltage of DC bus"^^xsd:string ;
+    :hasUnit "V"^^xsd:string .
+
+:S1_OutputCurrent
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Current ;
+    :hasDescription "output current"^^xsd:string ;
+    :hasUnit "A"^^xsd:string .
+
+:S1_OutputVoltage
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Voltage ;
+    :hasDescription "output voltage"^^xsd:string ;
+    :hasUnit "V"^^xsd:string .
+
+:S1_OutputPower
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Power ;
+    :hasDescription "power"^^xsd:string ;
+    :hasUnit "kW"^^xsd:string .
+
+:S1_SystemInertia
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :Inertia ;
+    :hasDescription "torque inertia"^^xsd:string ;
+    :hasUnit "kg*m^2"^^xsd:string .
+
+:M1_CURRENT_PROGRAM_NUMBER
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :ConfigData ;
+    :hasDescription "number the program is listed under on the CNC"^^xsd:string ;
+    :hasUnit rdf:nil  .
+
+:M1_sequence_number
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :ConfigData ;
+    :hasDescription "line of G-code being executed"^^xsd:string ;
+    :hasUnit rdf:nil  .
+
+:M1_CURRENT_FEEDRATE
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :ConfigData ;
+    :hasDescription "instantaneous feed rate of spindle"^^xsd:string ;
+    :hasUnit rdf:nil  .
+
+:Machining_Process
+    a rdfs:Class, owl:Class;
+    rdfs:subClassOf :ConfigData ;
+    :hasDescription "the current machining stage being performed; includes preparation, tracing up and down the S curve involving different layers, and repositioning of the spindle as it moves through the air to a certain starting point"^^xsd:string ;
+    :hasUnit rdf:nil .

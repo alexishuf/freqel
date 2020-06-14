@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
 
 /**
  * Assign {@link SPARQLFilter}s of a query to the deepest possible node in plans.
@@ -25,11 +24,8 @@ import java.util.function.Function;
 class FilterAssigner {
     private final @Nonnull Set<SPARQLFilter> filters = new HashSet<>();
     private final @Nonnull SetMultimap<Term, SPARQLFilter> term2filter;
-    private final @Nonnull Function<ProtoQueryNode, QueryNode> queryNodeFactory;
 
-    public FilterAssigner(@Nonnull CQuery query,
-                          @Nonnull Function<ProtoQueryNode, QueryNode> queryNodeFactory) {
-        this.queryNodeFactory = queryNodeFactory;
+    public FilterAssigner(@Nonnull CQuery query) {
         term2filter = HashMultimap.create();
         for (Modifier modifier : query.getModifiers()) {
             if (modifier instanceof SPARQLFilter) {
@@ -38,10 +34,6 @@ class FilterAssigner {
                 filter.getVarTerms().forEach(t -> term2filter.put(t, filter));
             }
         }
-    }
-
-    public FilterAssigner(@Nonnull CQuery query) {
-        this(query, p -> new QueryNode(p.getEndpoint(), p.getQuery()));
     }
 
     public boolean isEmpty() {
@@ -54,24 +46,40 @@ class FilterAssigner {
      * Insertions will be registered on the placement map.
      *
      * @param list list of {@link ProtoQueryNode}s, without nulls
-     * @return List of {@link QueryNode}s, without nulls
+     * @return List of {@link QueryNode}s or {@link MultiQueryNode}s, without nulls
      */
-    public @Nonnull List<QueryNode> placeFiltersOnLeaves(@Nonnull List<ProtoQueryNode> list) {
-        List<QueryNode> result = new ArrayList<>(list.size());
+    public @Nonnull List<PlanNode> placeFiltersOnLeaves(@Nonnull List<ProtoQueryNode> list) {
+        List<PlanNode> result = new ArrayList<>(list.size());
         for (ProtoQueryNode proto : list) {
-            QueryNode queryNode = queryNodeFactory.apply(proto);
-            Set<Var> vars = proto.getQuery().getVars();
+            PlanNode leafNode = proto.toNode(); //QueryNode or MultiQueryNode
+            Set<Var> vars = proto.getMatchedQuery().getVars();
             vars.stream()
                     .flatMap(v -> term2filter.get(v).stream())
                     .distinct().filter(a -> vars.containsAll(a.getVarTerms()))
-                    .forEach(queryNode::addFilter);
-            result.add(queryNode);
+                    .forEach(f -> addFilter(leafNode, f));
+            result.add(leafNode);
         }
         return result;
     }
 
-    private boolean canFilter(@Nonnull PlanNode node, @Nonnull SPARQLFilter annotation) {
-        return node.getAllVars().containsAll(annotation.getVarTermNames());
+    private static void addFilter(@Nonnull PlanNode node, @Nonnull SPARQLFilter filter) {
+        if (node instanceof QueryNode) {
+            node.addFilter(filter);
+        } else if (node instanceof MultiQueryNode) {
+            for (PlanNode child : node.getChildren()) {
+                assert child instanceof QueryNode : "Expected MultiNode of QueryNodes";
+                assert canFilter(child, filter)
+                        : "Filter has variables which do not occur in the alternative node";
+                child.addFilter(filter);
+            }
+        } else {
+            assert false : "Only QueryNodes and MultiQueryNodes should be here!";
+            node.addFilter(filter);
+        }
+    }
+
+    private static boolean canFilter(@Nonnull PlanNode node, @Nonnull SPARQLFilter filter) {
+        return node.getAllVars().containsAll(filter.getVarTermNames());
     }
 
     public void placeBottommost(@Nonnull PlanNode plan) {

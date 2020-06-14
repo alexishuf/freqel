@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.reason.tbox;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.owlapi.model.OWLAPITerm;
 import br.ufsc.lapesd.riefederator.owlapi.model.OWLAPITermFactory;
-import com.google.common.base.Preconditions;
 import org.semanticweb.HermiT.ReasonerFactory;
 import org.semanticweb.owlapi.model.AsOWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLObject;
@@ -27,10 +26,12 @@ import java.util.stream.Stream;
  */
 public class OWLAPITBoxReasoner implements TBoxReasoner {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(OWLAPITBoxReasoner.class);
-    private @Nonnull OWLReasonerFactory factory;
+
+    private @Nonnull final OWLReasonerFactory factory;
     private final boolean ignoreExceptionOnStreamClosure;
     private @Nullable OWLReasoner reasoner;
     private @Nullable OWLAPITermFactory termFactory;
+    private boolean warnedNotLoaded = false;
 
     public OWLAPITBoxReasoner(@Nonnull OWLReasonerFactory factory) {
         this(factory, false);
@@ -67,6 +68,13 @@ public class OWLAPITBoxReasoner implements TBoxReasoner {
         reasoner.precomputeInferences(InferenceType.DATA_PROPERTY_HIERARCHY);
     }
 
+    private void warnNotLoaded() {
+        if (!warnedNotLoaded) {
+            warnedNotLoaded = true;
+            logger.warn("Reasoner is not loaded, will return an empty stream");
+        }
+    }
+
     private @Nonnull <T extends OWLObject>
     Stream<Term> streamClosure(@Nullable T s, @Nonnull BiFunction<T, Boolean, Stream<T>> getter) {
         try {
@@ -81,7 +89,10 @@ public class OWLAPITBoxReasoner implements TBoxReasoner {
 
     @Override
     public @Nonnull Stream<Term> subClasses(@Nonnull Term term) {
-        Preconditions.checkState(reasoner != null, "Reasoner not loaded");
+        if (reasoner == null) {
+            warnNotLoaded();
+            return Stream.empty();
+        }
         assert termFactory != null;
         if (!term.isRes()) {
             logger.warn("Suspicious subClasses({}) call -- term is not URI nor blank", term);
@@ -92,7 +103,10 @@ public class OWLAPITBoxReasoner implements TBoxReasoner {
 
     @Override
     public @Nonnull Stream<Term> subProperties(@Nonnull Term term) {
-        Preconditions.checkState(reasoner != null, "Reasoner not loaded");
+        if (reasoner == null) {
+            warnNotLoaded();
+            return Stream.empty();
+        }
         assert termFactory != null;
         if (!term.isURI()) {
             logger.warn("Suspicious subProperties({}) call -- term is not an URI", term);

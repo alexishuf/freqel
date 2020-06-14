@@ -70,7 +70,8 @@ public class FilterAssignerTest implements TestContext {
         List<ProtoQueryNode> prototypes;
         prototypes = queryNodes.stream().map(ProtoQueryNode::new).collect(toList());
 
-        List<QueryNode> annotated = assigner.placeFiltersOnLeaves(prototypes);
+        List<QueryNode> annotated = assigner.placeFiltersOnLeaves(prototypes).stream()
+                .map(n -> (QueryNode)n).collect(toList());
         assertEquals(annotated.size(), 3);
         assertTrue(annotated.stream().noneMatch(Objects::isNull));
         for (int i = 0; i < annotated.size(); i++)
@@ -107,7 +108,8 @@ public class FilterAssignerTest implements TestContext {
         );
 
         FilterAssigner assigner = new FilterAssigner(query);
-        List<QueryNode> queryNodes = assigner.placeFiltersOnLeaves(prototypes);
+        List<QueryNode> queryNodes = assigner.placeFiltersOnLeaves(prototypes).stream()
+                .map(n -> (QueryNode)n).collect(toList());
         for (QueryNode queryNode : queryNodes)
             checkAllFilters(query, queryNode);
 
@@ -133,12 +135,13 @@ public class FilterAssignerTest implements TestContext {
         );
 
         FilterAssigner assigner = new FilterAssigner(fullQuery);
-        List<QueryNode> queryNodes = assigner.placeFiltersOnLeaves(prototypes);
+        List<QueryNode> queryNodes = assigner.placeFiltersOnLeaves(prototypes).stream()
+                .map(n -> (QueryNode)n).collect(toList());
 
         assertEquals(queryNodes.size(), prototypes.size());
         assertTrue(queryNodes.stream().noneMatch(Objects::isNull));
         for (int i = 0; i < queryNodes.size(); i++)
-            assertEquals(prototypes.get(i).getQuery(), queryNodes.get(i).getQuery());
+            assertEquals(prototypes.get(i).getMatchedQuery(), queryNodes.get(i).getQuery());
         assertEquals(queryNodes.get(0).getFilters(), emptySet());
         assertEquals(queryNodes.get(1).getFilters(), singleton(annEquals));
         assertEquals(queryNodes.get(2).getFilters(), singleton(annEquals));

@@ -25,7 +25,7 @@ public class MultiQueryNode extends AbstractInnerPlanNode {
     private final boolean intersectInputs;
 
     public static class Builder {
-        private List<PlanNode> list = new ArrayList<>();
+        private final List<PlanNode> list = new ArrayList<>();
         private Set<String> resultVars = null;
         private boolean intersect = false;
         private boolean intersectInputs = true;

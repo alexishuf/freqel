@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.decomp;
 
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
+import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
@@ -9,6 +10,8 @@ import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -18,6 +21,8 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toList;
 
 public class EvenDecomposer extends SourcesListAbstractDecomposer {
+    private static final Logger logger = LoggerFactory.getLogger(EvenDecomposer.class);
+
     @Inject
     public EvenDecomposer(@Nonnull Planner planner, @Nonnull PerformanceListener performance) {
         super(planner, performance);
@@ -25,6 +30,10 @@ public class EvenDecomposer extends SourcesListAbstractDecomposer {
 
     @Override
     protected @Nonnull List<ProtoQueryNode> decomposeIntoProtoQNs(@Nonnull CQuery query) {
+        if (sources.stream().anyMatch(s -> s.getDescription() instanceof SemanticDescription)) {
+            logger.warn("EvenDecomposer does not support semantic matches (yet!). " +
+                        "Rewritings will be ignored");
+        }
         try (TimeSampler ignored = Metrics.SELECTION_MS.createThreadSampler(performance)) {
             Metrics.AGGLUTINATION_MS.createThreadSampler(performance).close();
             return sources.stream()
@@ -37,8 +46,9 @@ public class EvenDecomposer extends SourcesListAbstractDecomposer {
                                                              @Nonnull CQueryMatch m) {
         TPEndpoint ep = source.getEndpoint();
         return Stream.concat(
-                m.getKnownExclusiveGroups().stream().map(g -> createPQN(ep, g)),
-                m.getNonExclusiveRelevant().stream().map(t -> createPQN(ep, t)));
+                m.getKnownExclusiveGroups().stream().map(g -> new ProtoQueryNode(ep, g)),
+                m.getNonExclusiveRelevant().stream()
+                        .map(t -> new ProtoQueryNode(ep, CQuery.from(t))));
     }
 
     @Override

@@ -233,8 +233,8 @@ public class JoinPathsPlannerTest implements TestContext {
     }
 
     @Test(dataProvider = "groupNodesData", groups = {"fast"})
-    public void testGroupNodes(Collection<QueryNode> in, Collection<PlanNode> expected) {
-        for (List<QueryNode> permutation : permutations(in)) {
+    public void testGroupNodes(Collection<PlanNode> in, Collection<PlanNode> expected) {
+        for (List<PlanNode> permutation : permutations(in)) {
             JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
             List<PlanNode> grouped = planner.groupNodes(permutation);
             assertEquals(grouped.size(), expected.size());

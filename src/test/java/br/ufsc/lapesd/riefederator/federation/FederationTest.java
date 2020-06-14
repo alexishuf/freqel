@@ -51,6 +51,9 @@ import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
+import br.ufsc.lapesd.riefederator.reason.tbox.OWLAPITBoxReasoner;
+import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
+import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
@@ -60,6 +63,7 @@ import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Sets;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -112,8 +116,7 @@ import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
-import static org.apache.jena.rdf.model.ResourceFactory.createLangLiteral;
-import static org.apache.jena.rdf.model.ResourceFactory.createResource;
+import static org.apache.jena.rdf.model.ResourceFactory.*;
 import static org.testng.Assert.*;
 
 public class FederationTest extends JerseyTestNg.ContainerPerClassTest
@@ -996,10 +999,102 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         federation.addSource(dbp);
         federation.addSource(nyt);
 
-        federation.initAllSources(2, TimeUnit.SECONDS);
-        try (Results results = federation.query(loadQuery("S2"))) {
+        federation.initAllSources(10, TimeUnit.SECONDS);
+        CQuery query = LargeRDFBenchSelfTest.loadQuery("S2");
+        try (Results results = federation.query(query)) {
             assertFalse(results.hasNext());
         }
         //pass if got here alive
+    }
+
+    private static final class SetupSimpleCNC implements Setup {
+        int variantIdx = 0;
+
+        public SetupSimpleCNC() {
+            this(0);
+        }
+
+        public SetupSimpleCNC(int idx) {
+            assert idx >=0 && idx < 2;
+            this.variantIdx = idx;
+        }
+
+        @Override
+        public boolean requiresBindJoin() {
+            return false;
+        }
+        @Override
+        public boolean requiresFastModule() {
+            return false;
+        }
+
+        @Override
+        public @Nullable Setup nextVariant() {
+            return variantIdx >= 1 ? null : new SetupSimpleCNC(variantIdx+1);
+        }
+
+        private @Nonnull TBoxReasoner createReasoner() {
+            if (variantIdx == 0)
+                return new TransitiveClosureTBoxReasoner();
+            else if (variantIdx == 1)
+                return OWLAPITBoxReasoner.hermit();
+            throw new AssertionError("Unexpected variantIdx="+variantIdx);
+        }
+
+        @Override
+        public void accept(Federation federation, String baseServiceUri) {
+            ARQEndpoint data = createEndpoint("federation/cnc.ttl");
+            TBoxReasoner reasoner = createReasoner();
+            reasoner.load(new TBoxSpec().addResource(getClass(), "cnc-ontology.ttl"));
+            SemanticSelectDescription matcher =
+                    new SemanticSelectDescription(data, true, reasoner);
+            federation.addSource(new Source(matcher, data));
+        }
+
+        @Override
+        public String toString() {
+            String reasoner = null;
+            switch (variantIdx) {
+                case 0: reasoner = "TransitiveClosureTBoxReasoner"; break;
+                case 1: reasoner = "OWLAPITBoxReasoner.hermit()"; break;
+                default: fail("Unexpected variantIdx="+variantIdx);
+            }
+            return "SetupSimpleCNC+"+reasoner;
+        }
+    }
+
+    private static CQuery loadQuery(@Nonnull String filename) throws Exception {
+        try (InputStream in = FederationTest.class.getResourceAsStream(filename)) {
+            return SPARQLQueryParser.strict().parse(in);
+        }
+    }
+
+    @DataProvider
+    public static @Nonnull Object[][] reasoningQueriesData() throws Exception {
+        return Stream.of(
+                asList(new AbstractModule() {}, new SetupSimpleCNC(),
+                       loadQuery("cnc-qry-1.sparql"), Sets.newHashSet(
+                               MapSolution.build(x, fromJena(createTypedLiteral("11"))),
+                               MapSolution.build(x, fromJena(createTypedLiteral("21"))),
+                               MapSolution.build(x, fromJena(createTypedLiteral("12"))),
+                               MapSolution.build(x, fromJena(createTypedLiteral("22")))
+                        ))
+        ).map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "reasoningQueriesData")
+    public void testReasoningQueries(@Nonnull Module module, @Nonnull Setup setup,
+                                     @Nonnull CQuery query, @Nonnull Set<Solution> expected) {
+        Module effectiveModule = Modules.override(new SimpleFederationModule()).with(module);
+        Federation federation = Guice.createInjector(effectiveModule).getInstance(Federation.class);
+        setup.accept(federation, target().getUri().toString());
+        federation.initAllSources(5, TimeUnit.MINUTES);
+        PlanNode plan = federation.plan(query);
+        PlannerTest.assertPlanAnswers(plan, query);
+
+        Set<Solution> actual = new HashSet<>();
+        Results results = federation.execute(query, plan);
+        results.forEachRemainingThenClose(actual::add);
+        assertEquals(actual, expected);
     }
 }

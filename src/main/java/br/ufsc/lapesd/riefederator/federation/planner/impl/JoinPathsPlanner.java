@@ -49,7 +49,7 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @Override
-    public @Nonnull PlanNode plan(@Nonnull CQuery query, @Nonnull Collection<QueryNode> qns){
+    public @Nonnull PlanNode plan(@Nonnull CQuery query, @Nonnull Collection<PlanNode> qns){
         if (query.isEmpty()) //empty query
             return new EmptyNode(query);
         if (qns.isEmpty()) {
@@ -74,7 +74,7 @@ public class JoinPathsPlanner implements Planner {
             Map<PlanNode, PlanNode> replacements = new HashMap<>();
             TreeUtils.streamPreOrder(plan).filter(ComponentNode.class::isInstance).forEach(n -> {
                 IndexedSet<Triple> component = ((ComponentNode) n).getQuery().getSet();
-                List<QueryNode> relevant = qns.stream()
+                List<PlanNode> relevant = qns.stream()
                         .filter(qn -> component.containsAny(qn.getMatchedTriples()))
                         .collect(toList());
                 PlanNode subPlan = plan(relevant, component);
@@ -120,7 +120,7 @@ public class JoinPathsPlanner implements Planner {
         }
     }
 
-    private @Nullable PlanNode plan(@Nonnull Collection<QueryNode> qns,
+    private @Nullable PlanNode plan(@Nonnull Collection<PlanNode> qns,
                                     @Nonnull IndexedSet<Triple> triples) {
         IndexedSet<PlanNode> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
@@ -224,16 +224,16 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @VisibleForTesting
-    @Nonnull IndexedSet<PlanNode> groupNodes(@Nonnull Collection<QueryNode> queryNodes) {
-        ListMultimap<JoinInterface, QueryNode> mm;
+    @Nonnull IndexedSet<PlanNode> groupNodes(@Nonnull Collection<PlanNode> queryNodes) {
+        ListMultimap<JoinInterface, PlanNode> mm;
         mm = MultimapBuilder.hashKeys(queryNodes.size()).arrayListValues().build();
 
-        for (QueryNode node : queryNodes)
+        for (PlanNode node : queryNodes)
             mm.put(new JoinInterface(node), node);
 
         List<PlanNode> list = new ArrayList<>();
         for (JoinInterface key : mm.keySet()) {
-            Collection<QueryNode> nodes = mm.get(key);
+            Collection<PlanNode> nodes = mm.get(key);
             assert !nodes.isEmpty();
             if (nodes.size() > 1)
                 list.add(MultiQueryNode.builder().addAll(nodes).build());

@@ -1,0 +1,43 @@
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix : <https://frank.prof.ufsc.br/industry4.0/cnc.ttl#>.
+
+<https://frank.prof.ufsc.br/industry4.0/cnc.ttl> a owl:Ontology .
+
+# Sample instances for testing purposes
+:CNC1000 a :DigitalTwinType ;
+    :hasProductName "CNC-1000"^^xsd:string ;
+    :hasProductModel "C1000"^^xsd:string ;
+    :hasProductCategory "CNC"^^xsd:string ;
+    :hasProductDescription "CNC Mill - Model C1000"^^xsd:string ;
+    :hasTechnicalSpecs "{ dimensions: { height: 150; width: 150; length: 200; }; tools: 1; maxSpeed: 1000; }"^^xsd:string ;
+    :hasPhysicalModel "{ speedFactor: 1.5; acceleration: 2.2; torque: 3.6 }"^^xsd:string .
+
+:MyCNC a :DigitalTwinInstance ;
+    :hasType :CNC1000 ;
+    :hasSerialNumber "X78Y32989934"^^xsd:string ;
+    :hasState "Idle"^^xsd:string ;
+    :hasSample :Exp01Sample01 ;
+    :hasSample :Exp01Sample02 .
+
+:Exp01Sample01 a :Sample ;
+    :hasParameter :Exp01Sample01Param01 ;
+    :hasParameter :Exp01Sample01Param02 .
+
+:Exp01Sample02 a :Sample ;
+    :hasParameter :Exp01Sample02Param01 ;
+    :hasParameter :Exp01Sample02Param02 .
+
+:Exp01Sample01Param01 a :X1_ActualPosition ;
+    :hasValue "11"^^xsd:string .
+
+:Exp01Sample01Param02 a :Y1_ActualPosition ;
+    :hasValue "21"^^xsd:string .
+
+:Exp01Sample02Param01 a :X1_ActualPosition ;
+    :hasValue "12"^^xsd:string .
+
+:Exp01Sample02Param02 a :Y1_ActualPosition ;
+    :hasValue "22"^^xsd:string .
