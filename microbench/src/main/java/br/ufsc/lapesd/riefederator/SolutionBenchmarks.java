@@ -31,43 +31,132 @@
 
 package br.ufsc.lapesd.riefederator;
 
-import br.ufsc.lapesd.riefederator.jena.model.term.JenaLit;
+import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.QuerySolution;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.*;
 import org.apache.jena.vocabulary.XSD;
-import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.*;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
-import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
+import static java.util.Arrays.asList;
+import static org.apache.jena.rdf.model.ResourceFactory.*;
 
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@State(Scope.Thread)
 public class SolutionBenchmarks {
+    private static final String EX = "http://example.org/ns#";
     private static final URI xsdInt = new StdURI(XSD.xint.getURI());
+    private static final Property value = createProperty(EX+"value");
+    private final int ROWS = 128;
+
+    private QueryExecution jenaExecution;
+    private List<QuerySolution> jenaSolutions;
+    private JenaSolution.Factory jenaSolutionFactory;
+    private List<ImmutablePair<Term, Term>> stdSolutions;
+    private List<ImmutablePair<RDFNode, RDFNode>> jenaSolutionsTerms;
+    private ArraySolution.ValueFactory arraySolutionFactory;
+
+    @Setup(Level.Trial)
+    public void setUp() {
+        jenaSolutionsTerms = new ArrayList<>(ROWS);
+        Model model = ModelFactory.createDefaultModel();
+        for (int i = 0; i < ROWS; i++) {
+            Resource uri = createResource(EX + i);
+            Literal lit = createTypedLiteral(i);
+            model.add(uri, value, lit);
+            jenaSolutionsTerms.add(ImmutablePair.of(uri, lit));
+        }
+
+        jenaSolutions = new ArrayList<>(ROWS);
+        String queryStr = "PREFIX ex: <" + EX + ">\n" +
+                          "SELECT * WHERE { ?x ex:value ?y. }";
+        jenaExecution = QueryExecutionFactory.create(queryStr, model);
+        ResultSet resultSet = jenaExecution.execSelect();
+        jenaSolutionFactory = new JenaSolution.Factory(resultSet.getResultVars());
+        while (resultSet.hasNext())
+            jenaSolutions.add(resultSet.next());
+        jenaSolutions.sort(Comparator.comparing(s -> s.get("y").asLiteral().getInt()));
+
+        stdSolutions = new  ArrayList<>(ROWS);
+        for (int i = 0; i < ROWS; i++) {
+            stdSolutions.add(ImmutablePair.of(new StdURI(EX+i),
+                                              StdLit.fromUnescaped(String.valueOf(i), xsdInt)));
+        }
+        arraySolutionFactory = ArraySolution.forVars(IndexedSet.fromDistinct(asList("x", "y")));
+    }
+
+    @TearDown(Level.Trial)
+    public void tearDown() {
+        jenaExecution.close();
+    }
 
     @Benchmark
     public Set<Solution> hashSetOfMapSolutionsWithStdTerms() {
-        HashSet<Solution> set = new HashSet<>(128);
-        for (int i = 0; i < 64; i++) {
-            StdLit iLit = StdLit.fromUnescaped(String.valueOf(i), xsdInt);
-            StdLit i1Lit = StdLit.fromUnescaped(String.valueOf(i+1), xsdInt);
-            set.add(MapSolution.builder().put("x", iLit).put("y", i1Lit).build());
+        HashSet<Solution> set = new HashSet<>((int)Math.ceil(ROWS/0.75)+1);
+        for (ImmutablePair<Term, Term> pair : stdSolutions) {
+            set.add(MapSolution.builder().put("x", pair.left)
+                                         .put("y", pair.right).build());
         }
         return set;
     }
 
     @Benchmark
+    public Set<Solution> hashSetOfArraySolutionsWithStdTerms() {
+        HashSet<Solution> set = new HashSet<>((int)Math.ceil(ROWS/0.75)+1);
+        for (ImmutablePair<Term, Term> pair : stdSolutions)
+            set.add(arraySolutionFactory.fromValues(asList(pair.left, pair.right)));
+        return set;
+    }
+
+    @Benchmark
     public Set<Solution> hashSetOfMapSolutionsWithJenaTerms() {
-        HashSet<Solution> set = new HashSet<>(128);
-        for (int i = 0; i < 64; i++) {
-            JenaLit iLit = fromJena(createTypedLiteral(i));
-            JenaLit i1Lit = fromJena(createTypedLiteral(i+1));
-            set.add(MapSolution.builder().put("x", iLit).put("y", i1Lit).build());
+        HashSet<Solution> set = new HashSet<>((int)Math.ceil(ROWS/0.75)+1);
+        for (ImmutablePair<RDFNode, RDFNode> pair : jenaSolutionsTerms) {
+            set.add(MapSolution.builder().put("x", fromJena(pair.left))
+                                         .put("y", fromJena(pair.right)).build());
         }
+        return set;
+    }
+
+    @Benchmark
+    public Set<Solution> hashSetOfArraySolutionsWithJenaTerms() {
+        HashSet<Solution> set = new HashSet<>((int)Math.ceil(ROWS/0.75)+1);
+        for (ImmutablePair<RDFNode, RDFNode> pair : jenaSolutionsTerms) {
+            List<Term> list = asList(fromJena(pair.left), fromJena(pair.right));
+            set.add(arraySolutionFactory.fromValues(list));
+        }
+        return set;
+    }
+
+    @Benchmark
+    public Set<Solution> hashSetOfJenaQuerySolutions() {
+        HashSet<Solution> set = new HashSet<>((int)Math.ceil(ROWS/0.75)+1);
+        for (QuerySolution jenaSolution : jenaSolutions)
+            set.add(jenaSolutionFactory.transform(jenaSolution));
+        return set;
+    }
+
+    @Benchmark
+    public Set<Solution> hashSetOfArraySolutionsFromJenaQuerySolutions() {
+        HashSet<Solution> set = new HashSet<>((int)Math.ceil(ROWS/0.75)+1);
+        for (QuerySolution jenaSolution : jenaSolutions)
+            set.add(arraySolutionFactory.fromFunction(n -> fromJena(jenaSolution.get(n))));
         return set;
     }
 }

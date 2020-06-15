@@ -77,6 +77,13 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
             return new IndexedSet<>(new ArrayList<>(collection), indexMap);
     }
 
+    public static @Nonnull <U> IndexedSet<U> fromDistinct(@Nonnull Iterator<U> it) {
+        ArrayList<U> list = new ArrayList<>();
+        it.forEachRemaining(list::add);
+        return new IndexedSet<>(list, createIndexMap(list));
+    }
+
+
     @CheckReturnValue
     public static @Nonnull <U> IndexedSet<U> fromDistinctCopy(@Nonnull Collection<U> collection) {
         if (IndexedSet.class.desiredAssertionStatus())

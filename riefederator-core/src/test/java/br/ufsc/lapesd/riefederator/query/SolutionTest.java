@@ -5,7 +5,9 @@ import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import org.apache.jena.query.QuerySolutionMap;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -14,10 +16,12 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJena;
 import static java.util.Collections.singleton;
+import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
@@ -29,6 +33,7 @@ public class SolutionTest implements TestContext {
         empty = new ArrayList<>();
         empty.add(new NamedSupplier<>("MapSolution", MapSolution::new));
         empty.add(new NamedSupplier<>("JenaSolution", JenaSolution::new));
+        empty.add(new NamedSupplier<>("ArraySolution", () -> ArraySolution.EMPTY));
 
         nonEmpty = new ArrayList<>();
         nonEmpty.add(new NamedSupplier<>("MapSolution", () -> {
@@ -49,6 +54,16 @@ public class SolutionTest implements TestContext {
             m.add("x", toJena(Alice));
             return new JenaSolution(m);
         }));
+        nonEmpty.add(new NamedSupplier<>("ArraySolution(from collection)",
+                () -> ArraySolution.forVars(IndexedSet.fromDistinct(singletonList("x")))
+                                   .fromValues(singletonList(Alice))));
+
+        Map<String, Term> x2Alice = new HashMap<>();
+        x2Alice.put("x", Alice);
+        x2Alice.put("y", Bob);
+        nonEmpty.add(new NamedSupplier<>("ArraySolution(from function)",
+                () -> ArraySolution.forVars(IndexedSet.fromDistinct(singletonList("x")))
+                        .fromFunction(x2Alice::get)));
     }
 
     @DataProvider

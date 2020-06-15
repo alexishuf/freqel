@@ -99,10 +99,8 @@ public class SPARQLString {
                 b.append(" DISTINCT");
             Projection project = (Projection)ModifierUtils.getFirst(PROJECTION, modifiers);
             if (project != null) {
-                for (String name : project.getVarNames()) {
-                    if (this.varNames.contains(name))
-                        b.append(" ?").append(name);
-                }
+                for (String name : project.getVarNames())
+                    b.append(" ?").append(name);
             } else {
                 for (String name : this.varNames) b.append(" ?").append(name);
             }

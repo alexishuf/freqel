@@ -392,13 +392,13 @@ public class CQuery implements  List<Triple> {
         public @Nonnull CQuery build() {
             ImmutableSet.Builder<Modifier> b = ImmutableSet.builder();
             if (projection != null) {
+                assert list != null;
                 Set<String> allVars = list.stream().flatMap(Triple::stream).filter(Term::isVar)
                                                    .map(t -> t.asVar().getName()).collect(toSet());
                 Set<String> projectedVars = projection.getMutableSet();
                 checkArgument(allowExtraProjection || allVars.containsAll(projectedVars),
                         "There are projected vars which are not results");
-                if (!projectedVars.containsAll(allVars))
-                    b.add(projection.build()); //only add real projections
+                b.add(projection.build()); //only add real projections
             }
             if (distinct)
                 b.add(distinctRequired ? Distinct.REQUIRED : Distinct.ADVISED);
@@ -415,8 +415,8 @@ public class CQuery implements  List<Triple> {
     }
 
     public static class Builder extends WithBuilder {
-        private static AtomicInteger nextId = new AtomicInteger((int)(Math.random()*10000));
-        private List<Triple> mutableList;
+        private static final AtomicInteger nextId = new AtomicInteger((int)(Math.random()*10000));
+        private final List<Triple> mutableList;
         private int size = 0;
 
         public Builder() {
@@ -474,7 +474,7 @@ public class CQuery implements  List<Triple> {
             }
             assert (terms.size() % 3) == 0;
             for (int i = 0; i < terms.size(); i += 3)
-                add(new Triple(terms.get(i+0), terms.get(i+1), terms.get(i+2)));
+                add(new Triple(terms.get(i), terms.get(i+1), terms.get(i+2)));
             return this;
         }
 
@@ -1114,13 +1114,11 @@ public class CQuery implements  List<Triple> {
             }
         }
         for (Modifier modifier : getModifiers()) {
-            if (modifier instanceof SPARQLFilter) {
-                continue;
-            } else if (modifier instanceof Projection) {
+            if (modifier instanceof Projection) {
                 Projection p = (Projection) modifier;
                 Set<String> vars = TreeUtils.intersect(p.getVarNames(), allowedProjection);
                 b.modifier(new Projection(ImmutableSet.copyOf(vars), p.isRequired()));
-            } else {
+            } else if (!(modifier instanceof SPARQLFilter)) {
                 b.modifier(modifier);
             }
         }
@@ -1223,7 +1221,7 @@ public class CQuery implements  List<Triple> {
         }
         for (Modifier modifier : modifiers) {
             if (modifier instanceof SPARQLFilter)
-                b.append("  ").append(((SPARQLFilter) modifier).toString()).append("\n");
+                b.append("  ").append(modifier.toString()).append("\n");
         }
         b.setLength(b.length()-1);
         return b.append(" }").toString();

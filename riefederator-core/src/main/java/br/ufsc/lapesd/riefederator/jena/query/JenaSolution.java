@@ -3,25 +3,47 @@ package br.ufsc.lapesd.riefederator.jena.query;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.results.impl.AbstractSolution;
+import br.ufsc.lapesd.riefederator.util.ArraySet;
+import org.apache.commons.collections4.Transformer;
 import org.apache.jena.query.QuerySolution;
 import org.apache.jena.query.QuerySolutionMap;
 import org.apache.jena.rdf.model.RDFNode;
 
 import javax.annotation.Nonnull;
-import java.util.HashSet;
+import javax.annotation.Nullable;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
 public class JenaSolution extends AbstractSolution {
     private final @Nonnull QuerySolution querySolution;
+    private @Nullable Set<String> varNames;
+
+    public static final class Factory implements Transformer<QuerySolution, JenaSolution> {
+        private final @Nonnull Set<String> varNames;
+
+        public Factory(@Nonnull Collection<String> distinctVarNames) {
+            this.varNames = ArraySet.fromDistinct(distinctVarNames);
+        }
+
+        @Override
+        public @Nonnull JenaSolution transform(@Nonnull QuerySolution input) {
+            return new JenaSolution(input, varNames);
+        }
+    }
 
     public JenaSolution() {
         this(new QuerySolutionMap());
     }
 
     public JenaSolution(@Nonnull QuerySolution querySolution) {
+        this(querySolution, null);
+    }
+
+    protected JenaSolution(@Nonnull QuerySolution querySolution, @Nullable Set<String> varNames) {
         this.querySolution = querySolution;
+        this.varNames = varNames;
     }
 
     @Override
@@ -36,18 +58,17 @@ public class JenaSolution extends AbstractSolution {
 
     @Override
     public @Nonnull Set<String> getVarNames() {
-        Set<String> set = new HashSet<>();
-        varNames().forEachRemaining(set::add);
-        return set;
+        if (varNames == null)
+            varNames = ArraySet.fromDistinct(varNames());
+        return varNames;
     }
 
     @Override
     public void forEach(@Nonnull BiConsumer<String, Term> consumer) {
-        for (Iterator<String> it = querySolution.varNames(); it.hasNext(); ) {
-            String name = it.next();
+        for (String name : getVarNames()) {
             Term term = get(name);
-            assert term != null;
             consumer.accept(name, term);
         }
     }
+
 }

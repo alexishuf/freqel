@@ -120,6 +120,8 @@ public class LargeRDFBenchSelfTest {
                     MapSolution.Builder builder = MapSolution.builder(solution);
                     solution.getVarNames().stream().filter(v -> !actualVars.contains(v))
                                           .forEach(builder::remove);
+                    actualVars.stream().filter(v -> !solution.getVarNames().contains(v))
+                              .forEach(v -> builder.put(v, null));
                     clean.add(builder.build());
                 }
                 return new CollectionResults(clean, actualVars);
@@ -204,8 +206,9 @@ public class LargeRDFBenchSelfTest {
             List<Solution> actualList = new ArrayList<>();
             try (QueryExecution exec = QueryExecutionFactory.create(sparql, allData)) {
                 ResultSet rs = exec.execSelect();
+                JenaSolution.Factory factory = new JenaSolution.Factory(rs.getResultVars());
                 while (rs.hasNext())
-                    actualList.add(new JenaSolution(rs.next()));
+                    actualList.add(factory.transform(rs.next()));
             }
 
             assertTrue(actualList.containsAll(expected.getCollection()), "Missing solutions");

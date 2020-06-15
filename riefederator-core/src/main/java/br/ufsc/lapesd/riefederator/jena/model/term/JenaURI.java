@@ -10,14 +10,17 @@ import javax.annotation.Nonnull;
 
 @Immutable
 public class JenaURI extends JenaRes implements URI {
+    private final String uri;
+
     public JenaURI(@Nonnull RDFNode node) {
         super(node.asResource());
         Preconditions.checkArgument(node.isURIResource(), "Expected "+node+" to be a URI Resource");
+        uri = node.asResource().getURI();
     }
 
     @Override
     public @Nonnull String getURI() {
-        return getNode().asResource().getURI();
+        return uri;
     }
 
     @Override
@@ -32,12 +35,13 @@ public class JenaURI extends JenaRes implements URI {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof JenaURI) return getNode().equals(((JenaURI) o).getNode());
-        return (o instanceof URI) && getURI().equals(((URI) o).getURI());
+        if (!(o instanceof URI)) return false;
+        if (uri.hashCode() != o.hashCode()) return false;
+        return uri.equals(((URI) o).getURI());
     }
 
     @Override
     public int hashCode() {
-        return getURI().hashCode();
+        return uri.hashCode();
     }
 }

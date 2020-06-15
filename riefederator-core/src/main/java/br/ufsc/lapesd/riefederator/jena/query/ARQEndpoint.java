@@ -160,10 +160,10 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         PrefixDict dict = query.getPrefixDict(StdPrefixDict.STANDARD);
         SPARQLString sparql = new SPARQLString(query, dict, query.getModifiers());
         if (transactional != null) {
-            Results[] results = {null};
+            Results[] tmp = {null};
             Txn.executeRead(transactional,
-                    () -> results[0] = CollectionResults.greedy(doQuery(sparql)));
-            return results[0];
+                    () -> tmp[0] = CollectionResults.greedy(doQuery(sparql)));
+            return tmp[0];
         } else {
             return doQuery(sparql);
         }
@@ -203,8 +203,9 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             QueryExecution exec = executionFactory.apply(query);
             try {
                 ResultSet rs = exec.execSelect();
+                JenaSolution.Factory solFac = new JenaSolution.Factory(rs.getResultVars());
                 LogUtils.logQuery(logger, query, this, sw);
-                return new IteratorResults(new TransformIterator<>(rs, JenaSolution::new), vars) {
+                return new IteratorResults(new TransformIterator<>(rs, solFac), vars) {
                     @Override
                     public void close() throws ResultsCloseException {
                         exec.close();
