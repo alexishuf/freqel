@@ -39,7 +39,6 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
@@ -98,7 +97,7 @@ public class SolutionBenchmarks {
             stdSolutions.add(ImmutablePair.of(new StdURI(EX+i),
                                               StdLit.fromUnescaped(String.valueOf(i), xsdInt)));
         }
-        arraySolutionFactory = ArraySolution.forVars(IndexedSet.fromDistinct(asList("x", "y")));
+        arraySolutionFactory = ArraySolution.forVars(asList("x", "y"));
     }
 
     @TearDown(Level.Trial)

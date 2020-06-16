@@ -70,5 +70,4 @@ public class JenaSolution extends AbstractSolution {
             consumer.accept(name, term);
         }
     }
-
 }

@@ -46,7 +46,7 @@ public class JenaTermFactory implements TermFactory {
 
     @Override
     public @Nonnull Var createVar(@Nonnull String name) {
-        return (JenaVar)fromJena(NodeFactory.createVariable(name));
+        return new JenaVar(NodeFactory.createVariable(name));
     }
 
     @Override

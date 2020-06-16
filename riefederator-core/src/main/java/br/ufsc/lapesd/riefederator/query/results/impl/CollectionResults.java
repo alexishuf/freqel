@@ -15,13 +15,13 @@ import static java.util.Collections.emptySet;
 
 @NotThreadSafe
 public class CollectionResults implements Results {
-    private final @Nonnull Collection<Solution> collection;
+    private final @Nonnull Collection<? extends Solution> collection;
     private @Nullable String nodeName;
-    private @LazyInit @Nullable Iterator<Solution> iterator = null;
+    private @LazyInit @Nullable Iterator<? extends Solution> iterator = null;
     private @LazyInit int size = -1;
     private @Nonnull final Set<String> varNames;
 
-    public CollectionResults(@Nonnull Collection<Solution> collection,
+    public CollectionResults(@Nonnull Collection<? extends Solution> collection,
                              @Nonnull Collection<String> varNames) {
         this.collection = collection;
         this.varNames = varNames instanceof Set ? (Set<String>)varNames
@@ -74,12 +74,12 @@ public class CollectionResults implements Results {
         return varNames;
     }
 
-    public @Nonnull Collection<Solution> getCollection() {
+    public @Nonnull Collection<? extends Solution> getCollection() {
         return collection;
     }
 
-    private @Nonnull Iterator<Solution> getIterator() {
-        Iterator<Solution> local = this.iterator;
+    private @Nonnull Iterator<? extends Solution> getIterator() {
+        Iterator<? extends Solution> local = this.iterator;
         if (local == null) {
             iterator = local = collection.iterator();
             size = collection.size();

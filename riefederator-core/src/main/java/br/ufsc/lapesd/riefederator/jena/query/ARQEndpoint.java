@@ -13,15 +13,12 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.IteratorResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.util.LogUtils;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableSet;
-import org.apache.commons.collections4.iterators.TransformIterator;
 import org.apache.http.client.HttpClient;
 import org.apache.http.protocol.HttpContext;
 import org.apache.jena.query.*;
@@ -203,14 +200,8 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             QueryExecution exec = executionFactory.apply(query);
             try {
                 ResultSet rs = exec.execSelect();
-                JenaSolution.Factory solFac = new JenaSolution.Factory(rs.getResultVars());
                 LogUtils.logQuery(logger, query, this, sw);
-                return new IteratorResults(new TransformIterator<>(rs, solFac), vars) {
-                    @Override
-                    public void close() throws ResultsCloseException {
-                        exec.close();
-                    }
-                };
+                return new JenaBindingResults(rs, exec);
             } catch (Throwable t) {
                 if (exec != null)
                     exec.close();

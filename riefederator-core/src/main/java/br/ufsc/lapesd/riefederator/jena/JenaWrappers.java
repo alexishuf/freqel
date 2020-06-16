@@ -2,22 +2,20 @@ package br.ufsc.lapesd.riefederator.jena;
 
 import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import br.ufsc.lapesd.riefederator.jena.model.term.*;
+import br.ufsc.lapesd.riefederator.jena.model.term.node.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.*;
 import org.apache.jena.datatypes.RDFDatatype;
-import org.apache.jena.enhanced.EnhGraph;
 import org.apache.jena.graph.*;
 import org.apache.jena.rdf.model.*;
-import org.apache.jena.rdf.model.impl.LiteralImpl;
-import org.apache.jena.rdf.model.impl.ResourceImpl;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.shared.impl.PrefixMappingImpl;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 
 import static org.apache.jena.datatypes.TypeMapper.getInstance;
@@ -58,15 +56,17 @@ public class JenaWrappers {
         return literal == null ? null : new JenaLit(literal);
     }
 
-    public static JenaTerm fromJena(@Nonnull Node node) {
+    public static JenaNodeTerm fromJena(@Nullable Node node) {
+        if (node == null)
+            return null;
         if (node.isBlank())
-            return fromJena(new ResourceImpl(new AnonId(node.getBlankNodeId())));
+            return new JenaBlankNode((Node_Blank)node);
         else if (node.isURI())
-            return fromJena(new ResourceImpl(node, (EnhGraph)null));
+            return new JenaURINode((Node_URI)node);
         else if (node.isLiteral())
-            return fromJena(new LiteralImpl(node, null));
+            return new JenaLitNode((Node_Literal)node);
         else if (node.isVariable())
-            return new JenaVar(node);
+            return new JenaVarNode((Node_Variable)node);
         else
             throw new IllegalArgumentException("Cannot convert Node "+node+" to a Term");
     }
@@ -200,9 +200,9 @@ public class JenaWrappers {
     @Contract(value = "null -> null; !null -> new", pure = true)
     public static Triple fromJena(org.apache.jena.graph.Triple t) {
         if (t == null) return null;
-        JenaTerm s = fromJena(t.getSubject());
-        JenaTerm p = fromJena(t.getPredicate());
-        JenaTerm o = fromJena(t.getObject());
+        JenaNodeTerm s = fromJena(t.getSubject());
+        JenaNodeTerm p = fromJena(t.getPredicate());
+        JenaNodeTerm o = fromJena(t.getObject());
         return new Triple(s, p, o);
     }
 

@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.model.term.factory;
 import br.ufsc.lapesd.riefederator.NamedFunction;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.jena.model.term.JenaTermFactory;
+import br.ufsc.lapesd.riefederator.jena.model.term.node.JenaNodeTermFactory;
 import br.ufsc.lapesd.riefederator.model.TermTypeException;
 import br.ufsc.lapesd.riefederator.model.term.*;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
@@ -39,6 +40,7 @@ public class TermFactoryTest {
     public static List<NamedSupplier<? extends TermFactory>> nativeSuppliers =
             asList(new NamedSupplier<>(StdTermFactory.class),
                    new NamedSupplier<>(JenaTermFactory.class),
+                   new NamedSupplier<>(JenaNodeTermFactory.class),
                    new NamedSupplier<>("OWLAPITermFactory", () -> {
                        OWLOntologyManager mgr = OWLManager.createOWLOntologyManager();
                        return new OWLAPITermFactory(mgr.getOWLDataFactory());

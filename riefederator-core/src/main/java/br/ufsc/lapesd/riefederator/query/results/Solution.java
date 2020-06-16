@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collection;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 public interface Solution {
@@ -46,5 +46,5 @@ public interface Solution {
     /**
      * Gets all var names for which {@link Solution#has(java.lang.String)} returns true.
      */
-    @Nonnull Collection<String> getVarNames();
+    @Nonnull Set<String> getVarNames();
 }
