@@ -13,6 +13,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import org.apache.jena.rdf.model.*;
+import org.apache.jena.vocabulary.RDF;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
@@ -20,10 +21,13 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.ws.rs.client.Client;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.apache.jena.rdf.model.ResourceFactory.createPlainLiteral;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
@@ -110,12 +114,29 @@ public class MappedJsonResponseParser implements ResponseParser {
         return model;
     }
 
-    protected RDFNode parseInto(@Nonnull Model model, @Nonnull JsonElement element,
-                                @Nonnull List<String> path,
-                                @Nullable String subjectHint) {
+    protected @Nonnull List<RDFNode> parseInto(@Nonnull Model model, @Nonnull JsonElement element,
+                                               @Nonnull List<String> path,
+                                               @Nullable String subjectHint) {
         if (element.isJsonArray()) {
-            for (JsonElement e : element.getAsJsonArray())
-                parseInto(model, e, path, null);
+            List<RDFNode> nodes = new ArrayList<>();
+            for (JsonElement e : element.getAsJsonArray()) {
+                List<RDFNode> inner = parseInto(model, e, path, null);
+                if (inner instanceof ArrayList) {
+                    if (inner.isEmpty())
+                        nodes.add(RDF.nil);
+                    else {
+                        Resource head = model.createResource();
+                        nodes.add(head);
+                        for (RDFNode elem : inner) {
+                            head.addProperty(RDF.first, elem)
+                                .addProperty(RDF.rest, head = model.createResource());
+                        }
+                    }
+                } else {
+                    nodes.addAll(inner);
+                }
+            }
+            return nodes;
         } else if (element.isJsonObject()) {
             JsonObject jsonObj = element.getAsJsonObject();
             Resource subj =  createResource(model, jsonObj, subjectHint);
@@ -124,31 +145,32 @@ public class MappedJsonResponseParser implements ResponseParser {
                 if (value != null) addProperties(model, value, subj, path);
             }
             addProperties(model, jsonObj, subj, path); //only handles non-transparent
-            return subj;
+            return Collections.singletonList(subj);
         } else if (element.isJsonPrimitive()) {
             JsonPrimitive primitive = element.getAsJsonPrimitive();
             String primitiveString = primitive.getAsString();
             if (primitiveParsers != null) {
                 PrimitiveParser parser = primitiveParsers.get(path);
                 if (parser != null)
-                    return parser.parse(primitiveString);
+                    return singletonList(parser.parse(primitiveString));
             }
             if (primitive.isBoolean()) {
-                return createTypedLiteral(primitive.getAsBoolean());
+                return singletonList(createTypedLiteral(primitive.getAsBoolean()));
             } else if (primitive.isNumber()) {
                 double value = primitive.getAsDouble();
                 if (Math.floor(value) == value) {
                     if (value < Integer.MAX_VALUE && value > Integer.MIN_VALUE)
-                        return createTypedLiteral((int)value);
-                    return createTypedLiteral((long)value);
+                        return singletonList(createTypedLiteral((int)value));
+                    return singletonList(createTypedLiteral((long)value));
                 }
-                return createTypedLiteral(value);
+                return singletonList(createTypedLiteral(value));
             } else if (primitive.isString()) {
                 Resource resource = tryParseURI(primitiveString);
-                return resource == null ? createPlainLiteral(primitiveString) : resource;
+                return resource == null ? singletonList(createPlainLiteral(primitiveString))
+                                        : singletonList(resource);
             }
         }
-        return null;
+        return emptyList();
     }
 
     private @Nullable Resource tryParseURI(@Nonnull String string) {
@@ -170,10 +192,10 @@ public class MappedJsonResponseParser implements ResponseParser {
             Property prop = getProperty(model, e.getKey());
             if (prop == null) continue;
             path.add(e.getKey());
-            RDFNode obj = parseInto(model, e.getValue(), path, null);
+            List<RDFNode> values = parseInto(model, e.getValue(), path, null);
             path.remove(path.size()-1);
-            if (obj != null)
-                model.add(subj, prop, obj);
+            for (RDFNode value : values)
+                model.add(subj, prop, value);
         }
     }
 
