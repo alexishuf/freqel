@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
@@ -27,7 +26,7 @@ public class EndpointIteratorResults implements Results {
     private final @Nonnull CQuery query;
     private final @Nonnull Set<String> varNames;
     private @Nullable String nodeName;
-    private final boolean projecting;
+    private final @Nullable ArraySolution.ValueFactory projectingFactory;
     private @Nullable Results current = null;
     private TPEndpoint currentEp;
 
@@ -50,7 +49,7 @@ public class EndpointIteratorResults implements Results {
         this.epIterator = epIterator;
         this.query = query;
         this.varNames = varNames;
-        this.projecting = projecting;
+        projectingFactory = projecting ? ArraySolution.forVars(varNames) : null;
     }
 
     public EndpointIteratorResults(@Nonnull Iterator<? extends TPEndpoint> epIterator,
@@ -110,20 +109,10 @@ public class EndpointIteratorResults implements Results {
     Solution next() {
         if (!hasNext())
             throw new NoSuchElementException();
-
         assert current != null;
         Solution next = current.next();
-        if (projecting) {
-            MapSolution.Builder b = MapSolution.builder();
-            for (String name : varNames) {
-                Term term = next.get(name);
-                if (term != null)
-                    b.put(name, term);
-                else
-                    logger.info("Missing projected {} from ep {} for {}", name, currentEp, query);
-            }
-            next = b.build();
-        }
+        if (projectingFactory != null)
+            return projectingFactory.fromFunction(next::get);
         return next;
     }
 
