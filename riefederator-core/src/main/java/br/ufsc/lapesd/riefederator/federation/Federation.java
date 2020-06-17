@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -156,10 +157,9 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         assert plan.getMatchedTriples().equals(query.getSet())
                 : "This plan does not correspond to this query!";
         Results results = executor.executePlan(plan);
-
         results = ProjectingResults.applyIf(results, query);
         results = HashDistinctResults.applyIf(results, query);
-
+        results = resultsExecutor.async(Collections.singletonList(results));
         return results;
     }
 
