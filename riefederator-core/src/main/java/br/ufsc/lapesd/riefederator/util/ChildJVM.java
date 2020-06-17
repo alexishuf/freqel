@@ -52,6 +52,7 @@ public class ChildJVM implements AutoCloseable {
         private @Nonnull ProcessBuilder.Redirect inRedirect = ProcessBuilder.Redirect.PIPE,
                 outRedirect = ProcessBuilder.Redirect.PIPE,
                 errRedirect = ProcessBuilder.Redirect.PIPE;
+        private boolean errRedirectStream = false;
         private @Nonnull final String classpath;
         private @Nonnull String xmx;
         private @Nullable String xms;
@@ -83,6 +84,15 @@ public class ChildJVM implements AutoCloseable {
         public @Nonnull Builder redirectError(@Nonnull ProcessBuilder.Redirect redirect) {
             errRedirect = redirect;
             return this;
+        }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder redirectErrorStream(boolean value) {
+            errRedirectStream = value;
+            return this;
+        }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder redirectErrorStream() {
+            return redirectErrorStream(true);
         }
         @CanIgnoreReturnValue
         public @Nonnull Builder redirectInput(@Nonnull ProcessBuilder.Redirect redirect) {
@@ -155,7 +165,10 @@ public class ChildJVM implements AutoCloseable {
             ProcessBuilder processBuilder = new ProcessBuilder(fullCommand);
             processBuilder.redirectInput(inRedirect);
             processBuilder.redirectOutput(outRedirect);
-            processBuilder.redirectError(errRedirect);
+            if (!errRedirectStream)
+                processBuilder.redirectError(errRedirect);
+            else
+                processBuilder.redirectErrorStream(true);
             return new ChildJVM(processBuilder.start(), fullCommand);
         }
     }

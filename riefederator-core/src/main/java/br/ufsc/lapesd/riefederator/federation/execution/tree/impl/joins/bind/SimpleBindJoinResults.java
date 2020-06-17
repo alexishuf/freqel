@@ -13,9 +13,9 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.FlatMapResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.TransformedResults;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -47,7 +47,10 @@ public class SimpleBindJoinResults implements Results {
     private final @Nonnull Collection<String> joinVars;
     private final @Nonnull Set<String> resultVars;
     private Solution next = null;
-    private final int valuesRows = DEFAULT_VALUES_ROWS;
+    private final int valuesRows;
+
+    private final @Nonnull ArraySolution.ValueFactory solutionFactory;
+    private final @Nonnull ArraySolution.ValueFactory bindSolutionFactory;
 
     private final @Nonnull Supplier<Results> resultsSupplier;
 
@@ -59,6 +62,7 @@ public class SimpleBindJoinResults implements Results {
     public static class Factory implements BindJoinResultsFactory {
         private final @Nonnull Provider<PlanExecutor> planExecutorProvider;
         private final @Nonnull ResultsExecutor resultsExecutor;
+        private int valuesRows = DEFAULT_VALUES_ROWS;
 
         @Inject
         public Factory(@Nonnull Provider<PlanExecutor> planExecutorProvider,
@@ -67,13 +71,17 @@ public class SimpleBindJoinResults implements Results {
             this.resultsExecutor = resultsExecutor;
         }
 
+        public void setValuesRows(int valuesRows) {
+            this.valuesRows = valuesRows;
+        }
+
         @Override
         public @Nonnull Results createResults(@Nonnull Results smaller, @Nonnull PlanNode rightTree,
                                               @Nonnull Collection<String> joinVars,
                                               @Nonnull Collection<String> resultVars) {
             PlanExecutor executor = planExecutorProvider.get();
             return new SimpleBindJoinResults(executor, smaller, rightTree, joinVars,
-                                             resultVars, resultsExecutor);
+                                             resultVars, resultsExecutor, valuesRows);
         }
     }
 
@@ -81,7 +89,7 @@ public class SimpleBindJoinResults implements Results {
     public SimpleBindJoinResults(@Nonnull PlanExecutor planExecutor, @Nonnull Results smaller,
                                  @Nonnull PlanNode rightTree, @Nonnull Collection<String> joinVars,
                                  @Nonnull Collection<String> resultVars,
-                                 @Nullable ResultsExecutor resultsExecutor) {
+                                 @Nullable ResultsExecutor resultsExecutor, int valuesRows) {
         Preconditions.checkArgument(rightTree.getResultVars().containsAll(joinVars),
                 "There are joinVars missing on rightTree");
         this.planExecutor = planExecutor;
@@ -89,9 +97,12 @@ public class SimpleBindJoinResults implements Results {
         this.joinVars = joinVars;
         this.resultVars = resultVars instanceof Set ? (Set<String>)resultVars
                                                     : new HashSet<>(resultVars);
+        this.valuesRows = valuesRows;
+        this.solutionFactory = ArraySolution.forVars(resultVars);
+        this.bindSolutionFactory = ArraySolution.forVars(joinVars);
         if (canValuesBind(rightTree)) {
             if (!smaller.isAsync() && resultsExecutor != null)
-                smaller = resultsExecutor.async(singleton(smaller), valuesRows);
+                smaller = resultsExecutor.async(singleton(smaller), valuesRows*2);
             resultsSupplier = new ValuesBind();
         } else {
             resultsSupplier = new NaiveBind();
@@ -150,26 +161,16 @@ public class SimpleBindJoinResults implements Results {
         }
 
         private @Nonnull PlanNode bind(@Nonnull PlanNode node, @Nonnull Solution values) {
-            MapSolution.Builder builder = MapSolution.builder();
-            for (String name : joinVars) {
-                Term term = values.get(name);
-                if (term == null)
-                    logger.warn("Left Solution is missing join variable {}", name);
-                else
-                    builder.put(name, term);
-            }
-            return node.createBound(builder.build());
+            return node.createBound(bindSolutionFactory.fromFunction(values::get));
         }
 
         private @Nonnull Solution reassemble(@Nonnull Solution right) {
             assert leftSolution != null;
-            MapSolution.Builder builder = MapSolution.builder();
-            for (String name : resultVars) {
-                Term term = leftSolution.get(name, right.get(name));
-                if (term != null)
-                    builder.put(name, term);
-            }
-            return builder.build();
+            return solutionFactory.fromFunction(n -> {
+                Term term = leftSolution.get(n);
+                if (term == null) term = right.get(n);
+                return term;
+            });
         }
     }
 
@@ -210,19 +211,18 @@ public class SimpleBindJoinResults implements Results {
 
         private void addLeftSolution(@Nonnull Solution solution) {
             table.add(solution);
-            MapSolution.Builder b = MapSolution.builder();
-            for (String name : joinVars)
-                b.put(name, solution.get(name));
-            bindValues.add(b.build());
+            bindValues.add(bindSolutionFactory.fromFunction(solution::get));
         }
 
         private @Nonnull Results expand(@Nonnull Solution right) {
             List<Solution> list = new ArrayList<>(valuesRows*2);
             for (Solution left : table.getAll(right)) {
-                MapSolution.Builder builder = MapSolution.builder();
-                for (String name : resultVars)
-                    builder.put(name, left.get(name, right.get(name)));
-                list.add(builder.build());
+                list.add(solutionFactory.fromFunction(n -> {
+                    Term term = left.get(n);
+                    if (term == null)
+                        term  = right.get(n);
+                    return term;
+                }));
             }
             return new CollectionResults(list, resultVars);
         }
