@@ -9,7 +9,10 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
+import org.apache.jena.graph.BlankNodeId;
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.rdf.model.impl.ResourceImpl;
 
 import javax.annotation.Nonnull;
 
@@ -22,6 +25,12 @@ public class JenaTermFactory implements TermFactory {
     @Override
     public @Nonnull Blank createBlank() {
         return JenaWrappers.fromAnon(createResource());
+    }
+
+    @Override
+    public @Nonnull Blank createBlank(String name) {
+        Node node = NodeFactory.createBlankNode(BlankNodeId.create(name));
+        return new JenaBlank(new ResourceImpl(node, null), name);
     }
 
     @Override

@@ -40,6 +40,11 @@ public class CachedTermFactory implements TermFactory {
     }
 
     @Override
+    public @Nonnull Blank createBlank(String name) {
+        return delegate.createBlank(name);
+    }
+
+    @Override
     public @Nonnull URI createURI(@Nonnull String uri) {
         return uriCache.computeIfAbsent(uri, delegate::createURI);
     }

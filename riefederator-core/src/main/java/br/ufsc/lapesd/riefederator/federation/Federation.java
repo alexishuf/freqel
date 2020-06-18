@@ -17,6 +17,7 @@ import br.ufsc.lapesd.riefederator.query.TemplateExpander;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
@@ -226,6 +227,18 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public void close() {
+        // close endpoints that asked to be closed
+        for (Source source : getSources()) {
+            if (source.getCloseEndpoint()) {
+                TPEndpoint ep = source.getEndpoint();
+                try {
+                    ep.close();
+                } catch (RuntimeException e) {
+                    logger.error("Source said to close endpoint {} and it failed", ep, e);
+                }
+            }
+        }
+
         resultsExecutor.close();
         performanceListener.close();
     }

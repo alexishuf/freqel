@@ -17,6 +17,7 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
@@ -25,6 +26,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
 
 public class CQEndpointTest extends EndpointTestBase {
     private static final @Nonnull
@@ -32,7 +34,7 @@ public class CQEndpointTest extends EndpointTestBase {
 
     static {
         for (NamedFunction<InputStream, Fixture<TPEndpoint>> f : TPEndpointTest.endpoints) {
-            if (f.toString().startsWith("ARQEndpoint")) {
+            if (f.toString().startsWith("ARQEndpoint") || f.toString().contains("SPARQL")) {
                 //noinspection unchecked,rawtypes
                 endpoints.add((NamedFunction) f);
             }
@@ -88,6 +90,43 @@ public class CQEndpointTest extends EndpointTestBase {
                                     new Triple(Charlie, age, A_AGE),   //ok
                                     new Triple(Alice, knows, Dave));   //wrong
         queryResourceTest(f, query, emptySet());
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testParallelQuerying(Function<InputStream, Fixture<CQEndpoint>> fac)
+            throws InterruptedException, ExecutionException {
+        ExecutorService exec = Executors.newCachedThreadPool();
+        List<Future<?>> futures = new ArrayList<>();
+        try (Fixture<CQEndpoint> f = fac.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+            CQEndpoint ep = f.endpoint;
+            for (int i = 0; i < 50; i++) {
+                futures.add(exec.submit(() -> {
+                    for (int j = 0; j < 10; j++) {
+                        Set<Solution> ac = new HashSet<>();
+                        ep.query(createQuery(s, knows, Bob, s, age, A_AGE))
+                                .forEachRemainingThenClose(ac::add);
+                        assertEquals(ac, singleton(MapSolution.build(s, Alice)));
+
+                        ac.clear();
+                        ep.query(createQuery(Charlie, type, Person,
+                                             Charlie, age, A_AGE,
+                                             Alice, knows, Bob))
+                                .forEachRemainingThenClose(ac::add);
+                        assertEquals(ac, singleton(MapSolution.EMPTY));
+
+                        ac.clear();
+                        ep.query(createQuery(s, knows, Bob)).forEachRemainingThenClose(ac::add);
+                        assertEquals(ac, Sets.newHashSet(MapSolution.build(s, Alice),
+                                MapSolution.build(s, Dave)));
+                    }
+                }));
+            }
+            for (Future<?> future : futures)
+                assertNull(future.get()); // re-throws AssertionErrors in ExecutionExceptions
+        } finally {
+            exec.shutdown();
+            exec.awaitTermination(30, TimeUnit.SECONDS);
+        }
     }
 
     @Test(dataProvider = "fixtureFactories")

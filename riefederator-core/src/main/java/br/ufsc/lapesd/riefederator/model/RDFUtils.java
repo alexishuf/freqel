@@ -5,18 +5,41 @@ import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @SuppressWarnings("WeakerAccess")
 public class RDFUtils {
     private static final Logger logger = LoggerFactory.getLogger(RDFUtils.class);
 
+    private static final @Nonnull String xsdString = "http://www.w3.org/2001/XMLSchema#string";
+    private static final @Nonnull String xsdInteger = "http://www.w3.org/2001/XMLSchema#integer";
+    private static final @Nonnull String xsdDouble = "http://www.w3.org/2001/XMLSchema#double";
+    private static final @Nonnull String xsdDecimal = "http://www.w3.org/2001/XMLSchema#decimal";
+    private static final @Nonnull String xsdBoolean = "http://www.w3.org/2001/XMLSchema#boolean";
+
+    private static final @Nonnull Pattern INTEGER_SHORT_RX =
+            Pattern.compile("^[+-]?[0-9]+$");
+    private static final @Nonnull Pattern BOOLEAN_SHORT_RX =
+            Pattern.compile("^(true|false)$");
+    private static final @Nonnull Pattern DECIMAL_SHORT_RX =
+            Pattern.compile("^[+-]?[0-9]*\\.[0-9]+$");
+    private static final @Nonnull Pattern DOUBLE_SHORT_RX =
+            Pattern.compile("^([+-]?[0-9]+\\.[0-9]+|[+-]?\\.[0-9]+|[+-]?[0-9])[eE][+-]?[0-9]+$");
+
     private static final @Nonnull String ESCAPES = "tbnrf\"'\\";
     private static final @Nonnull String ESCAPEE = "\t\b\n\r\f\"'\\";
+    private static final @Nonnull Pattern LIT_RX =
+            Pattern.compile("(?:\"|\"\"\")(.*)(?:\"|\"\"\")\\^\\^<([^>]+)>");
+    private static final @Nonnull Pattern LANG_RX =
+            Pattern.compile("(?:\"|\"\"\")(.*)(?:\"|\"\"\")@(\\w+)");
 
     /**
      * Escapes [1] a lexical form string.
@@ -94,6 +117,56 @@ public class RDFUtils {
         else if (term.isLiteral()) return toNT(term.asLiteral());
         else if (term.isBlank()) return "[]";
         throw new IllegalArgumentException("Only URI, Lit and Blank are representable in NTriples");
+    }
+
+    public static @Nullable Term fromNT(@Nullable String string,
+                                        @Nonnull TermFactory termFactory) throws NTParseException {
+        if (string == null)
+            return null;
+        if (string.isEmpty())
+            return null;
+        if (string.startsWith("_:"))
+            return termFactory.createBlank(string.substring(2));
+        char first = string.charAt(0), last = string.charAt(string.length() - 1);
+        if (first == '<' && last == '>')
+            return termFactory.createURI(string.substring(1, string.length()-1));
+        else if (first == '"' && last == '"')
+            return termFactory.createLit(string.substring(1, string.length()-1), xsdString);
+
+        Matcher matcher = LIT_RX.matcher(string);
+        if (!matcher.matches()) {
+            matcher = LANG_RX.matcher(string);
+            if (!matcher.matches()) {
+                try {
+                    return fromTurtleShortForm(string, termFactory);
+                } catch (NTParseException e) {
+                    throw new NTParseException("Bad literal (treated as such since did not " +
+                                               "look like _:blank nor <uri>): " + string);
+                }
+            }
+            return termFactory.createLangLit(matcher.group(1), matcher.group(2), true);
+        }
+        return termFactory.createLit(matcher.group(1), matcher.group(2), true);
+    }
+
+    public static @Nullable Term
+    fromTurtleShortForm(@Nullable String string,
+                        @Nonnull TermFactory termFactory) throws NTParseException {
+        if (string == null) return null;
+        if (string.isEmpty()) return null;
+        assert !string.matches("^\".*\"\\^\\^<.*>$") : "string looks like a type literal";
+        assert !string.matches("^\".*\"@\\w+$") : "string looks like a lang literal";
+        assert !string.matches("^<.*>$") : "string looks like a URI";
+
+        if (INTEGER_SHORT_RX.matcher(string).matches())
+            return termFactory.createLit(string, xsdInteger);
+        if (BOOLEAN_SHORT_RX.matcher(string).matches())
+            return termFactory.createLit(string.toLowerCase(), xsdBoolean);
+        if (DECIMAL_SHORT_RX.matcher(string).matches())
+            return termFactory.createLit(string, xsdDecimal);
+        if (DOUBLE_SHORT_RX.matcher(string).matches())
+            return termFactory.createLit(string, xsdDouble);
+        throw new NTParseException(string+" does not match a turtle short form");
     }
 
     /**

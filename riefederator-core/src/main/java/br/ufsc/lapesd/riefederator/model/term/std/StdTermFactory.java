@@ -20,6 +20,11 @@ public class StdTermFactory implements ThreadSafeTermFactory {
     }
 
     @Override
+    public @Nonnull Blank createBlank(String name) {
+        return new StdBlank(name, name);
+    }
+
+    @Override
     public @Nonnull URI createURI(@Nonnull String uri) {
         return new StdURI(uri);
     }

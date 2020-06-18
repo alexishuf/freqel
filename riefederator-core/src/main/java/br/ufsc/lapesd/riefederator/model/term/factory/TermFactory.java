@@ -13,6 +13,11 @@ public interface TermFactory {
     @Nonnull Blank createBlank();
 
     /**
+     * Create a named blank node
+     */
+    @Nonnull Blank createBlank(String name);
+
+    /**
      * Create a {@link URI} term from the given long, un-prefixed URI
      */
     @Nonnull URI createURI(@Nonnull String uri);

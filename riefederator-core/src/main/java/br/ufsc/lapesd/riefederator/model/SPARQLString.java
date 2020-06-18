@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.model;
 
+import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
@@ -32,7 +33,7 @@ public class SPARQLString {
     private final @Nonnull Type type;
     private final @Nonnull String string;
     private final int triplesCount;
-    private final @Nonnull ImmutableSet<String> varNames;
+    private final @Nonnull ImmutableSet<String> varNames, publicVarNames;
     private final @Nonnull ImmutableSet<SPARQLFilter> filters;
 
     private static boolean keepTriple(@Nonnull Triple triple, @Nonnull CQuery query) {
@@ -93,15 +94,19 @@ public class SPARQLString {
                 ? Type.ASK : Type.SELECT;
         if (type == Type.ASK) {
             b.append("ASK {\n");
+            this.publicVarNames = ImmutableSet.of();
         } else {
             b.append("SELECT");
             if (ModifierUtils.getFirst(Capability.DISTINCT, modifiers) != null)
                 b.append(" DISTINCT");
             Projection project = (Projection)ModifierUtils.getFirst(PROJECTION, modifiers);
             if (project != null) {
-                for (String name : project.getVarNames())
+                this.publicVarNames = ImmutableSet.copyOf(
+                        TreeUtils.intersect(project.getVarNames(), this.varNames));
+                for (String name : this.publicVarNames)
                     b.append(" ?").append(name);
             } else {
+                this.publicVarNames = this.varNames;
                 for (String name : this.varNames) b.append(" ?").append(name);
             }
             b.append(" WHERE {\n");
@@ -214,6 +219,10 @@ public class SPARQLString {
     public @Nonnull ImmutableSet<String> getVarNames() {
         return varNames;
     }
+    public @Nonnull ImmutableSet<String> getPublicVarNames() {
+        return publicVarNames;
+    }
+
     public @Nonnull ImmutableSet<SPARQLFilter> getFilters() {
         return filters;
     }

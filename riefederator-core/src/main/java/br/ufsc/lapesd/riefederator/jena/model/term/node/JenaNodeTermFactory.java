@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.jena.model.term.node;
 
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
+import br.ufsc.lapesd.riefederator.model.term.Blank;
 import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
@@ -13,6 +14,12 @@ public class JenaNodeTermFactory implements TermFactory {
     @Override
     public @Nonnull JenaBlankNode createBlank() {
         return new JenaBlankNode((Node_Blank) NodeFactory.createBlankNode());
+    }
+
+    @Override
+    public @Nonnull Blank createBlank(String name) {
+        Node node = NodeFactory.createBlankNode(BlankNodeId.create(name));
+        return new JenaBlankNode((Node_Blank) node, name);
     }
 
     @Override

@@ -45,4 +45,8 @@ public class JenaBlankNode extends JenaNodeTerm implements Blank {
         return (o instanceof Blank) && getId().equals(((Blank) o).getId());
     }
 
+    @Override
+    public int hashCode() {
+        return getId().hashCode();
+    }
 }

@@ -18,11 +18,17 @@ public class JenaBindingResults implements Results {
     private final JenaBindingSolution.Factory solutionFactory;
     private @Nullable String name;
 
-    public JenaBindingResults(@Nonnull ResultSet resultSet, @Nullable QueryExecution execution) {
+    public JenaBindingResults(@Nonnull ResultSet resultSet, @Nullable QueryExecution execution,
+                              @Nonnull Set<String> varNames) {
         this.resultSet = resultSet;
         this.execution = execution;
-        varNames = ArraySet.fromDistinct(resultSet.getResultVars());
+        this.varNames = varNames;
         solutionFactory = JenaBindingSolution.forVars(varNames);
+
+    }
+
+    public JenaBindingResults(@Nonnull ResultSet resultSet, @Nullable QueryExecution execution) {
+        this(resultSet, execution, ArraySet.fromDistinct(resultSet.getResultVars()));
     }
 
     @Override

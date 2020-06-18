@@ -22,6 +22,11 @@ public class SynchronizedTermFactory implements ThreadSafeTermFactory {
     }
 
     @Override
+    public synchronized  @Nonnull Blank createBlank(String name) {
+        return delegate.createBlank(name);
+    }
+
+    @Override
     public synchronized @Nonnull URI createURI(@Nonnull String uri) {
         return delegate.createURI(uri);
     }

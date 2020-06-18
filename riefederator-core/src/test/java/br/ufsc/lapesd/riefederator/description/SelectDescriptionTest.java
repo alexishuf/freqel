@@ -59,9 +59,9 @@ public class SelectDescriptionTest implements TestContext {
         }
 
         @Override
-        public @Nonnull Results doQuery(@Nonnull SPARQLString sparql) {
+        public @Nonnull Results doQuery(@Nonnull SPARQLString ss, @Nonnull CQuery cQuery) {
             ++queries;
-            return super.doQuery(sparql);
+            return super.doQuery(ss, cQuery);
         }
     }
 

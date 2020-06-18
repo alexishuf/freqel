@@ -3,6 +3,8 @@ package br.ufsc.lapesd.riefederator;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.TPEndpointTest;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -18,11 +20,13 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.sparql.core.Var;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -130,6 +134,7 @@ public class LargeRDFBenchSelfTest {
     }
 
     private Model allData = null;
+    private @Nullable TPEndpointTest.FusekiEndpoint fuseki = null;
 
     @BeforeClass(groups = {"fast"})
     public void setUp() {
@@ -149,6 +154,18 @@ public class LargeRDFBenchSelfTest {
             }
         }
         allData = model;
+    }
+
+    @AfterClass
+    public void tearDown() {
+        if (fuseki != null)
+            fuseki.close();
+    }
+
+    private @Nonnull SPARQLClient createSPARQLClient() {
+        if (fuseki == null)
+            fuseki = new TPEndpointTest.FusekiEndpoint(DatasetFactory.create(allData));
+        return new SPARQLClient(fuseki.uri);
     }
 
     @DataProvider
@@ -227,6 +244,27 @@ public class LargeRDFBenchSelfTest {
 
             CQuery query = SPARQLQueryParser.tolerant().parse(stream);
             Results actual = ARQEndpoint.forModel(allData).query(query);
+            List<Solution> actualList = new ArrayList<>();
+            actual.forEachRemainingThenClose(actualList::add);
+            assertTrue(actualList.containsAll(expected.getCollection()), "Missing solutions");
+            assertTrue(expected.getCollection().containsAll(actualList), "Unexpected solutions");
+        }
+    }
+
+    @Test(dataProvider = "queryNameData")
+    public void testRunQueriesWithSPARQLClient(String queryName) throws Exception {
+        assertNotNull(allData);
+        String queryPath = RESOURCE_DIR + "/queries/" + queryName;
+        ClassLoader classLoader = getClass().getClassLoader();
+
+        try (InputStream stream = classLoader.getResourceAsStream(queryPath);
+             SPARQLClient client = createSPARQLClient()) {
+
+            assertNotNull(stream);
+            CollectionResults expected = loadResults(queryName);
+
+            CQuery query = SPARQLQueryParser.tolerant().parse(stream);
+            Results actual = client.query(query);
             List<Solution> actualList = new ArrayList<>();
             actual.forEachRemainingThenClose(actualList::add);
             assertTrue(actualList.containsAll(expected.getCollection()), "Missing solutions");

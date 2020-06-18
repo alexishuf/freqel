@@ -37,6 +37,9 @@ public interface TestContext {
 
     @Nonnull URI xsdInt     = new StdURI(XSDDatatype.XSDint.getURI());
     @Nonnull URI xsdInteger = new StdURI(XSDDatatype.XSDinteger.getURI());
+    @Nonnull URI xsdDecimal = new StdURI(XSDDatatype.XSDdecimal.getURI());
+    @Nonnull URI xsdDouble = new StdURI(XSDDatatype.XSDdouble.getURI());
+    @Nonnull URI xsdBoolean = new StdURI(XSDDatatype.XSDboolean.getURI());
     @Nonnull URI xsdString  = new StdURI(XSDDatatype.XSDstring.getURI());
     @Nonnull URI xsdDate  = new StdURI(XSDDatatype.XSDdate.getURI());
 

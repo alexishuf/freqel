@@ -42,7 +42,9 @@ import br.ufsc.lapesd.riefederator.model.term.Res;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.TPEndpointTest;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -61,7 +63,6 @@ import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.ModelMessageBodyWriter;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Sets;
 import com.google.inject.AbstractModule;
@@ -71,6 +72,7 @@ import com.google.inject.Module;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 import org.apache.commons.io.IOUtils;
+import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
@@ -390,6 +392,16 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
     private static final class SetupLargeRDFBench implements Setup {
         private int variantIdx;
+        private String[] variantNames = {
+                /* 0 */ "SelectDescription+ARQEndpoint",
+                /* 1 */ "SelectDescription+fetchClasses+ARQEndpoint",
+                /* 2 */ "AskDescription+ARQEndpoint",
+                /* 3 */ "SemanticSelectDescription+ARQEndpoint",
+                /* 4 */ "SelectDescription+ARQEndpoint+union",
+                /* 5 */ "SelectDescription+fetchClasses+SPARQLClient",
+                /* 6 */ "AskDescription+SPARQLClient",
+                /* 7 */ "SelectDescription+SPARQLClient+union",
+        };
 
         public SetupLargeRDFBench(int variantIdx) {
             this.variantIdx = variantIdx;
@@ -397,7 +409,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
         @Override
         public @Nullable Setup nextVariant() {
-            return variantIdx >= 4 ? null : new SetupLargeRDFBench(variantIdx + 1);
+            return variantIdx >= variantNames.length-1
+                    ? null : new SetupLargeRDFBench(variantIdx + 1);
         }
 
         @Override
@@ -407,42 +420,67 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         @Override
         public boolean requiresFastModule() { return true; }
 
-        private @Nonnull Source wrap(@Nonnull CQEndpoint ep) {
-            Preconditions.checkState(variantIdx < 6);
+        private @Nonnull Source wrap(@Nonnull Model model, @Nullable String endpointName) {
+            String variantName = variantNames[variantIdx];
+            CQEndpoint ep = null;
             Description description = null;
-            if (variantIdx == 0 || variantIdx == 4) description = new SelectDescription(ep);
-            else if (variantIdx == 1) description = new SelectDescription(ep, true);
-            else if (variantIdx == 2) description = new AskDescription(ep);
-            else if (variantIdx == 3) description = new SemanticSelectDescription(ep, new TransitiveClosureTBoxReasoner());
+            if (variantName.contains("SPARQLClient")) {
+                TPEndpointTest.FusekiEndpoint fuseki =
+                        new TPEndpointTest.FusekiEndpoint(DatasetFactory.create(model));
+                SPARQLClient client = new SPARQLClient(fuseki.uri);
+                client.onClose(fuseki::close);
+                ep = client;
+            } else if (variantName.contains("ARQEndpoint")) {
+                if (endpointName != null)
+                    ep = ARQEndpoint.forModel(model, endpointName);
+                else
+                    ep = ARQEndpoint.forModel(model);
+            }
+            assert ep != null;
+
+            if (variantName.contains("SelectDescription+fetchClasses"))
+                description = new SelectDescription(ep, true);
+            else if (variantName.contains("SelectDescription"))
+                description = new SelectDescription(ep, false);
+            else if (variantName.contains("AskDescription"))
+                description = new AskDescription(ep);
+            else if (variantName.contains("SemanticSelectDescription"))
+                description = new SemanticSelectDescription(ep, true, new TransitiveClosureTBoxReasoner());
             assert description != null;
-            return new Source(description, ep);
+
+            Source source = new Source(description, ep);
+            if (variantName.contains("SPARQLClient"))
+                source.setCloseEndpoint(true);
+            return source;
         }
 
         @Override
         public void accept(Federation federation, String base) {
+            String variantName = variantNames[variantIdx];
+
             ClassLoader cl = Thread.currentThread().getContextClassLoader();
             Model union = ModelFactory.createDefaultModel();
             for (String filename : DATA_FILENAMES) {
                 try (InputStream stream = cl.getResourceAsStream(RESOURCE_DIR + "/data/" + filename)) {
                     assertNotNull(stream);
-                    if (variantIdx >= 4) {
+                    if (variantName.contains("union")) {
                         RDFDataMgr.read(union, stream, Lang.NT);
                     } else {
                         Model model = ModelFactory.createDefaultModel();
                         RDFDataMgr.read(model, stream, Lang.NT);
-                        federation.addSource(wrap(forModel(model, filename)));
+                        federation.addSource(wrap(model, filename));
                     }
                 } catch (IOException e) {
                     fail("Unexpected exception", e);
                 }
             }
-            if (variantIdx >= 4)
-                federation.addSource(wrap(forModel(union)));
+            if (variantName.contains("union"))
+                federation.addSource(wrap(union, "LargeRDFBench-union"));
         }
 
         @Override
         public @Nonnull String toString() {
-            return "SetupLargeRDFBench["+variantIdx+"]";
+            return "SetupLargeRDFBench["+variantNames[variantIdx]+"]";
         }
     }
 
@@ -638,7 +676,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     private static final @Nonnull List<Class<? extends DecompositionStrategy>>
             decomposerClasses = asList(EvenDecomposer.class, StandardDecomposer.class);
     private static final @Nonnull List<Class<? extends DecompositionStrategy>>
-            fastDecomposerClasses = asList(StandardDecomposer.class);
+            fastDecomposerClasses = Collections.singletonList(StandardDecomposer.class);
 
     private static final @Nonnull List<TestModule> moduleList =
             OuterPlannerTest.classes.stream()
@@ -1008,7 +1046,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     private static final class SetupSimpleCNC implements Setup {
-        int variantIdx = 0;
+        int variantIdx;
 
         public SetupSimpleCNC() {
             this(0);

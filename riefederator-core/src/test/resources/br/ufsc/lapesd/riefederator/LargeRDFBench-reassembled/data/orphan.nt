@@ -29,23 +29,23 @@
 <https://example.org/sk#226> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43239"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#229> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#228> .
 <https://example.org/sk#229> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43757"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#258> <http://xmlns.com/foaf/0.1/name> "\"Superdefekt\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#258> <http://xmlns.com/foaf/0.1/name> "Superdefekt"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#258> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#260> <http://xmlns.com/foaf/0.1/name> "\"Chaos\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#260> <http://xmlns.com/foaf/0.1/name> "Chaos"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#260> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#262> <http://xmlns.com/foaf/0.1/name> "\"Michael Bartels\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#262> <http://xmlns.com/foaf/0.1/name> "Michael Bartels"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#262> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#264> <http://xmlns.com/foaf/0.1/name> "\"Remote Controlled\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#264> <http://xmlns.com/foaf/0.1/name> "Remote Controlled"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#264> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#266> <http://xmlns.com/foaf/0.1/name> "\"Melophon\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#266> <http://xmlns.com/foaf/0.1/name> "Melophon"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#266> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#268> <http://xmlns.com/foaf/0.1/name> "\"Arne Pahlke\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#268> <http://xmlns.com/foaf/0.1/name> "Arne Pahlke"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#268> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#270> <http://xmlns.com/foaf/0.1/name> "\"The Gay Romeos\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#270> <http://xmlns.com/foaf/0.1/name> "The Gay Romeos"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#270> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#272> <http://xmlns.com/foaf/0.1/name> "\"Der tollw�tige Kasper\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#272> <http://xmlns.com/foaf/0.1/name> "Der tollw�tige Kasper"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#272> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#274> <http://xmlns.com/foaf/0.1/name> "\"The Rodeo Five\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#274> <http://xmlns.com/foaf/0.1/name> "The Rodeo Five"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#274> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#276> <http://xmlns.com/foaf/0.1/name> "\"the ad.kowas\"^^<http://www.w3.org/2001/XMLSchema#string>"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#276> <http://xmlns.com/foaf/0.1/name> "the ad.kowas"^^<http://www.w3.org/2001/XMLSchema#string> .
 <https://example.org/sk#276> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .

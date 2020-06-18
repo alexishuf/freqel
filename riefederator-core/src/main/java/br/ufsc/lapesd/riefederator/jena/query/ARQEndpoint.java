@@ -12,6 +12,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
@@ -24,16 +25,17 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.core.Transactional;
+import org.apache.jena.sparql.core.Var;
 import org.apache.jena.system.Txn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy.*;
 import static java.lang.String.format;
@@ -159,10 +161,10 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         if (transactional != null) {
             Results[] tmp = {null};
             Txn.executeRead(transactional,
-                    () -> tmp[0] = CollectionResults.greedy(doQuery(sparql)));
+                    () -> tmp[0] = CollectionResults.greedy(doQuery(sparql, query)));
             return tmp[0];
         } else {
-            return doQuery(sparql);
+            return doQuery(sparql, query);
         }
     }
 
@@ -171,19 +173,21 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         Query query = QueryFactory.create(sparql);
         SPARQLString.Type type = query.isAskType() ? SPARQLString.Type.ASK
                                                    : SPARQLString.Type.SELECT;
-        Set<String> varNames = new HashSet<>();
+        Set<String> varNames = query.getProjectVars().stream().map(Var::getVarName)
+                                                     .collect(Collectors.toSet());
         return doQuery(query, type, varNames);
     }
 
     @Nonnull
-    public Results doQuery(@Nonnull SPARQLString sparql) {
-        Query query = QueryFactory.create(sparql.getString());
-        return doQuery(query, sparql.getType(), sparql.getVarNames());
+    public Results doQuery(@Nonnull SPARQLString ss, @Nonnull CQuery cQuery) {
+        Query query = QueryFactory.create(ss.getString());
+        Projection projection = ModifierUtils.getFirst(Projection.class, cQuery.getModifiers());
+        Set<String> vars = projection == null ? ss.getPublicVarNames() : projection.getVarNames();
+        return doQuery(query, ss.getType(), vars);
     }
 
-    @Nonnull
-    public Results doQuery(@Nonnull Query query, @Nonnull SPARQLString.Type type,
-                           @Nonnull Set<String> vars) {
+    public @Nonnull Results doQuery(@Nonnull Query query, @Nonnull SPARQLString.Type type,
+                                    @Nonnull Set<String> vars) {
         Stopwatch sw = Stopwatch.createStarted();
         if (type == SPARQLString.Type.ASK) {
             try (QueryExecution exec = executionFactory.apply(query)) {
@@ -201,7 +205,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             try {
                 ResultSet rs = exec.execSelect();
                 LogUtils.logQuery(logger, query, this, sw);
-                return new JenaBindingResults(rs, exec);
+                return new JenaBindingResults(rs, exec, vars);
             } catch (Throwable t) {
                 if (exec != null)
                     exec.close();

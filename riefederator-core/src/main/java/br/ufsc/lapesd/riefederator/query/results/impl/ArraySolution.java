@@ -6,7 +6,10 @@ import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -40,21 +43,21 @@ public class ArraySolution extends AbstractSolution {
         return vars;
     }
 
-    @Override
-    public int hashCode() {
-        int local = hashCache;
-        if (local == 0) {
-            local = 17;
-            for (int i = 0; i < vars.size(); i++) {
-                Term term = values[i];
-                int termCode = term == null ? 17 : term.hashCode();
-                local = (local * 37 + vars.get(i).hashCode()) * 37 + termCode;
-            }
-            hashCache = local;
-        }
-        return local;
-    }
-
+//    @Override
+//    public int hashCode() {
+//        int local = hashCache;
+//        if (local == 0) {
+//            local = 17;
+//            for (int i = 0; i < vars.size(); i++) {
+//                Term term = values[i];
+//                int termCode = term == null ? 17 : term.hashCode();
+//                local = (local * 37 + vars.get(i).hashCode()) * 37 + termCode;
+//            }
+//            hashCache = local;
+//        }
+//        return local;
+//    }
+//
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof ArraySolution) {
@@ -71,11 +74,8 @@ public class ArraySolution extends AbstractSolution {
     }
 
     public static @Nonnull ValueFactory forVars(@Nonnull Collection<String> vars) {
-        ArrayList<String> sorted = new ArrayList<>(vars);
-        if (!(vars instanceof SortedSet))
-            sorted.sort(Comparator.naturalOrder());
-        IndexedSet<String> indexedSet = IndexedSet.fromDistinct(sorted);
-        assert new ArrayList<>(indexedSet).equals(sorted); //order must be preserved!
+        IndexedSet<String> indexedSet = IndexedSet.fromDistinct(vars);
+        assert new ArrayList<>(indexedSet).equals(new ArrayList<>(vars)); //order must be preserved!
         return new ValueFactory(indexedSet);
     }
 

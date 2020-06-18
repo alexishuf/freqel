@@ -1,8 +1,11 @@
 package br.ufsc.lapesd.riefederator.testgen;
 
+import br.ufsc.lapesd.riefederator.model.NTParseException;
+import br.ufsc.lapesd.riefederator.model.RDFUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
+import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
@@ -194,8 +197,13 @@ public class LargeRDFBenchTestResourcesGenerator {
         if (URI_RX.matcher(value).find())
             return fromJena(createResource(value));
         Matcher matcher = QUOTE_RX.matcher(value);
-        String lexicalForm = matcher.matches() ? matcher.group(1) : value;
-        return StdLit.fromEscaped(lexicalForm);
+        if (matcher.matches())
+            return StdLit.fromEscaped(matcher.group(1));
+        try {
+            return RDFUtils.fromNT(value, new StdTermFactory());
+        } catch (NTParseException e) {
+            return StdLit.fromEscaped(value);
+        }
     }
 
     public static CollectionResults parseResults(@Nonnull String queryName,
@@ -261,7 +269,7 @@ public class LargeRDFBenchTestResourcesGenerator {
             for (File dataFile : dataFiles)
                 removeDuplicates(dataFile);
         } finally {
-            if (deleteResultsZip && !resultsZip.delete())
+            if (deleteResultsZip && resultsZip != null && !resultsZip.delete())
                 logger.error("Failed to delete downloaded temp file {}", resultsZip);
         }
     }
@@ -296,6 +304,7 @@ public class LargeRDFBenchTestResourcesGenerator {
         private static void put(@Nonnull Multimap<String, Dataset> map, @Nullable String key,
                                 @Nonnull Dataset value) {
             if (key == null) return;
+            //noinspection SynchronizationOnLocalVariableOrMethodParameter
             synchronized (map) {
                 map.put(key, value);
             }
@@ -423,9 +432,7 @@ public class LargeRDFBenchTestResourcesGenerator {
             dataset = getPrefixUnique(triple.getPredicate());
             if (dataset != null) return dataset;
             dataset = getPrefixUnique(triple.getObject());
-            if (dataset != null) return dataset;
-
-            return null;
+            return dataset;
         }
 
         private @Nullable Dataset getPrefixUnique(Term term) {
@@ -507,7 +514,7 @@ public class LargeRDFBenchTestResourcesGenerator {
                 }
             });
         } catch (IOException e) {
-            logger.error("Exception while processing {} at ", ds, dumpFile, e);
+            logger.error("Exception while processing {} at {}", ds, dumpFile, e);
         }
         logger.info("Completed {}.", ds);
     }
@@ -530,28 +537,33 @@ public class LargeRDFBenchTestResourcesGenerator {
         Results results = query.parseResults();
         while (results.hasNext()) {
             Solution solution = results.next();
-            if (query.queryName.equals("B2")) {
-                // satisfy FILTER(?weight <= 55), since ?weight is not in results
-                solution = MapSolution.builder(solution)
-                        .put("weight", fromJena(createTypedLiteral(55)))
-                        .build();
-            } else if (query.queryName.equals("B5")) {
-                solution = MapSolution.builder(solution)
-                        .put("start", fromJena(createTypedLiteral(1)))
-                        .put("position", fromJena(createTypedLiteral(2)))
-                        .put("stop", fromJena(createTypedLiteral(3)))
-                        .put("chromosome", fromJena(createTypedLiteral("X123")))
-                        .put("lookupChromosome", fromJena(createTypedLiteral("X123")))
-                        .build();
-            } else if (query.queryName.equals("B6")) {
-                solution = MapSolution.builder(solution)
-                        .put("lookupChromosome", fromJena(createTypedLiteral("X123")))
-                        .put("chromosome", fromJena(createTypedLiteral("X123")))
-                        .build();
-            } else if (query.queryName.equals("B7")) {
-                solution = MapSolution.builder(solution)
-                        .put("popDensity", fromJena(createTypedLiteral(32)))
-                        .build();
+            switch (query.queryName) {
+                case "B2":
+                    // satisfy FILTER(?weight <= 55), since ?weight is not in results
+                    solution = MapSolution.builder(solution)
+                            .put("weight", fromJena(createTypedLiteral(55)))
+                            .build();
+                    break;
+                case "B5":
+                    solution = MapSolution.builder(solution)
+                            .put("start", fromJena(createTypedLiteral(1)))
+                            .put("position", fromJena(createTypedLiteral(2)))
+                            .put("stop", fromJena(createTypedLiteral(3)))
+                            .put("chromosome", fromJena(createTypedLiteral("X123")))
+                            .put("lookupChromosome", fromJena(createTypedLiteral("X123")))
+                            .build();
+                    break;
+                case "B6":
+                    solution = MapSolution.builder(solution)
+                            .put("lookupChromosome", fromJena(createTypedLiteral("X123")))
+                            .put("chromosome", fromJena(createTypedLiteral("X123")))
+                            .build();
+                    break;
+                case "B7":
+                    solution = MapSolution.builder(solution)
+                            .put("popDensity", fromJena(createTypedLiteral(32)))
+                            .build();
+                    break;
             }
 
             List<Triple> graph = rebuildGraph(query.cQuery, solution);

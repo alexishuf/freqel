@@ -101,6 +101,22 @@ public class TermFactoryTest {
     }
 
     @Test(dataProvider = "factoriesData")
+    public void testCreateNamedBlank(Supplier<TermFactory> supplier) {
+        TermFactory f = supplier.get();
+        Blank b1 = f.createBlank("asd");
+        Blank b2 = f.createBlank("qwe");
+        Blank b3 = supplier.get().createBlank("asd");
+
+        assertTrue(b1.isAnon());
+        assertTrue(b2.isAnon());
+        assertTrue(b3.isAnon());
+
+        assertEquals(b1, b1);
+        assertEquals(b1, b3);
+        assertNotEquals(b1, b2);
+    }
+
+    @Test(dataProvider = "factoriesData")
     public void testCreateVar(Supplier<TermFactory> supplier) {
         TermFactory f = supplier.get();
         if (!f.canCreateVar())

@@ -26,6 +26,11 @@ public class OWLAPITermFactory implements TermFactory {
     }
 
     @Override
+    public @Nonnull Blank createBlank(String name) {
+        return new OWLAPIAnonymous(dataFactory.getOWLAnonymousIndividual(name));
+    }
+
+    @Override
     public @Nonnull URI createURI(@Nonnull String uri) {
         return new OWLAPIHasIRI(dataFactory.getOWLNamedIndividual(uri));
     }

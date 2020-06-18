@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -66,6 +67,9 @@ public class TPEndpointTest extends EndpointTestBase {
         public void close() {
             server.stop();
             server.join();
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignored) { }
         }
     }
 
@@ -92,6 +96,20 @@ public class TPEndpointTest extends EndpointTestBase {
                 @Override
                 public void close() {
                     fusekiEndpoint.close();
+                }
+            };
+        }));
+        endpoints.add(new NamedFunction<>("SPARQLClient+Fuseki", stream -> {
+            assertNotNull(stream);
+            Dataset ds = DatasetFactory.createTxnMem();
+            RDFDataMgr.read(ds, stream, "", Lang.TTL);
+            FusekiEndpoint fusekiEndpoint = new FusekiEndpoint(ds);
+            SPARQLClient client = new SPARQLClient(fusekiEndpoint.uri);
+            return new Fixture<TPEndpoint>(client) {
+                @Override
+                public void close() {
+                    fusekiEndpoint.close();
+                    client.close();
                 }
             };
         }));

@@ -9,13 +9,17 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Immutable
 public class StdBlank extends AbstractBlank {
-    private static AtomicLong nextId = new AtomicLong();
-    private final long id;
+    private static final AtomicLong nextId = new AtomicLong();
+    private final Object id;
     private final @Nullable String name;
 
     public StdBlank(@Nullable String name) {
         this.name = name;
         this.id = nextId.incrementAndGet();
+    }
+    public StdBlank(@Nonnull String name, @Nonnull Object id) {
+        this.name = name;
+        this.id = id;
     }
 
     public StdBlank() {
@@ -35,6 +39,8 @@ public class StdBlank extends AbstractBlank {
     @Override
     public @Nonnull String toString() {
         if (name != null) return "_:"+name;
-        return String.format("_:0x%x", id);
+        assert id instanceof Long;
+        //noinspection RedundantCast
+        return String.format("_:0x%x", (Long)id);
     }
 }
