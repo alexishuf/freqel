@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultHashJoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -10,19 +11,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
 
-public class InMemoryHashJoinResults implements Results {
+public class InMemoryHashJoinResults extends AbstractResults implements Results {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(DefaultHashJoinNodeExecutor.class);
 
-    private @Nullable String nodeName;
     private final @Nonnull Results smaller, larger;
-    private final @Nonnull Set<String> resultsVars;
     private final @Nonnull CrudeSolutionHashTable hashTable;
     private boolean stop = false;
     private final  @Nonnull ExecutorService executorService;
@@ -42,6 +43,7 @@ public class InMemoryHashJoinResults implements Results {
     public InMemoryHashJoinResults(@Nonnull Results smaller, @Nonnull Results larger,
                                    @Nonnull Collection<String> joinVars,
                                    @Nonnull Collection<String> resultVars) {
+        super(resultVars);
         Set<String> allVars = Stream.concat(smaller.getVarNames().stream(),
                                             larger.getVarNames().stream()).collect(toSet());
         Preconditions.checkArgument(allVars.containsAll(joinVars));
@@ -50,8 +52,6 @@ public class InMemoryHashJoinResults implements Results {
         this.hashTable = new CrudeSolutionHashTable(joinVars, 512);
         this.smaller = smaller;
         this.larger = larger;
-        this.resultsVars = resultVars instanceof Set ? (Set<String>)resultVars
-                                                     : new HashSet<>(resultVars);
         this.executorService = Executors.newSingleThreadExecutor();
         this.fetchTask = executorService.submit(this::fetchAll);
         this.queue = new ArrayDeque<>();
@@ -95,7 +95,7 @@ public class InMemoryHashJoinResults implements Results {
         boolean joined = false;
         for (Solution fromSmaller : hashTable.getAll(fromLarger)) {
             MapSolution.Builder builder = MapSolution.builder();
-            for (String name : resultsVars)
+            for (String name : varNames)
                 builder.put(name, fromSmaller.get(name, fromLarger.get(name)));
             MapSolution result = builder.build();
             queue.add(result);
@@ -105,17 +105,12 @@ public class InMemoryHashJoinResults implements Results {
     }
 
     @Override
-    public @Nullable String getNodeName() {
-        return nodeName;
-    }
-
-    @Override
-    public void setNodeName(@Nonnull String name) {
-        nodeName = name;
-    }
-
-    @Override
     public boolean isAsync() {
+        return true;
+    }
+
+    @Override
+    public boolean isDistinct() {
         return true;
     }
 
@@ -134,11 +129,6 @@ public class InMemoryHashJoinResults implements Results {
         if (!hasNext())
             throw new NoSuchElementException("Results exhausted");
         return queue.remove();
-    }
-
-    @Override
-    public @Nonnull Set<String> getVarNames() {
-        return resultsVars;
     }
 
     @Override

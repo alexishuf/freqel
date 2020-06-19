@@ -17,7 +17,9 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinal
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.EvenDecomposer;
 import br.ufsc.lapesd.riefederator.federation.decomp.StandardDecomposer;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinNodeExecutor;
@@ -83,6 +85,7 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.uri.UriTemplate;
 import org.jetbrains.annotations.NotNull;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -104,6 +107,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
@@ -390,9 +394,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         }
     }
 
-    private static final class SetupLargeRDFBench implements Setup {
-        private int variantIdx;
-        private String[] variantNames = {
+    private final static class SetupLargeRDFBench implements Setup {
+        private final int variantIdx;
+        private final String[] variantNames = {
                 /* 0 */ "SelectDescription+ARQEndpoint",
                 /* 1 */ "SelectDescription+fetchClasses+ARQEndpoint",
                 /* 2 */ "AskDescription+ARQEndpoint",
@@ -420,21 +424,17 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         @Override
         public boolean requiresFastModule() { return true; }
 
-        private @Nonnull Source wrap(@Nonnull Model model, @Nullable String endpointName) {
+        private @Nonnull Source wrap(@Nonnull Model model, @Nonnull String endpointName) {
             String variantName = variantNames[variantIdx];
             CQEndpoint ep = null;
             Description description = null;
             if (variantName.contains("SPARQLClient")) {
-                TPEndpointTest.FusekiEndpoint fuseki =
-                        new TPEndpointTest.FusekiEndpoint(DatasetFactory.create(model));
-                SPARQLClient client = new SPARQLClient(fuseki.uri);
-                client.onClose(fuseki::close);
-                ep = client;
+                String key = "SetupLargeRDFBench-"+endpointName;
+                TPEndpointTest.FusekiEndpoint fuseki = fusekiEndpoints.computeIfAbsent(key, k ->
+                        new TPEndpointTest.FusekiEndpoint(DatasetFactory.create(model)));
+                ep = new SPARQLClient(fuseki.uri);
             } else if (variantName.contains("ARQEndpoint")) {
-                if (endpointName != null)
-                    ep = ARQEndpoint.forModel(model, endpointName);
-                else
-                    ep = ARQEndpoint.forModel(model);
+                ep = ARQEndpoint.forModel(model, endpointName);
             }
             assert ep != null;
 
@@ -615,6 +615,16 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(InMemoryHashJoinResults.class); }
             },
+            (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
+                @Override
+                protected void configure() {
+                    super.configure();
+                    bind(CartesianNodeExecutor.class).to(EagerCartesianNodeExecutor.class);
+                    configureCardinalityEstimation(binder(), 0);
+                }
+                @Override
+                public String toString() { return asString(EagerCartesianNodeExecutor.class); }
+            },
             (op, ip, opt, dec, pl) -> new TestModule(false, op, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
@@ -666,11 +676,25 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     );
 
     private Federation federation = null;
+    public static final ConcurrentHashMap<String, TPEndpointTest.FusekiEndpoint> fusekiEndpoints
+            = new ConcurrentHashMap<>();
 
     @AfterMethod
     public void methodTearDown() {
         if (federation != null)
             federation.close();
+    }
+
+    @AfterClass
+    @Override
+    public void tearDown() throws Exception {
+        super.tearDown();
+        Set<String> names = fusekiEndpoints.keySet();
+        for (String name : names) {
+            fusekiEndpoints.get(name).close();
+            fusekiEndpoints.remove(name);
+        }
+        assertEquals(fusekiEndpoints.size(), 0); //no concurrency!
     }
 
     private static final @Nonnull List<Class<? extends DecompositionStrategy>>

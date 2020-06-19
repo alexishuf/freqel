@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
+import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -22,7 +23,6 @@ import org.apache.jena.vocabulary.XSD;
 import org.openjdk.jmh.annotations.*;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -81,8 +81,7 @@ public class ModelConsumptionBenchmark {
         ResultSet rs = exec.execSelect();
         IndexedSet<String> vars = IndexedSet.fromDistinct(rs.getResultVars());
         ArraySolution.ValueFactory factory = ArraySolution.forVars(vars);
-        return new Results() {
-            private @Nullable String name;
+        return new AbstractResults(vars) {
 
             @Override
             public int getReadyCount() {
@@ -110,22 +109,6 @@ public class ModelConsumptionBenchmark {
                     values.set(vars.indexOf(var.getName()), fromJena(binding.get(var)));
                 }
                 return factory.fromValues(values);
-            }
-
-            @Override
-            public @Nonnull Set<String> getVarNames() {
-                return vars;
-            }
-
-            @Nullable
-            @Override
-            public String getNodeName() {
-                return name;
-            }
-
-            @Override
-            public void setNodeName(@Nonnull String name) {
-                this.name = name;
             }
 
             @Override

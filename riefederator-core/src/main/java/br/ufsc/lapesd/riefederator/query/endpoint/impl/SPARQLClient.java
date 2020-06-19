@@ -16,10 +16,8 @@ import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
-import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -273,7 +271,10 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
         Projection projection = ModifierUtils.getFirst(Projection.class, query.getModifiers());
         Set<String> vars = projection == null ? ss.getPublicVarNames() : projection.getVarNames();
-        return execute(string, TSV_ACCEPT, vars, TSVResults::new);
+        BaseResults results = execute(string, TSV_ACCEPT, vars, TSVResults::new);
+        if (query.getModifiers().stream().anyMatch(Distinct.class::isInstance))
+            results.distinct = true;
+        return results;
     }
 
     @Override
@@ -342,9 +343,9 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         return execute(sparql, TSV_ACCEPT, vars, TSVResults::new);
     }
 
-    protected @Nonnull Results execute(@Nonnull String sparql, @Nonnull String accept,
-                                       @Nonnull Set<String> resultVars,
-                                       @Nonnull ResultsFactory resultsFactory) {
+    protected @Nonnull BaseResults execute(@Nonnull String sparql, @Nonnull String accept,
+                                           @Nonnull Set<String> resultVars,
+                                           @Nonnull ResultsFactory resultsFactory) {
         Stopwatch sw = Stopwatch.createStarted();
         CloseableHttpClient client = createClient();
         HttpClientContext context = new HttpClientContext();
@@ -497,20 +498,18 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                                     @Nonnull CloseableHttpResponse response) throws IOException;
     }
 
-    protected abstract class BaseResults implements Results {
+    protected abstract class BaseResults extends AbstractResults {
         protected final @Nonnull Queue<Solution> queue = new ArrayDeque<>();
-        protected final @Nonnull Set<String> varNames;
-        protected @Nullable String name;
         protected final @Nonnull CloseableHttpClient httpClient;
         protected final @Nonnull HttpClientContext httpContext;
         protected final @Nonnull CloseableHttpResponse httpResponse;
-        protected boolean closed = false, exhausted = false;
+        protected boolean closed = false, exhausted = false, distinct = false;
         protected @Nullable Reader reader;
 
         public BaseResults(@Nonnull Set<String> varNames, @Nonnull CloseableHttpClient httpClient,
                            @Nonnull HttpClientContext httpContext,
                            @Nonnull CloseableHttpResponse httpResponse) {
-            this.varNames = varNames;
+            super(varNames);
             this.httpClient = httpClient;
             this.httpContext = httpContext;
             this.httpResponse = httpResponse;
@@ -538,6 +537,11 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         }
 
         @Override
+        public boolean isDistinct() {
+            return distinct;
+        }
+
+        @Override
         public boolean hasNext() {
             if (!queue.isEmpty()) return true;
             if (!exhausted)
@@ -551,21 +555,6 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                 throw new NoSuchElementException();
             assert !queue.isEmpty();
             return queue.remove();
-        }
-
-        @Override
-        public @Nonnull Set<String> getVarNames() {
-            return varNames;
-        }
-
-        @Override
-        public @Nullable String getNodeName() {
-            return name;
-        }
-
-        @Override
-        public void setNodeName(@Nonnull String name) {
-            this.name = name;
         }
 
         @Override @OverridingMethodsMustInvokeSuper

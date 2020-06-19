@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class ResultsList extends ArrayList<Results> implements AutoCloseable {
+public class ResultsList<T extends Results> extends ArrayList<T> implements AutoCloseable {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(ResultsList.class);
 
     public ResultsList(int initialCapacity) {
@@ -17,19 +17,19 @@ public class ResultsList extends ArrayList<Results> implements AutoCloseable {
 
     public ResultsList() { }
 
-    public ResultsList(@Nonnull Collection<? extends Results> c) {
+    public ResultsList(@Nonnull Collection<T> c) {
         super(c);
     }
 
-    public static @Nonnull ResultsList of(@Nonnull Collection<? extends Results> c) {
+    public static @Nonnull <U extends Results> ResultsList<U> of(@Nonnull Collection<U> c) {
         if (c instanceof ResultsList)
-            return (ResultsList)c;
+            return (ResultsList<U>)c;
         else
-            return new ResultsList(c);
+            return new ResultsList<>(c);
     }
 
-    public @Nonnull ResultsList steal() {
-        ResultsList copy = new ResultsList(this);
+    public @Nonnull ResultsList<T> steal() {
+        ResultsList<T> copy = new ResultsList<>(this);
         clear();
         return copy;
     }

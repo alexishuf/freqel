@@ -205,7 +205,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             try {
                 ResultSet rs = exec.execSelect();
                 LogUtils.logQuery(logger, query, this, sw);
-                return new JenaBindingResults(rs, exec, vars);
+                return new JenaBindingResults(rs, exec, vars, query.isDistinct());
             } catch (Throwable t) {
                 if (exec != null)
                     exec.close();

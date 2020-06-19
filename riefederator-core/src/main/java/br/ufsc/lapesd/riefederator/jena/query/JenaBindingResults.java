@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.jena.query;
 
+import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -11,20 +12,24 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Set;
 
-public class JenaBindingResults implements Results {
+public class JenaBindingResults extends AbstractResults implements Results {
     private final @Nullable QueryExecution execution;
-    private final @Nonnull Set<String> varNames;
     private final @Nonnull ResultSet resultSet;
     private final JenaBindingSolution.Factory solutionFactory;
-    private @Nullable String name;
+    private final boolean distinct;
 
     public JenaBindingResults(@Nonnull ResultSet resultSet, @Nullable QueryExecution execution,
-                              @Nonnull Set<String> varNames) {
+                          @Nonnull Set<String> varNames) {
+        this(resultSet, execution, varNames, false);
+    }
+
+    public JenaBindingResults(@Nonnull ResultSet resultSet, @Nullable QueryExecution execution,
+                              @Nonnull Set<String> varNames, boolean distinct) {
+        super(varNames);
         this.resultSet = resultSet;
         this.execution = execution;
-        this.varNames = varNames;
-        solutionFactory = JenaBindingSolution.forVars(varNames);
-
+        this.solutionFactory = JenaBindingSolution.forVars(varNames);
+        this.distinct = distinct;
     }
 
     public JenaBindingResults(@Nonnull ResultSet resultSet, @Nullable QueryExecution execution) {
@@ -42,6 +47,11 @@ public class JenaBindingResults implements Results {
     }
 
     @Override
+    public boolean isDistinct() {
+        return distinct;
+    }
+
+    @Override
     public boolean hasNext() {
         return resultSet.hasNext();
     }
@@ -49,21 +59,6 @@ public class JenaBindingResults implements Results {
     @Override
     public @Nonnull Solution next() {
         return solutionFactory.apply(resultSet.nextBinding());
-    }
-
-    @Override
-    public @Nonnull Set<String> getVarNames() {
-        return varNames;
-    }
-
-    @Override
-    public String getNodeName() {
-        return name;
-    }
-
-    @Override
-    public void setNodeName(@Nonnull String name) {
-        this.name = name;
     }
 
     @Override

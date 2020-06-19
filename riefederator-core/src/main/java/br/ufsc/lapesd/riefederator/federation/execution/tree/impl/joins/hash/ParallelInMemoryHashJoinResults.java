@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
+import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -9,9 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.*;
@@ -19,12 +18,10 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toSet;
 
-public class ParallelInMemoryHashJoinResults implements Results {
+public class ParallelInMemoryHashJoinResults extends AbstractResults implements Results {
     private static final @Nonnull Logger logger =
             LoggerFactory.getLogger(ParallelInMemoryHashJoinResults.class);
 
-    private @Nullable String nodeName;
-    private final  @Nonnull Set<String> resultVars;
     private final @Nonnull Side[] sides;
     private boolean stop = false;
     private final @Nonnull ExecutorService executorService;
@@ -57,7 +54,7 @@ public class ParallelInMemoryHashJoinResults implements Results {
                             table.add(next);
                         for (Solution sol : sides[otherIdx].table.getAll(next)) {
                             MapSolution.Builder builder = MapSolution.builder();
-                            for (String name : resultVars)
+                            for (String name : varNames)
                                 builder.put(name, next.get(name, sol.get(name)));
                             queue.add(builder.build());
                             ParallelInMemoryHashJoinResults.this.notify();
@@ -106,13 +103,12 @@ public class ParallelInMemoryHashJoinResults implements Results {
     public ParallelInMemoryHashJoinResults(@Nonnull Results left, @Nonnull Results right,
                                            @Nonnull Collection<String> joinVars,
                                            @Nonnull Collection<String> resultVars) {
+        super(resultVars);
         Set<String> allVars = Stream.concat(left.getVarNames().stream(),
                                             right.getVarNames().stream()).collect(toSet());
         Preconditions.checkArgument(allVars.containsAll(joinVars));
         Preconditions.checkArgument(allVars.containsAll(resultVars));
 
-        this.resultVars = resultVars instanceof Set ? (Set<String>)resultVars
-                                                    : new HashSet<>(resultVars);
         this.executorService = new ThreadPoolExecutor(0, 2,
                 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(8));
         sides = new Side[] {new Side(joinVars, left, 0), new Side(joinVars, right, 1)};
@@ -121,17 +117,12 @@ public class ParallelInMemoryHashJoinResults implements Results {
     }
 
     @Override
-    public @Nullable String getNodeName() {
-        return nodeName;
-    }
-
-    @Override
-    public void setNodeName(@Nonnull String name) {
-        nodeName = name;
-    }
-
-    @Override
     public boolean isAsync() {
+        return true;
+    }
+
+    @Override
+    public boolean isDistinct() {
         return true;
     }
 
@@ -172,11 +163,6 @@ public class ParallelInMemoryHashJoinResults implements Results {
             if (interrupted)
                 Thread.currentThread().interrupt();
         }
-    }
-
-    @Override
-    public @Nonnull Set<String> getVarNames() {
-        return resultVars;
     }
 
     @Override

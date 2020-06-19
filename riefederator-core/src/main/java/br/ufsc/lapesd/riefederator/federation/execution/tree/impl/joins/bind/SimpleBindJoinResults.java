@@ -5,14 +5,10 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.Cru
 import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
-import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
-import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
-import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.*;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.FlatMapResults;
@@ -34,18 +30,16 @@ import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-public class SimpleBindJoinResults implements Results {
+public class SimpleBindJoinResults extends AbstractResults implements Results {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(SimpleBindJoinResults.class);
     public static final int NOTIFY_DELTA_MS = 5000;
     public static final int DEFAULT_VALUES_ROWS = 40;
 
-    private @Nullable String nodeName = null;
     private final @Nonnull PlanExecutor planExecutor;
     private final @Nonnull Results smaller;
     private final @Nonnull PlanNode rightTree;
     private Results currentResults = null;
     private final @Nonnull Collection<String> joinVars;
-    private final @Nonnull Set<String> resultVars;
     private Solution next = null;
     private final int valuesRows;
 
@@ -90,13 +84,12 @@ public class SimpleBindJoinResults implements Results {
                                  @Nonnull PlanNode rightTree, @Nonnull Collection<String> joinVars,
                                  @Nonnull Collection<String> resultVars,
                                  @Nullable ResultsExecutor resultsExecutor, int valuesRows) {
+        super(resultVars);
         Preconditions.checkArgument(rightTree.getResultVars().containsAll(joinVars),
                 "There are joinVars missing on rightTree");
         this.planExecutor = planExecutor;
         this.rightTree = rightTree;
         this.joinVars = joinVars;
-        this.resultVars = resultVars instanceof Set ? (Set<String>)resultVars
-                                                    : new HashSet<>(resultVars);
         this.valuesRows = valuesRows;
         this.solutionFactory = ArraySolution.forVars(resultVars);
         this.bindSolutionFactory = ArraySolution.forVars(joinVars);
@@ -108,16 +101,6 @@ public class SimpleBindJoinResults implements Results {
             resultsSupplier = new NaiveBind();
         }
         this.smaller = smaller;
-    }
-
-    @Override
-    public @Nullable String getNodeName() {
-        return nodeName;
-    }
-
-    @Override
-    public void setNodeName(@Nonnull String name) {
-        nodeName = name;
     }
 
     @Override
@@ -157,7 +140,7 @@ public class SimpleBindJoinResults implements Results {
             PlanNode bound = bind(rightTree, leftSolution);
             callBindMs += sw.elapsed(MICROSECONDS)/1000.0;
             Results rightResults = planExecutor.executeNode(bound);
-            return new TransformedResults(rightResults, resultVars, this::reassemble);
+            return new TransformedResults(rightResults, varNames, this::reassemble);
         }
 
         private @Nonnull PlanNode bind(@Nonnull PlanNode node, @Nonnull Solution values) {
@@ -166,11 +149,7 @@ public class SimpleBindJoinResults implements Results {
 
         private @Nonnull Solution reassemble(@Nonnull Solution right) {
             assert leftSolution != null;
-            return solutionFactory.fromFunction(n -> {
-                Term term = leftSolution.get(n);
-                if (term == null) term = right.get(n);
-                return term;
-            });
+            return solutionFactory.fromSolutions(leftSolution, right);
         }
     }
 
@@ -206,7 +185,7 @@ public class SimpleBindJoinResults implements Results {
             PlanNode rewritten = bind(rightTree, modifier);
             callBindMs += sw.elapsed(MICROSECONDS)/1000.0;
             Results rightResults = planExecutor.executeNode(rewritten);
-            return new FlatMapResults(rightResults, resultVars, this::expand);
+            return new FlatMapResults(rightResults, varNames, this::expand);
         }
 
         private void addLeftSolution(@Nonnull Solution solution) {
@@ -216,15 +195,9 @@ public class SimpleBindJoinResults implements Results {
 
         private @Nonnull Results expand(@Nonnull Solution right) {
             List<Solution> list = new ArrayList<>(valuesRows*2);
-            for (Solution left : table.getAll(right)) {
-                list.add(solutionFactory.fromFunction(n -> {
-                    Term term = left.get(n);
-                    if (term == null)
-                        term  = right.get(n);
-                    return term;
-                }));
-            }
-            return new CollectionResults(list, resultVars);
+            for (Solution left : table.getAll(right))
+                list.add(solutionFactory.fromSolutions(left, right));
+            return new CollectionResults(list, varNames);
         }
 
         private @Nonnull PlanNode bind(@Nonnull PlanNode node, @Nonnull ValuesModifier modifier) {
@@ -279,11 +252,6 @@ public class SimpleBindJoinResults implements Results {
         Solution solution = next;
         next = null;
         return solution;
-    }
-
-    @Override
-    public @Nonnull Set<String> getVarNames() {
-        return resultVars;
     }
 
     @Override

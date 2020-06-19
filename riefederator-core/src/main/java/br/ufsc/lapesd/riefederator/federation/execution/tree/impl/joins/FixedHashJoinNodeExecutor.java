@@ -31,7 +31,7 @@ public class FixedHashJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor {
     @Override
     public @Nonnull Results execute(@Nonnull JoinNode node) {
         PlanExecutor exec = getPlanExecutor();
-        try (ResultsList list = new ResultsList()) {
+        try (ResultsList<Results> list = new ResultsList<>()) {
             for (PlanNode child : node.getChildren()) list.add(exec.executeNode(child));
 
             Results results = factory.createResults(list.get(0), list.get(1),

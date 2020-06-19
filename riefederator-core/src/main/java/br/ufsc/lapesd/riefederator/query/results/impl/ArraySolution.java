@@ -1,15 +1,14 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import com.google.common.base.Preconditions;
+import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -86,17 +85,55 @@ public class ArraySolution extends AbstractSolution {
             this.vars = vars;
         }
 
+        @CheckReturnValue
+        public @Nonnull IndexedSet<String> getVarNames() {
+            return vars;
+        }
+
+        @CheckReturnValue
         public @Nonnull ArraySolution fromValues(@Nonnull Collection<Term> collection) {
             Preconditions.checkArgument(collection.size() == vars.size());
             Term[] values = collection.toArray(new Term[0]);
             return new ArraySolution(vars, values);
         }
 
+        @CheckReturnValue
+        public @Nonnull ArraySolution fromValues(@Nonnull Term... values) {
+            return fromValues(Arrays.asList(values));
+        }
+
+        @CheckReturnValue
         public @Nonnull ArraySolution fromFunction(@Nonnull Function<String, Term> function) {
             int size = vars.size();
             Term[] values = new Term[size];
             for (int i = 0; i < size; i++)
                 values[i] = function.apply(vars.get(i));
+            return new ArraySolution(vars, values);
+        }
+
+        @CheckReturnValue
+        public @Nonnull ArraySolution fromSolution(@Nonnull Solution solution) {
+            int size = vars.size();
+            Term[] values = new Term[size];
+            for (int i = 0; i < size; i++)
+                values[i] = solution.get(vars.get(i));
+            return new ArraySolution(vars, values);
+        }
+
+        @CheckReturnValue
+        public @Nonnull ArraySolution fromSolutions(@Nonnull Solution... solutions) {
+            int size = vars.size();
+            Term[] values = new Term[size];
+            for (int i = 0; i < size; i++) {
+                String var = vars.get(i);
+                for (Solution solution : solutions) {
+                    Term term = solution.get(var);
+                    if (term != null) {
+                        values[i] = term;
+                        break;
+                    }
+                }
+            }
             return new ArraySolution(vars, values);
         }
     }

@@ -1,11 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
-import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
-import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.*;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,8 +78,9 @@ public class BufferedResultsExecutor implements ResultsExecutor {
         // no need to wait per the interface contract
     }
 
-    @CanIgnoreReturnValue
-    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+    @Override
+    public boolean awaitTermination(long timeout,
+                                    @Nonnull TimeUnit unit) throws InterruptedException {
         return executorService.awaitTermination(timeout, unit);
     }
 
@@ -110,9 +107,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             Thread.currentThread().interrupt(); //restore flag
     }
 
-    protected static class ConsumingResults implements Results {
-        private @Nullable String nodeName;
-        private @Nonnull final Set<String> varNames;
+    protected static class ConsumingResults extends AbstractResults {
         private @Nonnull final List<FeedTask> tasks;
         private @Nonnull final BitSet activeTasks;
         private boolean exhausted = false;
@@ -122,26 +117,16 @@ public class BufferedResultsExecutor implements ResultsExecutor {
         public ConsumingResults(@Nonnull List<FeedTask> tasks,
                                 @Nonnull BlockingQueue<FeedTask.Message> queue,
                                 @Nonnull Set<String> varNames) {
+            super(varNames);
             this.tasks = tasks;
             this.activeTasks = new BitSet(tasks.size());
             this.activeTasks.flip(0, tasks.size());
             this.queue = queue;
-            this.varNames = varNames;
         }
 
         @Override
         public boolean isAsync() {
             return true;
-        }
-
-        @Override
-        public @Nullable String getNodeName() {
-            return nodeName;
-        }
-
-        @Override
-        public void setNodeName(@Nullable String nodeName) {
-            this.nodeName = nodeName;
         }
 
         @Override
@@ -192,11 +177,6 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             assert next != null;
             this.next = null;
             return next;
-        }
-
-        @Override
-        public @Nonnull Set<String> getVarNames() {
-            return varNames;
         }
 
         @Override

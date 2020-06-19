@@ -36,6 +36,11 @@ public class MapProjectingResults implements Results {
     }
 
     @Override
+    public boolean isDistinct() {
+        return false;
+    }
+
+    @Override
     public @Nullable String getNodeName() {
         return nodeName;
     }

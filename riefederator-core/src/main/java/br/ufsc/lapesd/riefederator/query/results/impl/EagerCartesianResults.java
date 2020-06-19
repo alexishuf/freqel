@@ -1,9 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
-import br.ufsc.lapesd.riefederator.query.results.ResultsList;
-import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.*;
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,24 +9,22 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
-public class CartesianResults implements Results {
-    private static final @Nonnull Logger logger = LoggerFactory.getLogger(CartesianResults.class);
+public class EagerCartesianResults extends AbstractResults implements Results {
+    private static final @Nonnull Logger logger = LoggerFactory.getLogger(EagerCartesianResults.class);
 
-    private @Nullable String nodeName;
     private @Nonnull Results largest;
     private @Nullable List<List<Solution>> fetched;
-    private final @Nonnull Set<String> varNames;
     private int productSize = -1;
-    private @Nonnull final ResultsList toFetch;
+    private @Nonnull final ResultsList<Results> toFetch;
     private int readyProduct;
     private Solution current;
     private Iterator<List<Solution>> cartesianIt;
 
-    public CartesianResults(@Nonnull Results largest,
-                            @Nonnull List<Results> toFetch,
-                            @Nonnull Set<String> varNames) {
+    public EagerCartesianResults(@Nonnull Results largest,
+                                 @Nonnull List<Results> toFetch,
+                                 @Nonnull Set<String> varNames) {
+        super(varNames);
         this.largest = largest;
-        this.varNames = varNames;
         this.toFetch = ResultsList.of(toFetch);
         this.current = null;
         this.readyProduct = 0;
@@ -39,16 +34,6 @@ public class CartesianResults implements Results {
             @Override
             public List<Solution> next() { throw new NoSuchElementException(); }
         };
-    }
-
-    @Override
-    public @Nullable String getNodeName() {
-        return nodeName;
-    }
-
-    @Override
-    public void setNodeName(@Nullable String nodeName) {
-        this.nodeName = nodeName;
     }
 
     @Override
@@ -103,11 +88,6 @@ public class CartesianResults implements Results {
             fetched.add(list);
         }
         productSize = fetched.stream().map(List::size).reduce((l, r) -> l * r).orElse(0);
-    }
-
-    @Override
-    public @Nonnull Set<String> getVarNames() {
-        return varNames;
     }
 
     @Override

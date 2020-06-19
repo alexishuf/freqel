@@ -7,8 +7,8 @@ import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
-import br.ufsc.lapesd.riefederator.query.results.impl.CartesianResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.EagerCartesianResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 import com.google.common.base.Preconditions;
 
@@ -19,12 +19,12 @@ import java.util.Comparator;
 
 import static java.util.Collections.emptyList;
 
-public class SimpleCartesianNodeExecutor extends SimpleNodeExecutor implements CartesianNodeExecutor {
+public class EagerCartesianNodeExecutor extends SimpleNodeExecutor implements CartesianNodeExecutor {
     private final @Nonnull CardinalityComparator comparator;
 
     @Inject
-    public SimpleCartesianNodeExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider,
-                                       @Nonnull CardinalityComparator comparator) {
+    public EagerCartesianNodeExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider,
+                                      @Nonnull CardinalityComparator comparator) {
         super(planExecutorProvider);
         this.comparator = comparator;
     }
@@ -43,12 +43,12 @@ public class SimpleCartesianNodeExecutor extends SimpleNodeExecutor implements C
         PlanNode max = node.getChildren().stream()
                 .max(Comparator.comparing(PlanNode::getCardinality, comparator)).orElse(null);
         assert max != null;
-        ResultsList toFetch = new ResultsList();
+        ResultsList<Results> toFetch = new ResultsList<>();
         for (PlanNode child : node.getChildren()) {
             if (child != max)
                 toFetch.add(executor.executeNode(child));
         }
-        Results results = new CartesianResults(executor.executeNode(max), toFetch,
+        Results results = new EagerCartesianResults(executor.executeNode(max), toFetch,
                                                node.getResultVars());
         return SPARQLFilterResults.applyIf(results, node);
     }

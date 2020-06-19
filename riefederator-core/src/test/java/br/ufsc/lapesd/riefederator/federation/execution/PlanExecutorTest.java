@@ -4,7 +4,7 @@ import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleCartesianNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleEmptyNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleQueryNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultHashJoinNodeExecutor;
@@ -91,7 +91,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
             bind(ResultsExecutor.class).to(SequentialResultsExecutor.class);
             bind(QueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
             bind(MultiQueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
-            bind(CartesianNodeExecutor.class).to(SimpleCartesianNodeExecutor.class);
+            bind(CartesianNodeExecutor.class).to(EagerCartesianNodeExecutor.class);
             bind(EmptyNodeExecutor.class).toInstance(SimpleEmptyNodeExecutor.INSTANCE);
             bind(PlanExecutor.class).to(InjectedExecutor.class);
         }

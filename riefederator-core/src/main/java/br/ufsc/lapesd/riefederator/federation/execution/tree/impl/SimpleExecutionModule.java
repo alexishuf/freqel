@@ -25,10 +25,10 @@ public class SimpleExecutionModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        bind(ResultsExecutor.class).toInstance(new BufferedResultsExecutor());
+        configureResultsExecutor();
         bind(QueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
         bind(MultiQueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
-        bind(CartesianNodeExecutor.class).to(SimpleCartesianNodeExecutor.class);
+        bind(CartesianNodeExecutor.class).to(LazyCartesianNodeExecutor.class);
         bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
         if (allowHashJoins)
             bind(JoinNodeExecutor.class).to(DefaultJoinNodeExecutor.class);
@@ -36,5 +36,9 @@ public class SimpleExecutionModule extends AbstractModule {
             bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
         bind(EmptyNodeExecutor.class).toInstance(SimpleEmptyNodeExecutor.INSTANCE);
         bind(PlanExecutor.class).to(InjectedExecutor.class);
+    }
+
+    protected void configureResultsExecutor() {
+        bind(ResultsExecutor.class).toInstance(new BufferedResultsExecutor());
     }
 }

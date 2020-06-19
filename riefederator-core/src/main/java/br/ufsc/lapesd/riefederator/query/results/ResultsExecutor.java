@@ -1,7 +1,11 @@
 package br.ufsc.lapesd.riefederator.query.results;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+
 import javax.annotation.Nonnull;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 public interface ResultsExecutor extends AutoCloseable {
     /**
@@ -29,6 +33,10 @@ public interface ResultsExecutor extends AutoCloseable {
      */
     @Nonnull Results async(@Nonnull Collection<? extends Results> collection);
 
+    default @Nonnull Results async(@Nonnull Results results) {
+        return async(Collections.singleton(results));
+    }
+
     /**
      * Closes the async executor.
      *
@@ -39,4 +47,16 @@ public interface ResultsExecutor extends AutoCloseable {
      */
     @Override
     void close();
+
+    /**
+     * Blocks until any background thread or task that started shutdown at close finishes.
+     *
+     * If close() has not yet been called, this should block nevertheless.
+     *
+     * @param timeout how much time to wait at maximum
+     * @param unit unit of timeout
+     * @return true iff threads and background tasks are finished.
+     */
+    @CanIgnoreReturnValue
+    boolean awaitTermination(long timeout, @Nonnull TimeUnit unit) throws InterruptedException;
 }

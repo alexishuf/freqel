@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -19,13 +20,11 @@ import java.util.Set;
 
 import static java.util.stream.Collectors.toSet;
 
-public class EndpointIteratorResults implements Results {
+public class EndpointIteratorResults extends AbstractResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(EndpointIteratorResults.class);
 
     private final @Nonnull Iterator<? extends TPEndpoint> epIterator;
     private final @Nonnull CQuery query;
-    private final @Nonnull Set<String> varNames;
-    private @Nullable String nodeName;
     private final @Nullable ArraySolution.ValueFactory projectingFactory;
     private @Nullable Results current = null;
     private TPEndpoint currentEp;
@@ -37,6 +36,7 @@ public class EndpointIteratorResults implements Results {
     public EndpointIteratorResults(@Nonnull Iterator<? extends TPEndpoint> epIterator,
                                    @Nonnull CQuery query,
                                    @Nonnull Set<String> varNames, boolean projecting) {
+        super(varNames);
         if (getClass().desiredAssertionStatus()) {
             Set<String> all = computeVarNames(query);
             Preconditions.checkArgument(all.containsAll(varNames),
@@ -48,23 +48,12 @@ public class EndpointIteratorResults implements Results {
         }
         this.epIterator = epIterator;
         this.query = query;
-        this.varNames = varNames;
         projectingFactory = projecting ? ArraySolution.forVars(varNames) : null;
     }
 
     public EndpointIteratorResults(@Nonnull Iterator<? extends TPEndpoint> epIterator,
                                    @Nonnull CQuery query) {
         this(epIterator, query, computeVarNames(query), false);
-    }
-
-    @Override
-    public @Nullable String getNodeName() {
-        return nodeName;
-    }
-
-    @Override
-    public void setNodeName(@Nullable String nodeName) {
-        this.nodeName = nodeName;
     }
 
     @Override
@@ -112,13 +101,8 @@ public class EndpointIteratorResults implements Results {
         assert current != null;
         Solution next = current.next();
         if (projectingFactory != null)
-            return projectingFactory.fromFunction(next::get);
+            return projectingFactory.fromSolution(next);
         return next;
-    }
-
-    @Override
-    public @Nonnull Set<String> getVarNames() {
-        return varNames;
     }
 
     @Override

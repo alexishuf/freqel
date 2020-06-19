@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
+import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -13,35 +14,18 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Function;
 
-public class FlatMapResults implements Results {
+public class FlatMapResults extends AbstractResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(FlatMapResults.class);
 
     private final @Nonnull Results in;
     private final @Nonnull Function<Solution, Results> op;
-    private final @Nonnull Set<String> varNames;
-    private @Nullable String nodeName;
     private @Nullable Results currentResults;
 
     public FlatMapResults(@Nonnull Results in, @Nonnull Set<String> varNames,
                           @Nonnull Function<Solution, Results> op) {
+        super(varNames);
         this.in = in;
         this.op = op;
-        this.varNames = varNames;
-    }
-
-    @Override
-    public @Nullable String getNodeName() {
-        return nodeName == null ? in.getNodeName() : nodeName;
-    }
-
-    @Override
-    public void setNodeName(@Nullable String nodeName) {
-        this.nodeName = nodeName;
-    }
-
-    @Override
-    public @Nonnull Set<String> getVarNames() {
-        return varNames;
     }
 
     @Override

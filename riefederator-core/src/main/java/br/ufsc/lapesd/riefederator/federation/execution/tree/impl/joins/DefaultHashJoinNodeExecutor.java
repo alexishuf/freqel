@@ -36,7 +36,7 @@ public class DefaultHashJoinNodeExecutor extends AbstractSimpleJoinNodeExecutor 
     public @Nonnull Results execute(@Nonnull JoinNode node) {
         PlanExecutor exec = getPlanExecutor();
         assert node.getChildren().size() == 2;
-        try (ResultsList list = new ResultsList()) {
+        try (ResultsList<Results> list = new ResultsList<>()) {
             for (PlanNode child : node.getChildren()) list.add(exec.executeNode(child));
 
             Results results;

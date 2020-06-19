@@ -21,6 +21,11 @@ public interface Results extends Iterator<Solution>, AutoCloseable {
      */
     boolean isAsync();
 
+    /**
+     * Indicates whether this object never returns duplicate {@link Solution}s
+     */
+    boolean isDistinct();
+
     @Override
     @Nonnull Solution next();
 

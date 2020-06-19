@@ -3,24 +3,27 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
-import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.HashSet;
 import java.util.NoSuchElementException;
-import java.util.Set;
 
-public class HashDistinctResults implements Results {
+public class HashDistinctResults extends DelegatingResults implements BufferedResults {
+    private static final Logger logger = LoggerFactory.getLogger(HashDistinctResults.class);
+
     private final @Nonnull HashSet<Solution> set = new HashSet<>();
-    private final @Nonnull Results input;
-    private @Nullable String nodeName;
+    private final @Nonnull Results original;
     private Solution next = null;
+    private boolean wasReset = false;
+
+    public static final @Nonnull Factory FACTORY = HashDistinctResults::new;
 
     public HashDistinctResults(@Nonnull Results input) {
-        this.input = input;
+        super(input.getVarNames(), input);
+        this.original = input;
     }
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
@@ -29,31 +32,35 @@ public class HashDistinctResults implements Results {
         return in;
     }
 
-    @Override
-    public @Nullable String getNodeName() {
-        return nodeName;
+    public static @Nonnull Results applyIfNotDistinct(@Nonnull Results in) {
+        return in.isDistinct() ? in : new HashDistinctResults(in);
     }
 
     @Override
-    public void setNodeName(@Nullable String nodeName) {
-        this.nodeName = nodeName;
+    public boolean isOrdered() {
+        return false;
     }
 
     @Override
-    public boolean isAsync() {
-        return input.isAsync();
+    public void reset(boolean close) throws ResultsCloseException {
+        if (!wasReset && original.hasNext())
+            logger.warn("Input iterator {} still has results, reset() will discard them", original);
+        in = new CollectionResults(set, original.getVarNames());
+        if (close && !wasReset)
+            original.close();
+        wasReset = true;
     }
 
     @Override
     public int getReadyCount() {
-        return input.getReadyCount() + (next != null ? 1 : 0);
+        return in.getReadyCount() + (next != null ? 1 : 0);
     }
 
     @Override
     public boolean hasNext() {
-        while (this.next == null && input.hasNext()) {
-            Solution next = input.next();
-            if (set.add(next))
+        while (this.next == null && in.hasNext()) {
+            Solution next = in.next();
+            if (wasReset || set.add(next))
                 this.next = next;
         }
         return this.next != null;
@@ -69,12 +76,8 @@ public class HashDistinctResults implements Results {
     }
 
     @Override
-    public @Nonnull Set<String> getVarNames() {
-        return input.getVarNames();
-    }
-
-    @Override
     public void close() throws ResultsCloseException {
-        input.close();
+        super.close();
+        original.close();
     }
 }
