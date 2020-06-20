@@ -117,6 +117,8 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     public SPARQLClient(@Nonnull URI uri) {
         this.uri = uri.toString();
         this.host = URIUtils.extractHost(uri);
+        connMgr.setDefaultMaxPerRoute(128);
+        connMgr.setMaxTotal(128);
     }
 
     /**
@@ -169,6 +171,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     @CanIgnoreReturnValue
     public @Nonnull SPARQLClient setMaxConnections(int maxConnections) {
         connMgr.setMaxTotal(maxConnections);
+        connMgr.setDefaultMaxPerRoute(maxConnections);
         return this;
     }
 
