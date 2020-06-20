@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -62,7 +63,7 @@ public class QueryEvaluation {
     @Option(name = "--query-results-dir", usage = "For each query save the results in SPARQL " +
             "CSV and TSV formats. The query name will be used as the file basename",
             forbids = {"--use-path"})
-    private File queryResultsDir;
+    private @Nullable File queryResultsDir;
 
     @Option(name = "--child-jvm", usage = "Run each round in a dedicated JVM. " +
             "For each JVM all preheat runs will execute")
@@ -265,10 +266,12 @@ public class QueryEvaluation {
     }
 
     private void setupResultsDir() throws IOException {
-        if (!queryResultsDir.exists() && !queryResultsDir.mkdirs())
-            throw new IOException("Failed to mkdir "+queryResultsDir.getAbsolutePath());
-        if (queryResultsDir.exists() && !queryResultsDir.isDirectory())
-            throw new IllegalArgumentException(queryResultsDir+" is not a directory!");
+        if (queryResultsDir != null) {
+            if (!queryResultsDir.exists() && !queryResultsDir.mkdirs())
+                throw new IOException("Failed to mkdir " + queryResultsDir.getAbsolutePath());
+            if (queryResultsDir.exists() && !queryResultsDir.isDirectory())
+                throw new IllegalArgumentException(queryResultsDir + " is not a directory!");
+        }
     }
 
     private @Nonnull CSVPrinter openCSVPrinter(@Nonnull File file,
