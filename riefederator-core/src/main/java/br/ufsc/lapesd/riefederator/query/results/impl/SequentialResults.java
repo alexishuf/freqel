@@ -7,7 +7,7 @@ import java.util.Collection;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-class SequentialResults extends AbstractResults implements Results {
+public class SequentialResults extends AbstractResults implements Results {
     private final @Nonnull ResultsList<? extends Results> results;
     private int idx = 0;
 

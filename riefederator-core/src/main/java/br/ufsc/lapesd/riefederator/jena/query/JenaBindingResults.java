@@ -7,9 +7,11 @@ import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.ArraySet;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.ResultSet;
+import org.apache.jena.sparql.engine.binding.Binding;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 public class JenaBindingResults extends AbstractResults implements Results {
@@ -17,6 +19,7 @@ public class JenaBindingResults extends AbstractResults implements Results {
     private final @Nonnull ResultSet resultSet;
     private final JenaBindingSolution.Factory solutionFactory;
     private final boolean distinct;
+    private @Nullable Binding binding;
 
     public JenaBindingResults(@Nonnull ResultSet resultSet, @Nullable QueryExecution execution,
                           @Nonnull Set<String> varNames) {
@@ -38,7 +41,7 @@ public class JenaBindingResults extends AbstractResults implements Results {
 
     @Override
     public int getReadyCount() {
-        return hasNext() ? 1 : 0;
+        return binding != null ? 1 : 0;
     }
 
     @Override
@@ -53,12 +56,20 @@ public class JenaBindingResults extends AbstractResults implements Results {
 
     @Override
     public boolean hasNext() {
-        return resultSet.hasNext();
+        if (binding != null)
+            return true;
+        if (resultSet.hasNext())
+            binding = resultSet.nextBinding();
+        return binding != null;
     }
 
     @Override
     public @Nonnull Solution next() {
-        return solutionFactory.apply(resultSet.nextBinding());
+        if (!hasNext())
+            throw new NoSuchElementException();
+        JenaBindingSolution wrapped = solutionFactory.apply(binding);
+        binding = null;
+        return wrapped;
     }
 
     @Override

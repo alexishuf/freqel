@@ -6,10 +6,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.IteratorResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
-import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -20,7 +17,6 @@ import java.util.function.Function;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
 
 @Test(groups = {"fast"})
 public class ResultsTest implements TestContext {
@@ -38,13 +34,21 @@ public class ResultsTest implements TestContext {
         SPARQLFilter tautology = SPARQLFilter.build("regex(str(?x), \"^http.*\")");
 
         factories = new ArrayList<>();
-        factories.add(new NamedFunction<>("CollectionSolutionIterator",
+        factories.add(new NamedFunction<>("CollectionResults",
                 coll -> new CollectionResults(coll, xSet)));
         factories.add(new NamedFunction<>("IteratorResults",
                 coll -> new IteratorResults(coll.iterator(), xSet)));
         factories.add(new NamedFunction<>("Tautology SPARQLFilterResults",
                 coll -> new SPARQLFilterResults(new CollectionResults(coll, xSet),
                                                 singleton(tautology))));
+        factories.add(new NamedFunction<>("SequentialResults",
+                coll -> new SequentialResults(singleton(new CollectionResults(coll, xSet)), xSet)));
+        factories.add(new NamedFunction<>("identity TransformedResults",
+                coll -> new TransformedResults(new CollectionResults(coll, xSet),
+                                               xSet, Function.identity())));
+        factories.add(new NamedFunction<>("singleton FlatMapResults",
+                coll -> new FlatMapResults(new CollectionResults(coll, xSet), xSet,
+                                           s -> new CollectionResults(singleton(s), xSet))));
     }
 
     @DataProvider
@@ -93,10 +97,8 @@ public class ResultsTest implements TestContext {
     @Test(dataProvider = "factoriesData")
     public void testExhaust(Function<Collection<Solution>, Results> fac) {
         try (Results it = fac.apply(expectedTWo)) {
-            while (it.hasNext()) {
-                assertTrue(it.getReadyCount() > 0);
+            while (it.hasNext())
                 it.next();
-            }
             assertEquals(it.getReadyCount(), 0);
         }
     }
