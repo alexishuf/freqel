@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.spec.source;
 
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Sets;
@@ -36,7 +36,7 @@ public class SPARQLServiceLoader implements SourceLoader {
             throw new IllegalArgumentException(this+" does not support loader="+loader);
         String uri = getURI(spec);
         boolean fetchClasses = spec.getBoolean("fetchClasses", true);
-        ARQEndpoint ep = ARQEndpoint.forService(uri);
+        SPARQLClient ep = new SPARQLClient(uri);
 
         SelectDescription description = null;
         if (cacheDir != null) {
