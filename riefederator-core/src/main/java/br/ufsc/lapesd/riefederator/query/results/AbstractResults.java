@@ -48,6 +48,7 @@ public abstract class AbstractResults implements Results {
     @Override
     public String toString() {
         int id = System.identityHashCode(this);
-        return String.format("Results@%x%s", id, name == null ? "" : " for "+name);
+        String suffix = name == null ? "" : " for " + name;
+        return String.format("%s@%x%s", getClass().getSimpleName(), id, suffix);
     }
 }

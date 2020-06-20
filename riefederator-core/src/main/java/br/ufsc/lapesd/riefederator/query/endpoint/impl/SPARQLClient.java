@@ -34,7 +34,6 @@ import com.google.gson.internal.LinkedTreeMap;
 import org.apache.http.*;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.URIUtils;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -98,7 +97,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     private int fallbackKeepAliveTimeout = 10;
     private long statsLogMs = 5*60*1000;
     private int nQueries, nFailedQueries, nDiscardedSolutions;
-    private double setupMsAvg, responseMsAvg;
+    private double createGetMsAvg, createClientMsAvg, responseMsAvg;
     private final @Nonnull Stopwatch statsLogSw = Stopwatch.createStarted();
     private final @Nonnull List<Callable<?>> onCloseCallbacks = new ArrayList<>();
 
@@ -350,37 +349,22 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                                            @Nonnull Set<String> resultVars,
                                            @Nonnull ResultsFactory resultsFactory) {
         Stopwatch sw = Stopwatch.createStarted();
-        CloseableHttpClient client = createClient();
-        HttpClientContext context = new HttpClientContext();
         HttpGet get = createGet(sparql, accept);
-        double setupMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
-        sw.reset().start();
-        try {
-            CloseableHttpResponse response = client.execute(host, get, context);
-            double responseMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
-            updateTimes(setupMs, responseMs, response.getStatusLine().getStatusCode());
-            if (!response.getEntity().isStreaming()) {
-                logger.warn("HttpResponse entity for {} is not streaming. " +
-                            "This will hurt parallelism", get.getURI());
-            }
-
-            BaseResults results = resultsFactory.create(resultVars, client, context, response);
-            synchronized (this) {
-                activeResults.put(results, true);
-            }
-            return results;
-        } catch (IOException e) {
-            throw new QueryExecutionException("Error connecting to SPARQL endpoint at " +
-                    host+". Message: "+ e.getMessage()+", URI: "+ get.getURI());
+        double createGetMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+        createGetMsAvg = ((createGetMsAvg * nQueries) + createGetMs) / (nQueries +1);
+        BaseResults results = resultsFactory.create(resultVars, get);
+        synchronized (this) {
+            activeResults.put(results, true);
         }
+        return results;
     }
 
     /* --- --- --- Internal utilities --- --- --- */
 
-    private void updateTimes(double setupMs, double responseMs, int status) {
+    private void updateTimes(double createClientMs, double responseMs, int status) {
         ++nQueries;
         if (status > 299 || status < 200) ++nFailedQueries;
-        setupMsAvg = (setupMsAvg * (nQueries-1) + setupMs) / nQueries;
+        createClientMsAvg = (createClientMsAvg * (nQueries-1) + createClientMs) / nQueries;
         responseMsAvg = (responseMsAvg * (nQueries-1) + responseMs) / nQueries;
         logStats(false);
     }
@@ -389,13 +373,13 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         if (force || statsLogSw.elapsed(TimeUnit.MILLISECONDS) > statsLogMs) {
             statsLogSw.reset().start();
             logger.info("SPARQLClient({}) {} queries ({} non-200) {} discarded solutions" +
-                            ", createClient+createGet avg={}ms, response avg={}ms",
+                            ", createClient avg={}ms, response avg={}ms",
                     uri, nQueries, nFailedQueries, nDiscardedSolutions,
-                    setupMsAvg, responseMsAvg);
+                    createClientMsAvg, responseMsAvg);
         }
     }
 
-    @Nonnull CloseableHttpClient createClient() {
+    private @Nonnull CloseableHttpClient createClient() {
         HttpClientBuilder builder = HttpClientBuilder.create()
                 .setConnectionManager(connMgr)
                 .setConnectionManagerShared(true);
@@ -429,7 +413,8 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                                   timeoutSecs, TimeUnit.SECONDS);
     }
 
-    private @Nonnull HttpGet createGet(@Nonnull String sparql, @Nonnull String accept) {
+    private @Nonnull HttpGet createGet(@Nonnull String sparql,
+                                       @Nonnull String accept) throws QueryExecutionException {
         assert !accept.isEmpty();
         ArrayList<BasicNameValuePair> list = new ArrayList<>();
         list.add(new BasicNameValuePair("query", sparql));
@@ -442,7 +427,14 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             params.forEach((k, v) -> list.add(new BasicNameValuePair(k, v)));
         }
         String fullUri = uri + "?" + URLEncodedUtils.format(list, '&', UTF_8);
-        HttpGet get = new HttpGet(fullUri);
+        URI parsedUri;
+        try {
+            parsedUri = URI.create(fullUri);
+        } catch (IllegalArgumentException e) {
+            String msg = String.format("Invalid URI %s created for query %s", fullUri, sparql);
+            throw new QueryExecutionException(msg, e);
+        }
+        HttpGet get = new HttpGet(parsedUri);
         get.setHeader("Accept", accept);
         return get;
     }
@@ -496,38 +488,59 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
     @FunctionalInterface
     protected interface ResultsFactory {
-        @Nonnull BaseResults create(@Nonnull Set<String> vars, @Nonnull CloseableHttpClient client,
-                                    @Nonnull HttpClientContext context,
-                                    @Nonnull CloseableHttpResponse response) throws IOException;
+        @Nonnull BaseResults create(@Nonnull Set<String> vars, @Nonnull HttpGet get);
     }
 
     protected abstract class BaseResults extends AbstractResults {
         protected final @Nonnull Queue<Solution> queue = new ArrayDeque<>();
-        protected final @Nonnull CloseableHttpClient httpClient;
-        protected final @Nonnull HttpClientContext httpContext;
-        protected final @Nonnull CloseableHttpResponse httpResponse;
+        protected @Nullable CloseableHttpClient httpClient;
+        protected @Nullable HttpClientContext httpContext;
+        protected @Nullable CloseableHttpResponse httpResponse;
+        protected final @Nonnull HttpGet httpGet;
+        protected @Nullable IOException requestFailure;
         protected boolean closed = false, exhausted = false, distinct = false;
         protected @Nullable Reader reader;
 
-        public BaseResults(@Nonnull Set<String> varNames, @Nonnull CloseableHttpClient httpClient,
-                           @Nonnull HttpClientContext httpContext,
-                           @Nonnull CloseableHttpResponse httpResponse) {
+        public BaseResults(@Nonnull Set<String> varNames, @Nonnull HttpGet httpGet) {
             super(varNames);
-            this.httpClient = httpClient;
-            this.httpContext = httpContext;
-            this.httpResponse = httpResponse;
-        }
-
-        protected @Nullable URI getURI() {
-            HttpRequest request = httpContext.getRequest();
-            if (request instanceof HttpUriRequest)
-                return ((HttpUriRequest) request).getURI();
-            else
-                assert false : "Expected all requests to be HttpGet instances";
-            return null;
+            this.httpGet = httpGet;
         }
 
         protected abstract void parse(int minimumSolutions);
+        protected abstract Charset getContentCharset();
+
+        protected @Nullable URI getURI() {
+            return httpGet.getURI();
+        }
+
+        protected boolean initRequest() {
+            if (requestFailure != null)
+                return false; // already done & failed
+            if (httpResponse  != null)
+                return true; // already done & ok
+            Stopwatch sw = Stopwatch.createStarted();
+            httpClient = createClient();
+            httpContext = new HttpClientContext();
+            double setupMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+            sw.reset().start();
+            try {
+                httpResponse = httpClient.execute(host, httpGet, httpContext);
+                assert httpResponse != null;
+                double responseMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
+                updateTimes(setupMs, responseMs, httpResponse.getStatusLine().getStatusCode());
+                if (!httpResponse.getEntity().isStreaming()) {
+                    logger.warn("HttpResponse entity for {} is not streaming. " +
+                                "This will hurt parallelism", getURI());
+                }
+                Charset cs = getContentCharset();
+                this.reader = new InputStreamReader(httpResponse.getEntity().getContent(), cs);
+                return true; // done and OK
+            } catch (IOException e) {
+                logger.error("IOException while reading from {}: {}", getURI(), e.getMessage());
+                requestFailure = e;
+                return false; // done but failed
+            }
+        }
 
         @Override
         public int getReadyCount() {
@@ -546,7 +559,10 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
         @Override
         public boolean hasNext() {
-            if (!queue.isEmpty()) return true;
+            if (!initRequest())
+                return false; //failed to init: no results
+            if (!queue.isEmpty())
+                return true; //has buffered Solutions
             if (!exhausted)
                 parse(1);
             return !queue.isEmpty();
@@ -567,7 +583,10 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             closed = true;
             exhausted = true; //avoid further parse() calls
 
-            releaseConnection(httpResponse, httpContext);
+            if (httpResponse != null) {
+                assert httpContext != null;
+                releaseConnection(httpResponse, httpContext);
+            }
             synchronized (SPARQLClient.this) {
                 activeResults.remove(this);
             }
@@ -577,10 +596,12 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                 if (reader != null) reader.close();
             } catch (IOException e) { exceptions.add(e); }
             try {
-                httpResponse.close();
+                if (httpResponse != null)
+                    httpResponse.close();
             } catch (IOException e) { exceptions.add(e); }
             try {
-                httpClient.close();
+                if (httpClient != null)
+                    httpClient.close();
             } catch (IOException e) { exceptions.add(e); }
             if (exceptions.size() > 1) {
                 ResultsCloseException e = new ResultsCloseException(this, exceptions.remove(0));
@@ -601,12 +622,16 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         private boolean csvFormat = false, gotReturn = false;
         private final @Nonnull TermFactory termFactory = new StdTermFactory();
 
-        public TSVResults(@Nonnull Set<String> varNames, @Nonnull CloseableHttpClient httpClient,
-                          @Nonnull HttpClientContext httpContext,
-                          @Nonnull CloseableHttpResponse httpResponse) throws IOException {
-            super(varNames, httpClient, httpContext, httpResponse);
-            Charset charset = getCharset(httpResponse, httpContext);
-            this.reader = new InputStreamReader(httpResponse.getEntity().getContent(), charset);
+        public TSVResults(@Nonnull Set<String> varNames, @Nonnull HttpGet get) {
+            super(varNames, get);
+
+        }
+
+        @Override
+        protected Charset getContentCharset() {
+            assert httpResponse != null;
+            assert httpContext != null;
+            return getCharset(httpResponse, httpContext);
         }
 
         @CanIgnoreReturnValue
@@ -804,13 +829,14 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     protected class AskResults extends BaseResults {
-        public AskResults(@Nonnull Set<String> vars,
-                          @Nonnull CloseableHttpClient httpClient,
-                          @Nonnull HttpClientContext httpContext,
-                          @Nonnull CloseableHttpResponse httpResponse) throws IOException {
-            super(emptySet(), httpClient, httpContext, httpResponse);
+        public AskResults(@Nonnull Set<String> vars, @Nonnull HttpGet get) {
+            super(emptySet(), get);
             assert vars.isEmpty();
-            this.reader = new InputStreamReader(httpResponse.getEntity().getContent(), UTF_8);
+        }
+
+        @Override
+        protected Charset getContentCharset() {
+            return UTF_8;
         }
 
         @Override

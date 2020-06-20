@@ -34,7 +34,7 @@ public interface ResultsExecutor extends AutoCloseable {
     @Nonnull Results async(@Nonnull Collection<? extends Results> collection);
 
     default @Nonnull Results async(@Nonnull Results results) {
-        return async(Collections.singleton(results));
+        return results.isAsync() ? results : async(Collections.singleton(results));
     }
 
     /**

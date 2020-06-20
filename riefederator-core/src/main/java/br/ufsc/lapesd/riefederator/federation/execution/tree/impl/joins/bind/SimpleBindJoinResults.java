@@ -205,6 +205,12 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
             streamQNs(node).map(qn -> qn.createWithModifier(modifier)).forEach(b::add);
             return b.buildIfMulti();
         }
+
+        @Override
+        public @Nonnull String toString() {
+            int id = System.identityHashCode(this);
+            return String.format("ValuesBind@%x[%s]", id, getNodeName());
+        }
     }
 
     private void advance() {
