@@ -33,7 +33,9 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class SimpleBindJoinResults extends AbstractResults implements Results {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(SimpleBindJoinResults.class);
     public static final int NOTIFY_DELTA_MS = 5000;
-    public static final int DEFAULT_VALUES_ROWS = 40;
+    public static final int DEF_VALUES_ROWS = 40;
+    public static final int[][] DEF_VALUES_NO_SHORTCUTS = {};
+    public static final int[][] DEF_VALUES_SHORTCUTS = {{10, 2}, {2, 5}, {1, 10}};
 
     private final @Nonnull PlanExecutor planExecutor;
     private final @Nonnull Results smaller;
@@ -42,6 +44,7 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
     private final @Nonnull Collection<String> joinVars;
     private Solution next = null;
     private final int valuesRows;
+    private final @Nonnull int[][] valuesShortcuts;
 
     private final @Nonnull ArraySolution.ValueFactory solutionFactory;
     private final @Nonnull ArraySolution.ValueFactory bindSolutionFactory;
@@ -56,7 +59,7 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
     public static class Factory implements BindJoinResultsFactory {
         private final @Nonnull Provider<PlanExecutor> planExecutorProvider;
         private final @Nonnull ResultsExecutor resultsExecutor;
-        private int valuesRows = DEFAULT_VALUES_ROWS;
+        private int valuesRows = DEF_VALUES_ROWS;
 
         @Inject
         public Factory(@Nonnull Provider<PlanExecutor> planExecutorProvider,
@@ -96,9 +99,11 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
         if (canValuesBind(rightTree)) {
             if (!smaller.isAsync() && resultsExecutor != null)
                 smaller = resultsExecutor.async(singleton(smaller), valuesRows*2);
+            valuesShortcuts = smaller.isAsync() ? DEF_VALUES_SHORTCUTS : DEF_VALUES_NO_SHORTCUTS;
             resultsSupplier = new ValuesBind();
         } else {
             resultsSupplier = new NaiveBind();
+            valuesShortcuts = DEF_VALUES_NO_SHORTCUTS;
         }
         this.smaller = smaller;
     }
@@ -178,14 +183,26 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
         public Results get() {
             table.clear();
             bindValues.clear();
-            while (bindValues.size() < valuesRows && smaller.hasNext())
+            int shortcut = Integer.MAX_VALUE;
+            while (bindValues.size() < valuesRows && smaller.hasNext(shortcut)) {
                 addLeftSolution(smaller.next());
+                shortcut = getShortcut();
+            }
             ValuesModifier modifier = new ValuesModifier(joinVars, bindValues);
             Stopwatch sw = Stopwatch.createStarted();
             PlanNode rewritten = bind(rightTree, modifier);
             callBindMs += sw.elapsed(MICROSECONDS)/1000.0;
             Results rightResults = planExecutor.executeNode(rewritten);
             return new FlatMapResults(rightResults, varNames, this::expand);
+        }
+
+        private int getShortcut() {
+            for (int[] spec : valuesShortcuts) {
+                if (bindValues.size() >= spec[0]) {
+                    return spec[1];
+                }
+            }
+            return Integer.MAX_VALUE;
         }
 
         private void addLeftSolution(@Nonnull Solution solution) {

@@ -56,7 +56,9 @@ public class SPARQLServiceLoader implements SourceLoader {
         } else {
             description = new SelectDescription(ep, fetchClasses);
         }
-        return singleton(new Source(description, ep, uri));
+        Source source = new Source(description, ep, uri);
+        source.setCloseEndpoint(true);
+        return singleton(source);
     }
 
     private @Nonnull String getURI(@Nonnull DictTree spec) throws SourceLoadException {

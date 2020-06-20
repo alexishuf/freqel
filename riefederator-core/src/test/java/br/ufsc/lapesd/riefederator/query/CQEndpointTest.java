@@ -50,6 +50,13 @@ public class CQEndpointTest extends EndpointTestBase {
     protected void queryResourceTest(Function<InputStream, Fixture<CQEndpoint>> f,
                                      @Nonnull Collection<Triple> query,
                                      @Nonnull Set<Solution> ex) {
+        queryResourceTest(f, query, ex, false);
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    protected void queryResourceTest(Function<InputStream, Fixture<CQEndpoint>> f,
+                                     @Nonnull Collection<Triple> query,
+                                     @Nonnull Set<Solution> ex, boolean poll) {
         String filename = "../rdf-2.nt";
         try (Fixture<CQEndpoint> fixture = f.apply(getClass().getResourceAsStream(filename))) {
             Set<Solution> ac = new HashSet<>();
@@ -70,10 +77,25 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories")
+    public void testTPSelectPoll(Function<InputStream, Fixture<CQEndpoint>> f) {
+        queryResourceTest(f, singletonList(new Triple(s, knows, Bob)),
+                newHashSet(MapSolution.build(s, Alice),
+                           MapSolution.build(s, Dave)), true);
+    }
+
+    @Test(dataProvider = "fixtureFactories")
     public void testConjunctiveSelect(Function<InputStream, Fixture<CQEndpoint>> f) {
         List<Triple> query = asList(new Triple(s, knows, Bob),
                                     new Triple(s, age, A_AGE));
         queryResourceTest(f, query, singleton(MapSolution.build(s, Alice)));
+    }
+
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testConjunctiveSelectPoll(Function<InputStream, Fixture<CQEndpoint>> f) {
+        List<Triple> query = asList(new Triple(s, knows, Bob),
+                new Triple(s, age, A_AGE));
+        queryResourceTest(f, query, singleton(MapSolution.build(s, Alice)), true);
     }
 
     @Test(dataProvider = "fixtureFactories")
@@ -112,6 +134,45 @@ public class CQEndpointTest extends EndpointTestBase {
                                              Charlie, age, A_AGE,
                                              Alice, knows, Bob))
                                 .forEachRemainingThenClose(ac::add);
+                        assertEquals(ac, singleton(MapSolution.EMPTY));
+
+                        ac.clear();
+                        ep.query(createQuery(s, knows, Bob)).forEachRemainingThenClose(ac::add);
+                        assertEquals(ac, Sets.newHashSet(MapSolution.build(s, Alice),
+                                MapSolution.build(s, Dave)));
+                    }
+                }));
+            }
+            for (Future<?> future : futures)
+                assertNull(future.get()); // re-throws AssertionErrors in ExecutionExceptions
+        } finally {
+            exec.shutdown();
+            exec.awaitTermination(30, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testParallelQueryingPoll(Function<InputStream, Fixture<CQEndpoint>> fac)
+            throws InterruptedException, ExecutionException {
+        ExecutorService exec = Executors.newCachedThreadPool();
+        List<Future<?>> futures = new ArrayList<>();
+        try (Fixture<CQEndpoint> f = fac.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+            CQEndpoint ep = f.endpoint;
+            for (int i = 0; i < 50; i++) {
+                futures.add(exec.submit(() -> {
+                    for (int j = 0; j < 10; j++) {
+                        Set<Solution> ac = new HashSet<>();
+                        ep.query(createQuery(s, knows, Bob, s, age, A_AGE))
+                                .forEachRemainingThenClose(ac::add);
+                        assertEquals(ac, singleton(MapSolution.build(s, Alice)));
+
+                        ac.clear();
+                        Results results = ep.query(createQuery(Charlie, type, Person,
+                                Charlie, age, A_AGE,
+                                Alice, knows, Bob));
+                        while (results.hasNext(0) || results.hasNext())
+                            ac.add(results.next());
+                        results.close();
                         assertEquals(ac, singleton(MapSolution.EMPTY));
 
                         ac.clear();
@@ -190,6 +251,10 @@ public class CQEndpointTest extends EndpointTestBase {
                           singleton(MapSolution.builder().put(x, Dave).put(y, Alice)
                                                          .put(u, lit(25))
                                                          .put(v, lit(23)).build()));
+        queryResourceTest(f, query,
+                          singleton(MapSolution.builder().put(x, Dave).put(y, Alice)
+                                                         .put(u, lit(25))
+                                                         .put(v, lit(23)).build()), true);
 
         query = createQuery(x, knows, Bob,
                             x, age,   u,

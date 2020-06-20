@@ -26,6 +26,24 @@ public interface Results extends Iterator<Solution>, AutoCloseable {
      */
     boolean isDistinct();
 
+    /**
+     * Wait for availability of a next() element for at most the given ammount of milliseconds.
+     *
+     * If the timeout expires, returns false. <b>Note that this does not means the Results
+     * is empty or that a future hasNext() call wouldn't return true.</b>
+     *
+     * Implementations are not required to implement the timeout. This should only be
+     * implemented by asynchronous implementations ({@link Results#isAsync()}) if there is
+     * an efficient way of implementing it. If the implementation does no honor the timeout,
+     * it should block indefinitely, as {@link Iterator#hasNext()} does.
+     *
+     * @param millisecondsTimeout timeout in milliseconds
+     * @return true if there is a value, false if exhausted or timed out.
+     */
+    default boolean hasNext(int millisecondsTimeout) {
+        return hasNext();
+    }
+
     @Override
     @Nonnull Solution next();
 

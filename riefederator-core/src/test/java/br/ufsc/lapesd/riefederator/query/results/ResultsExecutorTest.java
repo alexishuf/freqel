@@ -193,6 +193,41 @@ public class ResultsExecutorTest implements TestContext {
     }
 
     @Test(dataProvider = "inputData")
+    public void testParallelConsumePolling(Supplier<ResultsExecutor> supplier,
+                                           int columns, int rows) throws Exception {
+        ExecutorService outer = Executors.newCachedThreadPool();
+        ResultsExecutor executor = supplier.get();
+        List<List<Solution>> inputLists = generateInputLists(columns, rows);
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < 2*Runtime.getRuntime().availableProcessors(); i++) {
+            futures.add(outer.submit(() -> {
+                List<MockResults> inputs = generateInput(inputLists);
+                BitSet actual = new BitSet(columns);
+
+                Results results = executor.async(inputs);
+                int total = inputs.stream().map(r -> r.getCollection().size())
+                                           .reduce(Integer::sum).orElse(0);
+                for (int j = 0; j < total; j++) {
+                    //noinspection StatementWithEmptyBody
+                    while (!results.hasNext(0)) {/* poll */}
+                    assertTrue(results.hasNext(0));
+                    store(actual, results.next());
+                }
+                assertFalse(results.hasNext());
+                results.close();
+
+                assertTrue(inputs.stream().allMatch(MockResults::isClosed));
+                assertEquals(actual, expected(columns, rows));
+            }));
+        }
+
+        for (Future<?> future : futures)
+            future.get(); //throws AssertionError's
+        outer.shutdown();
+        outer.awaitTermination(1, SECONDS);
+    }
+
+    @Test(dataProvider = "inputData")
     public void testParallelClose(Supplier<ResultsExecutor> supplier,
                                     int columns, int rows) throws Exception {
         ExecutorService outer = Executors.newCachedThreadPool();

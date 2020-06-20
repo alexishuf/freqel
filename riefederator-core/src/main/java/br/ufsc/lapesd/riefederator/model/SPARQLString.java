@@ -1,9 +1,11 @@
 package br.ufsc.lapesd.riefederator.model;
 
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
+import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
@@ -15,6 +17,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SetMultimap;
+import org.apache.jena.vocabulary.RDF;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -30,6 +33,8 @@ public class SPARQLString {
     }
 
     static final @Nonnull Pattern SPARQL_VAR_NAME = Pattern.compile("^[a-zA-Z_0-9\\-]+$");
+    private static final @Nonnull URI rdfType = JenaWrappers.fromURIResource(RDF.type);
+
     private final @Nonnull Type type;
     private final @Nonnull String string;
     private final int triplesCount;
@@ -202,6 +207,7 @@ public class SPARQLString {
         } else if (t.isLiteral()) {
             return RDFUtils.toTurtle(t.asLiteral(), dict);
         } else if (t.isURI()) {
+            if (t.equals(rdfType)) return "a";
             return RDFUtils.toTurtle(t.asURI(), dict);
         }
         throw new IllegalArgumentException("Cannot represent "+t+" in SPARQL");

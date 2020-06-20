@@ -140,19 +140,26 @@ public class BufferedResultsExecutor implements ResultsExecutor {
 
         @Override
         public boolean hasNext() {
+            return hasNext(Integer.MAX_VALUE);
+        }
+
+        @Override
+        public boolean hasNext(int millisecondsTimeout) {
             if (next != null)
                 return true;
             boolean interrupted = false;
             while (!exhausted) {
                 FeedTask.Message m;
                 try {
-                    m = queue.take();
+                    m = queue.poll(millisecondsTimeout, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException e) {
                     logger.info("Suppressing interrupt of ConsumingResults.hasNext(). Will " +
                                 "restore flag upon return");
                     interrupted = true;
                     continue;
                 }
+                if (m == null)
+                    return false; //timed out
                 assert m.getTaskId() >= 0 : "Message has negative task id";
                 assert m.getTaskId() < tasks.size() : "Message has out of range task id";
                 next = m.take();
