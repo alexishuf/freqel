@@ -63,8 +63,6 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
 
     @Override
     public int getReadyCount() {
-        if (in.getReadyCount() > 0)
-            filter(true);
         return ready.size();
     }
 
@@ -77,10 +75,10 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
      * @return number of novel results found and placed in the
      *         {@link SPARQLFilterResults#ready} queue.
      */
-    private int filter(boolean onlyReady) {
+    private int filter() {
         int found = 0, minConsumption = in.getReadyCount();
         outer:
-        for (int i = 0; in.hasNext() && (i < minConsumption || onlyReady || found == 0); i++) {
+        for (int i = 0; in.hasNext() && (i < minConsumption || found == 0); i++) {
             Solution solution = in.next();
             for (SPARQLFilter filter : filters) {
                 if (!filter.evaluate(solution)) {
@@ -97,7 +95,7 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
 
     @Override
     public boolean hasNext() {
-        return !ready.isEmpty() || filter(false) > 0;
+        return !ready.isEmpty() || filter() > 0;
     }
 
     @Override
@@ -108,7 +106,8 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
 
     @Override
     public String toString() {
-        return String.format("SPARQLFilterResults{incl=%d, exc=%d, filters=%s, inner=%s}",
+        return String.format("SPARQLFilterResults@%x{node=%s, incl=%d, exc=%d, filters=%s, in=%s}",
+                System.identityHashCode(this), getNodeName(),
                 getIncluded(), getExcluded(), getFilters(), getIn());
     }
 }
