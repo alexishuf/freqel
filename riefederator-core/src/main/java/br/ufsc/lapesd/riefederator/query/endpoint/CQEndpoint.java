@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import java.util.Collection;
 
 /**
  * Conjunctive query endpoint. Any such endpoint is also a {@link TPEndpoint}
@@ -51,6 +52,11 @@ public interface CQEndpoint extends TPEndpoint {
      * @return Results object
      */
     default @Nonnull Results querySPARQL(@Nonnull String sparqlQuery) {
+        throw new UnsupportedOperationException("Cannot handle raw SPARQL queries");
+    }
+
+    default @Nonnull Results querySPARQL(@Nonnull String sparqlQuery, boolean isAsk,
+                                         @Nonnull Collection<String> varNames) {
         throw new UnsupportedOperationException("Cannot handle raw SPARQL queries");
     }
 

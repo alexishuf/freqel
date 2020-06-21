@@ -106,6 +106,11 @@ public class QueryNodeExecutorTest implements TestContext {
             }
 
             @Override
+            public boolean hasSPARQLCapabilities() {
+                return false;
+            }
+
+            @Override
             public boolean hasRemoteCapability(@Nonnull Capability capability) {
                 if (capability == Capability.SPARQL_FILTER) return false;
                 return super.hasRemoteCapability(capability);

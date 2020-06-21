@@ -43,6 +43,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryFactory;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,6 +84,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                                               "application/json; q=0.9";
     private static final String XSD_STRING_SUFFIX = "^^<http://www.w3.org/2001/XMLSchema#string>";
     private static final Pattern CSV_URI_RX = Pattern.compile("^\"?\\w+:");
+    private static final Pattern DISTINCT_RX = Pattern.compile("(?i)^SELECT\\W*DISTINCT");
 
     private final @Nonnull HttpHost host;
     private final @Nonnull String uri;
@@ -269,10 +272,8 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
-        //        ModifierUtils.check(this, query.getModifiers());
         if (query.isAsk())
             return execute(query, JSON_ACCEPT, emptySet(), AskResults::new);
-
 
         Projection projection = ModifierUtils.getFirst(Projection.class, query.getModifiers());
         Set<String> vars = projection == null
@@ -325,13 +326,35 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public boolean canQuerySPARQL() {
-        return false;
+        return true;
+    }
+
+
+
+    @Override
+    public @Nonnull Results querySPARQL(@Nonnull String sparqlQuery) {
+        Query parsed = QueryFactory.create(sparqlQuery);
+        return querySPARQL(sparqlQuery, parsed.isAskType(), parsed.getResultVars());
+    }
+
+    @Override
+    public @Nonnull Results querySPARQL(@Nonnull String sparqlQuery, boolean isAsk,
+                                         @Nonnull Collection<String> vars) {
+        String accept = isAsk ? JSON_ACCEPT : TSV_ACCEPT;
+        Connection connection = new Connection(sparqlQuery, isAsk, accept);
+        Future<Connection> future = connectExecutor.submit(connection);
+        BaseResults results = isAsk ? new AskResults(vars, future) : new TSVResults(vars, future);
+        synchronized (this) {
+            activeResults.put(results, true);
+        }
+        return results;
     }
 
     protected @Nonnull BaseResults execute(@Nonnull CQuery query, @Nonnull String accept,
                                            @Nonnull Set<String> vars,
                                            @Nonnull ResultsFactory resultsFactory) {
-        Future<Connection> future = connectExecutor.submit(new Connection(query, accept));
+        Connection connection = new Connection(query, vars.isEmpty(), accept);
+        Future<Connection> future = connectExecutor.submit(connection);
         BaseResults results = resultsFactory.create(vars, future);
         synchronized (this) {
             activeResults.put(results, true);
@@ -346,22 +369,37 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         @Nullable HttpClientContext httpContext;
         @Nullable CloseableHttpResponse httpResponse;
         @Nullable HttpGet httpGet;
-        @Nullable IOException requestFailure;
         @Nullable Reader reader;
-        boolean distinct;
-        final @Nonnull CQuery query;
+        boolean distinct, ask;
+        @Nullable CQuery query;
+        @Nullable String sparqlQuery;
+
         final @Nonnull String accept;
 
-        public Connection(@Nonnull CQuery query, @Nonnull String accept) {
+
+        public Connection(@Nonnull CQuery query, boolean isAsk, @Nonnull String accept) {
             this.query = query;
             this.accept = accept;
+            this.ask = isAsk;
+        }
+
+        public Connection(@Nonnull String sparqlQuery, boolean isAsk, @Nonnull String accept) {
+            this.sparqlQuery = sparqlQuery;
+            this.accept = accept;
+            this.ask = isAsk;
         }
 
         @Override @Contract("-> this")
         public @Nonnull Connection call() throws QueryExecutionException {
             Stopwatch sw = Stopwatch.createStarted();
-            SPARQLString ss = new SPARQLString(query, StdPrefixDict.EMPTY, query.getModifiers());
-            String sparql = ss.getString();
+            if (sparqlQuery == null) {
+                assert query != null;
+                SPARQLString ss = new SPARQLString(query, StdPrefixDict.EMPTY, query.getModifiers());
+                sparqlQuery = ss.getString();
+                distinct = ss.isDistinct();
+            } else {
+                distinct = DISTINCT_RX.matcher(sparqlQuery).find();
+            }
             double createSPARQLMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
             sw.reset().start();
             httpClient = createClient();
@@ -369,7 +407,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             double setupMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
             sw.reset().start();
             try {
-                httpGet = createGet(sparql, accept);
+                httpGet = createGet(sparqlQuery, accept);
                 double createGetMs = sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
                 sw.reset().start();
                 httpResponse = httpClient.execute(host, httpGet, httpContext);
@@ -381,9 +419,8 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                             "This will hurt parallelism", httpGet.getURI());
                 }
 
-                Charset cs = query.isAsk() ? UTF_8 : getCharset(httpResponse, httpContext);
+                Charset cs = ask ? UTF_8 : getCharset(httpResponse, httpContext);
                 this.reader = new InputStreamReader(httpResponse.getEntity().getContent(), cs);
-                distinct = ss.isDistinct();
                 return this;
             } catch (IOException e) {
                 throw new QueryExecutionException("IOException while reading from "
@@ -577,7 +614,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         protected @Nullable Exception connectionFailure;
         protected boolean closed = false, exhausted = false, distinct = false;
 
-        public BaseResults(@Nonnull Set<String> varNames, @Nonnull Future<Connection> connectionFuture) {
+        public BaseResults(@Nonnull Collection<String> varNames, @Nonnull Future<Connection> connectionFuture) {
             super(varNames);
             this.connectionFuture = connectionFuture;
         }
@@ -671,7 +708,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         private boolean csvFormat = false, gotReturn = false;
         private final @Nonnull TermFactory termFactory = new StdTermFactory();
 
-        public TSVResults(@Nonnull Set<String> varNames,
+        public TSVResults(@Nonnull Collection<String> varNames,
                           @Nonnull Future<Connection> connectionFuture) {
             super(varNames, connectionFuture);
 
@@ -885,7 +922,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     protected class AskResults extends BaseResults {
-        public AskResults(@Nonnull Set<String> vars, @Nonnull Future<Connection> connectionFuture) {
+        public AskResults(@Nonnull Collection<String> vars, @Nonnull Future<Connection> connectionFuture) {
             super(emptySet(), connectionFuture);
             assert vars.isEmpty();
         }
