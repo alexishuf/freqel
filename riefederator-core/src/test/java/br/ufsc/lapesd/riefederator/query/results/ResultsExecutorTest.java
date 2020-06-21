@@ -253,7 +253,7 @@ public class ResultsExecutorTest implements TestContext {
         executor.close(); //only close after all async() calls
 
         for (Future<?> future : futures)
-            future.get(); //thros AssertionError's
+            future.get(); //throws AssertionError's
         outer.shutdown();
         outer.awaitTermination(1, SECONDS);
     }

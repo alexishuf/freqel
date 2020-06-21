@@ -28,7 +28,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
     }
 
     public BufferedResultsExecutor(int perInputBufferSize) {
-        this(Executors.newWorkStealingPool(), perInputBufferSize);
+        this(Executors.newCachedThreadPool(), perInputBufferSize);
     }
 
     public BufferedResultsExecutor() {
@@ -54,8 +54,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             return CollectionResults.empty(names);
 
         List<FeedTask> list = new ArrayList<>(coll.size());
-        BlockingQueue<FeedTask.Message> queue =
-                new ArrayBlockingQueue<>(coll.size()*(buffer+1));
+        BlockingQueue<FeedTask.Message> queue = new LinkedBlockingQueue<>();
         int idx = 0;
         for (Results results : coll) {
             FeedTask task = new FeedTask(idx++, results, queue, buffer);
@@ -159,6 +158,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
                 FeedTask.Message m;
                 try {
                     m = queue.poll(millisecondsTimeout, TimeUnit.MILLISECONDS);
+//                    m = queue.take();
                 } catch (InterruptedException e) {
                     logger.info("Suppressing interrupt of ConsumingResults.hasNext(). Will " +
                                 "restore flag upon return");
@@ -171,8 +171,6 @@ public class BufferedResultsExecutor implements ResultsExecutor {
                 assert m.getTaskId() < tasks.size() : "Message has out of range task id";
                 next = m.take();
                 if (next == null) {
-                    assert activeTasks.get(m.getTaskId())
-                             : "Double exhaust notification for task " + m.getTaskId();
                     activeTasks.set(m.getTaskId(), false);
                     exhausted = activeTasks.isEmpty();
                 } else {
@@ -238,6 +236,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
                 taken = true;
                 if (solution != null) // schedule if this is not an exhausted notification
                     scheduleNext();
+                assert solution != null || exhausted;
                 return solution;
             }
 
@@ -299,20 +298,24 @@ public class BufferedResultsExecutor implements ResultsExecutor {
 
         @Override
         public void run() {
-            while (acquireFreeSlot()) {
-                Solution solution = null;
-                try {
-                    if (in.hasNext())
-                        solution = in.next();
-                } catch (Throwable t) {
-                    logger.error("Problem with in.hasNext()/next() for in={}", in, t);
+            try {
+                while (acquireFreeSlot()) {
+                    Solution solution = null;
+                    try {
+                        if (in.hasNext())
+                            solution = in.next();
+                    } catch (Throwable t) {
+                        logger.error("Problem with in.hasNext()/next() for in={}", in, t);
+                    }
+                    if (solution == null) { //only notify actual state changes
+                        exhausted = true;
+                        putUninterruptibly(queue, new Message(null));
+                    } else {
+                        putUninterruptibly(queue, new Message(solution));
+                    }
                 }
-                if (solution == null && !exhausted) { //only notify actual state changes
-                    exhausted = true;
-                    putUninterruptibly(queue, new Message(null));
-                } else if (solution != null) {
-                    putUninterruptibly(queue, new Message(solution));
-                }
+            } catch (Throwable t) {
+                logger.error("Unexpected exception", t);
             }
         }
 
@@ -331,10 +334,8 @@ public class BufferedResultsExecutor implements ResultsExecutor {
                         interrupted = true;
                     }
                 }
-                if (!exhausted) { // only notify if exhausted state changes
-                    exhausted = true;
-                    putUninterruptibly(queue, new Message(null));
-                }
+                exhausted = true;
+                putUninterruptibly(queue, new Message(null));
             }
             if (interrupted)
                 Thread.currentThread().interrupt(); // restore suppressed interrupt
