@@ -269,21 +269,16 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
-        Stopwatch sw = Stopwatch.createStarted();
-        try {
-            //        ModifierUtils.check(this, query.getModifiers());
-            if (query.isAsk())
-                return execute(query, JSON_ACCEPT, emptySet(), AskResults::new);
+        //        ModifierUtils.check(this, query.getModifiers());
+        if (query.isAsk())
+            return execute(query, JSON_ACCEPT, emptySet(), AskResults::new);
 
 
-            Projection projection = ModifierUtils.getFirst(Projection.class, query.getModifiers());
-            Set<String> vars = projection == null
-                    ? query.getTermVars().stream().map(Var::getName).collect(toSet())
-                    : projection.getVarNames();
-            return execute(query, TSV_ACCEPT, vars, TSVResults::new);
-        } finally {
-            logger.info("{}.query() in {}ms", this, sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
-        }
+        Projection projection = ModifierUtils.getFirst(Projection.class, query.getModifiers());
+        Set<String> vars = projection == null
+                ? query.getTermVars().stream().map(Var::getName).collect(toSet())
+                : projection.getVarNames();
+        return execute(query, TSV_ACCEPT, vars, TSVResults::new);
     }
 
     @Override
