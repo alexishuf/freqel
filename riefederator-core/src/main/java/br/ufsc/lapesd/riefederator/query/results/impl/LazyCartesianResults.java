@@ -19,7 +19,8 @@ import static java.util.stream.Collectors.toSet;
 
 public class LazyCartesianResults extends AbstractResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(LazyCartesianResults.class);
-    private final @Nonnull ResultsList<BufferedResults> inputs;
+
+    private final @Nonnull ResultsList<Results> inputs;
     private final @Nonnull ArraySolution.ValueFactory factory;
     private final @Nonnull Solution[] solutions;
     private @Nullable Solution current;
@@ -37,10 +38,16 @@ public class LazyCartesianResults extends AbstractResults implements Results {
         int size = ins.size();
         this.inputs = new ResultsList<>(size);
         this.solutions = new Solution[size];
+        boolean first = true;
         for (Results in : ins) {
-            Results dr = parallelFactory.apply(HashDistinctResults.applyIfNotDistinct(in));
-            BufferedResults br = ListBufferedResults.applyIfNotBuffered(dr);
-            this.inputs.add(br);
+            if (first) {
+                first = false;
+                Results dr = parallelFactory.apply(WindowDistinctResults.applyIfNotDistinct(in));
+                this.inputs.add(dr);
+            } else {
+                Results dr = parallelFactory.apply(HashDistinctResults.applyIfNotDistinct(in));
+                this.inputs.add(ListBufferedResults.applyIfNotBuffered(dr));
+            }
         }
         factory = ArraySolution.forVars(getVarNames());
 
@@ -86,18 +93,18 @@ public class LazyCartesianResults extends AbstractResults implements Results {
         if (!initialized)
             return initSolutions();
         for (int i = inputs.size()-1; i >= 0; i--) {
-            BufferedResults r = inputs.get(i);
+            Results r = inputs.get(i);
             assert r != null;
             if (r.hasNext()) {
                 solutions[i] = r.next();
                 return true; // done, can assemble a new solution
-            } else {
-                r.reset(true);
+            } else if (i > 0) {
+                ((BufferedResults)r).reset(true);
                 solutions[i] = r.next();
                 // continue iteration
             }
         }
-        exhausted = false; // no new solutions
+        exhausted = true; // no new solutions
         return false;
     }
 
@@ -107,9 +114,9 @@ public class LazyCartesianResults extends AbstractResults implements Results {
         int size = inputs.size();
         assert solutions.length == size;
         for (int i = 0; i < size; i++) {
-            BufferedResults br = inputs.get(i);
-            if (br.hasNext()) {
-                solutions[i] = br.next();
+            Results r = inputs.get(i);
+            if (r.hasNext()) {
+                solutions[i] = r.next();
             } else { // no solutions possible, ever
                 exhausted = true;
                 return false; // avoid hasNext() calls
