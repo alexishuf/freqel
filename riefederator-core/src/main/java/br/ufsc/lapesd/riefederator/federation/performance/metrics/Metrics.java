@@ -78,6 +78,15 @@ public class Metrics {
             = new SimpleTimeMetric("EXEC_MS");
 
     /**
+     * Time within EXEC_MS until the first result is received by the outer iterator
+     * returned by {@link Federation#execute(CQuery, PlanNode)}
+     *
+     * This metric is measured in milliseconds and is contained by {@link Metrics#EXEC_MS}.
+     */
+    public static @Nonnull SimpleTimeMetric FIRST_RESULT_EXEC_MS =
+            SimpleTimeMetric.builder("FIRST_RESULT_EXEC_MS").containedBy(EXEC_MS).create();
+
+    /**
      * Time spent in {@link BenchmarkUtils#preheatCooldown()} and equivalent tasks, in milliseconds.
      *
      * This is not measured from within the {@link Federation}, it must be manually measured.
