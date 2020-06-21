@@ -85,6 +85,12 @@ public class QueryEvaluation {
             usage = "How many times to run each query before collecting results")
     private int preheatRuns = 2;
 
+    @Option(name = "--timeout-mins", usage = "Timeout for a single run of an experiment " +
+            "(i.e., a query) With --preheat 2 and --runs 1, the effective timeout for a " +
+            "child JVM will be 3 times the value given here. Timeouts are not enforced " +
+            "without --child-jvm.")
+    private int timeoutMinutes = 4;
+
     @Option(name = "--only-plan", usage = "Do not execute queries. Only create the plan")
     private boolean noExec = false;
 
@@ -193,9 +199,11 @@ public class QueryEvaluation {
 
         LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         try (ChildJVM child = builder.start()) {
-            if (!child.getProcess().waitFor(4, TimeUnit.MINUTES))
+            int effectiveTimeout = (preheatRuns + 1)* timeoutMinutes;
+            int half = Math.max(1, effectiveTimeout / 2);
+            if (!child.getProcess().waitFor(half, TimeUnit.MINUTES))
                 logger.warn("Slow child process "+child);
-            if (!child.getProcess().waitFor(11, TimeUnit.MINUTES))
+            if (!child.getProcess().waitFor(half, TimeUnit.MINUTES))
                 throw new TimeoutException("Timeout for child process "+child);
         } catch (Exception e) {
             logger.error("Failed to execute run {} of experiment {}.", run, q.name, e);
