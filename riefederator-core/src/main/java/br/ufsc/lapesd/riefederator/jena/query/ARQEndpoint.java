@@ -32,6 +32,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -159,6 +161,15 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     @Override
+    public @Nonnull Results querySPARQL(@Nonnull String sparqlQuery, boolean isAsk,
+                                        @Nonnull Collection<String> varNames) {
+        Query query = QueryFactory.create(sparqlQuery);
+        SPARQLString.Type type = isAsk ? SPARQLString.Type.ASK : SPARQLString.Type.SELECT;
+        Set<String> set = varNames instanceof Set ? (Set<String>)varNames : new HashSet<>(varNames);
+        return doQuery(query, type, set);
+    }
+
+    @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         ModifierUtils.check(this, query.getModifiers());
         PrefixDict dict = query.getPrefixDict(StdPrefixDict.STANDARD);
@@ -173,8 +184,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         }
     }
 
-    @Nonnull
-    public Results doSPARQLQuery(@Nonnull String sparql) {
+    public @Nonnull Results doSPARQLQuery(@Nonnull String sparql) {
         Query query = QueryFactory.create(sparql);
         SPARQLString.Type type = query.isAskType() ? SPARQLString.Type.ASK
                                                    : SPARQLString.Type.SELECT;

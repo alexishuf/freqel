@@ -13,18 +13,21 @@ public class InjectedExecutor implements PlanExecutor {
     private final @Nonnull JoinNodeExecutor joinNodeExecutor;
     private final @Nonnull CartesianNodeExecutor cartesianNodeExecutor;
     private final @Nonnull EmptyNodeExecutor emptyNodeExecutor;
+    private final @Nonnull SPARQLValuesTemplateNodeExecutor sparqlValuesTemplateNodeExecutor;
 
     @Inject
     public InjectedExecutor(@Nonnull QueryNodeExecutor queryNodeExecutor,
                             @Nonnull MultiQueryNodeExecutor multiQueryNodeExecutor,
                             @Nonnull JoinNodeExecutor joinNodeExecutor,
                             @Nonnull CartesianNodeExecutor cartesianNodeExecutor,
-                            @Nonnull EmptyNodeExecutor emptyNodeExecutor) {
+                            @Nonnull EmptyNodeExecutor emptyNodeExecutor,
+                            @Nonnull SPARQLValuesTemplateNodeExecutor sparqlValuesTemplateNodeExecutor) {
         this.queryNodeExecutor = queryNodeExecutor;
         this.multiQueryNodeExecutor = multiQueryNodeExecutor;
         this.joinNodeExecutor = joinNodeExecutor;
         this.cartesianNodeExecutor = cartesianNodeExecutor;
         this.emptyNodeExecutor = emptyNodeExecutor;
+        this.sparqlValuesTemplateNodeExecutor = sparqlValuesTemplateNodeExecutor;
     }
 
     @Override
@@ -48,6 +51,8 @@ public class InjectedExecutor implements PlanExecutor {
             results = cartesianNodeExecutor.execute(node);
         else if (EmptyNode.class.isAssignableFrom(cls))
             results = emptyNodeExecutor.execute(node);
+        else if (SPARQLValuesTemplateNode.class.isAssignableFrom(cls))
+            results = sparqlValuesTemplateNodeExecutor.execute(node);
         else
             throw new UnsupportedOperationException("No executor for "+cls);
         results.setNodeName(node.getName());

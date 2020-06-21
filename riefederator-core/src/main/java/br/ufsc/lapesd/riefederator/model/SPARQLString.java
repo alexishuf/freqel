@@ -198,7 +198,7 @@ public class SPARQLString {
         return ImmutableSet.copyOf(set);
     }
 
-    static @Nonnull String term2SPARQL(@Nonnull Term t, @Nonnull PrefixDict dict) {
+    public static @Nonnull String term2SPARQL(@Nonnull Term t, @Nonnull PrefixDict dict) {
         if (t.isBlank()) {
             String name = t.asBlank().getName();
             return name != null && SPARQL_VAR_NAME.matcher(name).matches() ? "_:"+name : "[]";

@@ -35,6 +35,7 @@ public class SimpleExecutionModule extends AbstractModule {
         else
             bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
         bind(EmptyNodeExecutor.class).toInstance(SimpleEmptyNodeExecutor.INSTANCE);
+        bind(SPARQLValuesTemplateNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
         bind(PlanExecutor.class).to(InjectedExecutor.class);
     }
 

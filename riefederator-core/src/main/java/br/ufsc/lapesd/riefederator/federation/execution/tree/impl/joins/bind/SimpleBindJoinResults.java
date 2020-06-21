@@ -5,8 +5,13 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.Cru
 import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
+import br.ufsc.lapesd.riefederator.federation.tree.SPARQLValuesTemplateNode;
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
+import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.*;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
@@ -29,6 +34,7 @@ import java.util.stream.Stream;
 import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.stream.Collectors.toList;
 
 public class SimpleBindJoinResults extends AbstractResults implements Results {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(SimpleBindJoinResults.class);
@@ -178,19 +184,20 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
     private class ValuesBind implements Supplier<Results> {
         CrudeSolutionHashTable table = new CrudeSolutionHashTable(joinVars, valuesRows*10);
         Set<Solution> bindValues = new HashSet<>(valuesRows);
+        SPARQLValuesTemplateNode template = null;
 
         @Override
         public Results get() {
             table.clear();
             bindValues.clear();
+            initTemplate();
             int shortcut = Integer.MAX_VALUE;
             while (bindValues.size() < valuesRows && smaller.hasNext(shortcut)) {
                 addLeftSolution(smaller.next());
                 shortcut = getShortcut();
             }
-            ValuesModifier modifier = new ValuesModifier(joinVars, bindValues);
             Stopwatch sw = Stopwatch.createStarted();
-            PlanNode rewritten = bind(rightTree, modifier);
+            PlanNode rewritten = bind(joinVars, bindValues);
             callBindMs += sw.elapsed(MICROSECONDS)/1000.0;
             Results rightResults = planExecutor.executeNode(rewritten);
             return new FlatMapResults(rightResults, varNames, this::expand);
@@ -217,10 +224,49 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
             return new CollectionResults(list, varNames);
         }
 
-        private @Nonnull PlanNode bind(@Nonnull PlanNode node, @Nonnull ValuesModifier modifier) {
-            MultiQueryNode.Builder b = MultiQueryNode.builder();
-            streamQNs(node).map(qn -> qn.createWithModifier(modifier)).forEach(b::add);
-            return b.buildIfMulti();
+        private void initTemplate() {
+            if (template != null) return;
+
+            QueryNode qn;
+            if (rightTree instanceof QueryNode)
+                qn = (QueryNode) SimpleBindJoinResults.this.rightTree;
+            else
+                qn = (QueryNode) rightTree.getChildren().iterator().next();
+            TPEndpoint ep = qn.getEndpoint();
+            CQuery query = qn.getQuery();
+            List<SPARQLFilter> filters = qn.getFilters().stream()
+                            .filter(f -> !query.getModifiers().contains(f)).collect(toList());
+            template = new SPARQLValuesTemplateNode(ep, query, filters);
+        }
+
+        private @Nonnull PlanNode bind(@Nonnull Collection<String> varNames,
+                                       @Nonnull Collection<Solution> assignments) {
+            if (rightTree instanceof QueryNode) {
+                CQEndpoint ep = (CQEndpoint) ((QueryNode) rightTree).getEndpoint();
+                if (ep.canQuerySPARQL()) {
+                    template.setValues(varNames, assignments);
+                    return template;
+                } else {
+                    ValuesModifier modifier = new ValuesModifier(varNames, assignments);
+                    return  ((QueryNode) rightTree).createWithModifier(modifier);
+                }
+            } else {
+                MultiQueryNode.Builder b = MultiQueryNode.builder();
+                ValuesModifier modifier = null;
+                for (PlanNode child : rightTree.getChildren()) {
+                    CQEndpoint endpoint = (CQEndpoint) ((QueryNode) child).getEndpoint();
+                    if (endpoint.canQuerySPARQL()) {
+                        SPARQLValuesTemplateNode node = template.withEndpoint(endpoint);
+                        node.setValues(varNames, assignments);
+                        b.add(node);
+                    } else {
+                        if (modifier == null)
+                            modifier = new ValuesModifier(varNames, assignments);
+                        b.add(((QueryNode)child).createWithModifier(modifier));
+                    }
+                }
+                return b.build();
+            }
         }
 
         @Override

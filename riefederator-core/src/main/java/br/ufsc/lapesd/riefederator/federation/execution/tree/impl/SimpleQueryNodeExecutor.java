@@ -4,11 +4,10 @@ import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.MultiQueryNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.QueryNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.SPARQLValuesTemplateNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -32,7 +31,8 @@ import java.util.Set;
 import static java.util.Collections.singleton;
 
 public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
-        implements QueryNodeExecutor, MultiQueryNodeExecutor, CartesianNodeExecutor {
+        implements QueryNodeExecutor, MultiQueryNodeExecutor, CartesianNodeExecutor,
+                   SPARQLValuesTemplateNodeExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SimpleQueryNodeExecutor.class);
     private final @Nonnull ResultsExecutor resultsExecutor;
 
@@ -54,7 +54,8 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
     public boolean canExecute(@Nonnull Class<? extends PlanNode> nodeClass) {
         return QueryNode.class.isAssignableFrom(nodeClass)
                 || MultiQueryNode.class.isAssignableFrom(nodeClass)
-                || CartesianNode.class.isAssignableFrom(nodeClass);
+                || CartesianNode.class.isAssignableFrom(nodeClass)
+                || SPARQLValuesTemplateNode.class.isAssignableFrom(nodeClass);
     }
 
     @Override
@@ -63,7 +64,22 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
             return execute((MultiQueryNode)node);
         else if (node instanceof QueryNode)
             return execute((QueryNode)node);
+        else if (node instanceof SPARQLValuesTemplateNode)
+            return execute((SPARQLValuesTemplateNode)node);
         throw new IllegalArgumentException("");
+    }
+
+    @Override
+    public @Nonnull Results execute(@Nonnull SPARQLValuesTemplateNode node) {
+        CQEndpoint endpoint = (CQEndpoint) node.getEndpoint();
+        assert endpoint.canQuerySPARQL();
+        try {
+            return endpoint.querySPARQL(node.createSPARQL(), node.isAsk(), node.getResultVars());
+        } catch (QueryExecutionException e) {
+            logger.error("Failed to execute SPARQL query against {}. Will return an Empty result",
+                         node.getEndpoint(), e);
+            return CollectionResults.empty(node.getResultVars());
+        }
     }
 
     @Override

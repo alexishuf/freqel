@@ -91,6 +91,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
             bind(ResultsExecutor.class).to(SequentialResultsExecutor.class);
             bind(QueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
             bind(MultiQueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
+            bind(SPARQLValuesTemplateNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
             bind(CartesianNodeExecutor.class).to(EagerCartesianNodeExecutor.class);
             bind(EmptyNodeExecutor.class).toInstance(SimpleEmptyNodeExecutor.INSTANCE);
             bind(PlanExecutor.class).to(InjectedExecutor.class);
