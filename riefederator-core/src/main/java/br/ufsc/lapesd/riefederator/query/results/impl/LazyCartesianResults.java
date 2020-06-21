@@ -73,9 +73,12 @@ public class LazyCartesianResults extends AbstractResults implements Results {
     public int getReadyCount() {
         int ready = 1;
         for (Results in : inputs) {
-            int next = ready * in.getReadyCount();
+            int inReadyCount = in.getReadyCount();
+            if (inReadyCount == 0)
+                return 0;
+            int next = ready * inReadyCount;
             if (next < ready) {
-                logger.error("LazyCartesianResults {} has so many results ready their number overflows", this);
+                logger.warn("LazyCartesianResults {} has so many results it overflows", this);
                 return Integer.MAX_VALUE; //overflow
             }
         }
