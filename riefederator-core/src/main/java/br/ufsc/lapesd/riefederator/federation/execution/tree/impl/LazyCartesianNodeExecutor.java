@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.LazyCartesianResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -60,7 +61,8 @@ public class LazyCartesianNodeExecutor extends SimpleNodeExecutor implements Car
             Set<String> varNames = node.getResultVars();
             // parallelizing the inputs provides no significant improvement
             // the parallelization provided by lazyness is enough and is significant
-            return new LazyCartesianResults(list.steal(), varNames);
+            LazyCartesianResults r = new LazyCartesianResults(list.steal(), varNames);
+            return SPARQLFilterResults.applyIf(r, node);
         }
     }
 
