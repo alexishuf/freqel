@@ -98,6 +98,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     private final @Nonnull ConcurrentLinkedQueue<CloseableHttpClient> clientPool
             = new ConcurrentLinkedQueue<>();
     private final @Nonnull ThreadPoolExecutor connectExecutor;
+    private boolean warnedCSVFormat = false;
     private int fallbackKeepAliveTimeout = 10;
     private long statsLogMs = 5*60*1000;
     private int nQueries, nFailedQueries, nDiscardedSolutions;
@@ -883,8 +884,9 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         }
 
         private void setCsvFormat() {
-            if (!csvFormat) {
-                csvFormat = true;
+            csvFormat = true;
+            if (!warnedCSVFormat) {
+                warnedCSVFormat = true;
                 logger.warn("Server {} is using CSV formatting rules in {}. CSV rules for RDF " +
                             "term serialization do not distinguish literals from URIs.",
                             uri, TSV_TYPE);
