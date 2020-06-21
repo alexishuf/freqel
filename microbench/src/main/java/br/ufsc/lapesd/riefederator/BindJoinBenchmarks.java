@@ -9,11 +9,11 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
-import br.ufsc.lapesd.riefederator.util.DelayedARQEndpoint;
 import br.ufsc.lapesd.riefederator.util.FusekiProcess;
 import com.google.common.collect.Sets;
 import com.google.inject.Guice;
@@ -23,7 +23,6 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.openjdk.jmh.annotations.*;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -45,7 +44,8 @@ public class BindJoinBenchmarks {
     private static final int ROWS = 128;
 
     private FusekiProcess leftFuseki, rightFuseki;
-    private ARQEndpoint leftLocalEp, rightLocalEp, leftEp, rightEp, rightEpCannotValues;
+    private ARQEndpoint leftLocalEp, rightLocalEp;
+    private SPARQLClient leftEp, rightEp, rightEpCannotValues;
     private PlanExecutor planExecutor;
     private ResultsExecutor resultsExec;
     private SequentialResultsExecutor seqResultsExec;
@@ -91,16 +91,10 @@ public class BindJoinBenchmarks {
 
         leftLocalEp = ARQEndpoint.forModel(left);
         rightLocalEp = ARQEndpoint.forModel(right);
-        leftEp = ARQEndpoint.forService(leftFuseki.getSparqlEndpoint());
-        rightEp = ARQEndpoint.forService(rightFuseki.getSparqlEndpoint());
-        rightEp = new DelayedARQEndpoint(1, rightFuseki.getSparqlEndpoint());
-        rightEpCannotValues = new DelayedARQEndpoint(-1, rightFuseki.getSparqlEndpoint()) {
-            @Override
-            public boolean hasRemoteCapability(@Nonnull Capability capability) {
-                if (capability == Capability.VALUES) return false;
-                return super.hasRemoteCapability(capability);
-            }
-        };
+        leftEp = new SPARQLClient(leftFuseki.getSparqlEndpoint());
+        rightEp = new SPARQLClient(rightFuseki.getSparqlEndpoint());
+        rightEpCannotValues = new SPARQLClient(rightFuseki.getSparqlEndpoint());
+        rightEpCannotValues.removeRemoteCapability(Capability.VALUES);
 
         Injector injector = Guice.createInjector(new SimpleFederationModule());
         planExecutor = injector.getInstance(PlanExecutor.class);
@@ -145,6 +139,9 @@ public class BindJoinBenchmarks {
             exceptions.subList(1, exceptions.size()).forEach(exceptions.get(0)::addSuppressed);
             throw exceptions.get(0);
         }
+        leftEp.close();
+        rightEp.close();
+        rightEpCannotValues.close();
     }
 
     @Benchmark
