@@ -2,10 +2,9 @@ package br.ufsc.lapesd.riefederator.query.endpoint.impl;
 
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
+import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
-import br.ufsc.lapesd.riefederator.model.SPARQLString;
-import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
@@ -96,6 +95,8 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     private final @Nonnull WeakHashMap<BaseResults, Boolean> activeResults = new WeakHashMap<>();
     private final @Nonnull PoolingHttpClientConnectionManager connMgr
             = new PoolingHttpClientConnectionManager();
+    private final @Nonnull ConcurrentLinkedQueue<CloseableHttpClient> clientPool
+            = new ConcurrentLinkedQueue<>();
     private final @Nonnull ThreadPoolExecutor connectExecutor;
     private int fallbackKeepAliveTimeout = 10;
     private long statsLogMs = 5*60*1000;
@@ -394,8 +395,8 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             Stopwatch sw = Stopwatch.createStarted();
             if (sparqlQuery == null) {
                 assert query != null;
-                SPARQLString ss = new SPARQLString(query, StdPrefixDict.EMPTY, query.getModifiers());
-                sparqlQuery = ss.getString();
+                FastSPARQLString ss = new FastSPARQLString(query);
+                sparqlQuery = ss.getSparql();
                 distinct = ss.isDistinct();
             } else {
                 distinct = DISTINCT_RX.matcher(sparqlQuery).find();
@@ -416,7 +417,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                 updateTimes(createSPARQLMs, setupMs, createGetMs, responseMs, httpResponse.getStatusLine().getStatusCode());
                 if (!httpResponse.getEntity().isStreaming()) {
                     logger.warn("HttpResponse entity for {} is not streaming. " +
-                            "This will hurt parallelism", httpGet.getURI());
+                                "This will hurt parallelism", httpGet.getURI());
                 }
                 logger.debug("{}ms for GET {} ", responseMs, httpGet.getURI());
                 Charset cs = ask ? UTF_8 : getCharset(httpResponse, httpContext);
@@ -450,13 +451,8 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                 if (exception == null) exception = e;
                 exception.addSuppressed(e);
             }
-            try {
-                if (httpClient != null)
-                    httpClient.close();
-            } catch (IOException e) {
-                if (exception == null) exception = e;
-                else exception.addSuppressed(e);
-            }
+            if (httpClient != null)
+                clientPool.add(httpClient);
             if (exception != null)
                 throw exception;
         }
@@ -485,6 +481,9 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     private @Nonnull CloseableHttpClient createClient() {
+        CloseableHttpClient client = clientPool.poll();
+        if (client != null)
+            return client;
         HttpClientBuilder builder = HttpClientBuilder.create()
                 .setConnectionManager(connMgr)
                 .setConnectionManagerShared(true);
@@ -541,6 +540,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         }
         HttpGet get = new HttpGet(parsedUri);
         get.setHeader("Accept", accept);
+        get.setHeader("Connection", "Keep-Alive");
         return get;
     }
 
@@ -565,7 +565,6 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public void close() {
-
         ArrayList<BaseResults> victims;
         synchronized (this) {
             victims = new ArrayList<>(activeResults.keySet());
@@ -575,7 +574,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             try {
                 victim.close();
             } catch (ResultsCloseException e) {
-                logger.error("SPARQLClient[{}].close() failed to close Results", uri, e);
+                logger.error("SPARQLClient[{}].close() ignoring error on Results.close", uri, e);
             }
         }
         connectExecutor.shutdown();
@@ -586,6 +585,14 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+        for (CloseableHttpClient c = clientPool.poll(); c  != null; c = clientPool.poll()) {
+            try {
+                c.close();
+            } catch (IOException e) {
+                logger.error("SPARQLClient({}).close():  ignoring pooled HttpClient close error",
+                             uri, e);
+            }
         }
         connMgr.close();
 

@@ -1,29 +1,29 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
+import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
-import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
-import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.regex.Pattern;
 
-import static br.ufsc.lapesd.riefederator.model.SPARQLString.term2SPARQL;
 import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.DISTINCT;
-import static java.util.stream.Collectors.joining;
 
 public class SPARQLValuesTemplateNode extends AbstractPlanNode {
+    private static final Pattern DISTINCT_RX = Pattern.compile("(?i)^\\s*SELECT\\s*DISTINCT");
+
     private final @Nonnull TPEndpoint endpoint;
     private final @Nonnull String template;
     private final @Nonnull Set<String> vars;
-    private final boolean ask;
+    private final boolean ask, distinct;
     private @Nullable ValuesModifier values;
     private @Nullable Collection<String> varNames;
     private @Nullable Collection<Solution> assignments;
@@ -35,6 +35,7 @@ public class SPARQLValuesTemplateNode extends AbstractPlanNode {
         this.template = template;
         this.vars = vars;
         this.ask = vars.isEmpty();
+        this.distinct = DISTINCT_RX.matcher(template).find();
     }
 
     public SPARQLValuesTemplateNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query,
@@ -42,23 +43,10 @@ public class SPARQLValuesTemplateNode extends AbstractPlanNode {
         super(Cardinality.UNSUPPORTED, null);
         this.endpoint = endpoint;
         StringBuilder b = new StringBuilder(query.size()*60);
-        ask = query.isAsk();
-        b.append(ask ? "ASK " : "SELECT ");
-        if (ModifierUtils.getFirst(DISTINCT, query.getModifiers()) != null)
-            b.append("DISTINCT ");
-        if (ask) {
-            this.vars = Collections.emptySet();
-        } else {
-            this.vars = addVars(query, b);
-        }
-        b.append("WHERE { ");
+        distinct = ModifierUtils.getFirst(DISTINCT, query.getModifiers()) != null;
+        FastSPARQLString.writeHeader(b, ask = query.isAsk(), distinct, vars = getVars(query));
+        FastSPARQLString.writeTriples(b, query);
 
-        PrefixDict dict = StdPrefixDict.EMPTY;
-        for (Triple triple : query) {
-            b.append(term2SPARQL(triple.getSubject(), dict)).append(' ');
-            b.append(term2SPARQL(triple.getPredicate(), dict)).append(' ');
-            b.append(term2SPARQL(triple.getObject(), dict)).append(" . ");
-        }
         for (Modifier m : query.getModifiers()) {
             if (!(m instanceof SPARQLFilter)) continue;
             SPARQLFilter filter = (SPARQLFilter) m;
@@ -66,25 +54,21 @@ public class SPARQLValuesTemplateNode extends AbstractPlanNode {
         }
         for (SPARQLFilter filter : filters)
             b.append(filter.getSparqlFilter()).append(' ');
+
         template = b.append('}').toString();
     }
 
-    private static @Nonnull Set<String> addVars(@Nonnull CQuery query, StringBuilder b) {
-        Set<String> vars = new HashSet<>();
+    private static @Nonnull Set<String> getVars(@Nonnull CQuery query) {
         Projection prj = ModifierUtils.getFirst(Projection.class, query.getModifiers());
         if (prj != null) {
-            for (String name : prj.getVarNames()) {
-                b.append('?').append(name).append(' ');
-                vars.add(name);
-            }
+            return prj.getVarNames();
         } else {
-            for (Var v : query.getTermVars()) {
-                String name = v.getName();
-                b.append('?').append(name).append(' ');
-                vars.add(name);
-            }
+            IndexedSet<Var> termVars = query.getTermVars();
+            Set<String> names = new HashSet<>((int)Math.ceil(termVars.size()/0.75)+1);
+            for (Var v : termVars)
+                names.add(v.getName());
+            return names;
         }
-        return vars;
     }
 
     public @Nonnull SPARQLValuesTemplateNode withEndpoint(@Nonnull TPEndpoint endpoint) {
@@ -125,18 +109,8 @@ public class SPARQLValuesTemplateNode extends AbstractPlanNode {
         StringBuilder b = new StringBuilder(template.length() +
                                             assignments.size() * 40);
         b.append(template, 0, idx);
-        String varList = varNames.stream().map(n -> "?" + n).collect(joining(" "));
-        b.append("VALUES ( ").append(varList).append(" ) {");
-        for (Solution assignment : assignments) {
-            b.append(' ').append("( ");
-            for (String var : varNames) {
-                Term term = assignment.get(var);
-                b.append(term == null ? "UNDEF" : term2SPARQL(term, StdPrefixDict.EMPTY));
-                b.append(' ');
-            }
-            b.append(')');
-        }
-        b.append('}').append(template, idx, template.length());
+        FastSPARQLString.writeValues(b, varNames, assignments);
+        b.append(template, idx, template.length());
         return b.toString();
     }
 
@@ -146,6 +120,10 @@ public class SPARQLValuesTemplateNode extends AbstractPlanNode {
 
     public boolean isAsk() {
         return ask;
+    }
+
+    public boolean isDistinct() {
+        return distinct;
     }
 
     @Override
