@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
+import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -18,6 +19,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SetMultimap;
 import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.XSD;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -34,6 +36,7 @@ public class SPARQLString {
 
     static final @Nonnull Pattern SPARQL_VAR_NAME = Pattern.compile("^[a-zA-Z_0-9\\-]+$");
     private static final @Nonnull URI rdfType = JenaWrappers.fromURIResource(RDF.type);
+    private static final @Nonnull URI xsdString = JenaWrappers.fromURIResource(XSD.xstring);
 
     private final @Nonnull Type type;
     private final @Nonnull String string;
@@ -208,7 +211,10 @@ public class SPARQLString {
                     name+" cannot be used as a SPARQL variable name");
             return "?"+name;
         } else if (t.isLiteral()) {
-            return RDFUtils.toTurtle(t.asLiteral(), dict);
+            Lit lit = t.asLiteral();
+            if (lit.getDatatype().equals(xsdString))
+                return "\""+RDFUtils.escapeLexicalForm(lit.getLexicalForm())+"\"";
+            return RDFUtils.toTurtle(lit, dict);
         } else if (t.isURI()) {
             if (t.equals(rdfType)) return "a";
             return RDFUtils.toTurtle(t.asURI(), dict);

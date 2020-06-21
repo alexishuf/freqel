@@ -252,7 +252,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             this.in = in;
             this.queue = queue;
             this.free = new AtomicInteger(bufferSize);
-            this.scheduleThreshold = Math.max(1, bufferSize-2);
+            this.scheduleThreshold = Math.max(1, bufferSize/2);
         }
 
         public boolean isExhausted() { return exhausted; }

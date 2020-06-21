@@ -291,6 +291,9 @@ public class QueryExperiment {
             sw = Stopwatch.createStarted();
             PlanNode plan = federation.plan(query);
             if (!isOnlyPlan()) {
+                try (TimeSampler ignored = Metrics.COOLDOWN_MS.createThreadSampler(perf)) {
+                    BenchmarkUtils.preheatCooldown();
+                }
                 try (TimeSampler ignored = new TimeSampler(perf, Metrics.EXEC_MS)) {
                     try (Results results = federation.execute(query, plan)) {
                         collResults = CollectionResults.greedy(results);

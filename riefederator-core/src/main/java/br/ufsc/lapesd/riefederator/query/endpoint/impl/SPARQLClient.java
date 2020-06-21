@@ -418,7 +418,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                     logger.warn("HttpResponse entity for {} is not streaming. " +
                             "This will hurt parallelism", httpGet.getURI());
                 }
-
+                logger.debug("{}ms for GET {} ", responseMs, httpGet.getURI());
                 Charset cs = ask ? UTF_8 : getCharset(httpResponse, httpContext);
                 this.reader = new InputStreamReader(httpResponse.getEntity().getContent(), cs);
                 return this;
