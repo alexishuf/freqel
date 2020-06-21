@@ -6,8 +6,8 @@ import br.ufsc.lapesd.riefederator.query.results.ResultsList;
 import com.google.common.base.Stopwatch;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collection;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.stream.Collectors.toSet;
@@ -16,16 +16,19 @@ public class SequentialResultsExecutor implements ResultsExecutor {
     private boolean closed = false;
 
     @Override
-    public @Nonnull Results async(@Nonnull Collection<? extends Results> coll) {
+    public @Nonnull Results async(@Nonnull Collection<? extends Results> coll,
+                                  @Nullable Collection<String> namesHint) {
         if (coll.size() == 1)
             return coll.iterator().next();
-        Set<String> names = coll.stream().flatMap(r -> r.getVarNames().stream()).collect(toSet());
+        Collection<String> names = namesHint != null ? namesHint
+                : coll.stream().flatMap(r -> r.getVarNames().stream()).collect(toSet());
         return new SequentialResults(ResultsList.of(coll), names);
     }
 
     @Override
-    public @Nonnull Results async(@Nonnull Collection<? extends Results> collection, int ignored) {
-        return async(collection);
+    public @Nonnull Results async(@Nonnull Collection<? extends Results> collection,
+                                  @Nullable Collection<String> namesHint, int ignored) {
+        return async(collection, namesHint);
     }
 
     @Override

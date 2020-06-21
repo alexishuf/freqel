@@ -108,6 +108,10 @@ public interface TPEndpoint extends AutoCloseable {
         return hasRemoteCapability(capability);
     }
 
+    default boolean hasSPARQLCapabilities() {
+        return false;
+    }
+
     /**
      * Same as hasCapability(), but will only return true if the capability is provided by the
      * remote source.

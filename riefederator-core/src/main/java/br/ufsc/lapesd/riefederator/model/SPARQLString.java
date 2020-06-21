@@ -38,6 +38,7 @@ public class SPARQLString {
     private final @Nonnull Type type;
     private final @Nonnull String string;
     private final int triplesCount;
+    private boolean distinct;
     private final @Nonnull ImmutableSet<String> varNames, publicVarNames;
     private final @Nonnull ImmutableSet<SPARQLFilter> filters;
 
@@ -102,8 +103,10 @@ public class SPARQLString {
             this.publicVarNames = ImmutableSet.of();
         } else {
             b.append("SELECT");
-            if (ModifierUtils.getFirst(Capability.DISTINCT, modifiers) != null)
+            if (ModifierUtils.getFirst(Capability.DISTINCT, modifiers) != null) {
                 b.append(" DISTINCT");
+                distinct = true;
+            }
             Projection project = (Projection)ModifierUtils.getFirst(PROJECTION, modifiers);
             if (project != null) {
                 this.publicVarNames = ImmutableSet.copyOf(
@@ -221,6 +224,9 @@ public class SPARQLString {
     }
     public int getTriplesCount() {
         return triplesCount;
+    }
+    public boolean isDistinct() {
+        return distinct;
     }
     public @Nonnull ImmutableSet<String> getVarNames() {
         return varNames;

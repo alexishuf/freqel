@@ -18,7 +18,8 @@ import java.util.stream.Stream;
 
 import static java.lang.Integer.parseInt;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testng.Assert.*;
 
@@ -43,7 +44,7 @@ public class ResultsExecutorTest implements TestContext {
     @Test(dataProvider = "suppliersData", groups = {"fast"})
     public void testNoInput(Supplier<ResultsExecutor> supplier) {
         ResultsExecutor executor = supplier.get();
-        try (Results results = executor.async(emptyList())) {
+        try (Results results = executor.async(emptyList(), null)) {
             assertFalse(results.hasNext());
         }
     }
@@ -51,7 +52,7 @@ public class ResultsExecutorTest implements TestContext {
     @Test(dataProvider = "suppliersData", groups = {"fast"})
     public void testSingleEmptyInput(Supplier<ResultsExecutor> supplier) {
         ResultsExecutor executor = supplier.get();
-        try (Results r = executor.async(singletonList(CollectionResults.empty(singleton("x"))))) {
+        try (Results r = executor.async(CollectionResults.empty(singleton("x")))) {
             assertFalse(r.hasNext());
         }
     }
@@ -64,7 +65,7 @@ public class ResultsExecutorTest implements TestContext {
         List<Future<?>> futures = new ArrayList<>();
         for (int i = 0; i < 200 * Runtime.getRuntime().availableProcessors(); i++) {
             Future<?> future = outer.submit(() -> {
-                try (Results r = e.async(singletonList(CollectionResults.empty(singleton("x"))))) {
+                try (Results r = e.async(CollectionResults.empty(singleton("x")))) {
                     assertFalse(r.hasNext());
                 }
             });
@@ -159,7 +160,7 @@ public class ResultsExecutorTest implements TestContext {
         List<MockResults> inputs = generateInput(generateInputLists(columns, rows));
         BitSet actual = new BitSet(columns);
 
-        Results results = executor.async(inputs);
+        Results results = executor.async(inputs, null);
         results.forEachRemainingThenClose( s -> store(actual, s));
 
         assertTrue(inputs.stream().allMatch(MockResults::isClosed));
@@ -178,7 +179,7 @@ public class ResultsExecutorTest implements TestContext {
                 List<MockResults> inputs = generateInput(inputLists);
                 BitSet actual = new BitSet(columns);
 
-                Results results = executor.async(inputs);
+                Results results = executor.async(inputs, null);
                 results.forEachRemainingThenClose( s -> store(actual, s));
 
                 assertTrue(inputs.stream().allMatch(MockResults::isClosed));
@@ -204,7 +205,7 @@ public class ResultsExecutorTest implements TestContext {
                 List<MockResults> inputs = generateInput(inputLists);
                 BitSet actual = new BitSet(columns);
 
-                Results results = executor.async(inputs);
+                Results results = executor.async(inputs, null);
                 int total = inputs.stream().map(r -> r.getCollection().size())
                                            .reduce(Integer::sum).orElse(0);
                 for (int j = 0; j < total; j++) {
@@ -241,7 +242,7 @@ public class ResultsExecutorTest implements TestContext {
                 List<MockResults> inputs = generateInput(inputLists);
                 BitSet actual = new BitSet(columns);
 
-                Results results = executor.async(inputs);
+                Results results = executor.async(inputs, null);
                 tasksLatch.countDown();
                 results.forEachRemainingThenClose( s -> store(actual, s));
 

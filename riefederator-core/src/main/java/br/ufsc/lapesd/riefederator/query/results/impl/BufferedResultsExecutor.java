@@ -28,7 +28,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
     }
 
     public BufferedResultsExecutor(int perInputBufferSize) {
-        this(Executors.newCachedThreadPool(), perInputBufferSize);
+        this(Executors.newWorkStealingPool(), perInputBufferSize);
     }
 
     public BufferedResultsExecutor() {
@@ -36,14 +36,17 @@ public class BufferedResultsExecutor implements ResultsExecutor {
     }
 
     @Override
-    public @Nonnull Results async(@Nonnull Collection<? extends Results> coll) {
-        return async(coll, perInputBufferSize);
+    public @Nonnull Results async(@Nonnull Collection<? extends Results> coll,
+                                  @Nullable Collection<String> namesHint) {
+        return async(coll, namesHint, perInputBufferSize);
     }
 
     @Override
-    public @Nonnull Results async(@Nonnull Collection<? extends Results> coll, int buffer) {
-        Set<String> names = coll.stream().flatMap(r -> r.getVarNames().stream()).collect(toSet());
-        if (executorService.isShutdown()) {
+    public @Nonnull Results async(@Nonnull Collection<? extends Results> coll,
+                                  @Nullable Collection<String> namesHint, int buffer) {
+        Collection<String> names = namesHint != null ? namesHint
+                        : coll.stream().flatMap(r -> r.getVarNames().stream()).collect(toSet());
+        if (closed) {
             logger.error("Calling async() after close()! Will return empty results");
             return CollectionResults.empty(names);
         }
@@ -59,13 +62,17 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             list.add(task);
             task.schedule();
         }
-        if (executorService.isShutdown())
+        if (closed)
             logger.error("Race: close() called during async()! Will discard solutions");
         return new ConsumingResults(list, queue, names);
     }
 
+    private boolean closed;
+
     @Override
     public void close() {
+        if (closed) return;
+        closed = true;
         // FeedTasks still executing will be closed when their poll() has a rejected submit()
         for (Runnable runnable : executorService.shutdownNow()) {
             FeedTask task = (FeedTask) runnable;
@@ -116,7 +123,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
 
         public ConsumingResults(@Nonnull List<FeedTask> tasks,
                                 @Nonnull BlockingQueue<FeedTask.Message> queue,
-                                @Nonnull Set<String> varNames) {
+                                @Nonnull Collection<String> varNames) {
             super(varNames);
             this.tasks = tasks;
             this.activeTasks = new BitSet(tasks.size());

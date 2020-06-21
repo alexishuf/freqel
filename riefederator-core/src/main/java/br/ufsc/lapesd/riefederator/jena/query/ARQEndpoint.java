@@ -123,6 +123,11 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     @Override
+    public boolean hasSPARQLCapabilities() {
+        return true;
+    }
+
+    @Override
     public boolean hasRemoteCapability(@Nonnull Capability capability) {
         switch (capability) {
             case PROJECTION:

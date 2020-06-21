@@ -80,13 +80,14 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
     public @Nonnull Results doExecute(@Nonnull QueryNode node) {
         CQuery query = node.getQuery();
         TPEndpoint ep = node.getEndpoint();
-        boolean canFilter = ep.hasCapability(Capability.SPARQL_FILTER);
-        boolean hasCapabilities = query.getModifiers().stream()
+        boolean isSPARQL = ep.hasSPARQLCapabilities();
+        boolean canFilter = isSPARQL || ep.hasCapability(Capability.SPARQL_FILTER);
+        boolean hasCapabilities = isSPARQL || query.getModifiers().stream()
                 .allMatch(m -> ep.hasCapability(m.getCapability()))
                 && (node.getFilters().isEmpty() || canFilter) ;
 
         if (hasCapabilities) {
-            if (query.getModifiers().containsAll(node.getFilters()))
+            if (node.getFilters().isEmpty() || query.getModifiers().containsAll(node.getFilters()))
                 return ep.query(query);
 
             CQuery.WithBuilder b = CQuery.with(query).copyModifiers(query).copyAnnotations(query);
@@ -143,7 +144,7 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
             node.getFilters().forEach(child::addFilter);
             resultList.add(executor.executeNode(child));
         }
-        Results r = resultsExecutor.async(resultList);
+        Results r = resultsExecutor.async(resultList, node.getResultVars());
         return node.isProjecting() ? new ProjectingResults(r, node.getResultVars()) : r;
     }
 

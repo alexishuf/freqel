@@ -16,7 +16,10 @@ import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
-import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -266,15 +269,21 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
-        ModifierUtils.check(this, query.getModifiers());
-        if (query.isAsk())
-            return execute(query, JSON_ACCEPT, emptySet(), AskResults::new);
+        Stopwatch sw = Stopwatch.createStarted();
+        try {
+            //        ModifierUtils.check(this, query.getModifiers());
+            if (query.isAsk())
+                return execute(query, JSON_ACCEPT, emptySet(), AskResults::new);
 
-        Projection projection = ModifierUtils.getFirst(Projection.class, query.getModifiers());
-        Set<String> vars = projection == null
-                ? query.getTermVars().stream().map(Var::getName).collect(toSet())
-                : projection.getVarNames();
-        return execute(query, TSV_ACCEPT, vars, TSVResults::new);
+
+            Projection projection = ModifierUtils.getFirst(Projection.class, query.getModifiers());
+            Set<String> vars = projection == null
+                    ? query.getTermVars().stream().map(Var::getName).collect(toSet())
+                    : projection.getVarNames();
+            return execute(query, TSV_ACCEPT, vars, TSVResults::new);
+        } finally {
+            logger.info("{}.query() in {}ms", this, sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
+        }
     }
 
     @Override
@@ -296,6 +305,11 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         if (missingCapabilities == null)
             missingCapabilities = new HashSet<>();
         missingCapabilities.add(capability);
+    }
+
+    @Override
+    public boolean hasSPARQLCapabilities() {
+        return missingCapabilities == null;
     }
 
     @Override
@@ -324,8 +338,6 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                                            @Nonnull ResultsFactory resultsFactory) {
         Future<Connection> future = connectExecutor.submit(new Connection(query, accept));
         BaseResults results = resultsFactory.create(vars, future);
-        if (query.getModifiers().stream().anyMatch(Distinct.class::isInstance))
-            results.distinct = true;
         synchronized (this) {
             activeResults.put(results, true);
         }
@@ -341,6 +353,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         @Nullable HttpGet httpGet;
         @Nullable IOException requestFailure;
         @Nullable Reader reader;
+        boolean distinct;
         final @Nonnull CQuery query;
         final @Nonnull String accept;
 
@@ -375,6 +388,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
                 Charset cs = query.isAsk() ? UTF_8 : getCharset(httpResponse, httpContext);
                 this.reader = new InputStreamReader(httpResponse.getEntity().getContent(), cs);
+                distinct = ss.isDistinct();
                 return this;
             } catch (IOException e) {
                 throw new QueryExecutionException("IOException while reading from "
@@ -580,6 +594,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             while (connection == null && connectionFailure == null) {
                 try {
                     connection = connectionFuture.get(timeoutMilliseconds, TimeUnit.MILLISECONDS);
+                    distinct = connection.distinct;
                 } catch (InterruptedException e) {
                     interrupted = true;
                 } catch (ExecutionException e) {

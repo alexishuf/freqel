@@ -35,7 +35,7 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
     public static final int NOTIFY_DELTA_MS = 5000;
     public static final int DEF_VALUES_ROWS = 40;
     public static final int[][] DEF_VALUES_NO_SHORTCUTS = {};
-    public static final int[][] DEF_VALUES_SHORTCUTS = {{10, 2}, {2, 5}, {1, 10}};
+    public static final int[][] DEF_VALUES_SHORTCUTS = {{10, 1}, {2, 4}, {1, 7}};
 
     private final @Nonnull PlanExecutor planExecutor;
     private final @Nonnull Results smaller;
@@ -98,7 +98,7 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
         this.bindSolutionFactory = ArraySolution.forVars(joinVars);
         if (canValuesBind(rightTree)) {
             if (!smaller.isAsync() && resultsExecutor != null)
-                smaller = resultsExecutor.async(singleton(smaller), valuesRows*2);
+                smaller = resultsExecutor.async(singleton(smaller), smaller.getVarNames(),valuesRows*2);
             valuesShortcuts = smaller.isAsync() ? DEF_VALUES_SHORTCUTS : DEF_VALUES_NO_SHORTCUTS;
             resultsSupplier = new ValuesBind();
         } else {

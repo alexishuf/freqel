@@ -7,8 +7,6 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class InjectedExecutor implements PlanExecutor {
     private final @Nonnull QueryNodeExecutor queryNodeExecutor;
     private final @Nonnull MultiQueryNodeExecutor multiQueryNodeExecutor;
@@ -36,8 +34,8 @@ public class InjectedExecutor implements PlanExecutor {
 
     @Override
     public @Nonnull Results executeNode(@Nonnull PlanNode node) {
-        checkArgument(TreeUtils.isAcyclic(node), "Node "+node+"is not a tree");
-        checkArgument(node.getRequiredInputVars().isEmpty(), "Node "+node+" needs inputs");
+        assert TreeUtils.isAcyclic(node) : "Node is not a tree";
+        assert node.getRequiredInputVars().isEmpty() : "Node needs inputs";
         Class<? extends PlanNode> cls = node.getClass();
         Results results;
         if (QueryNode.class.isAssignableFrom(cls))
