@@ -20,7 +20,7 @@ paths:
             filter:
               - sparql: "FILTER($actual >= $input)"
                 index: 0
-              - sparql: "FILTER($actual <= $input)"
+              - sparql: "FILTER($actual < $input)"
                 index: 1
       responses:
         200:

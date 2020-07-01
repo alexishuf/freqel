@@ -109,7 +109,7 @@ public class ArrayParametersServiceTest extends JerseyTestNg.ContainerPerClassTe
         WebAPICQEndpoint ep = parser.getEndpoint("/integers");
         Set<Integer> ac = new HashSet<>();
         ep.query(createQuery(x, value, y,
-                             SPARQLFilter.build("?y >= 2"), SPARQLFilter.build("?y <= 5"))
+                             SPARQLFilter.build("?y >= 2"), SPARQLFilter.build("?y < 5"))
         ).forEachRemainingThenClose(s ->
                 ac.add((int) parseDouble(requireNonNull(s.get(y)).asLiteral().getLexicalForm())));
         assertEquals(ac, Sets.newHashSet(2, 3, 4));
@@ -133,7 +133,7 @@ public class ArrayParametersServiceTest extends JerseyTestNg.ContainerPerClassTe
         WebAPICQEndpoint ep = parser.getEndpoint("/integers");
         Set<Integer> ac = new HashSet<>();
         ep.query(createQuery(x, value, y,
-                SPARQLFilter.build("?y <= 3"))
+                SPARQLFilter.build("?y < 3"))
         ).forEachRemainingThenClose(s ->
                 ac.add((int) parseDouble(requireNonNull(s.get(y)).asLiteral().getLexicalForm())));
         assertEquals(ac, Sets.newHashSet(0, 1, 2));
