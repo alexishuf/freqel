@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
+import br.ufsc.lapesd.riefederator.webapis.description.IndexedParam;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.impl.ParamPagingStrategy;
@@ -108,8 +109,11 @@ public class SwaggerParser implements APIDescriptionParser {
         @Nonnull String endpointKey;
         @Nullable PagingStrategy pagingStrategy;
         @Nonnull Set<String> required, optional, missing;
+        @Nonnull Set<String> executionRequired, executionOptional;
+        @Nonnull Map<String, String> naValues;
         @Nonnull Map<String, DictTree> paramObjMap;
         @Nonnull Map<String, ParameterPath> parameterPathMap;
+        @Nonnull Map<String, String> listSeparators;
 
         public Parameters(@Nonnull String endpoint, @Nullable APIDescriptionContext ctx,
                           @Nonnull JsonSchemaMoleculeParser parser) {
@@ -137,6 +141,60 @@ public class SwaggerParser implements APIDescriptionParser {
                 mappedInputs.addAll(pagingStrategy.getParametersUsed());
             if (!mappedInputs.containsAll(required))
                 throw ex("Some required inputs of endpoint %s have no atom mapped", endpoint);
+            executionRequired = expandIndexed(required, endpoint);
+            executionOptional = expandIndexed(optional, endpoint);
+            naValues = new HashMap<>();
+            addNaValues(naValues, executionRequired);
+            addNaValues(naValues, executionOptional);
+
+            listSeparators = new HashMap<>();
+            for (Map.Entry<String, DictTree> e : paramObjMap.entrySet()) {
+                if ("array".equals(e.getValue().getString("type"))) {
+                    DictTree items = e.getValue().getMapNN("items");
+                    String fmt = items.getString("collectionFormat", "csv").trim().toLowerCase();
+                    String separator;
+                    switch (fmt) {
+                        case "csv":   separator = "," ; break;
+                        case "ssv":   separator = " " ; break;
+                        case "tsv":   separator = "\t"; break;
+                        case "pipes": separator = "|" ; break;
+                        case "multi": separator = null; break;
+                        default:
+                            throw ex("Unexpected collectionFormat=%s for parameter " +
+                                     "%s in endpoint %s", fmt, e.getKey(), endpoint);
+                    }
+                    listSeparators.put(e.getKey(), separator);
+                }
+            }
+        }
+
+        private void addNaValues(Map<String, String> naValues, Set<String> expandedNames) {
+            for (String expandedName : expandedNames) {
+                IndexedParam indexed = IndexedParam.parse(expandedName);
+                if (indexed != null) {
+                    ParameterPath pp = parameterPathMap.get(indexed.base);
+                    String naValue = pp == null ? "" : pp.getNaValue();
+                    assert pp != null;
+                    naValues.put(indexed.base, naValue);
+                }
+            }
+        }
+
+        private @Nonnull Set<String> expandIndexed(Set<String> paramNames, String endpoint) {
+            Set<String> set = new HashSet<>();
+            for (String name : paramNames) {
+                ParameterPath pp = parameterPathMap.get(name);
+                if (pp.getAtomFilters().stream().anyMatch(AtomFilter::hasInputIndex)) {
+                    for (AtomFilter f : pp.getAtomFilters()) {
+                        if (!f.hasInputIndex())
+                            throw ex("%f of endpoint %s missing index", f, endpoint);
+                        set.add(IndexedParam.index(name, f.getInputIndex()));
+                    }
+                } else {
+                    set.add(name);
+                }
+            }
+            return set;
         }
 
         private boolean containsParam(@Nonnull String tpl, @Nonnull String name) {
@@ -186,11 +244,17 @@ public class SwaggerParser implements APIDescriptionParser {
         @Nonnull Map<String, String> getElement2Input() {
             Map<String, String> element2Input = new HashMap<>(parameterPathMap.size());
             for (Map.Entry<String, ParameterPath> e : parameterPathMap.entrySet()) {
-                AtomFilter atomFilter = e.getValue().getAtomFilter();
-                if (atomFilter != null)
-                    element2Input.put(atomFilter.getName(), e.getKey());
-                else
+                Collection<AtomFilter> atomFilters = e.getValue().getAtomFilters();
+                if (atomFilters.isEmpty()) {
                     element2Input.put(e.getValue().getAtom().getName(), e.getKey());
+                } else {
+                    for (AtomFilter atomFilter : atomFilters) {
+                        String input = e.getKey();
+                        if (atomFilter.hasInputIndex())
+                            input = IndexedParam.index(input, atomFilter.getInputIndex());
+                        element2Input.put(atomFilter.getName(), input);
+                    }
+                }
             }
             return element2Input;
         }
@@ -212,8 +276,11 @@ public class SwaggerParser implements APIDescriptionParser {
 
         UriTemplate template = p.getTemplate();
         UriTemplateExecutor.Builder builder = UriTemplateExecutor.from(template)
-                .withOptional(p.optional).withRequired(p.required).withMissingInResult(p.missing)
+                .withOptional(p.executionOptional).withRequired(p.executionRequired)
+                .withMissingInResult(p.missing)
                 .withResponseParser(responseParser);
+        p.naValues.forEach(builder::withIndexedNAValue);
+        p.listSeparators.forEach(builder::withListSeparator);
 
         // apply modifiers to executor
         if (p.pagingStrategy != null)
@@ -230,7 +297,7 @@ public class SwaggerParser implements APIDescriptionParser {
         }
 
         MoleculeBuilder moleculeBuilder = p.parser.getMolecule().toBuilder();
-        p.getParamPaths().stream().map(ParameterPath::getAtomFilter).filter(Objects::nonNull)
+        p.getParamPaths().stream().flatMap(pp -> pp.getAtomFilters().stream())
                                   .forEach(moleculeBuilder::filter);
         return new APIMolecule(moleculeBuilder.build(), builder.build(), p.getElement2Input(),
                                getCardinality(endpoint, p.parser.getCardinality()),

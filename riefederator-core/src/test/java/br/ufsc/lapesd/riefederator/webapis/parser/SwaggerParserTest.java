@@ -181,7 +181,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertFalse(parameters.getParamPath("id").isIn());
         assertEquals(parameters.getParamPath("id").getPath(),
                      singletonList(new StdPlain("id")));
-        assertNull(parameters.getParamPath("id").getAtomFilter());
+        assertEquals(parameters.getParamPath("id").getAtomFilters(), emptyList());
     }
 
     @Test(groups = {"fast"})
@@ -207,7 +207,9 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
 
         assertEquals(parameters.parameterPathMap.keySet(),
                      newHashSet("dataInicial", "dataFinal", "codigoOrgao"));
-        AtomFilter filter = parameters.getParamPath("dataInicial").getAtomFilter();
+        Collection<AtomFilter> filters = parameters.getParamPath("dataInicial").getAtomFilters();
+        assertEquals(filters.size(), 1);
+        AtomFilter filter = filters.iterator().next();
         assertNotNull(filter);
         assertEquals(filter.getSPARQLFilter(), SPARQLFilter.build("FILTER($actual >= $input)"));
         assertEquals(filter.getSPARQLFilter().getFilterString(), "$actual >= $input");

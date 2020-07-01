@@ -1,7 +1,9 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.impl;
 
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.webapis.description.IndexedParam;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestInfo;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
@@ -31,6 +33,7 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.*;
 
@@ -47,6 +50,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
     private final @Nonnull ResponseParser parser;
     private final @Nonnull PagingStrategy pagingStrategy;
     private final @SuppressWarnings("Immutable") @Nonnull RateLimitsRegistry rateLimitsRegistry;
+    private final @Nonnull ImmutableMap<String, String> indexedNAValues;
+    private final @Nonnull ImmutableMap<String, String> listSeparator;
     private @SuppressWarnings("Immutable") @Nonnull HTTPRequestObserver requestObserver;
 
     public UriTemplateExecutor(@Nonnull UriTemplate template, @Nonnull ImmutableSet<String> required,
@@ -57,6 +62,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                                @Nonnull ResponseParser parser,
                                @Nonnull PagingStrategy pagingStrategy,
                                @Nonnull RateLimitsRegistry rateLimitsRegistry,
+                               @Nonnull ImmutableMap<String, String> indexedNAValues,
+                               @Nonnull ImmutableMap<String, String> listSeparator,
                                @Nonnull HTTPRequestObserver requestObserver) {
         this.template = template;
         this.required = required;
@@ -67,6 +74,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         this.parser = parser;
         this.pagingStrategy = pagingStrategy;
         this.rateLimitsRegistry = rateLimitsRegistry;
+        this.indexedNAValues = indexedNAValues;
+        this.listSeparator = listSeparator;
         this.requestObserver = requestObserver;
     }
 
@@ -75,7 +84,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                 ImmutableSet.of(), ImmutableSet.of(),
                 ImmutableMap.of(), new ClientConfig(),
                 JenaResponseParser.INSTANCE, NoPagingStrategy.INSTANCE,
-                new RateLimitsRegistry(), i -> {});
+                new RateLimitsRegistry(), ImmutableMap.of(), ImmutableMap.of(), i -> {});
     }
 
     public static class Builder {
@@ -83,6 +92,9 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         private Set<String> required = null;
         private Set<String> optional = null;
         private Set<String> missing = null;
+        private final @Nonnull Map<String, String> indexedNAValues = new HashMap<>();
+        private final @Nonnull ImmutableMap.Builder<String, String> listSeparator
+                = ImmutableMap.builder();
         private final @Nonnull ImmutableMap.Builder<String, TermSerializer> input2serializer
                 = ImmutableMap.builder();
         private @Nonnull ClientConfig clientConfig = new ClientConfig();
@@ -165,6 +177,21 @@ public class UriTemplateExecutor implements APIRequestExecutor {
             this.requestObserver = observer;
             return this;
         }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder withIndexedNAValue(@Nonnull String paramBaseName,
+                                                   @Nullable String value) {
+            if (value == null)
+                this.indexedNAValues.remove(paramBaseName);
+            else
+                this.indexedNAValues.put(paramBaseName, value);
+            return this;
+        }
+        @CanIgnoreReturnValue
+        public @Nonnull Builder withListSeparator(@Nonnull String paramBaseName,
+                                                  @Nonnull String separator) {
+            this.listSeparator.put(paramBaseName, separator);
+            return this;
+        }
 
         @CheckReturnValue
         public @Nonnull UriTemplateExecutor build() {
@@ -194,6 +221,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                                            ImmutableSet.copyOf(missing),
                                            input2serializer.build(), clientConfig,
                                            parser, pagingStrategy, rateLimitsRegistry,
+                                           ImmutableMap.copyOf(indexedNAValues),
+                                           listSeparator.build(),
                                            requestObserver);
         }
     }
@@ -295,23 +324,110 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         return ClientBuilder.newClient(clientConfig);
     }
 
-    protected @Nonnull String getUri(@Nonnull Solution input) throws APIRequestExecutorException {
-        Map<String, String> bindings = new HashMap<>();
-        input.forEach((name, term) -> {
+    private class Bindings {
+        final Map<String, String> singleValues = new HashMap<>();
+        final Map<String, List<String>> multiValues = new HashMap<>();
+
+        public Bindings(@Nonnull Solution input) {
+            input.forEach((name, term) -> {
+                IndexedParam indexed = IndexedParam.parse(name);
+                String baseName = indexed == null ? name : indexed.base;
+                String serialized = toValue(baseName, term);
+                if (indexed == null)
+                    singleValues.put(name, serialized);
+                else
+                    saveIndexedValue(indexed, serialized);
+            });
+            compressMultiValues();
+        }
+
+        private void compressMultiValues() {
+            StringBuilder builder = new StringBuilder();
+            for (Iterator<String> it = multiValues.keySet().iterator(); it.hasNext(); ) {
+                String baseName = it.next();
+                List<String> list = multiValues.get(baseName);
+                String separator = urlEncode(listSeparator.getOrDefault(baseName, null));
+                String singleton = null;
+                for (String value : list) {
+                    if (value != null) {
+                        if (singleton == null) singleton = value;
+                        else                     singleton = null;
+                        if (separator != null)
+                            builder.append(value).append(separator);
+                    }
+                }
+                if (singleton != null) { //effectively singleValues, handle as such
+                    singleValues.put(baseName, singleton);
+                    it.remove();
+                } else if (builder.length() > 0) { // convert to singleValues using separator
+                    assert separator != null;
+                    builder.setLength(builder.length()-separator.length());
+                    singleValues.put(baseName, builder.toString());
+                    builder.setLength(0);
+                    it.remove();
+                }
+            }
+        }
+
+        private void saveIndexedValue(@Nonnull IndexedParam indexed, @Nonnull String serialized) {
+            List<String> list;
+            list = multiValues.computeIfAbsent(indexed.base, k -> new ArrayList<>());
+            String na = indexedNAValues.getOrDefault(indexed.base, null);
+            int position = indexed.getIndexValue();
+            for (int i = list.size(); i < position; i++) // fill with NAs
+                list.add(na);
+            if (position == list.size())  list.add(serialized);
+            else                          list.set(position, serialized);
+        }
+
+        private @Nonnull String toValue(@Nonnull String baseName, @Nonnull Term term) {
             TermSerializer serializer;
-            serializer = input2serializer.getOrDefault(name, SimpleTermSerializer.INSTANCE);
-            String serialized = serializer.toString(term, name, this);
+            serializer = input2serializer.getOrDefault(baseName, SimpleTermSerializer.INSTANCE);
+            UriTemplateExecutor executor = UriTemplateExecutor.this;
+            String serialized = serializer.toString(term, baseName, executor);
+            return urlEncode(serialized);
+        }
+
+        private String urlEncode(String serialized) {
+            if (serialized == null) return null;
             try {
-                bindings.put(name, URLEncoder.encode(serialized, "UTF-8"));
+                return URLEncoder.encode(serialized, "UTF-8");
             } catch (UnsupportedEncodingException e) {
                 throw new RuntimeException("UTF-8 is not a valid encoding!?");
             }
-        });
-        if (!bindings.keySet().containsAll(getRequiredInputs())) {
+        }
+    }
+
+    private static boolean isValidURI(@Nonnull String uri) {
+        try {
+            new java.net.URI(uri);
+            return true;
+        } catch (URISyntaxException e) {
+            return false;
+        }
+    }
+
+    private @Nonnull String getUri(@Nonnull Solution input) throws APIRequestExecutorException {
+        if (!input.getVarNames().containsAll(getRequiredInputs())) {
             Set<String> missing = new HashSet<>(getRequiredInputs());
-            missing.removeAll(bindings.keySet());
+            missing.removeAll(input.getVarNames());
             throw new MissingAPIInputsException(missing, this);
         }
-        return template.createURI(bindings);
+        Bindings bindings = new Bindings(input);
+        String uri = template.createURI(bindings.singleValues);
+        assert isValidURI(uri);
+        if (bindings.multiValues.isEmpty())
+            return uri;
+        StringBuilder builder = new StringBuilder(uri);
+        boolean first = uri.matches("\\?[^/]+$");
+        for (Map.Entry<String, List<String>> e : bindings.multiValues.entrySet()) {
+            for (String value : e.getValue()) {
+                builder.append(first ? '?' : '&').append(e.getKey()).append('=').append(value);
+                if (first) first = false;
+            }
+        }
+        uri = builder.toString();
+        assert isValidURI(uri);
+        return uri;
     }
 }

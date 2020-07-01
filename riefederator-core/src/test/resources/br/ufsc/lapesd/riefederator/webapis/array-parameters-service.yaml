@@ -1,0 +1,34 @@
+swagger: 2.0
+host: example.org
+basePath: /
+paths:
+  /integers:
+    get:
+      summary: get integers in a range
+      operationId: GETintegersByRange
+      produces: application/json
+      parameters:
+        - name: range
+          in: query
+          description: min|max
+          required: false
+          type: array
+          items:
+            collectionFormat: pipes
+          x-path:
+            path: [value]
+            filter:
+              - sparql: "FILTER($actual >= $input)"
+                index: 0
+              - sparql: "FILTER($actual <= $input)"
+                index: 1
+      responses:
+        200:
+          description: OK
+          schema:
+            type: object
+            properties:
+              - value:
+                  type: array
+                  items:
+                    type: integer

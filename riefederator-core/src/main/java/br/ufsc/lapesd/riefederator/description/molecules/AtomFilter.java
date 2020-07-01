@@ -23,19 +23,17 @@ public class AtomFilter implements MoleculeElement {
     private final @Nonnull String name;
     private final @Nonnull SPARQLFilter filter;
     private final @Nonnull ImmutableBiMap<AtomWithRole, String> atom2var;
+    private final int inputIndex;
 
     /* --- --- --- Constructor & Builder --- --- -- */
 
     public AtomFilter(@Nonnull SPARQLFilter filter,
                       @Nonnull ImmutableBiMap<AtomWithRole, String> atom2var,
-                      @Nonnull String name) {
+                      @Nonnull String name, int inputIndex) {
         this.filter = filter;
         this.atom2var = atom2var;
         this.name = name;
-    }
-    public AtomFilter(@Nonnull SPARQLFilter filter,
-                      @Nonnull ImmutableBiMap<AtomWithRole, String> atom2var) {
-        this(filter, atom2var, generateName(filter, atom2var));
+        this.inputIndex = inputIndex;
     }
 
     private static @Nonnull
@@ -61,6 +59,7 @@ public class AtomFilter implements MoleculeElement {
     public static class WithBuilder {
         private final @Nonnull SPARQLFilter filter;
         private @Nullable String name;
+        private int inputIndex = Integer.MIN_VALUE;
         private final @Nonnull ImmutableBiMap.Builder<AtomWithRole, String> atom2varBuilder;
 
         public WithBuilder(@Nonnull SPARQLFilter filter) {
@@ -88,15 +87,22 @@ public class AtomFilter implements MoleculeElement {
             return this;
         }
 
+        public @Nonnull WithBuilder withInputIndex(int inputIndex) {
+            this.inputIndex = inputIndex;
+            return this;
+        }
+
         public @Nonnull AtomFilter build() {
-            return name == null ? new AtomFilter(filter, atom2varBuilder.build())
-                                : new AtomFilter(filter, atom2varBuilder.build(), name);
+            ImmutableBiMap<AtomWithRole, String> atom2var = atom2varBuilder.build();
+            if (name == null) name = generateName(filter, atom2var);
+            return new AtomFilter(filter, atom2var, name, inputIndex);
         }
     }
 
     public static class Builder extends SPARQLFilter.Builder {
         private final @Nonnull ImmutableBiMap.Builder<AtomWithRole, String> atom2varBuilder;
         private @Nullable String name;
+        private int inputIndex = Integer.MIN_VALUE;
 
         public Builder(@Nonnull String filter) {
             super(filter);
@@ -143,8 +149,12 @@ public class AtomFilter implements MoleculeElement {
             return map(role.wrap(atomName), var);
         }
 
-        public @Nonnull
-        AtomFilter buildFilter() {
+        public @Nonnull Builder withInputIndex(int inputIndex) {
+            this.inputIndex = inputIndex;
+            return this;
+        }
+
+        public @Nonnull AtomFilter buildFilter() {
             SPARQLFilter filter = super.build();
             ImmutableBiMap<AtomWithRole, String> atom2var = atom2varBuilder.build();
             checkState(filter.getVars().containsAll(atom2var.values()),
@@ -153,8 +163,8 @@ public class AtomFilter implements MoleculeElement {
                                                  .collect(toSet()),
                                 filter.getVars())
             );
-            return name == null ? new AtomFilter(filter, atom2var)
-                                : new AtomFilter(filter, atom2var, name);
+            if (name == null) name = generateName(filter, atom2var);
+            return new AtomFilter(filter, atom2var, name, inputIndex);
         }
     }
 
@@ -185,6 +195,13 @@ public class AtomFilter implements MoleculeElement {
         return atom2var.inverse().keySet();
     }
 
+    public boolean hasInputIndex() {
+        return inputIndex != Integer.MIN_VALUE;
+    }
+    public int getInputIndex() {
+        return inputIndex;
+    }
+
     public @Nonnull Set<AtomWithRole> getAtoms() {
         return atom2var.keySet();
     }
@@ -212,8 +229,12 @@ public class AtomFilter implements MoleculeElement {
         StringBuilder b = new StringBuilder();
         b.append("FILTER(").append(filter.getFilterString()).append(")@{");
         ImmutableMap<String, AtomWithRole> var2Atom = getVar2Atom();
-        for (Map.Entry<String, AtomWithRole> e : var2Atom.entrySet())
-            b.append('?').append(e.getKey()).append('=').append(e.getValue()).append(", ");
+        for (Map.Entry<String, AtomWithRole> e : var2Atom.entrySet()) {
+            b.append('?').append(e.getKey());
+            if (inputIndex != Integer.MIN_VALUE)
+                b.append('[').append(inputIndex).append(']');
+            b.append('=').append(e.getValue()).append(", ");
+        }
         if (!var2Atom.isEmpty())
             b.setLength(b.length()-2);
         return b.toString();
@@ -223,13 +244,14 @@ public class AtomFilter implements MoleculeElement {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof AtomFilter)) return false;
-        AtomFilter filter1 = (AtomFilter) o;
-        return getSPARQLFilter().equals(filter1.getSPARQLFilter()) &&
-                atom2var.equals(filter1.atom2var);
+        AtomFilter rhs = (AtomFilter) o;
+        return getSPARQLFilter().equals(rhs.getSPARQLFilter())
+                && atom2var.equals(rhs.atom2var)
+                && inputIndex == rhs.inputIndex;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getSPARQLFilter(), atom2var);
+        return Objects.hash(getSPARQLFilter(), atom2var, inputIndex);
     }
 }

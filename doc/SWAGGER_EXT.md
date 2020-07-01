@@ -191,12 +191,16 @@ need not exist in the response.
 `filter`: When present, the semantic is that the parameter corresponds to a 
 filter over the values at the mapped path. The value is an object where 
 property names indicate the filter language and the values, the filter 
-expressions in that language. All such filters are considered equivalent.
-Currently, only SPARQL filters are allowed, with the filter expressions 
-corresponding to the `FILTER`  clause (including the `FILTER` keyword). 
-Allowed variables in the filter are `$input` corresponding to the value given 
-as input to the parameter and `$actual`, corresponding to the value in the 
-`path` associated to the parameter. Example:
+expressions in that language. All filters in the different languages are 
+considered equivalent. Currently, only SPARQL filters are allowed, with the 
+filter expressions corresponding to the `FILTER`  clause (including the 
+`FILTER` keyword). Allowed variables in the filter are `$input` corresponding 
+to the value given as input to the parameter and `$actual`, corresponding to 
+the value in the `path` associated to the parameter.
+**If the value of `filter` is an array**, then all filter objects behave as 
+if under conjunction: all must hold.  
+
+Example:
 
 ```json
 {
@@ -211,11 +215,22 @@ as input to the parameter and `$actual`, corresponding to the value in the
 }
 ```
 
-`missing`: When present, this informs that actual value mapped by `path` 
+`index` (used within `filter`): If given, the value that binds to the `$input` 
+variable in the filter is the `index-th` value in the array that is the value 
+of the API parameter. If `na-value: null` in the API parameter, there must be 
+filters with an `index` for every slot in the array. 
+
+`missing`: When present, this informs that the actual value mapped by `path` 
 will not be present in responses, even if it is present in the response schema.
 (When a path to which a parameter is mapped is missing the schema, tha value
  also is not expected to appear in responses.). values are booleans and if 
  not present, false is assumed.
+ 
+`na-value`: If some `filter`s use the `index` attribute, it is possible 
+that only some filters match leaving some values in the array undefined. 
+Those slots of the array are filled with this value. The default is an empty 
+string. Setting this to `null` disallows NA value insertion and thus, all 
+slots of the array must receive bound values through `filter` matches.
 
 Controlling serialization of parameters
 ---------------------------------------

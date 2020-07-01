@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 import static org.testng.Assert.*;
 
@@ -50,7 +51,7 @@ public class ParameterPathTest {
         assertNotNull(parameterPath);
         assertEquals(parameterPath.getPath(), singletonList(property2term("x")));
         assertEquals(parameterPath.getAtom().getName(), "X");
-        assertNull(parameterPath.getAtomFilter());
+        assertEquals(parameterPath.getAtomFilters(), emptySet());
         assertFalse(parameterPath.isIn());
         assertFalse(parameterPath.isMissingInResult());
     }
@@ -62,7 +63,7 @@ public class ParameterPathTest {
         assertNotNull(parameterPath);
         assertEquals(parameterPath.getPath(), asList(property2term("x"), property2term("y")));
         assertEquals(parameterPath.getAtom().getName(), "Y");
-        assertNull(parameterPath.getAtomFilter());
+        assertEquals(parameterPath.getAtomFilters(), emptySet());
         assertFalse(parameterPath.isIn());
         assertFalse(parameterPath.isMissingInResult());
     }
@@ -74,7 +75,7 @@ public class ParameterPathTest {
         assertNotNull(parameterPath);
         assertEquals(parameterPath.getPath(), asList(property2term("x"), property2term("y")));
         assertEquals(parameterPath.getAtom().getName(), "Xin");
-        assertNull(parameterPath.getAtomFilter());
+        assertEquals(parameterPath.getAtomFilters(), emptySet());
         assertTrue(parameterPath.isIn());
         assertTrue(parameterPath.isMissingInResult());
     }
@@ -86,8 +87,8 @@ public class ParameterPathTest {
         assertNotNull(parameterPath);
         assertEquals(parameterPath.getPath(), singletonList(property2term("date")));
         assertEquals(parameterPath.getAtom().getName(), "Date");
-        assertNotNull(parameterPath.getAtomFilter());
-        assertEquals(parameterPath.getAtomFilter().getSPARQLFilter(),
+        assertEquals(parameterPath.getAtomFilters().size(), 1);
+        assertEquals(parameterPath.getAtomFilters().iterator().next().getSPARQLFilter(),
                      SPARQLFilter.build("FILTER($actual >= $input)"));
         assertFalse(parameterPath.isIn());
         assertFalse(parameterPath.isMissingInResult());
@@ -98,8 +99,8 @@ public class ParameterPathTest {
         DictTree dict = tree.getMapNN("start-date-assume-sparql");
         ParameterPath parameterPath = ParameterPath.parse(dict, molecule, this::property2term);
         assertNotNull(parameterPath);
-        assertNotNull(parameterPath.getAtomFilter());
-        assertEquals(parameterPath.getAtomFilter().getSPARQLFilter(),
+        assertEquals(parameterPath.getAtomFilters().size(), 1);
+        assertEquals(parameterPath.getAtomFilters().iterator().next().getSPARQLFilter(),
                      SPARQLFilter.build("FILTER($actual >= $input)"));
     }
 

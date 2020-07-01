@@ -20,6 +20,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.Integer.MAX_VALUE;
+import static java.lang.Integer.MIN_VALUE;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 
 public class ParameterPath {
     private static final Logger logger = LoggerFactory.getLogger(ParameterPath.class);
@@ -28,20 +32,23 @@ public class ParameterPath {
     private final @Nonnull List<Term> path;
     private final boolean in;
     private final boolean missing;
-    private final @Nullable AtomFilter atomFilter;
+    private final @Nullable String naValue;
+    private final @Nonnull Collection<AtomFilter> atomFilters;
 
     private static final @Nonnull String inVar = "input", acVar = "actual";
     private static final @Nonnull Set<String> FILTER_VARS = Sets.newHashSet(inVar, acVar);
 
     public ParameterPath(@Nonnull Atom atom, @Nonnull List<Term> path, boolean in,
-                         boolean missing, @Nullable AtomFilter filter) {
+                         boolean missing, @Nullable String naValue,
+                         @Nonnull Collection<AtomFilter> filters) {
         checkArgument(!path.isEmpty(), "Path cannot be empty");
         checkArgument(path.stream().noneMatch(Objects::isNull), "Path cannot have null steps");
         this.atom = atom;
         this.path = path;
         this.in = in;
         this.missing = missing;
-        this.atomFilter = filter;
+        this.naValue = naValue;
+        this.atomFilters = filters;
     }
 
     public @Nonnull Atom getAtom() {
@@ -60,8 +67,12 @@ public class ParameterPath {
         return missing;
     }
 
-    public @Nullable AtomFilter getAtomFilter() {
-        return atomFilter;
+    public @Nullable String getNaValue() {
+        return naValue;
+    }
+
+    public @Nonnull Collection<AtomFilter> getAtomFilters() {
+        return atomFilters;
     }
 
     @Override
@@ -73,12 +84,12 @@ public class ParameterPath {
                 missing == that.missing &&
                 atom.equals(that.atom) &&
                 path.equals(that.path) &&
-                Objects.equals(atomFilter, that.atomFilter);
+                Objects.equals(atomFilters, that.atomFilters);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(atom, path, in, missing, atomFilter);
+        return Objects.hash(atom, path, in, missing, atomFilters);
     }
 
     public static @Nonnull ParameterPath parse(@Nonnull DictTree xPath,
@@ -92,9 +103,9 @@ public class ParameterPath {
     }
 
     public static @Nullable ParameterPath tryParse(@Nonnull DictTree xPath,
-                                            @Nonnull Molecule molecule,
-                                            @Nonnull Function<String, Term> property2Term,
-                                            @Nullable StringBuilder errorMsg) {
+                                                   @Nonnull Molecule molecule,
+                                                   @Nonnull Function<String, Term> property2Term,
+                                                   @Nullable StringBuilder errorMsg) {
         List<Object> rawPath = xPath.getListNN("path");
         if (rawPath.isEmpty()) {
             if (errorMsg != null)
@@ -127,17 +138,12 @@ public class ParameterPath {
                 errorMsg.append("Path ").append(path).append(" not present in molecule");
             return null;
         }
-        SPARQLFilter filter = xPath.containsKey("filter") ? parseFilter(xPath, errorMsg) : null;
-        AtomFilter mappedFilter = null;
-        if (filter != null) {
-            AtomFilter.WithBuilder builder = AtomFilter.with(filter);
-            if (filter.getVars().contains(inVar))
-                builder.map(AtomRole.INPUT.wrap(atom), inVar);
-            if (filter.getVars().contains(acVar))
-                builder.map(AtomRole.OUTPUT.wrap(atom), acVar);
-            mappedFilter = builder.build();
+        String naValue = "";
+        if (xPath.containsKey("na-value")) {
+            Object value = xPath.get("na-value");
+            naValue = value == null ? null : value.toString();
         }
-        return new ParameterPath(atom, path, in, missing, mappedFilter);
+        return new ParameterPath(atom, path, in, missing, naValue, parseFilters(atom, xPath, errorMsg));
     }
 
     @VisibleForTesting
@@ -175,31 +181,36 @@ public class ParameterPath {
     }
 
     @VisibleForTesting
-    static @Nullable SPARQLFilter parseFilter(@Nonnull DictTree xPath,
-                                              @Nullable StringBuilder errorMsg) {
-        if (!xPath.containsKey("filter")) return null;
-        DictTree map = xPath.getMapNN("filter");
-        String string;
-        if (map.isEmpty()) {
-            string = xPath.getString("filter", null);
-        } else {
-            if (!map.containsKey("sparql")) {
-                if (errorMsg != null)
-                    errorMsg.append("Only SPARQL filters are supported. Got ").append(map.keySet());
-                return null;
+    static @Nonnull List<AtomFilter> parseFilters(@Nonnull Atom atom, @Nonnull DictTree xPath,
+                                                    @Nullable StringBuilder errorMsg) {
+        if (!xPath.containsKey("filter"))
+            return Collections.emptyList();
+        List<AtomFilter> parsed = new ArrayList<>();
+        for (Object elem : xPath.getListNN("filter")) {
+            AtomFilter filter = null;
+            if (elem instanceof String) {
+                filter = parseFilter(atom, (String)elem, errorMsg);
+            } else if (elem instanceof DictTree) {
+                filter = parseFilter(atom, (DictTree)elem, errorMsg);
+            } else if (errorMsg != null) {
+                errorMsg.append("Value of filter is neither object nor string, will ignore.");
             }
-            Object sparql = map.get("sparql");
-            if (sparql != null && !(sparql instanceof String)) {
-                if (errorMsg != null)
-                    errorMsg.append("Value of sparql filter is not a string: ").append(sparql);
-                return null;
-            }
-            string = (String) sparql;
+            if (filter != null) parsed.add(filter);
         }
-        if (string == null)
-            return null; // no value
+        return parsed;
+    }
 
-        SPARQLFilter filter = SPARQLFilter.build(string);
+
+    static @Nullable AtomFilter parseFilter(@Nonnull Atom atom, @Nullable String filterString,
+                                            @Nullable StringBuilder errorMsg) {
+        return parseFilter(atom, filterString, errorMsg, MIN_VALUE);
+    }
+
+    static @Nullable AtomFilter parseFilter(@Nonnull Atom atom, @Nullable String filterString,
+                                            @Nullable StringBuilder errorMsg, int inputIndex) {
+        if (filterString == null) return null; // no value
+
+        SPARQLFilter filter = SPARQLFilter.build(filterString);
         if (!filter.getVars().equals(FILTER_VARS)) {
             if (errorMsg != null) {
                 errorMsg.append("Filter has unexpected vars. Expected input and actual. Found: ")
@@ -207,7 +218,35 @@ public class ParameterPath {
             }
             return null;
         }
-        return filter;
+        AtomFilter.WithBuilder builder = AtomFilter.with(filter);
+        if (filter.getVars().contains(inVar))
+            builder.map(AtomRole.INPUT.wrap(atom), inVar);
+        if (filter.getVars().contains(acVar))
+            builder.map(AtomRole.OUTPUT.wrap(atom), acVar);
+        if (inputIndex != MIN_VALUE)
+            builder.withInputIndex(inputIndex);
+        return builder.build();
+    }
+
+    @VisibleForTesting
+    static @Nullable AtomFilter parseFilter(@Nonnull Atom atom, @Nonnull DictTree map,
+                                            @Nullable StringBuilder errorMsg) {
+        if (!map.containsKey("sparql")) {
+            if (errorMsg != null)
+                errorMsg.append("Only SPARQL filters are supported. Got ").append(map.keySet());
+            return null;
+        }
+        int index = (int)min(max(map.getLong("index", MIN_VALUE), MIN_VALUE), MAX_VALUE);
+        Object sparql = map.get("sparql");
+        if (sparql != null) {
+            if (!(sparql instanceof String)) {
+                if (errorMsg != null)
+                    errorMsg.append("Value of sparql filter is not a string: ").append(sparql);
+                return null;
+            }
+            return parseFilter(atom, (String) sparql, errorMsg, index);
+        }
+        return null;
     }
 
 }
