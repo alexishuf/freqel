@@ -1,0 +1,20 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dc:  <http://purl.org/dc/elements/1.1/> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix rev:  <http://purl.org/stuff/rev#> .
+@prefix bsbm:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> .
+@prefix bsbm-inst:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/> .
+@prefix dataFromProducer1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/> .
+@prefix dataFromVendor1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/> .
+@prefix dataFromRatingSite1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite1/> .
+
+dataFromProducer1:Producer1
+        rdf:type       bsbm:Producer ;
+        rdfs:label     "enzymologist neb falsehoods" ;
+        rdfs:comment   "smashes leavening beauticians novitiates peaks nonhistoric fluorinations seductresses promotions corresponding denuder wispier laboriousness mechanisms skepsis tulips barstools demobs bandmasters pallbearer" ;
+        foaf:homepage  <http://www.Producer1.com/> ;
+        bsbm:country   <http://downlode.org/rdf/iso-3166/countries#DE> ;
+        dc:publisher   dataFromProducer1:Producer1 ;
+        dc:date        "2003-06-15"^^xsd:date .

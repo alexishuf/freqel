@@ -16,10 +16,7 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
@@ -321,5 +318,51 @@ public class SPARQLFilterTest implements TestContext {
         expectedVarNames = vars.stream().map(v -> bound.getVar2Term().get(v).asVar().getName())
                                         .collect(toSet());
         assertEquals(bound.getVarTermNames(), expectedVarNames);
+    }
+
+    @DataProvider
+    public static Object[][] isTrivialData() {
+        return Stream.of(
+                asList(SPARQLFilter.build("false"), true, false),
+                asList(SPARQLFilter.build("true"), true, true),
+                asList(SPARQLFilter.build("true || false"), true, true),
+                asList(SPARQLFilter.build("true && false "), true, false),
+                asList(SPARQLFilter.build("2 > 3 || false"), true, false),
+                asList(SPARQLFilter.build("2 < 3 || false"), true, true),
+                asList(SPARQLFilter.build("?x > 2 || false"), false, false),
+                asList(SPARQLFilter.build("?x > 2 && false"), false, false)
+        ).map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "isTrivialData")
+    public void testIsTrivial(@Nonnull SPARQLFilter filter,
+                              boolean expected, boolean expectedResult) {
+        assertEquals(filter.isTrivial(), expected);
+        assertEquals(filter.getTrivialResult(), expected ? expectedResult : null);
+    }
+
+    @DataProvider
+    public static Object[][] withTermVarsUnboundData() {
+        return Stream.of(
+                asList(SPARQLFilter.build("bound(?x)"), singleton("x"),
+                       SPARQLFilter.build("false")),
+                asList(SPARQLFilter.build("!bound(?x)"), singleton("x"),
+                        SPARQLFilter.build("!false")),
+                asList(SPARQLFilter.build("bound(?x) || true"), singleton("x"),
+                        SPARQLFilter.build("false || true")),
+                asList(SPARQLFilter.build("bound(?x) || 2 > 3"), singleton("x"),
+                        SPARQLFilter.build("false || 2 > 3")),
+                asList(SPARQLFilter.build("!bound(?x) || true"), singleton("x"),
+                        SPARQLFilter.build("!false || true")),
+                asList(SPARQLFilter.build("!bound(?x) || 2 > 3"), singleton("x"),
+                        SPARQLFilter.build("!false || 2 > 3"))
+        ).map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "withTermVarsUnboundData")
+    public void testWithTermVarsUnbound(@Nonnull SPARQLFilter filter,
+                                       @Nonnull Collection<String> names,
+                                       @Nullable SPARQLFilter expected) {
+        assertEquals(filter.withVarTermsUnbound(names), expected);
     }
 }

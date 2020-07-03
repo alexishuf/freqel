@@ -115,9 +115,4 @@ public class MapSolution extends AbstractSolution {
     public @Nonnull Set<String> getVarNames() {
         return map.keySet();
     }
-
-    @Override
-    public boolean equals(@Nullable Object o) {
-        return ((o instanceof MapSolution) && map.equals(((MapSolution) o).map)) || super.equals(o);
-    }
 }

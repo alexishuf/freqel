@@ -67,6 +67,7 @@ import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
  * [1]: https://github.com/dice-group/LargeRDFBench
  * [2]: http://goo.gl/8tX1Pa
  */
+@SuppressWarnings("FieldMayBeFinal")
 public class LargeRDFBenchTestResourcesGenerator {
     private static final Logger logger =
             LoggerFactory.getLogger(LargeRDFBenchTestResourcesGenerator.class);
@@ -80,8 +81,7 @@ public class LargeRDFBenchTestResourcesGenerator {
     @Option(name = "--help", aliases = {"-h"}, help = true, usage = "Shows this help")
     private boolean help;
 
-    @SuppressWarnings("FieldMayBeFinal")
-    @Option(name = "--no-purge", usage = "Removes all previous contents of OUT_DIR")
+    @Option(name = "--no-purge", usage = "Do NOT remove all previous contents of OUT_DIR")
     private boolean noPurgeOld = false;
 
     @Option(name = "--out-dir", required = true,
@@ -103,8 +103,8 @@ public class LargeRDFBenchTestResourcesGenerator {
     private int maxResultsPerQuery = 10;
 
     @Option(name = "--distribution-yaml", required = true,
-            usage = "YAML file with distribution rules. If this does not exist and " +
-                    "--dumps-dir is given, it will be created")
+            usage = "Path to YAML file with distribution rules. If this file does not exist, " +
+                    "it will be created and --dumps-dir is required")
     private File distYaml;
 
     @Option(name = "--dist-max-triples-file", usage = "Maximum number of triples to inspect " +

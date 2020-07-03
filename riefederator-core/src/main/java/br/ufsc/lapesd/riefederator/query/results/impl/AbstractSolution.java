@@ -24,8 +24,8 @@ public abstract class AbstractSolution implements Solution {
                 names = ArraySet.fromDistinct(names);
             for (String name : names) {
                 Term term = get(name);
-                int termHash = term == null ? 17 : term.hashCode();
-                local[0] = (local[0] * 37 + name.hashCode()) * 37 + termHash;
+                if (term != null)
+                    local[0] = (local[0] * 37 + name.hashCode()) * 37 + term.hashCode();
             }
             hashCache = local[0];
         }
@@ -40,7 +40,10 @@ public abstract class AbstractSolution implements Solution {
         Solution rhs = (Solution)obj;
         if (hashCache != 0 && hashCache != rhs.hashCode())
             return false;
-        if (!getVarNames().equals(rhs.getVarNames()))
+        Set<String> names = getVarNames(), smallerNames = rhs.getVarNames();
+        if (smallerNames.size() > names.size())
+            names = smallerNames;
+        if (!names.containsAll(smallerNames))
             return false;
         for (String name : getVarNames()) {
             if (!Objects.equals(get(name), rhs.get(name)))

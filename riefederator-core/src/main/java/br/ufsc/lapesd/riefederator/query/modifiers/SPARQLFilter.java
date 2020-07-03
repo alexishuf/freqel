@@ -11,6 +11,8 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
+import br.ufsc.lapesd.riefederator.util.ArraySet;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -265,6 +267,31 @@ public class SPARQLFilter implements Modifier {
         return new  SPARQLFilter(toSPARQLSyntax(expr), expr, ImmutableBiMap.of(), true);
     }
 
+    public @Nonnull SPARQLFilter withVarTermsUnbound(@Nonnull Collection<String> varTermNames) {
+        Set<String> set = varTermNames instanceof  Set ? (Set<String>)varTermNames
+                : (varTermNames.size() > 4 ? new HashSet<>(varTermNames)
+                                           : ArraySet.fromDistinct(varTermNames));
+        Expr expr = ExprTransformer.transform(new ExprTransformCopy(false) {
+            @Override
+            public Expr transform(ExprFunction1 func, Expr e1) {
+                String fn = func.getFunctionName(new SerializationContext()).toLowerCase();
+                if (fn.equals("bound") && e1.isVariable() && set.contains(e1.getVarName()))
+                    return NodeValue.FALSE;
+                return super.transform(func, e1);
+            }
+        }, this.expr);
+
+        if (this.expr == expr)
+            return this;
+        Builder builder = SPARQLFilter.builder(expr).setRequired(isRequired());
+        for (Map.Entry<String, Term> e : var2term.entrySet()) {
+            if (e.getValue().isVar() && set.contains(e.getValue().asVar().getName()))
+                continue;
+            builder.map(e.getKey(), e.getValue());
+        }
+        return builder.build();
+    }
+
     /* --- --- --- Interface --- --- --- */
 
     @Override
@@ -282,6 +309,16 @@ public class SPARQLFilter implements Modifier {
     @VisibleForTesting
     @Nonnull Expr getExpr() {
         return expr;
+    }
+
+    public boolean isTrivial() {
+        return getVars().isEmpty();
+    }
+
+    public @Nullable Boolean getTrivialResult() {
+        if (!isTrivial())
+            return null;
+        return evaluate(ArraySolution.EMPTY);
     }
 
     public @Nonnull String getFilterString() {
@@ -713,9 +750,8 @@ public class SPARQLFilter implements Modifier {
             return toSPARQLSyntax(function.getArg(1), builder).append(')');
         } else {
             builder.append(name).append('(');
-            for (int i = 1; i <= function.numArgs(); i++) {
-                builder.append(function.getArg(i)).append(", ");
-            }
+            for (int i = 1; i <= function.numArgs(); i++)
+                toSPARQLSyntax(function.getArg(i), builder).append(", ");
             if (function.numArgs() > 0)
                 builder.setLength(builder.length()-2);
             return builder.append(')');

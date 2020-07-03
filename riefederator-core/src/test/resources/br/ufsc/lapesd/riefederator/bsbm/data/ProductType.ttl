@@ -1,0 +1,66 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dc:  <http://purl.org/dc/elements/1.1/> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix rev:  <http://purl.org/stuff/rev#> .
+@prefix bsbm:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> .
+@prefix bsbm-inst:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/> .
+@prefix dataFromProducer1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/> .
+@prefix dataFromVendor1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/> .
+@prefix dataFromRatingSite1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite1/> .
+
+bsbm-inst:ProductType1
+        rdf:type      bsbm:ProductType ;
+        rdfs:label    "Thing" ;
+        rdfs:comment  "The Product Type of all Products" ;
+        dc:publisher  bsbm-inst:StandardizationInstitution1 ;
+        dc:date       "2000-07-04"^^xsd:date .
+
+bsbm-inst:ProductType2
+        rdf:type         bsbm:ProductType ;
+        rdfs:label       "amour dupable" ;
+        rdfs:subClassOf  bsbm-inst:ProductType1 ;
+        rdfs:comment     "lengthened galling outposts emulatively looming deplanes stinters forehanded interdisciplinary manoeuvred frankers pederasty heralds disrupts fishnet falsifiable absorbable appreciators undefinable draftable revindicates flashlamp insertion expurgations tarsier" ;
+        dc:publisher     bsbm-inst:StandardizationInstitution1 ;
+        dc:date          "2000-06-26"^^xsd:date .
+
+bsbm-inst:ProductType3
+        rdf:type         bsbm:ProductType ;
+        rdfs:label       "microprocessor mops reigned" ;
+        rdfs:subClassOf  bsbm-inst:ProductType1 ;
+        rdfs:comment     "antecedently nonyielding cocaines milligrams dimorphic shamming clawed hurts enchains jukeboxes mottoes brahminist embrocated quatrefoil harmonize guardants prayerfully adios restring coursing fisticuffs cordlessly augured fumigated academies splotches auctioning timeliness flushest ranching speedily gets nonsymbolic pyorrhea rales headpieces ladrons tightwire playtimes etherizes mistaught screechier casehardening placaters saurian summarization counterfeits skipping" ;
+        dc:publisher     bsbm-inst:StandardizationInstitution1 ;
+        dc:date          "2000-07-05"^^xsd:date .
+
+bsbm-inst:ProductType4
+        rdf:type         bsbm:ProductType ;
+        rdfs:label       "practiced" ;
+        rdfs:subClassOf  bsbm-inst:ProductType2 ;
+        rdfs:comment     "swarmed adjuratory fondled shiksas pourboire chortled distinctiveness fostered unchastened dehumanizes bulleted wieldy reaccession roentgenoscope minorcas nimbly birdhouses outclasses hazels traumatologies glaucomatous sabotages hexone porkier duplicating internee thermodynamically whereinsoever satirizing postformed fatigueless feasance remove unseats sheers stenographers unperceiving shipworms coshers prelim hispaniola impeaches rafting squelchy probationers countless bluejay decontaminator encipherments wading" ;
+        dc:publisher     bsbm-inst:StandardizationInstitution1 ;
+        dc:date          "2000-07-14"^^xsd:date .
+
+bsbm-inst:ProductType5
+        rdf:type         bsbm:ProductType ;
+        rdfs:label       "arteriography" ;
+        rdfs:subClassOf  bsbm-inst:ProductType2 ;
+        rdfs:comment     "hollowness unhealed cityward parring wishing pyromaniacs marbly pions boughed innervate gung inverts demoted comprehended stollen unadjudicated septuagenarians chaptered vocalists bennies unstably moppet cogging ethnics billhooks frenching squeamishly tyres weaseling chancroids pandered amirates relented" ;
+        dc:publisher     bsbm-inst:StandardizationInstitution1 ;
+        dc:date          "2000-07-18"^^xsd:date .
+
+bsbm-inst:ProductType6
+        rdf:type         bsbm:ProductType ;
+        rdfs:label       "huffiest tougheners interfering" ;
+        rdfs:subClassOf  bsbm-inst:ProductType3 ;
+        rdfs:comment     "shucker claviers haggles chorusses nonagons logrolls mathematically intradermal echoed grassier helmeted bristles gonging smidgen flunker atonements bestializes briefness vulgo discounter marooning sheaving neutralizations attains reconsiders glaceed lavers notified malevolently compensations lycanthropies rebroadcasting obliviously sunup arrestee tireless gayer interlinear backlogged encephala chronologist helplessly" ;
+        dc:publisher     bsbm-inst:StandardizationInstitution1 ;
+        dc:date          "2000-06-28"^^xsd:date .
+
+bsbm-inst:ProductType7
+        rdf:type         bsbm:ProductType ;
+        rdfs:label       "papuans womaned" ;
+        rdfs:subClassOf  bsbm-inst:ProductType3 ;
+        rdfs:comment     "teenaged lesbianism unplanted luminously ladyships optimisms protagonists topknots refracts fraternized maoist decimalization steppingstones greens manpowers chipper cognized eggheads abyssinian purblindness chattiest shutters churl nictating reconciliation distrustfulness solstitial rapidity bronzers gadded calicoes sandals geophysicists twaddler mystifier deploring panache" ;
+        dc:publisher     bsbm-inst:StandardizationInstitution1 ;
+        dc:date          "2000-07-07"^^xsd:date .

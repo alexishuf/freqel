@@ -27,13 +27,21 @@ import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 
 public class SPARQLQueryParser {
     private final static String HIDDEN_VAR_PREFIX = "parserPathHiddenVar";
-    private final static SPARQLQueryParser INSTANCE = new SPARQLQueryParser();
+    private final static SPARQLQueryParser INSTANCE = new SPARQLQueryParser().lockConfiguration();
     private final static SPARQLQueryParser TOLERANT = new SPARQLQueryParser()
-            .allowExtraProjections(true);
+            .allowExtraProjections(true)
+            .eraseGroupBy(true).eraseOrderBy(true).eraseOptionals(true).eraseOffset(true)
+            .lockConfiguration();
     private boolean allowExtraProjections = false;
+    private boolean eraseOptionals = false;
+    private boolean eraseGroupBy = false;
+    private boolean eraseOffset = false;
+    private boolean eraseOrderBy = false;
+    private boolean locked = false;
 
     static @Nonnull StdVar hidden(int id) {
         return new StdVar(HIDDEN_VAR_PREFIX+id);
@@ -42,9 +50,39 @@ public class SPARQLQueryParser {
         return term.isVar() && term.asVar().getName().matches(HIDDEN_VAR_PREFIX+"\\d+");
     }
 
+    public @Nonnull SPARQLQueryParser lockConfiguration() {
+        locked = true;
+        return this;
+    }
+
     public @Nonnull SPARQLQueryParser allowExtraProjections(boolean value) {
+        checkState(!locked, "SPARQLQueryParser configuration is locked");
         allowExtraProjections = value;
-         return this;
+        return this;
+    }
+
+    public @Nonnull SPARQLQueryParser eraseOptionals(boolean value) {
+        checkState(!locked, "SPARQLQueryParser configuration is locked");
+        eraseOptionals = value;
+        return this;
+    }
+
+    public @Nonnull SPARQLQueryParser eraseGroupBy(boolean value) {
+        checkState(!locked, "SPARQLQueryParser configuration is locked");
+        eraseGroupBy = value;
+        return this;
+    }
+
+    public @Nonnull SPARQLQueryParser eraseOrderBy(boolean value) {
+        checkState(!locked, "SPARQLQueryParser configuration is locked");
+        eraseOrderBy = value;
+        return this;
+    }
+
+    public @Nonnull SPARQLQueryParser eraseOffset(boolean value) {
+        checkState(!locked, "SPARQLQueryParser configuration is locked");
+        eraseOffset = value;
+        return this;
     }
 
     public static @Nonnull SPARQLQueryParser tolerant() {
@@ -189,7 +227,8 @@ public class SPARQLQueryParser {
 
                         @Override
                         public void visit(ElementOptional el) {
-                            throw new FeatureException("OPTIONAL is not supported");
+                            if (!eraseOptionals)
+                                throw new FeatureException("OPTIONAL is not supported");
                         }
 
                         @Override
@@ -334,7 +373,7 @@ public class SPARQLQueryParser {
                 }
                 @Override
                 public void visitGroupBy(Query query) {
-                    if (query.hasGroupBy())
+                    if (query.hasGroupBy() && !eraseGroupBy)
                         throw new FeatureException("GROUP BY is not supported");
                 }
                 @Override
@@ -344,7 +383,7 @@ public class SPARQLQueryParser {
                 }
                 @Override
                 public void visitOrderBy(Query query) {
-                    if (query.hasOrderBy())
+                    if (query.hasOrderBy() && !eraseOrderBy)
                         throw new FeatureException("ORDER BY is not supported");
                 }
                 @Override
@@ -354,7 +393,7 @@ public class SPARQLQueryParser {
                 }
                 @Override
                 public void visitOffset(Query query) {
-                    if (query.hasOffset())
+                    if (query.hasOffset() && !eraseOffset)
                         throw new FeatureException("OFFSET is not supported");
                 }
                 @Override

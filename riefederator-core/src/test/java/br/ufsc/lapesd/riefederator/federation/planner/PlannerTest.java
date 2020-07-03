@@ -237,9 +237,19 @@ public class PlannerTest implements TransparencyServiceTestContext {
                 }).collect(toList());
 
         if (!forgiveFilters) {
-            //all filters are placed somewhere
-            List<SPARQLFilter> missingFilters = query.getModifiers().stream()
+            Set<String> allVars = query.getTermVars().stream().map(Var::getName).collect(toSet());
+            List<SPARQLFilter> allFilters = query.getModifiers().stream()
                     .filter(SPARQLFilter.class::isInstance).map(m -> (SPARQLFilter) m)
+                    .map(f -> {
+                        if (allVars.containsAll(f.getVarTermNames()))
+                            return f;
+                        HashSet<String> missing = new HashSet<>(f.getVarTermNames());
+                        missing.removeAll(allVars);
+                        return f.withVarTermsUnbound(missing);
+                    })
+                    .collect(toList());
+            //all filters are placed somewhere
+            List<SPARQLFilter> missingFilters = allFilters.stream()
                     .filter(f -> streamPreOrder(root).noneMatch(n -> {
                         if (n instanceof ComponentNode) {
                             if (((ComponentNode)n).getQuery().getModifiers().contains(f))
@@ -249,6 +259,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
                     }))
                     .collect(toList());
             assertEquals(missingFilters, emptyList());
+
+            // forgive unassignable filters
 
             // all filters are placed somewhere valid (with all required vars)
             List<ImmutablePair<? extends PlanNode, SPARQLFilter>> badFilterAssignments;

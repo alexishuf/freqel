@@ -1,0 +1,251 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dc:  <http://purl.org/dc/elements/1.1/> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix rev:  <http://purl.org/stuff/rev#> .
+@prefix bsbm:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> .
+@prefix bsbm-inst:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/> .
+@prefix dataFromProducer1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/> .
+@prefix dataFromVendor1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/> .
+@prefix dataFromRatingSite1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite1/> .
+
+dataFromVendor1:Offer1
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "7683.53"^^bsbm:USD ;
+        bsbm:validFrom     "2008-03-20T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-09-11T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  5 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer1/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-06-17"^^xsd:date .
+
+dataFromVendor1:Offer2
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "272.68"^^bsbm:USD ;
+        bsbm:validFrom     "2008-03-26T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-07-24T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  2 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer2/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-05-14"^^xsd:date .
+
+dataFromVendor1:Offer3
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "888.27"^^bsbm:USD ;
+        bsbm:validFrom     "2008-02-15T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-05-22T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  5 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer3/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-03-21"^^xsd:date .
+
+dataFromVendor1:Offer4
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "9904.47"^^bsbm:USD ;
+        bsbm:validFrom     "2008-03-26T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-08-08T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  7 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer4/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-06-07"^^xsd:date .
+
+dataFromVendor1:Offer5
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "3993.24"^^bsbm:USD ;
+        bsbm:validFrom     "2008-01-16T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-06-11T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  7 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer5/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-03-24"^^xsd:date .
+
+dataFromVendor1:Offer6
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "269.88"^^bsbm:USD ;
+        bsbm:validFrom     "2008-03-15T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-08-21T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  5 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer6/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-05-25"^^xsd:date .
+
+dataFromVendor1:Offer7
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "7574.05"^^bsbm:USD ;
+        bsbm:validFrom     "2008-05-13T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-07-22T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  2 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer7/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-05-20"^^xsd:date .
+
+dataFromVendor1:Offer8
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "7400.85"^^bsbm:USD ;
+        bsbm:validFrom     "2008-03-05T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-08-24T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  4 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer8/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-06-01"^^xsd:date .
+
+dataFromVendor1:Offer9
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "4095.95"^^bsbm:USD ;
+        bsbm:validFrom     "2008-02-05T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-04-20T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  3 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer9/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-04-09"^^xsd:date .
+
+dataFromVendor1:Offer10
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "6679.49"^^bsbm:USD ;
+        bsbm:validFrom     "2008-04-20T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-07-24T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  7 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer10/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-05-21"^^xsd:date .
+
+dataFromVendor1:Offer11
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "623.27"^^bsbm:USD ;
+        bsbm:validFrom     "2008-04-04T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-09-02T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  5 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer11/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-06-09"^^xsd:date .
+
+dataFromVendor1:Offer12
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "7155.71"^^bsbm:USD ;
+        bsbm:validFrom     "2008-02-20T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-04-23T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  3 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer12/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-04-12"^^xsd:date .
+
+dataFromVendor1:Offer13
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "4656.45"^^bsbm:USD ;
+        bsbm:validFrom     "2008-03-30T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-06-19T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  5 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer13/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-04-25"^^xsd:date .
+
+dataFromVendor1:Offer14
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "2204.68"^^bsbm:USD ;
+        bsbm:validFrom     "2008-05-12T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-06-09T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  6 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer14/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-05-28"^^xsd:date .
+
+dataFromVendor1:Offer15
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "1223.79"^^bsbm:USD ;
+        bsbm:validFrom     "2008-01-05T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-06-13T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  3 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer15/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-03-20"^^xsd:date .
+
+dataFromVendor1:Offer16
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "9334.06"^^bsbm:USD ;
+        bsbm:validFrom     "2008-01-02T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-03-26T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  4 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer16/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-03-18"^^xsd:date .
+
+dataFromVendor1:Offer17
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "9291.02"^^bsbm:USD ;
+        bsbm:validFrom     "2008-05-03T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-06-18T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  5 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer17/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-05-14"^^xsd:date .
+
+dataFromVendor1:Offer18
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "9164.15"^^bsbm:USD ;
+        bsbm:validFrom     "2008-03-15T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-07-24T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  2 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer18/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-05-25"^^xsd:date .
+
+dataFromVendor1:Offer19
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "2236.48"^^bsbm:USD ;
+        bsbm:validFrom     "2008-03-29T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-04-20T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  4 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer19/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-04-05"^^xsd:date .
+
+dataFromVendor1:Offer20
+        rdf:type           bsbm:Offer ;
+        bsbm:product       dataFromProducer1:Product1 ;
+        bsbm:vendor        dataFromVendor1:Vendor1 ;
+        bsbm:price         "1964.68"^^bsbm:USD ;
+        bsbm:validFrom     "2008-05-12T00:00:00"^^xsd:dateTime ;
+        bsbm:validTo       "2008-07-06T00:00:00"^^xsd:dateTime ;
+        bsbm:deliveryDays  2 ;
+        bsbm:offerWebpage  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer20/> ;
+        dc:publisher       dataFromVendor1:Vendor1 ;
+        dc:date            "2008-06-08"^^xsd:date .

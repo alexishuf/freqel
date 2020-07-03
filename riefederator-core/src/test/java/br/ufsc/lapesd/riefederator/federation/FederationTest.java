@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation;
 
+import br.ufsc.lapesd.riefederator.BSBMSelfTest;
 import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
@@ -84,7 +85,6 @@ import org.apache.jena.vocabulary.RDF;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.uri.UriTemplate;
-import org.jetbrains.annotations.NotNull;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.DataProvider;
@@ -112,7 +112,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest.*;
 import static br.ufsc.lapesd.riefederator.federation.SimpleFederationModule.configureCardinalityEstimation;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.*;
 import static br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint.forModel;
@@ -424,8 +423,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         @Override
         public boolean requiresFastModule() { return true; }
 
-        private @Nonnull Source wrap(@Nonnull Model model, @Nonnull String endpointName) {
-            String variantName = variantNames[variantIdx];
+        static @Nonnull Source wrap(@Nonnull Model model, @Nonnull String endpointName,
+                                    @Nonnull String variantName) {
             CQEndpoint ep = null;
             Description description = null;
             if (variantName.contains("SPARQLClient")) {
@@ -460,27 +459,87 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
             ClassLoader cl = Thread.currentThread().getContextClassLoader();
             Model union = ModelFactory.createDefaultModel();
-            for (String filename : DATA_FILENAMES) {
-                try (InputStream stream = cl.getResourceAsStream(RESOURCE_DIR + "/data/" + filename)) {
+            for (String filename : LargeRDFBenchSelfTest.DATA_FILENAMES) {
+                try (InputStream stream = cl.getResourceAsStream(LargeRDFBenchSelfTest.RESOURCE_DIR + "/data/" + filename)) {
                     assertNotNull(stream);
                     if (variantName.contains("union")) {
                         RDFDataMgr.read(union, stream, Lang.NT);
                     } else {
                         Model model = ModelFactory.createDefaultModel();
                         RDFDataMgr.read(model, stream, Lang.NT);
-                        federation.addSource(wrap(model, filename));
+                        federation.addSource(wrap(model, filename, variantName));
                     }
                 } catch (IOException e) {
                     fail("Unexpected exception", e);
                 }
             }
             if (variantName.contains("union"))
-                federation.addSource(wrap(union, "LargeRDFBench-union"));
+                federation.addSource(wrap(union, "LargeRDFBench-union", variantName));
         }
 
         @Override
         public @Nonnull String toString() {
             return "SetupLargeRDFBench["+variantNames[variantIdx]+"]";
+        }
+    }
+
+    private final static class SetupBSBM implements Setup {
+        private final int variantIdx;
+        private final String[] variantNames = {
+                /* 0 */ "SelectDescription+ARQEndpoint",
+                /* 1 */ "SelectDescription+fetchClasses+ARQEndpoint",
+                /* 2 */ "AskDescription+ARQEndpoint",
+                /* 3 */ "SemanticSelectDescription+ARQEndpoint",
+                /* 4 */ "SelectDescription+ARQEndpoint+union",
+                /* 5 */ "SelectDescription+fetchClasses+SPARQLClient",
+                /* 6 */ "AskDescription+SPARQLClient",
+                /* 7 */ "SelectDescription+SPARQLClient+union",
+        };
+
+        public SetupBSBM(int variantIdx) {
+            this.variantIdx = variantIdx;
+        }
+
+        @Override
+        public @Nullable Setup nextVariant() {
+            return variantIdx >= variantNames.length-1
+                    ? null : new SetupBSBM(variantIdx+1);
+        }
+
+        @Override
+        public boolean requiresBindJoin() {
+            return false;
+        }
+
+        @Override
+        public boolean requiresFastModule() {
+            return true;
+        }
+
+        @Override
+        public void accept(@Nonnull Federation federation, @Nullable String ignored) {
+            String variant = variantNames[variantIdx];
+            if (variant.contains("union")) {
+                Model model = BSBMSelfTest.allData();
+                Source src = SetupLargeRDFBench.wrap(model, "BSBM", variant);
+                federation.addSource(src);
+            } else {
+                for (String filename : BSBMSelfTest.DATA_FILENAMES) {
+                    Model model = null;
+                    try {
+                        model = BSBMSelfTest.loadData(filename);
+                    } catch (IOException e) {
+                        fail("Could not load BSBM dataset "+filename, e);
+                    }
+                    Source src = SetupLargeRDFBench.wrap(model, filename, variant);
+                    federation.addSource(src);
+                }
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "SetupBSBM["+variantNames[variantIdx]+"]";
         }
     }
 
@@ -895,7 +954,19 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         return list;
     }
 
-    @NotNull
+    public static @Nonnull List<List<Object>> bsbmData() throws Exception {
+        List<List<Object>> list = new ArrayList<>();
+        for (String queryName : BSBMSelfTest.QUERY_FILENAMES) {
+            List<Object> row = new ArrayList<>();
+            row.add(new SetupBSBM(0));
+            row.add(BSBMSelfTest.loadQuery(queryName));
+            row.add(new HashSet<>(BSBMSelfTest.loadResults(queryName).getCollection()));
+            list.add(row);
+        }
+        return list;
+    }
+
+    @Nonnull
     private static List<List<Object>> expandVariants(List<List<Object>> basic) {
         List<List<Object>> withVariants = new ArrayList<>();
         for (List<Object> row : basic) {
@@ -918,6 +989,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         basic.addAll(crossEpJoinsData());
         basic.addAll(transparencyJoinsData());
         basic.addAll(largeRDFBenchData());
+        basic.addAll(bsbmData());
 
         List<List<Object>> withVariants = expandVariants(basic);
         return prependModules(withVariants);
@@ -1054,7 +1126,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 .with(module));
         federation = injector.getInstance(Federation.class);
 
-        ARQEndpoint dbpEp = forModel(loadData("DBPedia-Subset.nt"), "DBPedia-Subset");
+        ARQEndpoint dbpEp = forModel(LargeRDFBenchSelfTest.loadData("DBPedia-Subset.nt"), "DBPedia-Subset");
         Source dbp = new Source(new SelectDescription(dbpEp), dbpEp);
         ARQEndpoint nytEp = forService("http://127.0.0.178:8897/sparql");
         Source nyt = new Source(new SelectDescription(nytEp), nytEp);

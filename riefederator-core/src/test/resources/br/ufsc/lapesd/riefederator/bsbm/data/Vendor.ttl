@@ -1,0 +1,20 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dc:  <http://purl.org/dc/elements/1.1/> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix rev:  <http://purl.org/stuff/rev#> .
+@prefix bsbm:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> .
+@prefix bsbm-inst:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/> .
+@prefix dataFromProducer1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/> .
+@prefix dataFromVendor1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/> .
+@prefix dataFromRatingSite1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite1/> .
+
+dataFromVendor1:Vendor1
+        rdf:type       bsbm:Vendor ;
+        rdfs:label     "coterie" ;
+        rdfs:comment   "naughtiness illuminating careerers computerese brakeless mesozoa lineate fulminant batholiths mohawks exhalation paraguayan alcaldes foulings primordially almightily placed flukey improvises pommelled sententious bookmark rashers truces mordanted shunter praxeological" ;
+        foaf:homepage  <http://www.vendor1.com/> ;
+        bsbm:country   <http://downlode.org/rdf/iso-3166/countries#GB> ;
+        dc:publisher   dataFromVendor1:Vendor1 ;
+        dc:date        "2008-05-31"^^xsd:date .

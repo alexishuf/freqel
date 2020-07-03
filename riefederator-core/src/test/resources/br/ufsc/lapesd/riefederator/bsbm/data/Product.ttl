@@ -1,0 +1,46 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dc:  <http://purl.org/dc/elements/1.1/> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix rev:  <http://purl.org/stuff/rev#> .
+@prefix bsbm:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> .
+@prefix bsbm-inst:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/> .
+@prefix dataFromProducer1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/> .
+@prefix dataFromVendor1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/> .
+@prefix dataFromRatingSite1:  <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromRatingSite1/> .
+
+dataFromProducer1:Product1
+        rdf:type                      bsbm:Product ;
+        rdfs:label                    "manner gatemen" ;
+        rdfs:comment                  "lordlings dialyzed hoardings palmitate resisters redesigned trowing fledging disinters occasionally refry objective comedown senders attendance calculous redux zed bidets subacute swinks berhymed pumping overassured outrush corteges chitters civilest chiffonniers kimonos protects epizootic centimos dismast boomage issues aggrieves sociably ammoniacs polliwogs labyrinths infatuates whiteout dissentients newmown flunkey titillated caduceus rediscovered breaststrokes schillings endorsement cheerleaders nonconcurrent intoned outpaces inkle superpowers habaneras subsoils paramours laughed" ;
+        bsbm:productPropertyNumeric1  831 ;
+        bsbm:productPropertyNumeric2  312 ;
+        bsbm:productPropertyNumeric3  735 ;
+        bsbm:productPropertyNumeric5  150 ;
+        bsbm:productPropertyTextual1  "guzzling jillion psychotherapists substantiation nonuple deluded snowmelt interlards overrefinement annoyed stuntedness calcimining stereophonically" ;
+        bsbm:productPropertyTextual2  "recommendation embezzler reconviction misproportions discountenances callings defacers crummiest triglyceride" ;
+        bsbm:productPropertyTextual3  "decentralizations impacting promulgations bibliotherapy murexes professorships locomotes durning lyncher spoonier abhorrence assize goglets" ;
+        bsbm:productPropertyTextual4  "distracts universally trashily enervator" ;
+        bsbm:productFeature           bsbm-inst:ProductFeature142 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature144 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature154 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature156 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature158 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature159 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature171 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature175 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature177 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature178 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature180 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature3 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature4 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature16 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature22 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature25 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature28 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature34 ;
+        bsbm:productFeature           bsbm-inst:ProductFeature35 ;
+        bsbm:producer                 dataFromProducer1:Producer1 ;
+        dc:publisher                  dataFromProducer1:Producer1 ;
+        dc:date                       "2000-11-01"^^xsd:date .

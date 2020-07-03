@@ -11,6 +11,8 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -22,6 +24,8 @@ import java.util.Set;
  * Assign {@link SPARQLFilter}s of a query to the deepest possible node in plans.
  */
 class FilterAssigner {
+    private static final Logger logger = LoggerFactory.getLogger(FilterAssigner.class);
+
     private final @Nonnull Set<SPARQLFilter> filters = new HashSet<>();
     private final @Nonnull SetMultimap<Term, SPARQLFilter> term2filter;
 
@@ -83,7 +87,19 @@ class FilterAssigner {
     }
 
     public void placeBottommost(@Nonnull PlanNode plan) {
-        for (SPARQLFilter filter : filters) placeBottommost(plan, filter);
+        for (SPARQLFilter filter : filters) {
+            if (!placeBottommost(plan, filter)) {
+                HashSet<String> missing = new HashSet<>(filter.getVarTermNames());
+                missing.removeAll(plan.getAllVars());
+                SPARQLFilter clean = filter.withVarTermsUnbound(missing);
+                if (!placeBottommost(plan, clean)) {
+                    logger.warn("{} mentions variables not found in the plan, and after " +
+                                "statically evaluating bound() calls on those missing variables " +
+                                "the filter {} still could not be placed anywhere on the tree. " +
+                                "Will effectively ignore this FILTER.", filter, clean);
+                }
+            }
+        }
     }
 
     public boolean placeBottommost(@Nonnull PlanNode node,

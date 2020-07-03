@@ -104,8 +104,8 @@ public class LargeRDFBenchSelfTest {
         }
     }
 
-    public static @Nonnull CollectionResults
-    loadResults(@Nonnull String queryName) throws IOException {
+    public static @Nonnull CollectionResults loadResults(@Nonnull String queryName)
+            throws IOException {
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
         String queryPath = RESOURCE_DIR + "/queries/" + queryName;
         String resultsPath = RESOURCE_DIR + "/results/" + queryName;

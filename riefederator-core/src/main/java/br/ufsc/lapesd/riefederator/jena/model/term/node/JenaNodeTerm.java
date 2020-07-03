@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.jena.model.term.node;
 
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.jena.graph.Node;
@@ -17,5 +18,10 @@ public abstract class JenaNodeTerm implements Term {
 
     public @Nonnull Node getNode() {
         return node;
+    }
+
+    @Override
+    public String toString() {
+        return toString(StdPrefixDict.DEFAULT);
     }
 }
