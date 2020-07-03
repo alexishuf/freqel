@@ -133,7 +133,11 @@ public class SPARQLString {
         } else {
             writeBGP(triples, dict, b, "  ");
         }
-        this.string = b.append("}\n").toString();
+        b.append('}');
+        Limit limit = ModifierUtils.getFirst(Limit.class, modifiers);
+        if (limit != null)
+            b.append("LIMIT ").append(limit.getValue());
+        this.string = b.append('\n').toString();
     }
 
     private void writeBGP(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict,

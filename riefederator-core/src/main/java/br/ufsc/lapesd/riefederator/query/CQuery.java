@@ -145,7 +145,8 @@ public class CQuery implements  List<Triple> {
         private Projection.Builder projection = null;
         private boolean allowExtraProjection = false;
         private boolean distinct = false, ask = false;
-        private boolean distinctRequired = false, askRequired = false;
+        private int limit = -1;
+        private boolean distinctRequired = false, askRequired = false, limitRequired = false;
         private Set<Modifier> modifiers = new LinkedHashSet<>();
         private @Nullable PrefixDict prefixDict = null;
         private @Nullable SetMultimap<Term, TermAnnotation> termAnn;
@@ -214,6 +215,20 @@ public class CQuery implements  List<Triple> {
         @CanIgnoreReturnValue
         public @Contract("-> this") @Nonnull WithBuilder nonDistinct() {
             this.distinct = this.distinctRequired = false;
+            return this;
+        }
+        @CanIgnoreReturnValue
+        public @Contract("_, _ -> this") @Nonnull WithBuilder limit(long limit, boolean required) {
+            this.limit = limit > Integer.MAX_VALUE ?  -1 : (int)limit;
+            this.limitRequired = required;
+            return this;
+        }
+        @CanIgnoreReturnValue
+        public @Contract("_ -> this") @Nonnull WithBuilder limit(long limit) {
+            return limit(limit, false);
+        }
+        public @CanIgnoreReturnValue @Contract("-> this") @Nonnull WithBuilder noLimit() {
+            this.limit = -1;
             return this;
         }
 
@@ -378,11 +393,14 @@ public class CQuery implements  List<Triple> {
         }
 
         public @Nonnull WithBuilder copyModifiers(@Nullable CQuery other) {
-            for (Modifier modifier : other.getModifiers())
-                modifier(modifier);
+            if (other != null) {
+                for (Modifier modifier : other.getModifiers())
+                    modifier(modifier);
+            }
             return this;
         }
 
+        @CanIgnoreReturnValue
         public @Contract("_ -> this") @Nonnull WithBuilder setJoinConnected(boolean value) {
             joinConnected = value;
             return this;
@@ -404,6 +422,8 @@ public class CQuery implements  List<Triple> {
                 b.add(distinctRequired ? Distinct.REQUIRED : Distinct.ADVISED);
             if (ask)
                 b.add(askRequired ? Ask.REQUIRED : Ask.ADVISED);
+            if (limit >= 0)
+                b.add(new Limit(limit, limitRequired));
             b.addAll(modifiers);
             ImmutableSetMultimap<Term, TermAnnotation> termAnn =
                     this.termAnn == null ? null : ImmutableSetMultimap.copyOf(this.termAnn);
@@ -518,16 +538,30 @@ public class CQuery implements  List<Triple> {
             super.distinct(required);
             return this;
         }
-
         @Override
         public @Contract("-> this") @Nonnull Builder distinct() {
             super.distinct();
             return this;
         }
-
         @Override
         public @Contract("-> this") @Nonnull Builder nonDistinct() {
             super.nonDistinct();
+            return this;
+        }
+
+        @Override
+        public @Contract("_, _ -> this") @Nonnull Builder limit(long limit, boolean required) {
+            super.limit(limit, required);
+            return this;
+        }
+        @Override
+        public @Contract("_ -> this") @Nonnull Builder limit(long limit) {
+            super.limit(limit);
+            return this;
+        }
+        @Override
+        public @Contract("-> this") @Nonnull Builder noLimit() {
+            super.noLimit();
             return this;
         }
 

@@ -2,10 +2,7 @@ package br.ufsc.lapesd.riefederator.query.parse;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
-import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
@@ -41,6 +38,13 @@ public class SPARQLQueryParserTest implements TestContext {
                 asList(prolog+"SELECT * WHERE {?x ?p ?o.}", true,
                        createQuery(x, p, o),
                        null),
+                asList(prolog+"SELECT * WHERE {?x ?p ?o.} LIMIT 10", true,
+                       createQuery(x, p, o, Limit.advised(10)),
+                       null),
+                asList(prolog+"SELECT * WHERE {?x ?p ?o.} LIMIT -1", true,
+                       null, SPARQLParseException.class),
+                asList(prolog+"SELECT * WHERE {?x ?p ?o.} LIMIT 0", true,
+                       null, SPARQLParseException.class),
                 asList(prolog+"SELECT ?x WHERE {?x ?p ?o.}", true,
                        createQuery(x, p, o, Projection.required("x")),
                        null),

@@ -134,6 +134,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         switch (capability) {
             case PROJECTION:
             case DISTINCT:
+            case LIMIT:
             case SPARQL_FILTER:
             case VALUES:
             case ASK:

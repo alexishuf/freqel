@@ -8,6 +8,7 @@ public enum  Capability {
     ASK,
     PROJECTION,
     DISTINCT,
+    LIMIT,
     SPARQL_FILTER,
     VALUES;
 

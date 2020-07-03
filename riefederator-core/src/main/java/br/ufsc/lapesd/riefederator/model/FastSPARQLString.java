@@ -24,16 +24,18 @@ public class FastSPARQLString {
     private static final @Nonnull URI xsdString = JenaWrappers.fromURIResource(XSD.xstring);
 
     private final boolean distinct, ask;
+    private final int limit;
     private final @Nonnull Set<String> varNames;
     private final @Nonnull String sparql;
 
-    public FastSPARQLString(boolean distinct, boolean ask, @Nonnull Set<String> varNames,
+    public FastSPARQLString(boolean distinct, boolean ask, int limit, @Nonnull Set<String> varNames,
                             @Nonnull String sparql) {
         assert !distinct || !ask : "If DISTINCT, cannot be ASK";
         assert !ask || varNames.isEmpty() : "If ASK, cannot have vars";
         assert !varNames.isEmpty() || ask : "If no vars, should be ASK";
         this.distinct = distinct;
         this.ask = ask;
+        this.limit = limit;
         this.varNames = varNames;
         this.sparql = sparql;
     }
@@ -44,12 +46,15 @@ public class FastSPARQLString {
         Set<String> varNames = null;
         List<SPARQLFilter> filters = new ArrayList<>();
         List<ValuesModifier> valuesList = new ArrayList<>();
+        int limit = -1;
         for (Modifier m : query.getModifiers()) {
             if (m instanceof Distinct) distinct = true;
             else if (m instanceof Projection) varNames = ((Projection)m).getVarNames();
             else if (m instanceof SPARQLFilter) filters.add((SPARQLFilter)m);
             else if (m instanceof ValuesModifier) valuesList.add((ValuesModifier) m);
+            else if (m instanceof Limit) limit = ((Limit)m).getValue();
         }
+
         ask = query.isAsk();
         this.distinct = distinct;
         if (ask) {
@@ -59,15 +64,18 @@ public class FastSPARQLString {
             varNames = new HashSet<>((int)Math.ceil(vars.size()/0.75)+1);
             for (Var var : vars) varNames.add(var.getName());
         }
+        this.limit = limit;
+        this.varNames = varNames;
 
         StringBuilder b = new StringBuilder(query.size()*60);
-        this.varNames = varNames;
         writeHeader(b, ask, distinct, varNames);
         writeTriples(b, query);
         writeFilters(b, filters);
         for (ValuesModifier values : valuesList)
             writeValues(b, values.getVarNames(), values.getAssignments());
         b.append('}'); // ends SELECT/ASK
+        if (limit > 0)
+            b.append(" LIMIT ").append(limit);
         sparql = b.toString();
     }
 
@@ -77,6 +85,15 @@ public class FastSPARQLString {
 
     public boolean isAsk() {
         return ask;
+    }
+
+    public boolean hasLimit() {
+        return limit > 0;
+    }
+
+    public int getLimit() {
+        if (limit <= 0) throw new NoSuchElementException("No LIMIT defined");
+        return limit;
     }
 
     public @Nonnull Set<String> getVarNames() {

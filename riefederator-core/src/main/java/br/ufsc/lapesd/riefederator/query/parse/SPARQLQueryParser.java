@@ -350,7 +350,7 @@ public class SPARQLQueryParser {
                 @Override
                 public void visitLimit(Query query) {
                     if (query.hasLimit())
-                        throw new FeatureException("LIMIT is not supported");
+                        builder.limit(query.getLimit());
                 }
                 @Override
                 public void visitOffset(Query query) {

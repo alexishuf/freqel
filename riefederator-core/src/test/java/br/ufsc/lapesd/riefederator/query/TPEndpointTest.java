@@ -31,11 +31,12 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
-import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.DISTINCT;
-import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.PROJECTION;
+import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.*;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.net.InetAddress.getLocalHost;
 import static java.util.Collections.*;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
@@ -210,11 +211,22 @@ public class TPEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories")
+    public void testSingleObjectWithLimit(Function<InputStream, Fixture<TPEndpoint>> f) {
+        queryResourceTest(f, "../rdf-1.nt", new Triple(Alice, knows, x),
+                          singleton(MapSolution.build(x, Bob)), Limit.required(10));
+    }
+
+    @Test(dataProvider = "fixtureFactories")
     public void testSingleObjectPoll(Function<InputStream, Fixture<TPEndpoint>> f) {
         queryResourceTest(f, "../rdf-1.nt", new Triple(Alice, knows, x),
                 singleton(MapSolution.build(x, Bob)), true);
     }
 
+    @Test(dataProvider = "fixtureFactories")
+    public void testSingleObjectPollWithLimit(Function<InputStream, Fixture<TPEndpoint>> f) {
+        queryResourceTest(f, "../rdf-1.nt", new Triple(Alice, knows, x),
+                singleton(MapSolution.build(x, Bob)), true, Limit.required(10));
+    }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryTwoObjects(Function<InputStream, Fixture<TPEndpoint>> f) {
@@ -281,6 +293,20 @@ public class TPEndpointTest extends EndpointTestBase {
                 ),
                 true,
                 Distinct.ADVISED, Projection.advised("p"));
+    }
+
+    @Test(dataProvider = "fixtureFactories")
+    public void testLimit(Function<InputStream, Fixture<TPEndpoint>> f) {
+        try (Fixture<TPEndpoint> fixture = f.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+            if (!fixture.endpoint.hasCapability(LIMIT)) return; //silently skip
+            CQuery qry = createQuery(x, knows, y, Limit.required(1));
+            List<Solution> list = new ArrayList<>();
+            fixture.endpoint.query(qry).forEachRemainingThenClose(list::add);
+            assertEquals(list.size(), 1);
+            Solution s = list.get(0);
+            assertEquals(s.get(y), Bob);
+            assertTrue(Sets.newHashSet(Alice, Dave).contains(requireNonNull(s.get(x)).asURI()));
+        }
     }
 
     @Test(dataProvider = "fixtureFactories")

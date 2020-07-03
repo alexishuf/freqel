@@ -22,10 +22,7 @@ import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import com.google.common.collect.Sets;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
-import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.QueryExecutionFactory;
-import org.apache.jena.query.QuerySolution;
-import org.apache.jena.query.ResultSet;
+import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
@@ -171,6 +168,24 @@ public class SPARQLStringTest implements TestContext {
         Projection mod = Projection.builder().add("o").build();
         String str = new SPARQLString(qry, EMPTY, singleton(mod)).toString();
         assertTrue(Pattern.compile("SELECT +\\?o +WHERE").matcher(str).find());
+    }
+
+    @Test
+    public void testLimit() {
+        CQuery qry = createQuery(Alice, knows, x, Limit.required(10));
+        SPARQLString ss = new SPARQLString(qry);
+        assertEquals(ss.getPublicVarNames(), singleton("x"));
+        assertTrue(ss.getString().contains("LIMIT 10"));
+        QueryFactory.create(ss.getString()); //throws if invalid syntax
+    }
+
+    @Test
+    public void testLimitFast() {
+        CQuery qry = createQuery(Alice, knows, x, Limit.required(10));
+        FastSPARQLString ss = new FastSPARQLString(qry);
+        assertEquals(ss.getVarNames(), singleton("x"));
+        assertTrue(ss.getSparql().contains("LIMIT 10"));
+        QueryFactory.create(ss.getSparql()); //throws if invalid syntax
     }
 
     @Test
