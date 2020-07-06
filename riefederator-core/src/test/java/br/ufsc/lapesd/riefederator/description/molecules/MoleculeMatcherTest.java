@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
@@ -501,6 +502,56 @@ public class MoleculeMatcherTest implements TestContext {
         );
     }
 
+    /* --- Multi-core molecules --- */
+    public static @Nonnull URI length = new StdURI(EX+"length");
+
+    public static @Nonnull Molecule person_desk = person1oe.toBuilder()
+            .startNewCore("Desk").out(length, new Atom("length"))
+            .exclusive().closed().build();
+    public static @Nonnull Molecule person1i2oeC_desk1i1oe = Molecule.builder("Person1i2oeC")
+            .in(primaryTopic, new Atom("Document"))
+            .out(name, new Atom("name")).out(age, new Atom("age"))
+            .exclusive().nonClosed()
+            .startNewCore("Desk1i1oe")
+                .in(made, new Atom("made"))
+                .out(length, new Atom("length"))
+            .exclusive().closed().build();
+
+    private static List<List<Object>> multiCoreMatchData() {
+        return asList(
+                // these three cases check if all triples are visible
+                asList(person_desk, createQuery(x, name, y),
+                                    singleton(createQuery(x, name, y)),
+                                    emptyList()),
+                asList(person_desk, createQuery(x, length, y),
+                                    singleton(createQuery(x, length, y)),
+                                    emptyList()),
+                asList(person_desk, createQuery(x, name, u, y, length, v),
+                                    asList(createQuery(x, name, u),
+                                           createQuery(y, length, v)),
+                                    emptyList()),
+                // check if input edges from both cores are visible
+                asList(person1i2oeC_desk1i1oe,
+                       createQuery(u, primaryTopic, x, x, name,   v,
+                                   w, made,         y, y, length, z),
+                       asList(createQuery(u, primaryTopic, x, x, name,   v),
+                              createQuery(w, made,         y, y, length, z)),
+                       emptyList()),
+                // use ambiguity (x == w) to match both cores in a path
+                asList(person1i2oeC_desk1i1oe,
+                       createQuery(u, primaryTopic, x, x, name,   v,
+                                   x, made,         y, y, length, z),
+                       // two EGs since we cannot prove (at this point) that the join
+                       // on x will occur inside this Molecule (the atoms are exclusive,
+                       // not the molecule). In practice this modellign is bad modelling,
+                       // if the join where possible, then Desk should not be a core but a
+                       // child of the Person core
+                       asList(createQuery(u, primaryTopic, x, x, name,   v),
+                              createQuery(x, made,         y, y, length, z)),
+                       emptyList())
+        );
+    }
+
     @Nonnull
     private static List<List<Object>> allMatchData() {
         List<List<Object>> list = new ArrayList<>();
@@ -511,6 +562,7 @@ public class MoleculeMatcherTest implements TestContext {
         list.addAll(nonExclusiveMatchDataOnLargeMolecules());
         list.addAll(exclusiveMatchDataOnLargeMolecules());
         list.addAll(exclusiveMatchDataWithFilters());
+        list.addAll(multiCoreMatchData());
         return list;
     }
 

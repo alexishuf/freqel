@@ -82,7 +82,7 @@ public class MoleculeMatcher implements SemanticDescription {
 
     @Override
     public @Nonnull String toString() {
-        return String.format("MoleculeMatcher(%s)", molecule.getCore().getName());
+        return String.format("MoleculeMatcher(%s)", molecule);
     }
 
     private @Nonnull Index getIndex() {
@@ -177,8 +177,7 @@ public class MoleculeMatcher implements SemanticDescription {
                 }
             });
 
-            Queue<Atom> queue = new ArrayDeque<>();
-            queue.add(molecule.getCore());
+            Queue<Atom> queue = new ArrayDeque<>(molecule.getCores());
             HashSet<String> visited = new HashSet<>();
             while (!queue.isEmpty()) {
                 Atom a = queue.remove();

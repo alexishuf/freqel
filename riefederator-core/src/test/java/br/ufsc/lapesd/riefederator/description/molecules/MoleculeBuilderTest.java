@@ -1,13 +1,17 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import java.util.function.Supplier;
 
 import static com.google.common.collect.Sets.newHashSet;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
+import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
@@ -48,5 +52,34 @@ public class MoleculeBuilderTest implements TestContext {
         assertEquals(core.getOut(), singleton(new MoleculeLink(age, b, false)));
 
         assertEquals(molecule.getCore(), core);
+    }
+
+    @Test
+    public void testBuildMultiCoreMolecule() {
+        Supplier<Molecule> supplier =
+                () -> Molecule.builder("core1").exclusive().closed().out(knows, b)
+                        .startNewCore("core2").out(age, a1)
+                        .filter(AtomFilter.builder("$actual > $input")
+                                .map(AtomRole.OUTPUT.wrap(a1), "actual")
+                                .map(AtomRole.INPUT.wrap(a1), "input")
+                                .buildFilter())
+                        .build();
+        Molecule m = supplier.get();
+        assertEquals(m.getCore().getName(), "core1");
+        assertEquals(m.getCores().stream().map(Atom::getName).collect(toList()),
+                     asList("core1", "core2"));
+        assertEquals(m.getCores(),
+                     asList(m.getAtom("core1"), m.getAtom("core2")));
+        assertNotEquals(m.getAtom("core1"), m.getAtom("core2"));
+
+
+        assertEquals(m.getFiltersWithAtom("core1"), emptySet());
+        assertEquals(m.getFiltersWithAtom("core2"), emptySet());
+        assertEquals(m.getFiltersWithAtom(a1.getName()).size(), 1);
+        AtomFilter filter = m.getFiltersWithAtom(a1.getName()).iterator().next();
+        assertEquals(filter.getSPARQLFilter(), SPARQLFilter.build("$actual > $input"));
+
+        assertEquals(m, supplier.get());
+        assertEquals(m.hashCode(), supplier.get().hashCode());
     }
 }

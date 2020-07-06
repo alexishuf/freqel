@@ -1,12 +1,10 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSetMultimap;
-import com.google.common.collect.MultimapBuilder;
-import com.google.common.collect.SetMultimap;
+import com.google.common.collect.*;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
@@ -21,7 +19,8 @@ import static java.util.stream.Stream.concat;
 
 @Immutable
 public class Molecule {
-    private @Nonnull final Atom core;
+    private @Nonnull final ImmutableList<Atom> coreAtoms;
+    private @LazyInit int hash;
     private @LazyInit int atomCount;
     private @Nonnull final ImmutableSet<AtomFilter> filters;
     private @Nonnull final ImmutableSetMultimap<String, AtomFilter> atom2Filters;
@@ -46,7 +45,12 @@ public class Molecule {
 
     Molecule(@Nonnull Atom core, int atomCount,
              @Nonnull Collection<AtomFilter> filters) {
-        this.core = core;
+        this(Collections.singletonList(core), atomCount, filters);
+    }
+
+    Molecule(@Nonnull List<Atom> cores, int atomCount,
+             @Nonnull Collection<AtomFilter> filters) {
+        this.coreAtoms = ImmutableList.copyOf(cores);
         this.atomCount = atomCount;
         this.filters = filters instanceof ImmutableSet ? (ImmutableSet<AtomFilter>)filters
                                                        : ImmutableSet.copyOf(filters);
@@ -66,14 +70,17 @@ public class Molecule {
      * @return a <code>builder</code> such that <code>builder.build().equals(this)</code>.
      */
     public @Nonnull MoleculeBuilder toBuilder() {
-        MoleculeBuilder b = builder(core.getName())
-                .exclusive(core.isExclusive())
-                .closed(core.isClosed())
-                .disjoint(core.isDisjoint());
-        for (MoleculeLink link : core.getIn())
-            b.in(link.getEdge(), link.getAtom(), link.isAuthoritative());
-        for (MoleculeLink link : core.getOut())
-            b.out(link.getEdge(), link.getAtom(), link.isAuthoritative());
+        MoleculeBuilder b = builder(getCore().getName());
+        boolean first = true;
+        for (Atom core : getCores()) {
+            if (first) first = false;
+            else       b.startNewCore(core.getName());
+            b.exclusive(core.isExclusive()).closed(core.isClosed()).disjoint(core.isDisjoint());
+            for (MoleculeLink link : core.getIn())
+                b.in(link.getEdge(), link.getAtom(), link.isAuthoritative());
+            for (MoleculeLink link : core.getOut())
+                b.out(link.getEdge(), link.getAtom(), link.isAuthoritative());
+        }
         getFilters().forEach(b::filter);
         return b;
     }
@@ -88,13 +95,22 @@ public class Molecule {
     }
 
     public @Nonnull Atom getCore() {
-        return core;
+        if (coreAtoms.isEmpty()) throw new NoSuchElementException();
+        return coreAtoms.get(0);
     }
+
+    public @Nonnull ImmutableList<Atom> getCores() {
+        return coreAtoms;
+    }
+
     public @Nonnull String dump() {
-        return getCore().dump();
+        return dump(StdPrefixDict.DEFAULT);
     }
     public @Nonnull String dump(@Nonnull PrefixDict dict) {
-        return getCore().dump(dict);
+        StringBuilder builder = new StringBuilder(coreAtoms.size() * 256);
+        for (Atom core : coreAtoms)
+            core.dump(builder, 2, dict);
+        return builder.toString();
     }
 
     public @Nonnull IndexedSet<String> getAtomNames() {
@@ -111,7 +127,7 @@ public class Molecule {
         if (strong == null) {
             strong = new HashMap<>();
             ArrayDeque<Atom> stack = new ArrayDeque<>();
-            stack.push(getCore());
+            getCores().forEach(stack::push);
             while (!stack.isEmpty()) {
                 Atom a = stack.pop();
                 if (strong.containsKey(a.getName())) continue;
@@ -119,6 +135,7 @@ public class Molecule {
                 concat(a.getIn().stream(), a.getOut().stream())
                         .forEach(l -> stack.push(l.getAtom()));
             }
+            atomMap = new SoftReference<>(strong);
         }
         return strong;
     }
@@ -291,16 +308,24 @@ public class Molecule {
 
     @Override
     public @Nonnull String toString() {
-        return getCore().toString();
+        if (getCores().isEmpty())
+            return "EMPTY";
+        StringBuilder builder = new StringBuilder(256);
+        for (Atom core : getCores())
+            builder.append(core.toString()).append(", ");
+        builder.setLength(builder.length()-2);
+        return builder.toString();
     }
 
     @Override
     public boolean equals(Object o) {
-        return (o instanceof Molecule) && core.equals(((Molecule) o).core);
+        return (o instanceof Molecule) && getCores().equals(((Molecule)o).getCores());
     }
 
     @Override
     public int hashCode() {
-        return core.hashCode();
+        if (hash == 0)
+            hash = getCores().hashCode();
+        return hash;
     }
 }

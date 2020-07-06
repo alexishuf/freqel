@@ -89,7 +89,7 @@ public class MoleculeMatcherWithDisjointness implements Description {
                     map = HashMultimap.create(32, 2);
                     Set<String> visited = new HashSet<>();
                     ArrayDeque<Atom> stack = new ArrayDeque<>();
-                    stack.push(molecule.getCore());
+                    molecule.getCores().forEach(stack::push);
                     while (!stack.isEmpty()) {
                         Atom atom = stack.pop();
                         if (!visited.add(atom.getName())) continue;
@@ -353,6 +353,6 @@ public class MoleculeMatcherWithDisjointness implements Description {
 
     @Override
     public @Nonnull String toString() {
-        return String.format("MoleculeMatcherWithDisjointness(%s)", molecule.getCore().getName());
+        return String.format("MoleculeMatcherWithDisjointness(%s)", molecule);
     }
 }

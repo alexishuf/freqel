@@ -68,6 +68,7 @@ public interface TestContext {
 
     @Nonnull URI knows            = new StdURI(FOAF.knows.getURI());
     @Nonnull URI name             = new StdURI(FOAF.name.getURI());
+    @Nonnull URI made            = new StdURI(FOAF.made.getURI());
     @Nonnull URI mbox             = new StdURI(FOAF.mbox.getURI());
     @Nonnull URI primaryTopic     = new StdURI(FOAF.primaryTopic.getURI());
     @Nonnull URI isPrimaryTopicOf = new StdURI(FOAF.isPrimaryTopicOf.getURI());

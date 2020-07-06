@@ -6,10 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -17,7 +14,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class MoleculeBuilder {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(MoleculeBuilder.class);
 
-    private final @Nonnull String name;
+    private @Nonnull List<Atom> cores = new ArrayList<>();
+    private @Nonnull String name;
     private boolean exclusive = false, closed = false, disjoint = false;
     private @Nonnull Set<MoleculeLink> in = new HashSet<>(), out = new HashSet<>();
     /* Atom names must be unique within a Molecule. This helps enforcing such rule */
@@ -38,6 +36,17 @@ public class MoleculeBuilder {
                     "There already exists an atom named " + atom.getName() + " which " +
                     "is different from the one being added.");
         }
+    }
+
+    @Contract("_ -> this")
+    public @Nonnull MoleculeBuilder startNewCore(@Nonnull String name) {
+        buildCore();
+        // setup new core
+        this.name = name;
+        in = new HashSet<>();
+        out = new HashSet<>();
+        exclusive = closed = disjoint = false;
+        return this;
     }
 
     @Contract("-> this") public @Nonnull MoleculeBuilder nonExclusive() {return exclusive(false);}
@@ -141,13 +150,20 @@ public class MoleculeBuilder {
         return this;
     }
 
+    private @Nonnull Atom buildCore() {
+        Atom atom = new Atom(name, exclusive, closed, disjoint, in, out);
+        cores.add(atom);
+        name2atom.put(name, atom);
+        return atom;
+    }
     @Contract("-> new") public @Nonnull Atom buildAtom() {
         if (!filterSet.isEmpty())
             logger.warn("buildAtom() will discard filters: {}", filterSet);
-        return new Atom(name, exclusive, closed, disjoint, in, out);
+        return buildCore();
     }
+
     @Contract("-> new") public @Nonnull Molecule build() {
-        Atom atom = new Atom(name, exclusive, closed, disjoint, in, out);
-        return new Molecule(atom, name2atom.size(), filterSet);
+        buildCore();
+        return new Molecule(cores, name2atom.size(), filterSet);
     }
 }

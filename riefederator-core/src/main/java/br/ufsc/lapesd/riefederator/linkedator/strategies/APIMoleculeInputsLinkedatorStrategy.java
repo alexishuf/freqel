@@ -129,6 +129,8 @@ public class APIMoleculeInputsLinkedatorStrategy implements LinkedatorStrategy {
             if (!(source.getDescription() instanceof APIMoleculeMatcher))
                 continue;
             APIMolecule apiMol = ((APIMoleculeMatcher) source.getDescription()).getApiMolecule();
+            if (apiMol.getMolecule().getCores().size() > 1)
+                continue; //only support single-core molecules1
             for (AtomSignature inSig : createInputSignatures(apiMol)) {
                 for (Source other : sources) {
                     if (other != source) {
