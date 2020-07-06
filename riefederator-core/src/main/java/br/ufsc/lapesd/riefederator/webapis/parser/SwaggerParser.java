@@ -185,10 +185,11 @@ public class SwaggerParser implements APIDescriptionParser {
             for (String name : paramNames) {
                 ParameterPath pp = parameterPathMap.get(name);
                 if (pp.getAtomFilters().stream().anyMatch(AtomFilter::hasInputIndex)) {
+                    int size = pp.getAtomFilters().size();
                     for (AtomFilter f : pp.getAtomFilters()) {
                         if (!f.hasInputIndex())
                             throw ex("%f of endpoint %s missing index", f, endpoint);
-                        set.add(IndexedParam.index(name, f.getInputIndex()));
+                        set.add(IndexedParam.index(name, f.getInputIndex(), size));
                     }
                 } else {
                     set.add(name);
@@ -248,10 +249,11 @@ public class SwaggerParser implements APIDescriptionParser {
                 if (atomFilters.isEmpty()) {
                     element2Input.put(e.getValue().getAtom().getName(), e.getKey());
                 } else {
+                    int size = atomFilters.size();
                     for (AtomFilter atomFilter : atomFilters) {
                         String input = e.getKey();
                         if (atomFilter.hasInputIndex())
-                            input = IndexedParam.index(input, atomFilter.getInputIndex());
+                            input = IndexedParam.index(input, atomFilter.getInputIndex(), size);
                         element2Input.put(atomFilter.getName(), input);
                     }
                 }

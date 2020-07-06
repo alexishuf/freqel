@@ -8,19 +8,21 @@ import java.util.regex.Pattern;
 
 public class IndexedParam {
     public static final @Nonnull Pattern RX =
-            Pattern.compile("^(.*)\\$riefederator\\[(\\d+)]");
+            Pattern.compile("^(.*)\\$riefederator\\[(\\d+)\\s*:\\s*(\\d+)]");
 
     public final @Nonnull String base, index;
+    public final int size;
 
-    public IndexedParam(@Nonnull String base, @Nonnull String index) {
+    public IndexedParam(@Nonnull String base, @Nonnull String index, int size) {
         this.base = base;
         this.index = index;
+        this.size = size;
     }
 
     public static @Nullable IndexedParam parse(@Nonnull String string) {
-        Matcher matcher = RX.matcher(string);
-        if (!matcher.matches()) return null;
-        return new IndexedParam(matcher.group(1), matcher.group(2));
+        Matcher m = RX.matcher(string);
+        if (!m.matches()) return null;
+        return new IndexedParam(m.group(1), m.group(2), Integer.parseInt(m.group(3)));
     }
 
     public static @Nonnull String getBase(@Nonnull String string) {
@@ -28,9 +30,9 @@ public class IndexedParam {
         return matcher.matches() ? matcher.group(1) : string;
     }
 
-    public static @Nonnull String index(@Nonnull String base, int index) {
+    public static @Nonnull String index(@Nonnull String base, int index, int size) {
         assert !RX.matcher(base).matches();
-        return String.format("%s$riefederator[%d]", base, index);
+        return String.format("%s$riefederator[%d:%d]", base, index, size);
     }
 
     public @Nonnull String getBase() {
@@ -41,13 +43,17 @@ public class IndexedParam {
         return index;
     }
 
+    public int getSize() {
+        return size;
+    }
+
     public int getIndexValue() {
         return Integer.parseInt(index);
     }
 
     @Override
     public String toString() {
-        return String.format("%s$riefederator[%s]", base, index);
+        return String.format("%s$riefederator[%s:%d]", base, index, size);
     }
 
     @Override
@@ -55,12 +61,13 @@ public class IndexedParam {
         if (this == o) return true;
         if (!(o instanceof IndexedParam)) return false;
         IndexedParam that = (IndexedParam) o;
-        return getBase().equals(that.getBase()) &&
+        return size == that.size &&
+                getBase().equals(that.getBase()) &&
                 getIndex().equals(that.getIndex());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getBase(), getIndex());
+        return Objects.hash(getBase(), getIndex(), size);
     }
 }

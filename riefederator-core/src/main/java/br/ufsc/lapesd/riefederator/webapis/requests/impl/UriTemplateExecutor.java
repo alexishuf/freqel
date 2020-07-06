@@ -370,14 +370,21 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         }
 
         private void saveIndexedValue(@Nonnull IndexedParam indexed, @Nonnull String serialized) {
-            List<String> list;
-            list = multiValues.computeIfAbsent(indexed.base, k -> new ArrayList<>());
-            String na = indexedNAValues.getOrDefault(indexed.base, null);
+
+            List<String> list = multiValues.getOrDefault(indexed.base, null);
+            if (list == null) {
+                String na = indexedNAValues.getOrDefault(indexed.base, null);
+                multiValues.put(indexed.base, list = new ArrayList<>(indexed.size));
+                for (int i = 0; i < indexed.size; i++) list.add(na);
+            }
             int position = indexed.getIndexValue();
-            for (int i = list.size(); i < position; i++) // fill with NAs
-                list.add(na);
-            if (position == list.size())  list.add(serialized);
-            else                          list.set(position, serialized);
+            if (position >= list.size()) {
+                assert false : ".size mismatch among indexed bindings of "+indexed.base;
+                // if asserts disabled, fix instead of blowing up
+                String na = indexedNAValues.getOrDefault(indexed.base, null);
+                for (int i = list.size(); i <= position; i++) list.add(na);
+            }
+            list.set(position, serialized);
         }
 
         private @Nonnull String toValue(@Nonnull String baseName, @Nonnull Term term) {
