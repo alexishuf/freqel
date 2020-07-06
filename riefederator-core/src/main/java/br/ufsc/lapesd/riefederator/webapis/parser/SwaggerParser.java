@@ -19,7 +19,7 @@ import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.*;
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimitsRegistry;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.FormatMethod;
 import org.glassfish.jersey.uri.UriTemplate;
@@ -48,7 +48,7 @@ public class SwaggerParser implements APIDescriptionParser {
             asList("paths", "definitions", "parameters", "responses");
 
     private @Nonnull final DictTree swagger;
-    private @Nonnull final ImmutableList<String> endpoints;
+    private @Nonnull final ImmutableSet<String> endpoints;
     private @Nonnull final APIDescriptionContext fallbackContext = new APIDescriptionContext();
 
     private static DictTree doOverlay(@Nonnull DictTree baseSwagger, @Nonnull DictTree overlay) {
@@ -88,7 +88,7 @@ public class SwaggerParser implements APIDescriptionParser {
     /* --- --- --- --- Interface implementation --- --- --- --- */
 
     @Override
-    public @Nonnull Collection<String> getEndpoints() {
+    public @Nonnull ImmutableSet<String> getEndpoints() {
         return endpoints;
     }
 
@@ -307,6 +307,14 @@ public class SwaggerParser implements APIDescriptionParser {
     @Override
     public @Nonnull WebAPICQEndpoint getEndpoint(@Nonnull String endpoint,
                                                  @Nullable APIDescriptionContext ctx) {
+        if (!endpoints.contains(endpoint)) {
+            Pattern rx = Pattern.compile(endpoint.replaceAll("/*$", "/*").replaceAll("^/*", "/*"));
+            String fix = endpoints.stream().filter(e -> rx.matcher(e).matches())
+                                  .findFirst().orElse(null);
+            if (fix == null)
+                throw ex("Endpoint %s not found (ignoring start/end '/'s)", endpoint);
+            endpoint = fix;
+        }
         return new WebAPICQEndpoint(getAPIMolecule(endpoint, ctx));
     }
 
@@ -597,21 +605,20 @@ public class SwaggerParser implements APIDescriptionParser {
         return parser;
     }
 
-    private @Nonnull ImmutableList<String> findEndpoints() {
+    private @Nonnull ImmutableSet<String> findEndpoints() {
         DictTree paths = swagger.getMap("paths");
         if (paths == null) {
             logger.warn("No paths in Swagger!");
-            return ImmutableList.of();
+            return ImmutableSet.of();
         }
-        List<String> list = new ArrayList<>();
+        ImmutableSet.Builder<String> builder = ImmutableSet.builder();
         for (String path : paths.keySet()) {
             DictTree op = getPathObj(path);
             if (op.isEmpty()) continue;
             if (op.getMapNN("get/responses/200/schema").isEmpty()) continue;
-
-            list.add(path);
+            builder.add(path);
         }
-        return ImmutableList.copyOf(list);
+        return builder.build();
     }
 
     /* --- --- --- --- --- --- Factory --- --- --- --- --- --- */

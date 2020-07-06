@@ -325,4 +325,14 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
                 ids.add(Objects.requireNonNull(s.get(v)).asLiteral().getLexicalForm()));
         assertEquals(ids, Sets.newHashSet("267291791", "278614622"));
     }
+
+    @Test
+    public void testTolerateSlashes() throws IOException {
+        SwaggerParser parser = SwaggerParser.FACTORY.fromResource(ptExtYaml);
+        parser.getEndpoint("/api-de-dados/licitacoes");
+        parser.getEndpoint("/api-de-dados/licitacoes/");
+        parser.getEndpoint("/api-de-dados/licitacoes//");
+        parser.getEndpoint("api-de-dados/licitacoes");
+        parser.getEndpoint("api-de-dados/licitacoes/");
+    }
 }
