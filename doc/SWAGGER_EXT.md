@@ -218,7 +218,15 @@ Example:
 `index` (used within `filter`): If given, the value that binds to the `$input` 
 variable in the filter is the `index-th` value in the array that is the value 
 of the API parameter. If `na-value: null` in the API parameter, there must be 
-filters with an `index` for every slot in the array. 
+filters with an `index` for every slot in the array.
+
+`required` (used within `filter`): If given, the filter must be matched to a 
+SPARQL FILTER() during matching, else the Web API endpoint cannot be invoked. 
+The default value is true, since this appears to eb the most common scenario. 
+If a swagger parameter has all its `filter`s with `required: false`, then it 
+is possible to match a literal value (or a resource) to the Swagger parameter 
+as well as matching FILTER()s. Note that in an actual query You will either 
+match a value or match FILTER()s, matching both is nonsense.  
 
 `missing`: When present, this informs that the actual value mapped by `path` 
 will not be present in responses, even if it is present in the response schema.

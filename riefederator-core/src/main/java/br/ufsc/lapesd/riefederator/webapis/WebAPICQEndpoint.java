@@ -18,10 +18,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
-import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
-import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
-import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
-import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.*;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
 import br.ufsc.lapesd.riefederator.webapis.requests.MismatchingQueryException;
@@ -37,7 +34,6 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
 import static java.util.stream.Collectors.toSet;
 
 public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoint {
@@ -93,11 +89,12 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
             return matchAndQuery(query, false);
         }
         MapSolution bound = b.build();
-        Set<String> missingRequired = setMinus(exec.getRequiredInputs(), bound.getVarNames());
+
+        Set<String> missing = IndexedParam.getMissing(exec.getRequiredInputs(), bound.getVarNames());
         Set<String> resultVars = query.getTermVars().stream().map(Var::getName).collect(toSet());
-        if (!missingRequired.isEmpty()) {
+        if (!missing.isEmpty()) {
             logger.error("The required inputs {} are missing when invoking {}. " +
-                         "Will return no results", missingRequired, this);
+                         "Will return no results", missing, this);
             return CollectionResults.empty(resultVars);
         }
         if (bound.getVarNames().isEmpty()) {

@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
@@ -24,16 +25,18 @@ public class AtomFilter implements MoleculeElement {
     private final @Nonnull SPARQLFilter filter;
     private final @Nonnull ImmutableBiMap<AtomWithRole, String> atom2var;
     private final int inputIndex;
+    private final boolean required;
 
     /* --- --- --- Constructor & Builder --- --- -- */
 
     public AtomFilter(@Nonnull SPARQLFilter filter,
                       @Nonnull ImmutableBiMap<AtomWithRole, String> atom2var,
-                      @Nonnull String name, int inputIndex) {
+                      @Nonnull String name, int inputIndex, boolean required) {
         this.filter = filter;
         this.atom2var = atom2var;
         this.name = name;
         this.inputIndex = inputIndex;
+        this.required = required;
     }
 
     private static @Nonnull
@@ -60,6 +63,7 @@ public class AtomFilter implements MoleculeElement {
         private final @Nonnull SPARQLFilter filter;
         private @Nullable String name;
         private int inputIndex = Integer.MIN_VALUE;
+        private boolean required = false;
         private final @Nonnull ImmutableBiMap.Builder<AtomWithRole, String> atom2varBuilder;
 
         public WithBuilder(@Nonnull SPARQLFilter filter) {
@@ -87,15 +91,20 @@ public class AtomFilter implements MoleculeElement {
             return this;
         }
 
-        public @Nonnull WithBuilder withInputIndex(int inputIndex) {
+        public @CanIgnoreReturnValue @Nonnull WithBuilder withInputIndex(int inputIndex) {
             this.inputIndex = inputIndex;
+            return this;
+        }
+
+        public @CanIgnoreReturnValue @Nonnull WithBuilder required(boolean value) {
+            this.required = value;
             return this;
         }
 
         public @Nonnull AtomFilter build() {
             ImmutableBiMap<AtomWithRole, String> atom2var = atom2varBuilder.build();
             if (name == null) name = generateName(filter, atom2var);
-            return new AtomFilter(filter, atom2var, name, inputIndex);
+            return new AtomFilter(filter, atom2var, name, inputIndex, required);
         }
     }
 
@@ -103,6 +112,7 @@ public class AtomFilter implements MoleculeElement {
         private final @Nonnull ImmutableBiMap.Builder<AtomWithRole, String> atom2varBuilder;
         private @Nullable String name;
         private int inputIndex = Integer.MIN_VALUE;
+        boolean requiredFilter = false;
 
         public Builder(@Nonnull String filter) {
             super(filter);
@@ -154,6 +164,11 @@ public class AtomFilter implements MoleculeElement {
             return this;
         }
 
+        public @CanIgnoreReturnValue @Nonnull Builder requiredFilter(boolean value) {
+            this.requiredFilter = value;
+            return this;
+        }
+
         public @Nonnull AtomFilter buildFilter() {
             SPARQLFilter filter = super.build();
             ImmutableBiMap<AtomWithRole, String> atom2var = atom2varBuilder.build();
@@ -164,7 +179,7 @@ public class AtomFilter implements MoleculeElement {
                                 filter.getVars())
             );
             if (name == null) name = generateName(filter, atom2var);
-            return new AtomFilter(filter, atom2var, name, inputIndex);
+            return new AtomFilter(filter, atom2var, name, inputIndex, requiredFilter);
         }
     }
 
@@ -200,6 +215,10 @@ public class AtomFilter implements MoleculeElement {
     }
     public int getInputIndex() {
         return inputIndex;
+    }
+
+    public boolean isRequired() {
+        return required;
     }
 
     public @Nonnull Set<AtomWithRole> getAtoms() {

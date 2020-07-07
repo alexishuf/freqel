@@ -105,14 +105,14 @@ public class SwaggerParser implements APIDescriptionParser {
     }
 
     class Parameters {
-        @Nonnull JsonSchemaMoleculeParser parser;
-        @Nonnull String endpointKey;
-        @Nullable PagingStrategy pagingStrategy;
+        final @Nonnull JsonSchemaMoleculeParser parser;
+        final @Nonnull String endpointKey;
+        final @Nullable PagingStrategy pagingStrategy;
         @Nonnull Set<String> required, optional, missing;
-        @Nonnull Set<String> executionRequired, executionOptional;
+        @Nonnull Set<String> execRequired, execOptional;
         @Nonnull Map<String, String> naValues;
-        @Nonnull Map<String, DictTree> paramObjMap;
-        @Nonnull Map<String, ParameterPath> parameterPathMap;
+        final @Nonnull Map<String, DictTree> paramObjMap;
+        final @Nonnull Map<String, ParameterPath> parameterPathMap;
         @Nonnull Map<String, String> listSeparators;
 
         public Parameters(@Nonnull String endpoint, @Nullable APIDescriptionContext ctx,
@@ -141,11 +141,13 @@ public class SwaggerParser implements APIDescriptionParser {
                 mappedInputs.addAll(pagingStrategy.getParametersUsed());
             if (!mappedInputs.containsAll(required))
                 throw ex("Some required inputs of endpoint %s have no atom mapped", endpoint);
-            executionRequired = expandIndexed(required, endpoint);
-            executionOptional = expandIndexed(optional, endpoint);
+            execRequired = new HashSet<>();
+            execOptional = new HashSet<>();
+            expandIndexed(endpoint, required, true, execRequired, execOptional);
+            expandIndexed(endpoint, optional, false, execRequired, execOptional);
             naValues = new HashMap<>();
-            addNaValues(naValues, executionRequired);
-            addNaValues(naValues, executionOptional);
+            addNaValues(naValues, execRequired);
+            addNaValues(naValues, execOptional);
 
             listSeparators = new HashMap<>();
             for (Map.Entry<String, DictTree> e : paramObjMap.entrySet()) {
@@ -180,22 +182,26 @@ public class SwaggerParser implements APIDescriptionParser {
             }
         }
 
-        private @Nonnull Set<String> expandIndexed(Set<String> paramNames, String endpoint) {
-            Set<String> set = new HashSet<>();
+        private void expandIndexed(@Nonnull String endpoint, @Nonnull Set<String> paramNames,
+                                   boolean paramRequired,
+                                   @Nonnull Set<String> outReq, @Nonnull Set<String> outOpt) {
             for (String name : paramNames) {
                 ParameterPath pp = parameterPathMap.get(name);
                 if (pp.getAtomFilters().stream().anyMatch(AtomFilter::hasInputIndex)) {
+                    //if no indexed filter is required, can bind directly to the param
+                    if (pp.getAtomFilters().stream().noneMatch(AtomFilter::isRequired))
+                        (paramRequired ? outReq : outOpt).add(name);
                     int size = pp.getAtomFilters().size();
                     for (AtomFilter f : pp.getAtomFilters()) {
                         if (!f.hasInputIndex())
                             throw ex("%f of endpoint %s missing index", f, endpoint);
+                        Set<String> set = paramRequired && f.isRequired() ? outReq : outOpt;
                         set.add(IndexedParam.index(name, f.getInputIndex(), size));
                     }
                 } else {
-                    set.add(name);
+                    (paramRequired ? outReq : outOpt).add(name);
                 }
             }
-            return set;
         }
 
         private boolean containsParam(@Nonnull String tpl, @Nonnull String name) {
@@ -249,6 +255,9 @@ public class SwaggerParser implements APIDescriptionParser {
                 if (atomFilters.isEmpty()) {
                     element2Input.put(e.getValue().getAtom().getName(), e.getKey());
                 } else {
+                    // if no filter is required, can also bind directly to the parameter
+                    if (atomFilters.stream().noneMatch(AtomFilter::isRequired))
+                        element2Input.put(e.getValue().getAtom().getName(), e.getKey());
                     int size = atomFilters.size();
                     for (AtomFilter atomFilter : atomFilters) {
                         String input = e.getKey();
@@ -278,7 +287,7 @@ public class SwaggerParser implements APIDescriptionParser {
 
         UriTemplate template = p.getTemplate();
         UriTemplateExecutor.Builder builder = UriTemplateExecutor.from(template)
-                .withOptional(p.executionOptional).withRequired(p.executionRequired)
+                .withOptional(p.execOptional).withRequired(p.execRequired)
                 .withMissingInResult(p.missing)
                 .withResponseParser(responseParser);
         p.naValues.forEach(builder::withIndexedNAValue);

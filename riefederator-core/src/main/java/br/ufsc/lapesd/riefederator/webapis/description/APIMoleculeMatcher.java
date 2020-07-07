@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.webapis.description;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.molecules.*;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -32,8 +31,8 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
     private @Nonnull SoftReference<InputAtoms> inputAtoms = new SoftReference<>(null);
 
     protected static class InputAtoms {
-        public @Nonnull ImmutableSet<String> requiredAtoms, optionalAtoms;
-        private @Nonnull APIMolecule apiMolecule;
+        public @Nonnull final ImmutableSet<String> requiredAtoms, optionalAtoms;
+        private @Nonnull final APIMolecule apiMolecule;
 
         public InputAtoms(@Nonnull APIMolecule apiMolecule) {
             Predicate<String> isAtom = apiMolecule.getMolecule().getAtomMap()::containsKey;
@@ -138,7 +137,7 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
     }
 
     protected class APIState extends State {
-        private @Nonnull InputAtoms inputAtoms;
+        private @Nonnull final InputAtoms inputAtoms;
         private @Nullable SetMultimap<String, Term> tmpAtom2Term;
 
         public APIState(@Nonnull CQuery query, boolean reason) {
@@ -252,40 +251,59 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                     // this check here is more specific than isValidEG(), as it checks inputs
                     // (not atoms) and inputs can come from FILTER()s (and that is not the
                     // case for Atoms)
-                    SetMultimap<String, Term> inAssignments = HashMultimap.create();
+                    SetMultimap<String, Term> inAssig = HashMultimap.create();
                     query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
                         Term value = a.isOverride() ? a.getOverrideValue() : t;
-                        inAssignments.put(a.getInputName(), value);
+                        inAssig.put(a.getInputName(), value);
                     });
                     Set<String> reqInputs = apiMolecule.getExecutor().getRequiredInputs();
-                    if (!inAssignments.keySet().containsAll(reqInputs)) {
-                        logger.debug("Missing required inputs {} in query {}",
-                                     TreeUtils.setMinus(reqInputs, inAssignments.keySet()), query);
+                    Set<String> missing = IndexedParam.getMissing(reqInputs, inAssig.keySet());
+                    if (!missing.isEmpty()) {
+                        logger.debug("Missing required inputs {} in query {}", missing, query);
                         return CQuery.EMPTY; // reject, since there are required inputs missing
                     }
                     if (APIMolecule.class.desiredAssertionStatus()) {
                         Set<String> s = reqInputs.stream()
-                                .filter(a -> inAssignments.get(a).size() > 1).collect(toSet());
+                                .filter(a -> inAssig.get(a).size() > 1).collect(toSet());
                         assert s.isEmpty() : "Some required inputs are ambiguous: " + s;
                         s = apiMolecule.getExecutor().getOptionalInputs().stream()
-                                .filter(a -> inAssignments.get(a).size() > 1).collect(toSet());
+                                .filter(a -> inAssig.get(a).size() > 1).collect(toSet());
                         assert s.isEmpty() : "Some optional inputs are ambiguous: " + s;
                     }
 
-                    boolean[] hasVar = {false};
-                    query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
-                        Term value = a.isOverride() ? a.getOverrideValue() : t;
-                        assert value != null;
-                        hasVar[0] |= a.isRequired() && value.isVar();
-                    });
-                    if (query.size() == parentQuery.size() && hasVar[0])
-                        query = CQuery.EMPTY; //no join triple left to bind the var
+                    if (query.size() == parentQuery.size()) { // the whole query was matched
+                        Set<String> badAssigs = reqInputs.stream()
+                                .filter(k -> inAssig.get(k).stream().allMatch(Term::isVar))
+                                .collect(toSet());
+                        if (!badAssigs.isEmpty()) {
+                            assignFromIndexedValue(inAssig, badAssigs);
+                            badAssigs = badAssigs.stream()
+                                    .filter(k -> inAssig.get(k).stream().allMatch(Term::isVar))
+                                    .collect(toSet());
+                        }
+                        if (!badAssigs.isEmpty()) {
+                            logger.debug("Discarding sub-query==query, since inputs {} are " +
+                                         "mapped to variables. Query: {}", badAssigs, query);
+                            query = CQuery.EMPTY; //no join triple left to bind the var
+                        }
+                    }
                     /* a deeper analysis could determine at this point whether all vars
                      * really can be assigned or not from the triples outside the EG. However,
                      * this is handled more easily at the execution phase */
                     return query;
                 } else {
                     return builder.build();
+                }
+            }
+        }
+
+        private void assignFromIndexedValue(@Nonnull SetMultimap<String, Term> inAssig,
+                                            @Nonnull Collection<String> inputs) {
+            for (String key : new ArrayList<>(inAssig.keySet())) {
+                IndexedParam ip = IndexedParam.parse(key);
+                if (ip != null && inputs.contains(ip.base)) {
+                    inAssig.removeAll(ip.base);
+                    inAssig.put(ip.base, inAssig.get(key).iterator().next());
                 }
             }
         }

@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.webapis;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import br.ufsc.lapesd.riefederator.webapis.parser.SwaggerParser;
 import com.google.common.base.Splitter;
@@ -46,10 +47,16 @@ public class ArrayParametersServiceTest extends JerseyTestNg.ContainerPerClassTe
         }
 
         @GET @Path("integers") @Produces(APPLICATION_JSON)
-        public @Nonnull String testGetIntegers(@QueryParam("range") String range) {
-            List<String> list = Splitter.on('|').splitToList(range);
-            int min = parseBound(list, 0, 0 );
-            int max = parseBound(list, 1, 10);
+        public @Nonnull String testGetIntegers(@QueryParam("range") String rangeOrExact) {
+            int min, max;
+            if (!rangeOrExact.contains("|")) {
+                min = Integer.parseInt(rangeOrExact);
+                max = min+1;
+            } else {
+                List<String> list = Splitter.on('|').splitToList(rangeOrExact);
+                min = parseBound(list, 0, 0 );
+                max = parseBound(list, 1, 10);
+            }
             StringBuilder builder = new StringBuilder("{\"value\": [");
             for (int i = min; i < max; i++)
                 builder.append(i).append(", ");
@@ -57,6 +64,11 @@ public class ArrayParametersServiceTest extends JerseyTestNg.ContainerPerClassTe
                 builder.setLength(builder.length()-2);
             builder.append("]}");
             return builder.toString();
+        }
+
+        @GET @Path("integers-req") @Produces(APPLICATION_JSON)
+        public @Nonnull String testGetIntegersReq(@QueryParam("range") String rangeOrExact) {
+            return testGetIntegers(rangeOrExact);
         }
     }
 
@@ -68,6 +80,14 @@ public class ArrayParametersServiceTest extends JerseyTestNg.ContainerPerClassTe
     @Test
     public void selfTestGetRange() throws IOException {
         String json = target("/integers").queryParam("range", "2|5")
+                .request(APPLICATION_JSON).get(String.class);
+        List<?> list = DictTree.load().fromJsonString(json).getListNN("value");
+        assertEquals(list, asList(2.0, 3.0, 4.0));
+    }
+
+    @Test
+    public void selfTestGetRangeReq() throws IOException {
+        String json = target("/integers-req").queryParam("range", "2|5")
                 .request(APPLICATION_JSON).get(String.class);
         List<?> list = DictTree.load().fromJsonString(json).getListNN("value");
         assertEquals(list, asList(2.0, 3.0, 4.0));
@@ -103,10 +123,9 @@ public class ArrayParametersServiceTest extends JerseyTestNg.ContainerPerClassTe
         return parser;
     }
 
-    @Test
-    public void testQueryRange() throws IOException {
+    private void doTestQueryRange(String endpoint) throws IOException {
         SwaggerParser parser = createParser();
-        WebAPICQEndpoint ep = parser.getEndpoint("/integers");
+        WebAPICQEndpoint ep = parser.getEndpoint(endpoint);
         Set<Integer> ac = new HashSet<>();
         ep.query(createQuery(x, value, y,
                              SPARQLFilter.build("?y >= 2"), SPARQLFilter.build("?y < 5"))
@@ -116,15 +135,24 @@ public class ArrayParametersServiceTest extends JerseyTestNg.ContainerPerClassTe
     }
 
     @Test
-    public void testQueryOpenRight() throws IOException {
+    public void testQueryRange() throws IOException {
+        doTestQueryRange("/integers");
+    }
+
+    private void doTestQueryOpenRight(String endpoint) throws IOException {
         SwaggerParser parser = createParser();
-        WebAPICQEndpoint ep = parser.getEndpoint("/integers");
+        WebAPICQEndpoint ep = parser.getEndpoint(endpoint);
         Set<Integer> ac = new HashSet<>();
         ep.query(createQuery(x, value, y,
                 SPARQLFilter.build("?y >= 7"))
         ).forEachRemainingThenClose(s ->
                 ac.add((int) parseDouble(requireNonNull(s.get(y)).asLiteral().getLexicalForm())));
         assertEquals(ac, Sets.newHashSet(7, 8, 9));
+    }
+
+    @Test
+    public void testQueryOpenRight() throws IOException {
+        doTestQueryOpenRight("/integers");
     }
 
     @Test
@@ -139,4 +167,29 @@ public class ArrayParametersServiceTest extends JerseyTestNg.ContainerPerClassTe
         assertEquals(ac, Sets.newHashSet(0, 1, 2));
     }
 
+    private void doTestExact(String endpoint) throws IOException {
+        SwaggerParser parser = createParser();
+        WebAPICQEndpoint ep = parser.getEndpoint(endpoint);
+        Set<Solution> ac = new HashSet<>();
+        ep.query(createQuery(x, value, lit(3))).forEachRemainingThenClose(ac::add);
+        assertEquals(ac.size(), 1);
+    }
+
+    @Test
+    public void testExact() throws IOException {
+        doTestExact("/integers");
+    }
+
+    @Test
+    public void testExactOnRequired() throws IOException {
+        doTestExact("/integers-req");
+    }
+    @Test
+    public void testQueryRangeOnRequired() throws IOException {
+        doTestQueryRange("/integers-req");
+    }
+    @Test
+    public void testQueryOpenRightOnRequired() throws IOException {
+        doTestQueryOpenRight("/integers-req");
+    }
 }

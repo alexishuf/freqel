@@ -2,7 +2,10 @@ package br.ufsc.lapesd.riefederator.webapis.description;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +36,18 @@ public class IndexedParam {
     public static @Nonnull String index(@Nonnull String base, int index, int size) {
         assert !RX.matcher(base).matches();
         return String.format("%s$riefederator[%d:%d]", base, index, size);
+    }
+
+    public static @Nonnull Set<String> getMissing(@Nonnull Collection<String> expected,
+                                                  @Nonnull Collection<String> actual) {
+        HashSet<String> missing = new HashSet<>(expected);
+        for (String param : actual) {
+            missing.remove(param);
+            IndexedParam ip = parse(param);
+            if (ip != null)
+                missing.remove(ip.base);
+        }
+        return missing;
     }
 
     public @Nonnull String getBase() {

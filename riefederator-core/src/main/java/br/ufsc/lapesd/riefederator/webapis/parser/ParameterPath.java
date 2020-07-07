@@ -203,11 +203,12 @@ public class ParameterPath {
 
     static @Nullable AtomFilter parseFilter(@Nonnull Atom atom, @Nullable String filterString,
                                             @Nullable StringBuilder errorMsg) {
-        return parseFilter(atom, filterString, errorMsg, MIN_VALUE);
+        return parseFilter(atom, filterString, errorMsg, MIN_VALUE, true);
     }
 
     static @Nullable AtomFilter parseFilter(@Nonnull Atom atom, @Nullable String filterString,
-                                            @Nullable StringBuilder errorMsg, int inputIndex) {
+                                            @Nullable StringBuilder errorMsg, int inputIndex,
+                                            boolean required) {
         if (filterString == null) return null; // no value
 
         SPARQLFilter filter = SPARQLFilter.build(filterString);
@@ -225,6 +226,7 @@ public class ParameterPath {
             builder.map(AtomRole.OUTPUT.wrap(atom), acVar);
         if (inputIndex != MIN_VALUE)
             builder.withInputIndex(inputIndex);
+        builder.required(required);
         return builder.build();
     }
 
@@ -237,6 +239,7 @@ public class ParameterPath {
             return null;
         }
         int index = (int)min(max(map.getLong("index", MIN_VALUE), MIN_VALUE), MAX_VALUE);
+        boolean required = map.getBoolean("required", true);
         Object sparql = map.get("sparql");
         if (sparql != null) {
             if (!(sparql instanceof String)) {
@@ -244,7 +247,7 @@ public class ParameterPath {
                     errorMsg.append("Value of sparql filter is not a string: ").append(sparql);
                 return null;
             }
-            return parseFilter(atom, (String) sparql, errorMsg, index);
+            return parseFilter(atom, (String) sparql, errorMsg, index, required);
         }
         return null;
     }

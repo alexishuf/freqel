@@ -415,11 +415,9 @@ public class UriTemplateExecutor implements APIRequestExecutor {
     }
 
     private @Nonnull String getUri(@Nonnull Solution input) throws APIRequestExecutorException {
-        if (!input.getVarNames().containsAll(getRequiredInputs())) {
-            Set<String> missing = new HashSet<>(getRequiredInputs());
-            missing.removeAll(input.getVarNames());
+        Set<String> missing = IndexedParam.getMissing(getRequiredInputs(), input.getVarNames());
+        if (!missing.isEmpty())
             throw new MissingAPIInputsException(missing, this);
-        }
         Bindings bindings = new Bindings(input);
         String uri = template.createURI(bindings.singleValues);
         assert isValidURI(uri);

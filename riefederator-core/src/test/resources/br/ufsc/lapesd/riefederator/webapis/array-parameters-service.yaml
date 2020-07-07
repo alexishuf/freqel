@@ -1,6 +1,14 @@
 swagger: 2.0
 host: example.org
 basePath: /
+definitions:
+  ValuesContainer:
+    type: object
+    properties:
+      - value:
+          type: array
+          items:
+            type: integer
 paths:
   /integers:
     get:
@@ -19,16 +27,40 @@ paths:
             path: [value]
             filter:
               - sparql: "FILTER($actual >= $input)"
+                required: false #Allows "range" to be directly assigned
                 index: 0
               - sparql: "FILTER($actual < $input)"
+                required: false #Allows "range" to be directly assigned
                 index: 1
       responses:
         200:
           description: OK
           schema:
-            type: object
-            properties:
-              - value:
-                  type: array
-                  items:
-                    type: integer
+            $ref: "#/definitions/ValuesContainer"
+  /integers-req:
+    get:
+      summary: get integers in a range, with a required parameter
+      operationId: GETintegersByRange
+      produces: application/json
+      parameters:
+        - name: range
+          in: query
+          description: min|max
+          required: true # <--------- This is the only difference
+          type: array
+          items:
+            collectionFormat: pipes
+          x-path:
+            path: [value]
+            filter:
+              - sparql: "FILTER($actual >= $input)"
+                required: false #Allows "range" to be directly assigned
+                index: 0
+              - sparql: "FILTER($actual < $input)"
+                required: false #Allows "range" to be directly assigned
+                index: 1
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: "#/definitions/ValuesContainer"

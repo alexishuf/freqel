@@ -184,7 +184,7 @@ public class TransparencyServiceTest extends JerseyTestNg.ContainerPerClassTest
                 x, licitacao, x2, x2, numero, lit("001792019"), // insert missing 2 leading zeros
                 x, modalidadeLicitacao, x3, x3, codigo, lit(-99),
                 x, id, y)
-        ).forEachRemainingThenClose(s -> ids.add(s.get(y).asLiteral().getLexicalForm()));
+        ).forEachRemainingThenClose(s -> ids.add(requireNonNull(s.get(y)).asLiteral().getLexicalForm()));
         assertEquals(ids, Sets.newHashSet("301718143"));
     }
 
@@ -193,7 +193,7 @@ public class TransparencyServiceTest extends JerseyTestNg.ContainerPerClassTest
         WebAPICQEndpoint ep = TransparencyService.getContractByIdClient(target());
         List<Lit> values = new ArrayList<>();
         ep.query(createQuery(x, id, lit(75507145), x, valorInicialCompra, y))
-                .forEachRemainingThenClose(s -> values.add(s.get(y).asLiteral()));
+                .forEachRemainingThenClose(s -> values.add(requireNonNull(s.get(y)).asLiteral()));
         assertEquals(values, singletonList(lit(29000)));
     }
 
@@ -208,7 +208,7 @@ public class TransparencyServiceTest extends JerseyTestNg.ContainerPerClassTest
                 SPARQLFilter.build("?x2 <= \"2020-12-02\"^^xsd:date"),
                 x, unidadeGestora, x3, x3, orgaoVinculado, x4, x4, codigoSIAFI, lit("26246"),
                 x, valorInicialCompra, v)
-        ).forEachRemainingThenClose(s -> values.add(s.get(v).asLiteral()));
+        ).forEachRemainingThenClose(s -> values.add(requireNonNull(s.get(v)).asLiteral()));
         assertEquals(values, Sets.newHashSet(lit(33780), lit(88733.34)));
     }
 
@@ -220,14 +220,14 @@ public class TransparencyServiceTest extends JerseyTestNg.ContainerPerClassTest
         ep.query(createQuery(
                 x, descricao, lit(name),
                 x, codigo, y)
-        ).forEachRemainingThenClose(s -> codes.add(s.get(y).asLiteral()));
+        ).forEachRemainingThenClose(s -> codes.add(requireNonNull(s.get(y)).asLiteral()));
         assertEquals(codes, singleton(lit("26246")));
 
         Set<Lit> names = new HashSet<>();
         ep.query(createQuery(
                 x, descricao, y,
                 x, codigo, lit("26246"))
-        ).forEachRemainingThenClose(s -> names.add(s.get(y).asLiteral()));
+        ).forEachRemainingThenClose(s -> names.add(requireNonNull(s.get(y)).asLiteral()));
         assertEquals(names, singleton(lit(name)));
     }
 }
