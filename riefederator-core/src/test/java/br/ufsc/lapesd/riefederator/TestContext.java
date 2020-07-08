@@ -89,6 +89,8 @@ public interface TestContext {
     @Nonnull URI nameEx     = new StdURI("http://example.org/name");
     @Nonnull URI mainName   = new StdURI("http://example.org/mainName");
     @Nonnull URI authorName = new StdURI("http://example.org/authorName");
+    @Nonnull URI ageEx      = new StdURI("http://example.org/age");
+    @Nonnull URI university = new StdURI("http://example.org/university");
     @Nonnull URI likes      = new StdURI("http://example.org/likes");
     @Nonnull URI bornIn     = new StdURI("http://example.org/bornIn");
     @Nonnull URI author     = new StdURI("http://example.org/author");

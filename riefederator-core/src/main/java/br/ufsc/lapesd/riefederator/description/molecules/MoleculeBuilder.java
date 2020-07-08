@@ -10,14 +10,17 @@ import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 
 public class MoleculeBuilder {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(MoleculeBuilder.class);
 
-    private @Nonnull List<Atom> cores = new ArrayList<>();
+    private @Nonnull final List<Atom> cores = new ArrayList<>();
     private @Nonnull String name;
     private boolean exclusive = false, closed = false, disjoint = false;
-    private @Nonnull Set<MoleculeLink> in = new HashSet<>(), out = new HashSet<>();
+    private @Nonnull final Set<MoleculeLink> in = new HashSet<>(), out = new HashSet<>();
+    private @Nonnull final Set<AtomTag> atomTags = new HashSet<>();
     /* Atom names must be unique within a Molecule. This helps enforcing such rule */
     private @Nonnull final Map<String, Atom> name2atom = new HashMap<>();
     private @Nonnull final Set<AtomFilter> filterSet = new HashSet<>();
@@ -43,8 +46,9 @@ public class MoleculeBuilder {
         buildCore();
         // setup new core
         this.name = name;
-        in = new HashSet<>();
-        out = new HashSet<>();
+        in.clear();
+        out.clear();
+        atomTags.clear();
         exclusive = closed = disjoint = false;
         return this;
     }
@@ -74,6 +78,12 @@ public class MoleculeBuilder {
     }
 
     @Contract("_ -> this")
+    public @Nonnull MoleculeBuilder tag(@Nonnull AtomTag tag) {
+        this.atomTags.add(tag);
+        return this;
+    }
+
+    @Contract("_ -> this")
     public @Nonnull MoleculeBuilder add(@Nonnull Atom atom) {
         checkAtom(atom);
         return this;
@@ -81,18 +91,34 @@ public class MoleculeBuilder {
 
     @Contract("_, _ -> this")
     public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull Atom atom) {
-        return in(edge, atom, false);
+        return in(edge, atom, false, emptyList());
     }
     @Contract("_, _-> this")
     public @Nonnull MoleculeBuilder inAuthoritative(@Nonnull Term edge, @Nonnull Atom atom) {
-        return in(edge, atom, true);
+        return in(edge, atom, true, emptyList());
+    }
+    @Contract("_, _, _, _ -> this")
+    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull Atom atom, 
+                                       boolean authoritative,
+                                       @Nonnull Collection<MoleculeLinkTag> tags) {
+        checkAtom(atom);
+        this.in.add(new MoleculeLink(edge, atom, authoritative, tags));
+        return this;
     }
     @Contract("_, _, _ -> this")
-    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull Atom atom, 
+    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull Atom atom,
                                        boolean authoritative) {
-        checkAtom(atom);
-        this.in.add(new MoleculeLink(edge, atom, authoritative));
-        return this;
+        return in(edge, atom, authoritative, emptySet());
+    }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull Atom atom,
+                                       Collection<MoleculeLinkTag> tags) {
+        return in(edge, atom, false, tags);
+    }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull Atom atom,
+                                       MoleculeLinkTag... tags) {
+        return in(edge, atom, false, Arrays.asList(tags));
     }
     @Contract("_, _ -> this")
     public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull String atomName) {
@@ -107,7 +133,7 @@ public class MoleculeBuilder {
                                        boolean authoritative) {
         checkArgument(name2atom.containsKey(atomName),
                 "No Atom named "+atomName+" in this molecule so far");
-        return in(edge, name2atom.get(atomName), authoritative);
+        return in(edge, name2atom.get(atomName), authoritative, emptyList());
     }
 
 
@@ -119,12 +145,28 @@ public class MoleculeBuilder {
     public @Nonnull MoleculeBuilder outAuthoritative(@Nonnull Term edge, @Nonnull Atom atom) {
         return out(edge, atom, true);
     }
+    @Contract("_, _, _, _ -> this")
+    public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull Atom atom,
+                                        boolean authoritative,
+                                        @Nonnull Collection<MoleculeLinkTag> tags) {
+        checkAtom(atom);
+        this.out.add(new MoleculeLink(edge, atom, authoritative, tags));
+        return this;
+    }
     @Contract("_, _, _ -> this")
     public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull Atom atom,
-                                       boolean authoritative) {
-        checkAtom(atom);
-        this.out.add(new MoleculeLink(edge, atom, authoritative));
-        return this;
+                                        @Nonnull Collection<MoleculeLinkTag> tags) {
+        return out(edge, atom, false, tags);
+    }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull Atom atom,
+                                        @Nonnull MoleculeLinkTag... tags) {
+        return out(edge, atom, false, Arrays.asList(tags));
+    }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull Atom atom,
+                                        boolean authoritative) {
+        return out(edge, atom, authoritative, emptyList());
     }
     @Contract("_, _ -> this")
     public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull String atomName) {
@@ -151,7 +193,7 @@ public class MoleculeBuilder {
     }
 
     private @Nonnull Atom buildCore() {
-        Atom atom = new Atom(name, exclusive, closed, disjoint, in, out);
+        Atom atom = new Atom(name, exclusive, closed, disjoint, in, out, atomTags);
         cores.add(atom);
         name2atom.put(name, atom);
         return atom;

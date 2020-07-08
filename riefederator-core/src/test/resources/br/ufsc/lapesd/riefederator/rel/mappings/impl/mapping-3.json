@@ -1,0 +1,9 @@
+{
+  "@context": {
+    "@type": ["http://xmlns.com/foaf/0.1/Person"],
+    "@uriProperty": "@GenerateUri",
+    "age": "http://xmlns.com/foaf/0.1/age"
+  },
+  "tableName": "T3",
+  "instancePrefix": "http://example.org/"
+}

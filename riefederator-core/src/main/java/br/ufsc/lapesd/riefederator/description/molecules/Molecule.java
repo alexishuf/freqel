@@ -76,10 +76,11 @@ public class Molecule {
             if (first) first = false;
             else       b.startNewCore(core.getName());
             b.exclusive(core.isExclusive()).closed(core.isClosed()).disjoint(core.isDisjoint());
+            core.getTags().forEach(b::tag);
             for (MoleculeLink link : core.getIn())
-                b.in(link.getEdge(), link.getAtom(), link.isAuthoritative());
+                b.in(link.getEdge(), link.getAtom(), link.isAuthoritative(), link.getTags());
             for (MoleculeLink link : core.getOut())
-                b.out(link.getEdge(), link.getAtom(), link.isAuthoritative());
+                b.out(link.getEdge(), link.getAtom(), link.isAuthoritative(), link.getTags());
         }
         getFilters().forEach(b::filter);
         return b;
@@ -209,8 +210,30 @@ public class Molecule {
             return getAtomMap().get(obj);
         }
 
+        public @Nonnull ImmutableSet<AtomTag> getSubjTags() {
+            return getSubjAtom().getTags();
+        }
+
+        public @Nonnull ImmutableSet<AtomTag> getObjTags() {
+            return getObjAtom().getTags();
+        }
+
         public @Nonnull Term getEdge() {
             return edge;
+        }
+
+        public @Nonnull ImmutableSet<MoleculeLinkTag> getEdgeTags() {
+            Atom sa = getSubjAtom(), oa = getObjAtom();
+            ImmutableSet.Builder<MoleculeLinkTag> b = ImmutableSet.builder();
+            for (MoleculeLink link : getSubjAtom().getOut()) {
+                if (link.getEdge().equals(edge) && link .getAtom().equals(oa))
+                    b.addAll(link.getTags());
+            }
+            for (MoleculeLink link : getObjAtom().getIn()) {
+                if (link.getEdge().equals(edge) && link.getAtom().equals(sa))
+                    b.addAll(link.getTags());
+            }
+            return b.build();
         }
 
         public @Nonnull List<Object> asList() {

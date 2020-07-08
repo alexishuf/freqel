@@ -8,9 +8,13 @@ import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.graph.*;
 
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.ThreadSafe;
 
 
+@ThreadSafe
 public class JenaNodeTermFactory implements TermFactory {
+    public static final @Nonnull JenaNodeTermFactory INSTANCE = new JenaNodeTermFactory();
+
     @Override
     public @Nonnull JenaBlankNode createBlank() {
         return new JenaBlankNode((Node_Blank) NodeFactory.createBlankNode());

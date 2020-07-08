@@ -7,10 +7,12 @@ import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
 
@@ -19,17 +21,19 @@ public class Atom implements MoleculeElement {
     private final @Nonnull String name;
     private final boolean exclusive, closed, disjoint;
     private final @Nonnull ImmutableSet<MoleculeLink> in, out;
+    private final @Nonnull ImmutableSet<AtomTag> tags;
     private @LazyInit int hash = 0;
 
     public Atom(@Nonnull String name, boolean exclusive, boolean closed,
                 boolean disjoint, @Nonnull Set<MoleculeLink> in,
-                @Nonnull Set<MoleculeLink> out) {
+                @Nonnull Set<MoleculeLink> out, @Nonnull Collection<AtomTag> tags) {
         this.name = name;
         this.exclusive = exclusive;
         this.closed = closed;
         this.disjoint = disjoint;
         this.in = ImmutableSet.copyOf(in);
         this.out = ImmutableSet.copyOf(out);
+        this.tags = ImmutableSet.copyOf(tags);
     }
 
     /**
@@ -38,7 +42,7 @@ public class Atom implements MoleculeElement {
      * The atom will be non-exclusive and non-closed.
      */
     public Atom(@Nonnull String name) {
-        this(name, false, false, false, emptySet(), emptySet());
+        this(name, false, false, false, emptySet(), emptySet(), emptyList());
     }
 
     @Override
@@ -86,6 +90,10 @@ public class Atom implements MoleculeElement {
     }
     public @Nonnull Set<MoleculeLink> getOut() {
         return out;
+    }
+
+    public @Nonnull ImmutableSet<AtomTag> getTags() {
+        return tags;
     }
 
     public @Nonnull Stream<MoleculeLink> streamLinks() {
@@ -147,14 +155,15 @@ public class Atom implements MoleculeElement {
                 isClosed() == atom.isClosed() &&
                 isDisjoint() == atom.isDisjoint() &&
                 getIn().equals(atom.getIn()) &&
-                getOut().equals(atom.getOut());
+                getOut().equals(atom.getOut()) &&
+                getTags().equals(atom.getTags());
     }
 
     @Override
     public int hashCode() {
         if (hash == 0)
             hash = Objects.hash(getName(), isExclusive(), isClosed(), isDisjoint(),
-                                getIn(), getOut());
+                                getIn(), getOut(), getTags());
         return hash;
     }
 }

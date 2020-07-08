@@ -25,7 +25,7 @@ public class MoleculeBuilderTest implements TestContext {
         Atom core = new MoleculeBuilder("core").exclusive(true).in(knows, a1).buildAtom();
         assertEquals(core.getName(), "core");
         assertTrue(core.isExclusive());
-        assertEquals(core.getIn(), singleton(new MoleculeLink(knows, a1, false)));
+        assertEquals(core.getIn(), singleton(new MoleculeLink(knows, a1, false, emptySet())));
         assertEquals(core.getOut(), emptySet());
     }
 
@@ -35,9 +35,9 @@ public class MoleculeBuilderTest implements TestContext {
                 .out(age, b).outAuthoritative(age, c).buildAtom();
         assertEquals(core.getName(), "core");
         assertFalse(core.isExclusive());
-        assertEquals(core.getIn(), singleton(new MoleculeLink(knows, a1, false)));
-        assertEquals(core.getOut(), newHashSet(new MoleculeLink(age, b, false),
-                                               new MoleculeLink(age, c, true)));
+        assertEquals(core.getIn(), singleton(new MoleculeLink(knows, a1, false, emptySet())));
+        assertEquals(core.getOut(), newHashSet(new MoleculeLink(age, b, false, emptySet()),
+                                               new MoleculeLink(age, c, true, emptySet())));
     }
 
     @Test
@@ -48,8 +48,8 @@ public class MoleculeBuilderTest implements TestContext {
 
         assertEquals(core.getName(), "core");
         assertFalse(core.isExclusive());
-        assertEquals(core.getIn(), singleton(new MoleculeLink(knows, a1, false)));
-        assertEquals(core.getOut(), singleton(new MoleculeLink(age, b, false)));
+        assertEquals(core.getIn(), singleton(new MoleculeLink(knows, a1, false, emptySet())));
+        assertEquals(core.getOut(), singleton(new MoleculeLink(age, b, false, emptySet())));
 
         assertEquals(molecule.getCore(), core);
     }

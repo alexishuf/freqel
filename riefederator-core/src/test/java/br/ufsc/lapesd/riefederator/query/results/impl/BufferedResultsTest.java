@@ -21,7 +21,8 @@ public class BufferedResultsTest implements TestContext {
 
     public static List<BufferedResults.Factory> factories = Arrays.asList(
             ListBufferedResults.FACTORY,
-            HashDistinctResults.FACTORY
+            HashDistinctResults.FACTORY,
+            r -> new LimitResults(r, Integer.MAX_VALUE)
     );
 
     private static class MockResults extends CollectionResults {

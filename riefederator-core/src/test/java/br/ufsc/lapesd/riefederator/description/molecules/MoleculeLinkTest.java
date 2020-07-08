@@ -6,6 +6,7 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 
+import static java.util.Collections.emptySet;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
@@ -17,17 +18,17 @@ public class MoleculeLinkTest implements TestContext {
     @DataProvider
     public static @Nonnull Object[][] equalsData() {
         return new Object[][] {
-                new Object[] {new MoleculeLink(knows, a1, true),
-                              new MoleculeLink(knows, a2, true),
+                new Object[] {new MoleculeLink(knows, a1, true, emptySet()),
+                              new MoleculeLink(knows, a2, true, emptySet()),
                               true},
-                new Object[] {new MoleculeLink(knows, a1, true),
-                              new MoleculeLink(knows, a2, false),
+                new Object[] {new MoleculeLink(knows, a1, true, emptySet()),
+                              new MoleculeLink(knows, a2, false, emptySet()),
                               false},
-                new Object[] {new MoleculeLink(knows, a1, true),
-                              new MoleculeLink(knows, b, true),
+                new Object[] {new MoleculeLink(knows, a1, true, emptySet()),
+                              new MoleculeLink(knows, b, true, emptySet()),
                               false},
-                new Object[] {new MoleculeLink(knows, a1, true),
-                              new MoleculeLink(age,   a1, true),
+                new Object[] {new MoleculeLink(knows, a1, true, emptySet()),
+                              new MoleculeLink(age,   a1, true, emptySet()),
                               false},
         };
     }
@@ -44,8 +45,8 @@ public class MoleculeLinkTest implements TestContext {
 
     @Test
     public void testAuthoritative() {
-        assertTrue( new MoleculeLink(knows, a1, true ).isAuthoritative());
-        assertFalse(new MoleculeLink(knows, a1, false).isAuthoritative());
+        assertTrue( new MoleculeLink(knows, a1, true, emptySet()).isAuthoritative());
+        assertFalse(new MoleculeLink(knows, a1, false, emptySet()).isAuthoritative());
     }
 
 }

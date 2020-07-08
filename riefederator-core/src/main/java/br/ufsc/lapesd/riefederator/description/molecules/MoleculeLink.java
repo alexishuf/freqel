@@ -1,10 +1,12 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
+import java.util.Collection;
 import java.util.Objects;
 
 @Immutable
@@ -12,13 +14,16 @@ public class MoleculeLink {
     private final @Nonnull Term edge;
     private final @Nonnull Atom atom;
     private final boolean authoritative;
+    private final @Nonnull ImmutableSet<MoleculeLinkTag> tags;
     private @LazyInit int hash = 0;
 
     public MoleculeLink(@Nonnull Term edge, @Nonnull Atom atom,
-                        boolean authoritative) {
+                        boolean authoritative,
+                        @Nonnull Collection<MoleculeLinkTag> tags) {
         this.edge = edge;
         this.atom = atom;
         this.authoritative = authoritative;
+        this.tags = ImmutableSet.copyOf(tags);
     }
 
     public @Nonnull Term getEdge() {
@@ -26,6 +31,10 @@ public class MoleculeLink {
     }
     public @Nonnull Atom getAtom() {
         return atom;
+    }
+
+    public @Nonnull ImmutableSet<MoleculeLinkTag> getTags() {
+        return tags;
     }
 
     /**
@@ -52,7 +61,8 @@ public class MoleculeLink {
         MoleculeLink that = (MoleculeLink) o;
         return isAuthoritative() == that.isAuthoritative() &&
                 getEdge().equals(that.getEdge()) &&
-                getAtom().equals(that.getAtom());
+                getAtom().equals(that.getAtom()) &&
+                getTags().equals(that.getTags());
     }
 
     @Override

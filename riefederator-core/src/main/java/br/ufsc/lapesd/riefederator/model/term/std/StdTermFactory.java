@@ -14,6 +14,8 @@ import static br.ufsc.lapesd.riefederator.model.term.std.StdLit.fromUnescaped;
 
 @ThreadSafe
 public class StdTermFactory implements ThreadSafeTermFactory {
+    public static StdTermFactory INSTANCE = new StdTermFactory();
+
     @Override
     public @Nonnull Blank createBlank() {
         return new StdBlank();

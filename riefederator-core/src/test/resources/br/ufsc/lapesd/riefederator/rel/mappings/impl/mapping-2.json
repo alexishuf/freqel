@@ -1,0 +1,7 @@
+{
+  "@context": {
+    "@type": ["http://xmlns.com/foaf/0.1/Person", "http://xmlns.com/foaf/0.1/Document"],
+    "age": "http://xmlns.com/foaf/0.1/age"
+  },
+  "tableName": "T2"
+}
