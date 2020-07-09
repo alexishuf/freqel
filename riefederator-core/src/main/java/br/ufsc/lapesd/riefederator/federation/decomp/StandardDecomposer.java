@@ -14,17 +14,21 @@ import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
+import com.google.common.collect.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
 
 public class StandardDecomposer extends SourcesListAbstractDecomposer {
+    private static final Logger logger = LoggerFactory.getLogger(StandardDecomposer.class);
+
     @Inject
     public StandardDecomposer(@Nonnull Planner planner, @Nonnull PerformanceListener performance) {
         super(planner, performance);
@@ -124,6 +128,83 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
             assert qns.stream().distinct().count() == qns.size();
             return qns;
         }
+    }
+
+    @Override
+    protected @Nonnull List<ProtoQueryNode> minimizeQueryNodes(@Nonnull CQuery query,
+                                                               @Nonnull List<ProtoQueryNode> nodes) {
+        SetMultimap<Signature, ProtoQueryNode> sig2pn = HashMultimap.create();
+        nodes.forEach(pn -> sig2pn.put(new Signature(pn, query.getSet(), query.getVars()), pn));
+        List<Signature> signatures = new ArrayList<>(sig2pn.keySet());
+        if (signatures.size() < nodes.size()) {
+            logger.debug("Discarded {} nodes due to duplicate  endpoint/triple/inputs signatures",
+                    nodes.size() - signatures.size());
+        }
+
+        List<ProtoQueryNode> reduced = new ArrayList<>(signatures.size());
+        ListMultimap<TPEndpoint, Signature> ep2sig =
+                MultimapBuilder.hashKeys().arrayListValues().build();
+        BitSet exclusive = getExclusiveSignatures(signatures);
+        for (int i = 0, size = signatures.size(); i < size; i++) {
+            Signature s = signatures.get(i);
+            if (exclusive.get(i) && s.inputs.isEmpty()
+                    && !sig2pn.get(s).iterator().next().hasAlternatives()) {
+                ep2sig.put(s.endpoint, s);
+            } else {
+                reduced.add(sig2pn.get(s).iterator().next());
+            }
+        }
+
+        for (TPEndpoint ep : ep2sig.keySet()) {
+            List<Signature> list = ep2sig.get(ep);
+            if (list.size() == 1) {
+                reduced.add(sig2pn.get(list.get(0)).iterator().next());
+            } else if (list.size() > 1) {
+                CQuery.Builder b = CQuery.builder();
+                for (Signature sig : list) {
+                    ProtoQueryNode pn = sig2pn.get(sig).iterator().next();
+                    assert !pn.hasAlternatives();
+                    CQuery matchedQuery = pn.getMatchedQuery();
+                    b.addAll(matchedQuery);
+                    b.copyAnnotations(matchedQuery);
+                    b.copyModifiers(matchedQuery);
+                }
+                reduced.add(new ProtoQueryNode(ep, b.build()));
+            }
+        }
+        return reduced;
+    }
+
+    private @Nonnull BitSet getExclusiveSignatures(@Nonnull List<Signature> list) {
+        BitSet bad = new BitSet();
+        int chunks = Runtime.getRuntime().availableProcessors();
+        int chunkSize = list.size()/chunks;
+        IntStream.range(0, chunks).parallel().forEach(chunk -> {
+            BitSet partial = new BitSet(), tmp = new BitSet();
+            int last = chunk == chunks-1 ? list.size() : chunkSize*(chunk+1);
+            for (int i = chunkSize*chunk; i < last; i++) {
+                BitSet mine = list.get(i).triples;
+                for (int j = 0; j < i; j++) {
+                    tmp.clear();
+                    tmp.or(mine);
+                    tmp.and(list.get(j).triples);
+                    if (!tmp.isEmpty()) {
+                        partial.set(i);
+                        partial.set(j);
+                    }
+                }
+            }
+            synchronized (bad) {
+                bad.or(partial);
+            }
+        });
+        List<Signature> exclusive = new ArrayList<>(bad.cardinality());
+        for (int i = 0, size = list.size(); i < size; i++) {
+            if (!bad.get(i))
+                exclusive.add(list.get(i));
+        }
+        bad.flip(0, list.size());
+        return bad;
     }
 
     @Override

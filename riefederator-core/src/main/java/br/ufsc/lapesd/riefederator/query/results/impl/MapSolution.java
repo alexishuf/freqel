@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.query.results.MutableSolution;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import org.jetbrains.annotations.Contract;
 
@@ -17,7 +18,7 @@ import java.util.function.BiConsumer;
 
 import static com.google.common.base.Preconditions.checkState;
 
-public class MapSolution extends AbstractSolution {
+public class MapSolution extends AbstractSolution implements MutableSolution {
     private final @Nonnull Map<String, Term> map;
     public static final @Nonnull MapSolution EMPTY = new MapSolution(Collections.emptyMap());
 
@@ -104,6 +105,22 @@ public class MapSolution extends AbstractSolution {
     @Contract(value = "_, !null -> !null", pure = true)
     public Term get(@Nonnull String varName, Term fallback) {
         return map.getOrDefault(varName, fallback);
+    }
+
+    @Override
+    public @Nullable Term set(@Nonnull String varName, @Nullable Term value) {
+        return map.put(varName, value);
+    }
+
+    @Override
+    public @Nonnull MutableSolution clear() {
+        map.keySet().forEach(k -> map.put(k, null));
+        return this;
+    }
+
+    @Override
+    public @Nonnull MutableSolution copy() {
+        return new MapSolution(new HashMap<>(map));
     }
 
     @Override

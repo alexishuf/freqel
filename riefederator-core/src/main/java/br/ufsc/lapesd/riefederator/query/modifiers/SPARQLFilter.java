@@ -13,7 +13,6 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.util.ArraySet;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -306,8 +305,7 @@ public class SPARQLFilter implements Modifier {
 
     /* --- --- --- Getters --- --- --- */
 
-    @VisibleForTesting
-    @Nonnull Expr getExpr() {
+    public @Nonnull Expr getExpr() {
         return expr;
     }
 

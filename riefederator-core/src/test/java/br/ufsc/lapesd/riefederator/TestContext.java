@@ -77,6 +77,7 @@ public interface TestContext {
 
     @Nonnull URI Consumer = new StdURI("http://example.org/Consumer");
 
+    @Nonnull URI id         = new StdURI("http://example.org/id");
     @Nonnull URI p1         = new StdURI("http://example.org/p1");
     @Nonnull URI p2         = new StdURI("http://example.org/p2");
     @Nonnull URI p3         = new StdURI("http://example.org/p3");

@@ -288,7 +288,6 @@ public class MoleculeMatcher implements SemanticDescription {
         protected  @Nonnull Multimap<ImmutablePair<Term, Atom>, LinkMatch>  incoming;
         protected  @Nonnull SemanticCQueryMatch.Builder matchBuilder;
         protected  @Nonnull Index idx;
-        protected boolean reuseParentForEG = true;
 
         public State(@Nonnull CQuery query, boolean reason) {
             this.parentQuery = query;
@@ -521,11 +520,22 @@ public class MoleculeMatcher implements SemanticDescription {
                 });
                 builder.add(triple);
                 parentQuery.getTripleAnnotations(triple).forEach(a -> builder.annotate(triple, a));
+                Term s = triple.getSubject(), o = triple.getObject();
                 if (!molecule.getFilters().isEmpty()) {
                     for (LinkMatch match : matches) {
-                        term2atom.put(triple.getSubject(), match.l.s.getName());
-                        term2atom.put(triple.getObject(), match.l.o.getName());
+                        term2atom.put(s, match.l.s.getName());
+                        term2atom.put(o, match.l.o.getName());
                     }
+                }
+                addAtomAnnotations(triple, matches);
+            }
+
+            protected void addAtomAnnotations(@Nonnull Triple triple,
+                                              @Nonnull Collection<LinkMatch> matches) {
+                Term s = triple.getSubject(), o = triple.getObject();
+                for (LinkMatch match : matches) {
+                    builder.annotate(s, AtomAnnotation.of(match.l.s));
+                    builder.annotate(o, AtomAnnotation.of(match.l.o));
                 }
             }
 
@@ -620,10 +630,8 @@ public class MoleculeMatcher implements SemanticDescription {
             if (subQuery.isEmpty())
                 return; //nothing to do
             subQuery.addParentModifiers();
-            if (!reuseParentForEG || subQuery.size() != query.size()) {//avoid new instance creation
-                assert subQuery.size() <= query.size();
-                query = subQuery.build();
-            }
+            assert subQuery.size() <= query.size();
+            query = subQuery.build();
             if (query.isEmpty())
                 return; // builder rejected the exclusive group during build
             matchBuilder.addExclusiveGroup(query);

@@ -332,6 +332,8 @@ public class IndexedSetTest {
         assertTrue(it.hasNext());
         assertEquals(it.next(), Integer.valueOf(13));
         assertFalse(it.hasNext());
+        //noinspection ConstantConditions
+        assertFalse(it.hasNext()); // test regression of an actual bug
 
         Iterator<Integer> it2 = subset.iterator();
         assertEquals(it2.next(), Integer.valueOf(11));
@@ -342,6 +344,56 @@ public class IndexedSetTest {
         assertEquals(subset, Sets.newHashSet(11, 13));
     }
 
+    @Test
+    public void testRemoveFirstOfTwoInSubset() {
+        IndexedSet<Integer> set = set(10, 11, 12, 13, 14);
+        IndexedSubset<Integer> subset = set.subset(asList(13, 11));
+        assertEquals(subset.size(), 2);
+
+        Iterator<Integer> it = subset.iterator();
+        assertTrue(it.hasNext());
+        assertEquals(it.next(), Integer.valueOf(11));
+        it.remove();
+        assertTrue(it.hasNext());
+        assertEquals(it.next(), Integer.valueOf(13));
+        assertFalse(it.hasNext());
+    }
+
+    @Test
+    public void testRemoveLastOfTwoInSubset() {
+        IndexedSet<Integer> set = set(10, 11, 12, 13, 14);
+        IndexedSubset<Integer> subset = set.subset(asList(13, 11));
+        assertEquals(subset.size(), 2);
+
+        Iterator<Integer> it = subset.iterator();
+        assertTrue(it.hasNext());
+        assertEquals(it.next(), Integer.valueOf(11));
+
+        assertTrue(it.hasNext());
+        assertEquals(it.next(), Integer.valueOf(13));
+        assertFalse(it.hasNext()); // should not disturb
+        it.remove();
+        assertFalse(it.hasNext());
+    }
+
+    @Test(dataProvider = "sizesData")
+    public void testRemovePairsOfFullSubset(int size) {
+        List<Integer> list = randomValues(size), expectedList = new ArrayList<>();
+        for (int i = 1; i < size; i += 2)
+            expectedList.add(list.get(i));
+        IndexedSet<Integer> set = IndexedSet.from(list);
+        IndexedSubset<Integer> subset = set.fullSubset();
+        assertEquals(new ArrayList<>(subset), new ArrayList<>(set));
+
+        Iterator<Integer> it = subset.iterator();
+        for (int i = 0; i < size; i++) {
+            assertTrue(it.hasNext());
+            assertEquals(it.next(), list.get(i));
+            if (i % 2 == 0)
+                it.remove();
+        }
+        assertEquals(new ArrayList<>(subset), expectedList);
+    }
 
     @Test
     public void testIteratePairSubset() {

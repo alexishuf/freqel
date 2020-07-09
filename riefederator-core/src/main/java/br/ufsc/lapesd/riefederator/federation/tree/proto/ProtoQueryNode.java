@@ -32,7 +32,7 @@ public class ProtoQueryNode {
     }
 
     public @Nonnull PlanNode toNode() {
-        if (alternatives.isEmpty()) {
+        if (!hasAlternatives()) {
             return new QueryNode(endpoint, matchedQuery);
         } else {
             MultiQueryNode.Builder b = MultiQueryNode.builder();
@@ -57,6 +57,10 @@ public class ProtoQueryNode {
 
     public void setMatchedQuery(@Nonnull CQuery matchedQuery) {
         this.matchedQuery = matchedQuery;
+    }
+
+    public boolean hasAlternatives() {
+        return alternatives.size() > 1;
     }
 
     public @Nonnull Collection<CQuery> getAlternatives() {

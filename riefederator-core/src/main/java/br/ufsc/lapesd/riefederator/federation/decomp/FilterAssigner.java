@@ -23,7 +23,7 @@ import java.util.Set;
 /**
  * Assign {@link SPARQLFilter}s of a query to the deepest possible node in plans.
  */
-class FilterAssigner {
+public class FilterAssigner {
     private static final Logger logger = LoggerFactory.getLogger(FilterAssigner.class);
 
     private final @Nonnull Set<SPARQLFilter> filters = new HashSet<>();

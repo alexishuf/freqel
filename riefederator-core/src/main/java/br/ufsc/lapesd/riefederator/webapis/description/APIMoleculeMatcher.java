@@ -143,7 +143,6 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
         public APIState(@Nonnull CQuery query, boolean reason) {
             super(query, reason);
             inputAtoms = getInputAtoms();
-            reuseParentForEG = false;
         }
 
         @Override
@@ -189,8 +188,8 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
             }
 
             @Override
-            public void add(@Nonnull Triple triple, @Nonnull Collection<LinkMatch> matches) {
-                super.add(triple, matches);
+            public void addAtomAnnotations(@Nonnull Triple triple,
+                                           @Nonnull Collection<LinkMatch> matches) {
                 Term s = triple.getSubject(), o = triple.getObject();
                 for (LinkMatch match : matches) {
                     builder.annotate(s, inputAtoms.asAnnotation(match.l.s, null));

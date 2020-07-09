@@ -1,19 +1,21 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.query.results.MutableSolution;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import com.google.common.base.Preconditions;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
-import com.google.errorprone.annotations.Immutable;
+import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-@Immutable
-public class ArraySolution extends AbstractSolution {
+public class ArraySolution extends AbstractSolution implements MutableSolution {
     private final @Nonnull IndexedSet<String> vars;
     private final @Nonnull Term[] values;
     public static final @Nonnull ArraySolution EMPTY
@@ -29,6 +31,29 @@ public class ArraySolution extends AbstractSolution {
     public Term get(@Nonnull String varName, Term fallback) {
         int idx = vars.indexOf(varName);
         return idx < 0 ? fallback : values[idx];
+    }
+
+    @Override @CanIgnoreReturnValue
+    public @Nullable Term set(@Nonnull String varName, @Nullable Term value) {
+        int idx = vars.indexOf(varName);
+        if (idx < 0)
+            throw new IllegalArgumentException(varName+" is not a variable of this ArraySolution");
+        Term old = values[idx];
+        values[idx] = value;
+        return old;
+    }
+
+    @Override
+    public @CanIgnoreReturnValue @Contract(" -> this") @Nonnull ArraySolution clear() {
+        Arrays.fill(values, null);
+        return this;
+    }
+
+    @Override
+    public @CheckReturnValue @Nonnull ArraySolution copy() {
+        Term[] copy = new Term[values.length];
+        System.arraycopy(values, 0, copy, 0, values.length);
+        return new ArraySolution(vars, copy);
     }
 
     @Override
@@ -70,6 +95,11 @@ public class ArraySolution extends AbstractSolution {
             return true;
         }
         return super.equals(obj);
+    }
+
+    public static @Nonnull ArraySolution empty(@Nonnull Collection<String> vars) {
+        IndexedSet<String> indexedSet = IndexedSet.from(vars);
+        return new ArraySolution(indexedSet, new Term[indexedSet.size()]);
     }
 
     public static @Nonnull ValueFactory forVars(@Nonnull Collection<String> vars) {

@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.NoSuchElementException;
@@ -26,23 +27,37 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
     private final @Nonnull Results smaller, larger;
     private final @Nonnull CrudeSolutionHashTable hashTable;
     private boolean stop = false;
-    private final  @Nonnull ExecutorService executorService;
+    private final  @Nullable ExecutorService executorService;
     private final  @Nonnull Future<?> fetchTask;
     private final  @Nonnull ArrayDeque<Solution> queue;
 
     public static class Factory implements HashJoinResultsFactory {
+        private boolean useThread = true;
+
+        public @Nonnull Factory setUseThread(boolean useThread) {
+            this.useThread = useThread;
+            return this;
+        }
+
         @Override
         public @Nonnull Results createResults(@Nonnull Results left, @Nonnull Results right,
                                               @Nonnull Collection<String> joinVars,
                                               @Nonnull Collection<String> resultVars) {
-            return new InMemoryHashJoinResults(left, right, joinVars, resultVars);
+            return new InMemoryHashJoinResults(left, right, joinVars, resultVars, useThread);
         }
     }
     public static final @Nonnull Factory FACTORY = new Factory();
 
     public InMemoryHashJoinResults(@Nonnull Results smaller, @Nonnull Results larger,
+                               @Nonnull Collection<String> joinVars,
+                               @Nonnull Collection<String> resultVars) {
+        this(smaller, larger, joinVars, resultVars, true);
+    }
+
+    public InMemoryHashJoinResults(@Nonnull Results smaller, @Nonnull Results larger,
                                    @Nonnull Collection<String> joinVars,
-                                   @Nonnull Collection<String> resultVars) {
+                                   @Nonnull Collection<String> resultVars,
+                                   boolean useThread) {
         super(resultVars);
         Set<String> allVars = Stream.concat(smaller.getVarNames().stream(),
                                             larger.getVarNames().stream()).collect(toSet());
@@ -52,9 +67,17 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
         this.hashTable = new CrudeSolutionHashTable(joinVars, 512);
         this.smaller = smaller;
         this.larger = larger;
-        this.executorService = Executors.newSingleThreadExecutor();
-        this.fetchTask = executorService.submit(this::fetchAll);
         this.queue = new ArrayDeque<>();
+        if (useThread) {
+            this.executorService = Executors.newSingleThreadExecutor();
+            this.fetchTask = executorService.submit(this::fetchAll);
+        } else {
+            this.executorService = null;
+            CompletableFuture<Void> future = new CompletableFuture<>();
+            this.fetchTask = future;
+            fetchAll();
+            future.complete(null);
+        }
     }
 
     private void fetchAll() {
@@ -68,7 +91,7 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
     }
 
     private boolean advance() {
-        assert queue.isEmpty();
+//        assert queue.isEmpty();
         /* await uninterruptibly for fetchTask */
         boolean interrupted = false;
         while (!fetchTask.isDone()) {
@@ -143,7 +166,8 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
         } catch (ExecutionException e) {
             logger.error("Fetch task threw. Will proceed with close()", e);
         }
-        executorService.shutdown();
+        if (executorService != null)
+            executorService.shutdown();
         try {
             larger.close();
         } finally {

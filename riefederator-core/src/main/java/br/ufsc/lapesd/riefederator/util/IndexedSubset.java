@@ -186,20 +186,27 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     @Override
     public @Nonnull Iterator<T> iterator() {
         return new Iterator<T>() {
-            int idx = 0;
+            int nextIdx = 0, lastIdx = -1;
 
             @Override
             public boolean hasNext() {
-                idx = bitSet.nextSetBit(idx);
-                return idx >= 0;
+                if (nextIdx >= 0)
+                    nextIdx = bitSet.nextSetBit(nextIdx);
+                return nextIdx >= 0;
             }
 
             @Override
             public T next() {
-                if (!hasNext()) throw new NoSuchElementException("Iterator past the end");
-                int old = this.idx;
-                ++this.idx;
-                return parent.get(old);
+                if (!hasNext())
+                    throw new NoSuchElementException("Iterator past the end");
+                return parent.get(lastIdx = this.nextIdx++);
+            }
+
+            @Override
+            public void remove() {
+                if (lastIdx < 0)
+                    throw new IllegalStateException("next() not called yet");
+                bitSet.clear(lastIdx);
             }
         };
     }

@@ -11,6 +11,7 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Defines a mapping from relational/columnar data to RDF.
@@ -89,6 +90,38 @@ public interface RelationalMapping {
         Map<String, List<String>> map = new HashMap<>();
         map.put(table, list);
         return createMolecule(map);
+    }
+
+    /**
+     * Gets the (possibly empty) set of columns used to build subject URIs for the given table
+     *
+     * @param table the table of which a record will originate a RDF subject
+     * @param columns the set of columns ({@link String} or {@link Column} instances)
+     *                that are used in a query. This may be null or empty, in which case it will
+     *                be ignored. If the underlying mapping further normalizes the source table
+     *                yielding multiple subjects for each record, this parameter allows
+     *                identifiying which sub-table is being matched.
+     * @return Set of column names of table. Use
+     *         {@link RelationalMapping#getIdColumns(String, Collection)} to get {@link Column}
+     *         instances.
+     */
+    default @Nonnull Set<String> getIdColumnsNames(@Nonnull String table,
+                                                   @Nullable Collection<?> columns) {
+        return getIdColumns(table, columns).stream().map(Column::getColumn).collect(toSet());
+    }
+    /** See {@link RelationalMapping#getIdColumnsNames(String, Collection)} */
+    default @Nonnull Set<Column> getIdColumns(@Nonnull String table,
+                                              @Nullable Collection<?> columns) {
+        return getIdColumnsNames(table, columns).stream()
+                .map(n -> new Column(table, n)).collect(toSet());
+    }
+    /** See {@link RelationalMapping#getIdColumnsNames(String, Collection)} */
+    default @Nonnull Set<String> getIdColumnsNames(@Nonnull String table) {
+        return getIdColumnsNames(table, null);
+    }
+    /** See {@link RelationalMapping#getIdColumnsNames(String, Collection)} */
+    default @Nonnull Set<Column> getIdColumns(@Nonnull String table) {
+        return getIdColumns(table, null);
     }
 
     /**

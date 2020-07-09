@@ -23,6 +23,11 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
     private final @Nonnull ArrayDeque<Solution> ready = new ArrayDeque<>();
     private int included = 0, excluded = 0;
 
+    public static @Nonnull Results applyIf(@Nonnull Results in,
+                                           @Nonnull Collection<SPARQLFilter> filters) {
+        return filters.isEmpty() ? in : new SPARQLFilterResults(in, filters);
+    }
+
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
         List<SPARQLFilter> list = query.getModifiers().stream()
                 .filter(SPARQLFilter.class::isInstance).map(m -> (SPARQLFilter)m).collect(toList());

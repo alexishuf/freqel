@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.rel.mappings.tags;
 
+import br.ufsc.lapesd.riefederator.description.molecules.AtomTag;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeLinkTag;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import com.google.errorprone.annotations.Immutable;
@@ -8,7 +9,7 @@ import javax.annotation.Nonnull;
 import java.util.Objects;
 
 @Immutable
-public class ColumnTag implements MoleculeLinkTag {
+public class ColumnTag implements MoleculeLinkTag, AtomTag {
     private @Nonnull final Column column;
 
     public ColumnTag(@Nonnull Column column) {

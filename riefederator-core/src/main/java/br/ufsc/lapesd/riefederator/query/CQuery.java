@@ -912,7 +912,7 @@ public class CQuery implements  List<Triple> {
                 .filter(t -> cls.isAssignableFrom(t.getClass())).map(t -> (T)t).distinct();
     }
 
-    public @Nonnull Set<Var> getVars() {
+    public @Nonnull IndexedSet<Var> getVars() {
         IndexedSet<Var> strong = varsCache.get();
         if (strong == null) {
             Set<Var> set = new HashSet<>(getTermVars());

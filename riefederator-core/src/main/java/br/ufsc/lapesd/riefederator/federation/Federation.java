@@ -21,6 +21,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
+import br.ufsc.lapesd.riefederator.query.results.impl.AskResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
 import br.ufsc.lapesd.riefederator.util.LogUtils;
@@ -159,6 +160,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         Results results = executor.executePlan(plan);
         results = ProjectingResults.applyIf(results, query);
         results = HashDistinctResults.applyIf(results, query);
+        results = AskResults.applyIf(results, query);
         results = resultsExecutor.async(results);
         return results;
     }
@@ -212,6 +214,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         switch (capability){
             case DISTINCT:
             case SPARQL_FILTER:
+            case ASK:
             case PROJECTION:
                 return true;
             default:

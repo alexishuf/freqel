@@ -22,15 +22,13 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
@@ -51,29 +49,58 @@ public class ContextMappingTest implements TestContext {
     public static Object[][] parseMoleculeData() {
         return Stream.of(
                 asList("{}", "Table", Molecule.builder("Table")
-                        .tag(new TableTag("Table")).exclusive().build()),
+                        .tag(new TableTag("Table")).exclusive().build(),
+                        emptySet()),
                 asList("mapping-1.json", null, Molecule.builder("T1")
-                        .out(type, new Atom(RDF.type.getURI()))
-                        .out(name, new Atom("name"), new ColumnTag("T1", "name"))
-                        .tag(new TableTag("T1")).exclusive().build()),
+                        .out(type, new Atom("T1."+RDF.type.getURI()))
+                        .out(name, Molecule.builder("T1.name").tag(new ColumnTag("T1", "name"))
+                                           .buildAtom(),
+                                new ColumnTag("T1", "name"))
+                        .tag(new TableTag("T1")).exclusive().build(),
+                        singleton("name")),
                 asList("mapping-2.json", null, Molecule.builder("T2")
-                        .out(type, new Atom(RDF.type.getURI()))
-                        .out(age, new Atom("age"), new ColumnTag("T2", "age"))
-                        .tag(new TableTag("T2")).exclusive().build()),
+                        .out(type, new Atom("T2."+RDF.type.getURI()))
+                        .out(age, Molecule.builder("T2.age").tag(new ColumnTag("T2", "age"))
+                                          .buildAtom(),
+                                new ColumnTag("T2", "age"))
+                        .tag(new TableTag("T2")).exclusive().build(),
+                        emptySet()),
                 asList("mapping-3.json", null, Molecule.builder("T3")
-                        .out(type, new Atom(RDF.type.getURI()))
-                        .out(age, new Atom("age"), new ColumnTag("T3", "age"))
-                        .tag(new TableTag("T3")).exclusive().build())
+                        .out(type, new Atom("T3."+RDF.type.getURI()))
+                        .out(age, Molecule.builder("T3.age").tag(new ColumnTag("T3", "age"))
+                                          .buildAtom(),
+                                new ColumnTag("T3", "age"))
+                        .tag(new TableTag("T3")).exclusive().build(),
+                        emptySet())
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "parseMoleculeData")
     public void testParseMolecule(@Nonnull String contextOrResource, @Nullable String tableName,
-                                  @Nonnull Molecule molecule) throws Exception {
+                                  @Nonnull Molecule molecule,
+                                  @Nonnull Set<String> idColumns) throws Exception {
         ContextMapping mapping = parse(contextOrResource, tableName);
         assertEquals(mapping.createMolecule(), molecule);
         assertEquals(mapping.createMolecule((Map<String, List<String>>) null), molecule);
         assertEquals(mapping.createMolecule((Collection<Column>)null), molecule);
+
+        assertEquals(mapping.getIdColumns(), idColumns); //not interface
+        String acTable = molecule.getCore().getTags().stream()
+                .filter(TableTag.class::isInstance)
+                .map(t -> ((TableTag) t).getTable()).findFirst().orElse(null);
+        assertNotNull(acTable);
+        assertEquals(mapping.getIdColumnsNames(acTable), idColumns);
+        assertEquals(mapping.getIdColumnsNames(acTable, idColumns), idColumns);
+        assertEquals(mapping.getIdColumnsNames(acTable, singletonList("name")), idColumns);
+        assertEquals(mapping.getIdColumnsNames(acTable,
+                                               singletonList(new Column(acTable, "name"))),
+                     idColumns);
+        assertEquals(mapping.getIdColumns(acTable),
+                     idColumns.stream().map(n -> new Column(acTable, n)).collect(toSet()));
+        assertEquals(mapping.getIdColumns(acTable, singletonList("name")),
+                     idColumns.stream().map(n -> new Column(acTable, n)).collect(toSet()));
+        assertEquals(mapping.getIdColumns(acTable, singletonList(new Column(acTable, "name"))),
+                idColumns.stream().map(n -> new Column(acTable, n)).collect(toSet()));
     }
 
     @DataProvider
@@ -81,41 +108,59 @@ public class ContextMappingTest implements TestContext {
         return Stream.of(
                 asList("mapping-1.json", "T1", singletonList("name"),
                         Molecule.builder("T1")
-                                .out(type, new Atom(type.getURI()))
-                                .out(name, new Atom("name"), new ColumnTag("T1", "name"))
+                                .out(type, new Atom("T1."+type.getURI()))
+                                .out(name, Molecule.builder("T1.name")
+                                                   .tag(new ColumnTag("T1", "name")).buildAtom(),
+                                        new ColumnTag("T1", "name"))
                                 .tag(new TableTag("T1")).exclusive().build()),
                 asList("mapping-1.json", "T1", asList("name", "age"),
                         Molecule.builder("T1")
-                                .out(type, new Atom(type.getURI()))
-                                .out(name, new Atom("name"), new ColumnTag("T1", "name"))
-                                .out(age, new Atom("age"), new ColumnTag("T1", "age"))
+                                .out(type, new Atom("T1."+type.getURI()))
+                                .out(name, Molecule.builder("T1.name")
+                                                   .tag(new ColumnTag("T1", "name")).buildAtom(),
+                                        new ColumnTag("T1", "name"))
+                                .out(age, Molecule.builder("T1.age")
+                                                   .tag(new ColumnTag("T1", "age")).buildAtom(),
+                                        new ColumnTag("T1", "age"))
                                 .tag(new TableTag("T1")).exclusive().build()),
                 asList("mapping-2.json", "T2", singletonList("age"),
                         Molecule.builder("T2")
-                                .out(type, new Atom(type.getURI()))
-                                .out(age, new Atom("age"), new ColumnTag("T2", "age"))
+                                .out(type, new Atom("T2."+type.getURI()))
+                                .out(age, Molecule.builder("T2.age")
+                                                  .tag(new ColumnTag("T2", "age")).buildAtom(),
+                                        new ColumnTag("T2", "age"))
                                 .tag(new TableTag("T2")).exclusive().build()),
                 asList("mapping-3.json", "T3", singletonList("age"),
                         Molecule.builder("T3")
-                                .out(type, new Atom(type.getURI()))
-                                .out(age, new Atom("age"), new ColumnTag("T3", "age"))
+                                .out(type, new Atom("T3."+type.getURI()))
+                                .out(age, Molecule.builder("T3.age")
+                                                  .tag(new ColumnTag("T3", "age")).buildAtom(),
+                                        new ColumnTag("T3", "age"))
                                 .tag(new TableTag("T3")).exclusive().build()),
                 asList("mapping-3.json", "T3", singletonList("name"),
                         Molecule.builder("T3")
-                                .out(type, new Atom(type.getURI()))
-                                .out(new StdPlain("name"), new Atom("name"),
+                                .out(type, new Atom("T3."+type.getURI()))
+                                .out(new StdPlain("name"),
+                                        Molecule.builder("T3.name")
+                                                .tag(new ColumnTag("T3", "name")).buildAtom(),
                                         new ColumnTag("T3", "name"))
                                 .tag(new TableTag("T3")).exclusive().build()),
                 asList("{}", "T", singletonList("name"),
                         Molecule.builder("T")
-                                .out(new StdPlain("name"), new Atom("name"),
+                                .out(new StdPlain("name"),
+                                        Molecule.builder("T.name").tag(new ColumnTag("T", "name"))
+                                                .buildAtom(),
                                         new ColumnTag("T", "name"))
                                 .tag(new TableTag("T")).exclusive().build()),
                 asList("{}", "T", asList("name", "age"),
                         Molecule.builder("T")
-                                .out(new StdPlain("name"), new Atom("name"),
+                                .out(new StdPlain("name"),
+                                        Molecule.builder("T.name").tag(new ColumnTag("T", "name"))
+                                                .buildAtom(),
                                         new ColumnTag("T", "name"))
-                                .out(new StdPlain("age"), new Atom("age"),
+                                .out(new StdPlain("age"),
+                                        Molecule.builder("T.age").tag(new ColumnTag("T", "age"))
+                                                .buildAtom(),
                                         new ColumnTag("T", "age"))
                                 .tag(new TableTag("T")).exclusive().build())
         ).map(List::toArray).toArray(Object[][]::new);

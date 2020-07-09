@@ -1,0 +1,10 @@
+{
+  "@context": {
+    "@type": "http://xmlns.com/foaf/0.1/Person",
+    "@uriProperty": "cu",
+    "cu": "http://xmlns.com/foaf/0.1/name"
+  },
+  "tableName": "T",
+  "@fallbackPrefix": "http://xmlns.com/foaf/0.1/",
+  "@instancePrefix": "http://example.org/"
+}

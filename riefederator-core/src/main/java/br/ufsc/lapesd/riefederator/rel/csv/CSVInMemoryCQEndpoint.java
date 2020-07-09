@@ -2,14 +2,8 @@ package br.ufsc.lapesd.riefederator.rel.csv;
 
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
-import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.NaiveOuterPlanner;
-import br.ufsc.lapesd.riefederator.federation.tree.ComponentNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.model.term.node.JenaNodeTermFactory;
@@ -18,7 +12,6 @@ import br.ufsc.lapesd.riefederator.model.RDFUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
@@ -29,18 +22,19 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.riefederator.rel.common.StarSubQuery;
+import br.ufsc.lapesd.riefederator.rel.common.StarsHelper;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.base.Preconditions;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -59,7 +53,6 @@ import java.util.*;
 import java.util.function.Function;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJenaNode;
-import static br.ufsc.lapesd.riefederator.model.Triple.Position.SUBJ;
 import static br.ufsc.lapesd.riefederator.rel.mappings.RelationalMappingUtils.predicate2column;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
@@ -283,22 +276,12 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             return CollectionResults.empty(emptyList());
         Results results;
         if (!query.isJoinConnected()) { // code after this if cannot deal with cartesians
-            PlanNode plan = new NaiveOuterPlanner().plan(query);
-            Map<PlanNode, PlanNode> replacements = new HashMap<>();
-            TreeUtils.streamPreOrder(plan).filter(ComponentNode.class::isInstance).forEach(n -> {
-                CQuery componentQuery = ((ComponentNode) n).getQuery();
-                replacements.put(n, new QueryNode(this, componentQuery));
-            });
-            plan = TreeUtils.replaceNodes(plan, replacements);
-
-            Injector injector = Guice.createInjector(new SimpleFederationModule());
-            PlanExecutor executor = injector.getInstance(PlanExecutor.class);
-            results = executor.executePlan(plan);
+            results = StarsHelper.executeJoinDisconnected(query, this);
         } else {
             results = queryConnected(query);
+            results = SPARQLFilterResults.applyIf(results, query);
+            results = ProjectingResults.applyIf(results, query);
         }
-        results = SPARQLFilterResults.applyIf(results, query);
-        results = ProjectingResults.applyIf(results, query);
         results = LimitResults.applyIf(results, query);
         return results;
     }
@@ -308,21 +291,22 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
      */
     private @Nonnull Results queryConnected(@Nonnull CQuery query) {
         boolean distinct = ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
-        IndexedSet<Triple> triples = query.getSet();
-        IndexedSubset<Triple> visited = triples.emptySubset();
-        ArrayDeque<Triple> queue = new ArrayDeque<>(triples);
+        IndexedSet<SPARQLFilter> allFilters = null;
+        IndexedSubset<SPARQLFilter> pendingFilters = null;
         CollectionResults working = null;
-        while (!queue.isEmpty()) {
-            Triple triple = queue.remove();
-            if (!visited.add(triple))
-                continue;
-            IndexedSubset<Triple> star = query.getTriplesWithTermAt(triple.getSubject(), SUBJ);
-            visited.addAll(star);
+        for (StarSubQuery star : StarsHelper.findStars(query)) {
+            if (allFilters == null) {
+                allFilters = star.getAllQueryFilters();
+                pendingFilters = allFilters.fullSubset();
+            } else {
+                assert allFilters.equals(star.getAllQueryFilters());
+                pendingFilters.removeAll(star.getFilters());
+            }
             CollectionResults right = queryStar(star, distinct);
             working = working != null ? hashJoin(working, right) : right;
         }
         assert working != null;
-        return working;
+        return SPARQLFilterResults.applyIf(working, pendingFilters);
     }
 
     private @Nonnull CollectionResults hashJoin(@Nonnull CollectionResults a,
@@ -337,20 +321,18 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
         Set<String> all = TreeUtils.union(av, bv);
         Set<String> jv = TreeUtils.intersect(av, bv);
         assert !jv.isEmpty();
-        return CollectionResults.greedy(new InMemoryHashJoinResults(a, b, jv, all));
+        return CollectionResults.greedy(new InMemoryHashJoinResults(a, b, jv, all, false));
     }
 
-    private @Nonnull CollectionResults
-    queryStar(@Nonnull IndexedSubset<Triple> star, boolean distinct) {
-        if (star.isEmpty()) {
+    private @Nonnull CollectionResults queryStar(@Nonnull StarSubQuery star, boolean distinct) {
+        if (star.getTriples().isEmpty()) {
             assert false;
             return CollectionResults.empty(emptySet());
         }
-        Term core = star.iterator().next().getSubject();
+        Term core = star.getCore();
         Node coreNode = toJenaNode(core);
-        assert star.stream().allMatch(t -> t.getSubject().equals(core));
         List<Selector> selectors = new ArrayList<>();
-        star.forEach(t -> selectors.add(new Selector(t)));
+        star.getTriples().forEach(t -> selectors.add(new Selector(t)));
         SolutionBuilder sb = new SolutionBuilder(star);
         Collection<Solution> solutions = distinct ? new HashSet<>() : new ArrayList<>();
 
@@ -370,7 +352,9 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             } else if (!JenaWrappers.toJenaNode(subj).matches(coreNode)) {
                 continue;
             }
-            solutions.add(sb.takeSolution());
+            Solution solution = sb.takeSolution();
+            if (solution != null) //may be null if filters reject
+                solutions.add(solution);
         }
         return new CollectionResults(solutions, sb.vars);
     }
@@ -380,14 +364,18 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
         final IndexedSubset<String> matched;
         final ArraySolution.ValueFactory factory;
         final List<Term> values;
+        final StarSubQuery star;
 
-        public SolutionBuilder(@Nonnull Collection<Triple> star) {
-            List<String> varList = star.stream().map(Triple::getObject).filter(Term::isVar)
-                                        .map(Term::asVar).map(Var::getName).collect(toList());
-            Term core = star.iterator().next().getSubject();
+        public SolutionBuilder(@Nonnull StarSubQuery star) {
+            this.star = star;
+            List<String> varList = star.getTriples().stream().map(Triple::getObject)
+                                        .filter(Term::isVar)
+                                        .map(t -> t.asVar().getName()).collect(toList());
+            Term core = star.getCore();
             if (core.isVar())
                 varList.add(core.asVar().getName());
             vars = IndexedSet.from(varList);
+
             matched = vars.emptySubset();
             factory = ArraySolution.forVars(vars);
             int size = vars.size();
@@ -419,10 +407,11 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             }
         }
 
-        public @Nonnull Solution takeSolution() {
+        public @Nullable Solution takeSolution() {
             ArraySolution solution = factory.fromValues(values);
             reset();
-            return solution;
+            boolean ok = star.getFilters().stream().allMatch(f -> f.evaluate(solution));
+            return ok ? solution : null;
         }
     }
 

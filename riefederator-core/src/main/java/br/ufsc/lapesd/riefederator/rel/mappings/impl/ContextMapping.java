@@ -15,7 +15,6 @@ import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnTag;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -37,6 +36,7 @@ import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
 
 @Immutable
@@ -56,7 +56,7 @@ public class ContextMapping implements RelationalMapping {
     private @Nullable final String fallbackPrefix;
     private @Nonnull final ImmutableSet<URI> classes;
     private @Nullable final String instancePrefix;
-    private @Nonnull final ImmutableList<String> idColumns;
+    private @Nonnull final ImmutableSet<String> idColumns;
     private @Nonnull final String idColumnsSeparator;
     private final boolean exclusive;
     private final @Nonnull UriGeneratorType uriGeneratorType;
@@ -71,7 +71,7 @@ public class ContextMapping implements RelationalMapping {
                           @Nonnull ImmutableMap<String, URI> column2uri,
                           @Nullable String fallbackPrefix, @Nonnull ImmutableSet<URI> classes,
                           @Nullable String instancePrefix,
-                          @Nonnull ImmutableList<String> idColumns,
+                          @Nonnull ImmutableSet<String> idColumns,
                           @Nonnull String idColumnsSeparator, boolean exclusive,
                           @Nonnull UriGeneratorType uriGeneratorType) {
         this.tableName = tableName;
@@ -93,7 +93,7 @@ public class ContextMapping implements RelationalMapping {
         private @Nullable String fallbackPrefix = StdPlain.URI_PREFIX;
         private @Nonnull final Set<URI> classes = new HashSet<>();
         private @Nullable String instancePrefix = StdPlain.URI_PREFIX;
-        private @Nonnull final List<String> idColumns = new ArrayList<>();
+        private @Nonnull final Set<String> idColumns = new HashSet<>();
         private @Nonnull String idColumnsSeparator = "-";
         private boolean exclusive = true;
         private @Nullable UriGeneratorType uriGeneratorType = null;
@@ -129,8 +129,7 @@ public class ContextMapping implements RelationalMapping {
         }
 
         public @CanIgnoreReturnValue @Nonnull Builder addIdColumn(@Nonnull String column) {
-            if (!this.idColumns.contains(column))
-                this.idColumns.add(column);
+            this.idColumns.add(column);
             return this;
         }
 
@@ -154,7 +153,7 @@ public class ContextMapping implements RelationalMapping {
             }
             return new ContextMapping(tableName, ImmutableMap.copyOf(column2uri), fallbackPrefix,
                                       ImmutableSet.copyOf(classes), instancePrefix,
-                                      ImmutableList.copyOf(idColumns), idColumnsSeparator,
+                                      ImmutableSet.copyOf(idColumns), idColumnsSeparator,
                                       exclusive, uriGeneratorType);
         }
     }
@@ -305,7 +304,7 @@ public class ContextMapping implements RelationalMapping {
     public @Nullable String getInstancePrefix() {
         return instancePrefix;
     }
-    public @Nonnull ImmutableList<String> getIdColumns() {
+    public @Nonnull ImmutableSet<String> getIdColumns() {
         return idColumns;
     }
     public @Nonnull String getIdColumnsSeparator() {
@@ -335,18 +334,31 @@ public class ContextMapping implements RelationalMapping {
 
         MoleculeBuilder b = Molecule.builder(tableName);
         if (!classes.isEmpty())
-            b.out(rdfType, new Atom(rdfType.getURI()));
+            b.out(rdfType, new Atom(tableName + "." + rdfType.getURI()));
         for (String column : columns) {
             URI uri = getUri(column);
             if (uri != null) {
                 ColumnTag tag = new ColumnTag(new Column(tableName, column));
-                b.out(uri, new Atom(column), singletonList(tag));
+                Atom colAtom = Molecule.builder(tableName + "." + column).tag(tag).buildAtom();
+                b.out(uri, colAtom, singletonList(tag));
             }
         }
         Molecule m = b.tag(new TableTag(tableName)).exclusive(exclusive).build();
         if (table2columns == null)
             fullMolecule = m;
         return m;
+    }
+
+    @Override
+    public @Nonnull Set<String> getIdColumnsNames(@Nonnull String table,
+                                                  @Nullable Collection<?> columns) {
+        // linked resources not supported (yet), thus columns is ignored
+        if (!this.tableName.equals(table)) {
+            logger.warn("Bad name: {}. Expected {}", table, this.tableName);
+            if (!this.tableName.toLowerCase().trim().equals(table.toLowerCase().trim()))
+                return emptySet(); // do not tolerate
+        }
+        return idColumns;
     }
 
     @Override

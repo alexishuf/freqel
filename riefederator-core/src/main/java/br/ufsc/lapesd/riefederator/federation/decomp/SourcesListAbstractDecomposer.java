@@ -10,8 +10,12 @@ import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
@@ -85,32 +89,25 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     public @Nonnull List<PlanNode> decomposeIntoLeaves(@Nonnull CQuery query,
                                                         @Nonnull FilterAssigner placement) {
         List<ProtoQueryNode> list = decomposeIntoProtoQNs(query);
-        List<PlanNode> queryNodes = placement.placeFiltersOnLeaves(list);
-        return minimizeQueryNodes(queryNodes);
+        list = minimizeQueryNodes(query, list);
+        return placement.placeFiltersOnLeaves(list);
     }
 
-    private static class Signature {
-        final @Nonnull Set<TPEndpoint> endpoints;
-        final @Nonnull Set<Triple> triples;
-        final @Nonnull Set<String> inputs;
+    protected static class Signature {
+        final @Nonnull TPEndpoint endpoint;
+        final @Nonnull BitSet triples;
+        final @Nonnull BitSet inputs;
         int hash = 0;
 
-        public Signature(@Nonnull PlanNode qn) {
-            assert qn instanceof QueryNode
-                    || (qn instanceof MultiQueryNode &&
-                        qn.getChildren().stream().allMatch(QueryNode.class::isInstance))
-                    : "Expected QueryNode or MultiQueryNode of QueryNodes";
-            if (qn instanceof QueryNode) {
-                this.endpoints = Collections.singleton(((QueryNode)qn).getEndpoint());
-            } else {
-                this.endpoints = new HashSet<>();
-                for (PlanNode child : qn.getChildren()) {
-                    if (child instanceof QueryNode)
-                        this.endpoints.add(((QueryNode) child).getEndpoint());
-                }
-            }
-            this.triples = qn.getMatchedTriples();
-            this.inputs = qn.getInputVars();
+        public Signature(@Nonnull ProtoQueryNode qn, @Nonnull IndexedSet<Triple> allTriples,
+                         @Nonnull IndexedSet<Var> allVars) {
+            this.endpoint = qn.getEndpoint();
+            this.triples = allTriples.subset(qn.getMatchedQuery()).getBitSet();
+            IndexedSubset<Var> inputsSubset = allVars.emptySubset();
+            qn.getMatchedQuery().forEachTermAnnotation(InputAnnotation.class, (t, a) -> {
+                if (t.isVar()) inputsSubset.add(t.asVar());
+            });
+            this.inputs = inputsSubset.getBitSet();
         }
 
         @Override
@@ -118,15 +115,17 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
             if (this == o) return true;
             if (!(o instanceof Signature)) return false;
             Signature signature = (Signature) o;
-            return hash == signature.hash &&
-                    endpoints.equals(signature.endpoints) &&
+            return hashCode() == signature.hashCode() &&
+                    endpoint.equals(signature.endpoint) &&
                     triples.equals(signature.triples) &&
                     inputs.equals(signature.inputs);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(endpoints, triples, inputs, hash);
+            if (hash == 0)
+                hash = Objects.hash(endpoint, triples, inputs);
+            return hash;
         }
 
         @Override
@@ -134,16 +133,17 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
             return String.format("Signature{\n" +
                     "  ins=%s,\n" +
                     "  eps=%s,\n" +
-                    "  triples=%s\n}", inputs, endpoints, triples);
+                    "  triples=%s\n}", inputs, endpoint, triples);
         }
     }
 
-    protected @Nonnull List<PlanNode> minimizeQueryNodes(@Nonnull List<PlanNode> nodes) {
-        SetMultimap<Signature, PlanNode> sig2qn = HashMultimap.create();
-        nodes.forEach(qn -> sig2qn.put(new Signature(qn), qn));
+    protected @Nonnull List<ProtoQueryNode>
+    minimizeQueryNodes(@Nonnull CQuery query, @Nonnull List<ProtoQueryNode> nodes) {
+        SetMultimap<Signature, ProtoQueryNode> sig2pn = HashMultimap.create();
+        nodes.forEach(pn -> sig2pn.put(new Signature(pn, query.getSet(), query.getVars()), pn));
 
-        List<PlanNode> list = sig2qn.keySet().stream().map(s -> sig2qn.get(s).iterator().next())
-                                              .collect(toList());
+        List<ProtoQueryNode> list = sig2pn.keySet().stream()
+                .map(s -> sig2pn.get(s).iterator().next()).collect(toList());
         if (list.size() < nodes.size()) {
             logger.debug("Discarded {} nodes due to duplicate  endpoint/triple/inputs signatures",
                          nodes.size() - list.size());
