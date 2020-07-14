@@ -9,6 +9,8 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.MergePolicyAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
@@ -34,11 +36,18 @@ import static java.util.stream.Collectors.toSet;
 public class MoleculeMatcher implements SemanticDescription {
     private final @Nonnull Molecule molecule;
     private final @Nonnull TBoxReasoner reasoner;
+    private final @Nonnull MergePolicyAnnotation mergePolicyAnnotation;
     private @Nonnull SoftReference<Index> index = new SoftReference<>(null);
 
     public MoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBoxReasoner reasoner) {
+        this(molecule, reasoner, new NoMergePolicyAnnotation());
+    }
+
+    public MoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBoxReasoner reasoner,
+                           @Nonnull MergePolicyAnnotation mergePolicy) {
         this.molecule = molecule;
         this.reasoner = reasoner;
+        this.mergePolicyAnnotation = mergePolicy;
     }
 
     public @Nonnull TBoxReasoner getReasoner() {
@@ -398,7 +407,7 @@ public class MoleculeMatcher implements SemanticDescription {
             Set<Triple> commonTriples = TreeUtils.intersect(l.query.getSet(), r.query.getSet());
             if (commonTriples.isEmpty())
                 return null; //no intersection
-            CQuery union = CQuery.union(l.query, r.query);
+            CQuery union = CQuery.merge(l.query, r.query);
             List<List<LinkMatch>> matchLists = new ArrayList<>(union.size());
             Set<Link> lLinks = new HashSet<>(), rLinks = new HashSet<>();
             SetMultimap<Term, Triple> p2triple = HashMultimap.create(union.size(), 2);
@@ -601,7 +610,7 @@ public class MoleculeMatcher implements SemanticDescription {
 
             public CQuery build() {
                 prepareBuild();
-                return builder.build();
+                return builder.annotate(mergePolicyAnnotation).build();
             }
         }
 

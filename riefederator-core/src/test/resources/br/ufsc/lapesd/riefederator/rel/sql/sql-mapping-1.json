@@ -1,10 +1,22 @@
-{
-  "@context": {
-    "@type": "http://xmlns.com/foaf/0.1/Person",
-    "@uriProperty": "cu",
-    "cu": "http://xmlns.com/foaf/0.1/name"
+[
+  {
+    "@context": {
+      "@type": "http://xmlns.com/foaf/0.1/Person",
+      "@uriProperty": "cu",
+      "cu": "http://xmlns.com/foaf/0.1/name"
+    },
+    "tableName": "T",
+    "@fallbackPrefix": "http://xmlns.com/foaf/0.1/",
+    "@instancePrefix": "http://example.org/"
   },
-  "tableName": "T",
-  "@fallbackPrefix": "http://xmlns.com/foaf/0.1/",
-  "@instancePrefix": "http://example.org/"
-}
+  {
+    "@context": {
+      "@type": "http://xmlns.com/foaf/0.1/Document",
+      "@uriProperty": "ku",
+      "ku": "http://xmlns.com/foaf/0.1/name"
+    },
+    "tableName": "U",
+    "@fallbackPrefix": "http://xmlns.com/foaf/0.1/",
+    "@instancePrefix": "http://example.org/"
+  }
+]

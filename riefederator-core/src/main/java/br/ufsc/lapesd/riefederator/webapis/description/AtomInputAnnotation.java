@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.webapis.description;
 
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.query.InputAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;

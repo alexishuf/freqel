@@ -15,6 +15,7 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.annotations.MergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
@@ -25,6 +26,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.*;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.riefederator.rel.common.AmbiguityMergePolicy;
 import br.ufsc.lapesd.riefederator.rel.common.StarSubQuery;
 import br.ufsc.lapesd.riefederator.rel.common.StarsHelper;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
@@ -70,12 +72,13 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     public JDBCCQEndpoint(@Nonnull RelationalMapping mapping, @Nonnull String name,
                           @Nonnull ConnectionSupplier connectionSupplier) {
         this.mapping = mapping;
-        this.sqlGenerator = new SqlGenerator(mapping);
+        this.sqlGenerator = new SqlGenerator(mapping).setExposeJoinVars(true);
         this.name = name;
         this.connectionSupplier = connectionSupplier;
         this.molecule = mapping.createMolecule();
         TransitiveClosureTBoxReasoner empty = new TransitiveClosureTBoxReasoner();
-        this.moleculeMatcher = new MoleculeMatcher(this.molecule, empty);
+        MergePolicyAnnotation policy = new AmbiguityMergePolicy();
+        this.moleculeMatcher = new MoleculeMatcher(this.molecule, empty, policy);
     }
 
     public static class Builder {
@@ -213,13 +216,16 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             this.jenaSolutionFac = new ArrayList<>(sql.getStarsCount());
             this.jVars = new ArrayList<>(sql.getStarsCount());
             this.jrVars = new ArrayList<>(sql.getStarsCount());
+            Set<String> sqlVars = sql.getVars();
             IndexedSet<String> allVars =
-                    IndexedSet.fromDistinct(TreeUtils.union(sql.getVars(), getVarNames()));
+                    IndexedSet.fromDistinct(TreeUtils.union(sqlVars, getVarNames()));
             for (int i = 0, size = sql.getStarsCount(); i < size; i++) {
                 StarSubQuery star = sql.getStar(i);
                 CQuery.Builder b = CQuery.builder(star.getTriples().size());
                 for (Triple triple : star.getTriples()) {
-                    if (triple.getObject().isVar()) b.add(triple);
+                    Term o = triple.getObject();
+                    if (o.isVar() && sqlVars.contains(o.asVar().getName()))
+                        b.add(triple);
                 }
                 if (b.isEmpty()) { // we've no object to fetch
                     if (star.getCore().isVar()) { // get the subject

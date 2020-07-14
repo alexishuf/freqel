@@ -1,30 +1,27 @@
 package br.ufsc.lapesd.riefederator.rel.mappings.impl;
 
-import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeBuilder;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
-import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
-import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnTag;
-import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
-import org.apache.jena.vocabulary.RDF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,13 +33,11 @@ import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.emptyList;
 
 @Immutable
 public class ContextMapping implements RelationalMapping {
     private static final Logger logger = LoggerFactory.getLogger(ContextMapping.class);
-    private static final URI rdfType = new StdURI(RDF.type.getURI());
     private static final @Nonnull AtomicLong nextId = new AtomicLong(0);
 
     public enum UriGeneratorType {
@@ -51,15 +46,7 @@ public class ContextMapping implements RelationalMapping {
         BLANK
     }
 
-    private @Nonnull final String tableName;
-    private @Nonnull final ImmutableMap<String, URI> column2uri;
-    private @Nullable final String fallbackPrefix;
-    private @Nonnull final ImmutableSet<URI> classes;
-    private @Nullable final String instancePrefix;
-    private @Nonnull final ImmutableSet<String> idColumns;
-    private @Nonnull final String idColumnsSeparator;
-    private final boolean exclusive;
-    private final @Nonnull UriGeneratorType uriGeneratorType;
+    private final @Nonnull Map<String, TableContext> table2context;
     private @LazyInit Molecule fullMolecule = null;
 
     @VisibleForTesting
@@ -67,147 +54,153 @@ public class ContextMapping implements RelationalMapping {
         nextId.set(0);
     }
 
-    public ContextMapping(@Nonnull String tableName,
-                          @Nonnull ImmutableMap<String, URI> column2uri,
-                          @Nullable String fallbackPrefix, @Nonnull ImmutableSet<URI> classes,
-                          @Nullable String instancePrefix,
-                          @Nonnull ImmutableSet<String> idColumns,
-                          @Nonnull String idColumnsSeparator, boolean exclusive,
-                          @Nonnull UriGeneratorType uriGeneratorType) {
-        this.tableName = tableName;
-        this.column2uri = column2uri;
-        this.fallbackPrefix = fallbackPrefix;
-        this.classes = classes;
-        this.instancePrefix = instancePrefix;
-        this.idColumns = idColumns;
-        this.idColumnsSeparator = idColumnsSeparator;
-        this.exclusive = exclusive;
-        this.uriGeneratorType = uriGeneratorType;
+    public ContextMapping(@Nonnull Map<String, TableContext> contexts) {
+        this.table2context = contexts;
     }
 
     /* --- --- --- builder --- --- --- */
 
-    public static class Builder {
+    public static class TableBuilder {
+        private @Nonnull final Builder parent;
         private @Nonnull final String tableName;
         private @Nonnull final Map<String, URI> column2uri = new HashMap<>();
         private @Nullable String fallbackPrefix = StdPlain.URI_PREFIX;
         private @Nonnull final Set<URI> classes = new HashSet<>();
         private @Nullable String instancePrefix = StdPlain.URI_PREFIX;
-        private @Nonnull final Set<String> idColumns = new HashSet<>();
+        private @Nonnull final List<String> idColumns = new ArrayList<>();
         private @Nonnull String idColumnsSeparator = "-";
         private boolean exclusive = true;
         private @Nullable UriGeneratorType uriGeneratorType = null;
 
-        public Builder(@Nonnull String tableName) {
+        public TableBuilder(@Nonnull Builder parent, @Nonnull String tableName) {
+            this.parent = parent;
             this.tableName = tableName;
         }
 
-        public @CanIgnoreReturnValue @Nonnull Builder exclusive(boolean value) {
+        public @CanIgnoreReturnValue @Nonnull TableBuilder exclusive(boolean value) {
             exclusive = value;
             return this;
         }
 
-        public @CanIgnoreReturnValue @Nonnull Builder column2uri(@Nonnull String column,
+        public @CanIgnoreReturnValue @Nonnull TableBuilder column2uri(@Nonnull String column,
                                                                  @Nonnull URI uri) {
             this.column2uri.put(column, uri);
             return this;
         }
 
-        public @CanIgnoreReturnValue @Nonnull Builder fallbackPrefix(@Nullable String prefix) {
+        public @CanIgnoreReturnValue @Nonnull TableBuilder fallbackPrefix(@Nullable String prefix) {
             this.fallbackPrefix = prefix;
             return this;
         }
 
-        public @CanIgnoreReturnValue @Nonnull Builder addClass(@Nonnull URI cls) {
+        public @CanIgnoreReturnValue @Nonnull TableBuilder addClass(@Nonnull URI cls) {
             this.classes.add(cls);
             return this;
         }
 
-        public @CanIgnoreReturnValue @Nonnull Builder instancePrefix(@Nullable String prefix) {
+        public @CanIgnoreReturnValue @Nonnull TableBuilder instancePrefix(@Nullable String prefix) {
             this.instancePrefix = prefix;
             return this;
         }
 
-        public @CanIgnoreReturnValue @Nonnull Builder addIdColumn(@Nonnull String column) {
+        public @CanIgnoreReturnValue @Nonnull TableBuilder addIdColumn(@Nonnull String column) {
             this.idColumns.add(column);
             return this;
         }
 
-        public @CanIgnoreReturnValue @Nonnull Builder idColumnsSeparator(@Nonnull String sep) {
+        public @CanIgnoreReturnValue @Nonnull TableBuilder idColumnsSeparator(@Nonnull String sep) {
             this.idColumnsSeparator = sep;
             return this;
         }
 
         public @CanIgnoreReturnValue @Nonnull
-        Builder uriGenerator(@Nonnull UriGeneratorType type) {
+        TableBuilder uriGenerator(@Nonnull UriGeneratorType type) {
             this.uriGeneratorType = type;
             return this;
         }
 
-        public @Nonnull ContextMapping build() {
+        public @CanIgnoreReturnValue @Nonnull Builder endTable() {
             if (uriGeneratorType == null) {
                 if (!idColumns.isEmpty())
                     uriGeneratorType = UriGeneratorType.CONCAT;
                 else
                     uriGeneratorType = UriGeneratorType.BLANK;
             }
-            return new ContextMapping(tableName, ImmutableMap.copyOf(column2uri), fallbackPrefix,
-                                      ImmutableSet.copyOf(classes), instancePrefix,
-                                      ImmutableSet.copyOf(idColumns), idColumnsSeparator,
-                                      exclusive, uriGeneratorType);
+            TableContext tableContext = new TableContext(tableName,
+                    ImmutableMap.copyOf(column2uri), fallbackPrefix,
+                    ImmutableSet.copyOf(classes), instancePrefix,
+                    ImmutableList.copyOf(idColumns), idColumnsSeparator,
+                    exclusive, uriGeneratorType);
+            parent.add(tableContext);
+            return parent;
         }
     }
 
-    public static @Nonnull Builder builder(@Nonnull String tableName) {
-        return new Builder(tableName);
+    public static class Builder {
+        private @Nonnull final Map<String, TableContext> table2context = new HashMap<>();
+
+        public @Nonnull TableBuilder beginTable(@Nonnull String tableName) {
+            Preconditions.checkState(!table2context.containsKey(tableName),
+                                     "Table "+tableName+" already registered!");
+            return new TableBuilder(this, tableName);
+        }
+
+        public @CanIgnoreReturnValue @Nonnull Builder add(@Nonnull TableContext context) {
+            table2context.put(context.getTableName(), context);
+            return this;
+        }
+
+        public @CheckReturnValue @Nonnull ContextMapping build() {
+            Preconditions.checkState(!table2context.isEmpty(), "No Tables!");
+            return new ContextMapping(table2context);
+        }
+    }
+
+    public static @Nonnull Builder builder() {
+        return new Builder();
     }
 
     /* --- --- --- parse --- --- --- */
 
     /**
-     * See {@link ContextMapping#parse(InputStream, String)}.
+     * See {@link ContextMapping#parse(DictTree)}
      */
     public static @Nonnull ContextMapping parse(@Nonnull InputStream stream)
             throws IOException, ContextMappingParseException {
-        return parse(stream, null);
+        return parse(DictTree.load().fromInputStreamList(stream));
     }
 
     /**
-     * See {@link ContextMapping#parse(DictTree, String)}
+     * See {@link ContextMapping#parse(DictTree)}
      */
-    public static @Nonnull ContextMapping parse(@Nonnull InputStream stream,
-                                                @Nullable String tableName)
-            throws IOException, ContextMappingParseException {
-        return parse(DictTree.load().fromInputStream(stream), tableName);
-    }
-
-    /**
-     * See {@link ContextMapping#parse(DictTree, String)}
-     */
-    public static @Nonnull ContextMapping parse(@Nonnull DictTree dictTree)
+    public static @Nonnull ContextMapping parse(@Nonnull Collection<DictTree> collection)
             throws ContextMappingParseException {
-        return parse(dictTree, null);
+        Map<String, TableContext> table2context = new HashMap<>();
+        for (DictTree dictTree : collection) {
+            ContextMapping member = parse(dictTree);
+            assert member.getTableNames().size() == 1;
+            String table = member.getTableNames().iterator().next();
+            if (table2context.containsKey(table))
+                throw new IllegalArgumentException("Duplicate table "+table);
+            table2context.putAll(member.table2context);
+        }
+        return new ContextMapping(table2context);
     }
 
     /**
      * Parses the mapping from the already parsed YAML/JSON/JSON-LD source.
      *
      * @param d the parsed {@link DictTree}
-     * @param tableName the name of the table (relevant for the interface methods).
-     *                  This will <b>override</b> any <code>tableName</code> defined on
-     *                  the context file.
      * @return The functional {@link ContextMapping}
      * @throws ContextMappingParseException If something is wrong with syntax of the values in
      *                                      the file (beyond JSON/YAML syntax)
      */
-    public static @Nonnull ContextMapping parse(@Nonnull DictTree d,
-                                                @Nullable String tableName)
+    public static @Nonnull ContextMapping parse(@Nonnull DictTree d)
             throws ContextMappingParseException {
-        if (tableName == null)
-            tableName = d.getString("@tableName", d.getString("tableName"));
+        String tableName = d.getString("@tableName", d.getString("tableName"));
         if (tableName == null)
             throw new ContextMappingParseException("No @tableName defined");
-        Builder b = builder(tableName);
+        TableBuilder b = builder().beginTable(tableName);
 
         String fallbackPrefix = getString(d, "fallbackPrefix", StdPlain.URI_PREFIX);
         b.fallbackPrefix(fallbackPrefix);
@@ -228,8 +221,7 @@ public class ContextMapping implements RelationalMapping {
                             "or @GenerateUri", e.getValue());
                 } else if (e.getValue() instanceof Collection) {
                     Collection<?> collection = (Collection<?>) e.getValue();
-                    if (fallbackPrefix == null)
-                        collection.forEach(o -> b.addIdColumn(Objects.toString(o)));
+                    collection.forEach(o -> b.addIdColumn(Objects.toString(o)));
                 } else {
                     b.addIdColumn(Objects.toString(e.getValue()));
                 }
@@ -245,10 +237,15 @@ public class ContextMapping implements RelationalMapping {
                     b.column2uri(e.getKey(), uri);
             }
         }
-        return b.build();
+        return b.endTable().build();
     }
 
     /* --- --- --- internals --- --- --- */
+
+    private static class ToRDFArgs {
+        @Nonnull final List<Column> columns = new ArrayList<>();
+        @Nonnull final List<Object> values = new ArrayList<>();
+    }
 
     private static String getString(@Nonnull DictTree d, @Nonnull String key, String fallback) {
         String value = fallback;
@@ -279,161 +276,172 @@ public class ContextMapping implements RelationalMapping {
         return new StdURI(uri);
     }
 
-    private @Nullable URI getUri(@Nonnull String column) {
-        URI uri = column2uri.get(column);
-        if (uri != null)
-            return uri;
-        if (fallbackPrefix != null)
-            return new StdURI(fallbackPrefix+column);
-        return null;
-    }
-
     /* --- --- --- getters --- --- --- */
-    public @Nonnull String getTableName() {
-        return tableName;
-    }
-    public @Nonnull ImmutableMap<String, URI> getColumn2uri() {
-        return column2uri;
-    }
-    public @Nullable String getFallbackPrefix() {
-        return fallbackPrefix;
-    }
-    public @Nonnull ImmutableSet<URI> getClasses() {
-        return classes;
-    }
-    public @Nullable String getInstancePrefix() {
-        return instancePrefix;
-    }
-    public @Nonnull ImmutableSet<String> getIdColumns() {
-        return idColumns;
-    }
-    public @Nonnull String getIdColumnsSeparator() {
-        return idColumnsSeparator;
-    }
-    public boolean isExclusive() {
-        return exclusive;
+
+    public @Nonnull Set<String> getTableNames() {
+        return table2context.keySet();
     }
 
-    public @Nonnull UriGeneratorType getUriGeneratorType() {
-        return uriGeneratorType;
+    public @Nonnull TableContext getTableContext(@Nonnull String tableName) {
+        TableContext context = table2context.getOrDefault(tableName, null);
+        if (context == null)
+            throw new NoSuchElementException("No table "+tableName+" knwon");
+        return context;
     }
 
     /* --- --- --- interface implementation --- --- --- */
 
     @Override
     public @Nonnull Molecule createMolecule(@Nullable Map<String, List<String>> table2columns) {
-        Collection<String> columns = column2uri.keySet();
-        if (table2columns != null) {
-            assert table2columns.keySet().size() == 1;
-            if (!table2columns.containsKey(tableName))
-                return Molecule.builder(tableName).build();
-            columns = table2columns.get(tableName);
-        } else if (fullMolecule != null) {
-            return fullMolecule;
+        Set<String> tables;
+        if      (table2columns != null) tables = table2columns.keySet();
+        else if (fullMolecule  == null) tables =  table2context.keySet();
+        else                            return fullMolecule;
+
+        MoleculeBuilder b = null;
+        for (String table : tables) {
+            List<String> columns = table2columns == null ? null : table2columns.get(table);
+            TableContext context = table2context.get(table);
+            if (context == null) {
+                assert false : "Unknown table "+table;
+                logger.warn("Will ignore unknown table {} at createMolecule(). Expected one of {}",
+                            table, table2context.keySet());
+                continue;
+            }
+            b = context.addCore(b, columns);
         }
 
-        MoleculeBuilder b = Molecule.builder(tableName);
-        if (!classes.isEmpty())
-            b.out(rdfType, new Atom(tableName + "." + rdfType.getURI()));
-        for (String column : columns) {
-            URI uri = getUri(column);
-            if (uri != null) {
-                ColumnTag tag = new ColumnTag(new Column(tableName, column));
-                Atom colAtom = Molecule.builder(tableName + "." + column).tag(tag).buildAtom();
-                b.out(uri, colAtom, singletonList(tag));
-            }
+        if (b == null) {
+            assert false : "Creating empty molecule";
+            // if asserts are disabled, return an empty Molecule instead of blowing up
+            logger.error("Creating empty molecule!");
+            return Molecule.builder("").build();
+        } else {
+            Molecule m = b.build();
+            if (table2columns == null)
+                fullMolecule = m;
+            return m;
         }
-        Molecule m = b.tag(new TableTag(tableName)).exclusive(exclusive).build();
-        if (table2columns == null)
-            fullMolecule = m;
-        return m;
     }
 
     @Override
-    public @Nonnull Set<String> getIdColumnsNames(@Nonnull String table,
+    public @Nonnull List<String> getIdColumnsNames(@Nonnull String table,
                                                   @Nullable Collection<?> columns) {
         // linked resources not supported (yet), thus columns is ignored
-        if (!this.tableName.equals(table)) {
-            logger.warn("Bad name: {}. Expected {}", table, this.tableName);
-            if (!this.tableName.toLowerCase().trim().equals(table.toLowerCase().trim()))
-                return emptySet(); // do not tolerate
+        TableContext context = table2context.get(table);
+        if (context == null) {
+            logger.warn("Bad name: {}. Expected one of {}", table, table2context.keySet());
+            assert false : "Bad table name"+table; // abort if asserts enabled.
+            return emptyList(); // else: try to continue
         }
-        return idColumns;
+        return context.getIdColumns();
     }
 
     @Override
     public @Nullable Term column2predicate(@Nonnull Column column) {
-        if (!Objects.equals(column.table, tableName))
-            return null; // extraneous table
-        return getUri(column.column);
+        TableContext context = table2context.get(column.getTable());
+        if (context == null)
+            return null;
+        return context.getUri(column.getColumn());
     }
 
     @Override
     public @Nonnull Term getNameFor(@Nonnull List<Column> columns, @Nonnull List<?> values) {
-        return JenaWrappers.fromJena(createResource(null, columns, values));
+        Preconditions.checkArgument(columns.size() == values.size(), "#columns != #values");
+        if (columns.isEmpty()) {
+            assert false : "Empty columns";
+            logger.warn("No columns given! Will create a blank node");
+            return JenaWrappers.fromJena(ResourceFactory.createResource());
+        }
+        String table = null;
+        for (Column column : columns) {
+            if (table == null) {
+                table = column.getTable();
+            } else if (!table.equals(column.getTable())) {
+                assert false : "Columns have many tables, cannot determine which one to use";
+                logger.warn("Creating a bank node since columns={} span multiple tables", columns);
+                return JenaWrappers.fromJena(ResourceFactory.createResource());
+            }
+        }
+        TableContext context = table2context.get(table);
+        if (context == null) {
+            assert false : "Unknown table";
+            logger.warn("Table {} is not known. Expected one of {}. Will return a blank node",
+                    table, table2context.keySet());
+            return JenaWrappers.fromJena(ResourceFactory.createResource());
+        }
+        return JenaWrappers.fromJena(context.createResource(nextId, null, columns, values));
     }
 
     @Override
     public int toRDF(@Nonnull Model model, @Nonnull List<Column> columns, @Nonnull List<?> values) {
-        assert columns.stream().allMatch(c -> c.getTable().equals(tableName));
-
-        int triples = 0;
-        Resource r = createResource(model, columns, values);
-        for (URI aClass : classes) {
-            r.addProperty(RDF.type, JenaWrappers.toJena(aClass));
-            ++triples;
-        }
-
+        Map<String, ToRDFArgs> table2args = new HashMap<>();
         for (int i = 0, size = columns.size(); i < size; i++) {
-            Column column = columns.get(i);
-            if (!column.table.equals(tableName)) continue;
-            Property p = JenaWrappers.toJenaProperty(getUri(column.column));
-            if (p != null) {
-                Object value = values.get(i);
-                if (value != null) {
-                    r.addProperty(p, ResourceFactory.createTypedLiteral(value));
-                    ++triples;
-                }
+            Column col = columns.get(i);
+            ToRDFArgs args = table2args.computeIfAbsent(col.getTable(), k -> new ToRDFArgs());
+            args.columns.add(col);
+            args.values.add(values.get(i));
+        }
+        int triples = 0;
+        for (Map.Entry<String, ToRDFArgs> e : table2args.entrySet()) {
+            TableContext context = table2context.get(e.getKey());
+            if (context == null) {
+                assert false : "Unexpected table";
+                // if asserts are disable, only warn and ignore
+                logger.warn("Ignoring unexpected table {}. Known tables: {}",
+                            e.getKey(), table2context.keySet());
+            } else {
+                triples += context.toRDF(nextId, model, e.getValue().columns, e.getValue().values);
             }
         }
-
         return triples;
     }
 
     private @Nonnull Resource createResource(@Nullable Model model, @Nonnull List<Column> columns,
                                              @Nonnull List<?> values) {
-        if (uriGeneratorType == UriGeneratorType.BLANK) {
-            if (model == null) return ResourceFactory.createResource();
-            return model.createResource();
-        } else if (uriGeneratorType == UriGeneratorType.SEQ) {
-            assert instancePrefix != null : "Can only use generator SEQ if instancePrefix != null";
-            if (model == null)
-                return ResourceFactory.createResource(instancePrefix + (nextId.get()+1));
-            return model.createResource(instancePrefix + nextId.incrementAndGet());
-        } else {
-            assert uriGeneratorType == UriGeneratorType.CONCAT
-                    : "Unexpected uriGeneratorType="+uriGeneratorType;
-            int size = columns.size();
-            assert values.size() == size : "values and columns do not have the same size";
-            StringBuilder b = new StringBuilder();
-            if (instancePrefix != null)
-                b.append(instancePrefix);
-            for (String idColumn : idColumns) {
-                for (int i = 0; i < size; i++) {
-                    if (columns.get(i).column.equals(idColumn)) {
-                        Object o = values.get(i);
-                        if (o instanceof Lit)
-                            o = ((Lit) o).getLexicalForm();
-                        b.append(o).append(idColumnsSeparator);
-                        break;
-                    }
-                }
-            }
-            if (!idColumns.isEmpty())
-                b.setLength(b.length()-idColumnsSeparator.length());
-            if (model == null)
-                return ResourceFactory.createResource(b.toString());
-            return model.createResource(b.toString());
+        Preconditions.checkArgument(columns.size() == values.size(), "#columns != #values");
+        if (columns.isEmpty()) {
+            assert false : "Empty columns";
+            logger.warn("No columns given! Will create a blank node");
+            return model == null ? ResourceFactory.createResource() : model.createResource();
         }
+        String table = null;
+        for (Column column : columns) {
+            if (table == null) {
+                table = column.getTable();
+            } else if (!table.equals(column.getTable())) {
+                assert false : "Columns have many tables, cannot determine which one to use";
+                logger.warn("Creating a bank node since columns={} span multiple tables", columns);
+                return model == null ? ResourceFactory.createResource() : model.createResource();
+            }
+        }
+        TableContext context = table2context.get(table);
+        if (context == null) {
+            assert false : "Unknown table";
+            logger.warn("Table {} is not known. Expected one of {}. Will return a blank node",
+                        table, table2context.keySet());
+            return model == null ? ResourceFactory.createResource() : model.createResource();
+        }
+        return context.createResource(nextId, model, columns, values);
+    }
+
+    /* --- --- --- Object methods --- --- --- */
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ContextMapping)) return false;
+        ContextMapping that = (ContextMapping) o;
+        return table2context.equals(that.table2context);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(table2context);
+    }
+
+    @Override
+    public String toString() {
+        return "ContextMapping"+getTableNames();
     }
 }

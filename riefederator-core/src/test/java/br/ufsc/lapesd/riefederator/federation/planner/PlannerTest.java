@@ -153,19 +153,21 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertEquals(bad, emptyList());
 
         // children of MQ nodes may match the same triples with different triples
-        // However, if two children have the same triples as query, then their endpoints
-        // must not be equivalent as this would be wasteful
+        // However, if two children have the same query, then their endpoints must not be
+        // equivalent as this would be wasteful. Comparison must use the CQuery instead of
+        // Set<Triple> since it may make sense to send the same triples with distinct
+        // QueryRelevantTermAnnotations (e.g., WebAPICQEndpoint and JDBCCQEndpoint)
         List<Set<QueryNode>> equivSets = streamPreOrder(root)
                 .filter(n -> n instanceof MultiQueryNode)
                 .map(n -> {
                     Set<QueryNode> equiv = new HashSet<>();
-                    ListMultimap<Set<Triple>, QueryNode> mm;
+                    ListMultimap<CQuery, QueryNode> mm;
                     mm = MultimapBuilder.hashKeys().arrayListValues().build();
                     for (PlanNode child : n.getChildren()) {
                         if (child instanceof QueryNode)
-                            mm.put(((QueryNode) child).getQuery().getSet(), (QueryNode) child);
+                            mm.put(((QueryNode) child).getQuery(), (QueryNode) child);
                     }
-                    for (Set<Triple> key : mm.keySet()) {
+                    for (CQuery key : mm.keySet()) {
                         for (int i = 0; i < mm.get(key).size(); i++) {
                             QueryNode outer = mm.get(key).get(i);
                             for (int j = i + 1; j < mm.get(key).size(); j++) {
@@ -767,7 +769,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertTrue(info.isValid());
 
         Planner planner = supplier.get();
-        CQuery wholeQuery = CQuery.union(arqQuery, webQuery);
+        CQuery wholeQuery = CQuery.merge(arqQuery, webQuery);
         PlanNode plan = planner.plan(wholeQuery, asList(n1, n2));
         assertPlanAnswers(plan, wholeQuery, false, true);
     }

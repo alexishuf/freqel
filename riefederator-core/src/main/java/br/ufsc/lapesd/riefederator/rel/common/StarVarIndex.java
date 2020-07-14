@@ -24,15 +24,17 @@ public class StarVarIndex {
     private final @Nonnull Map<String, Integer> var2star;
     private final @Nonnull Map<String, Column> var2column;
     private final @Nonnull List<IndexedSubset<String>> starProjected;
+    private final @Nonnull IndexedSubset<String> joinVars;
     private final @Nonnull List<Map<String, Column>> idVar2column;
     private final @Nonnull SortedSet<String> outerProjection;
 
+
     public StarVarIndex(@Nonnull CQuery query, @Nonnull List<StarSubQuery> stars) {
-        this(query, stars, null);
+        this(query, stars, null, false);
     }
 
     public StarVarIndex(@Nonnull CQuery query, @Nonnull List<StarSubQuery> stars,
-                        @Nullable RelationalMapping mapping) {
+                        @Nullable RelationalMapping mapping, boolean exposeJoinVars) {
         this.stars = stars;
         IndexedSet<Var> varSet = query.getTermVars();
         var2star = new HashMap<>((int)Math.ceil(varSet.size()/0.75f)+1);
@@ -56,6 +58,9 @@ public class StarVarIndex {
                 outerProjection.add(name);
         }
         cleanupStarProjected(stars, allVars, projected);
+        joinVars = getJoinVars(allVars);
+        if (exposeJoinVars)
+            outerProjection.addAll(joinVars);
         idVar2column = new ArrayList<>(stars.size());
         for (int i = 0, size = stars.size(); i < size; i++)
             idVar2column.add(new HashMap<>());
@@ -67,6 +72,16 @@ public class StarVarIndex {
         } else {
             var2column = Collections.emptyMap();
         }
+    }
+
+    private IndexedSubset<String> getJoinVars(IndexedSet<String> allVars) {
+        IndexedSubset<String> joinVars = allVars.emptySubset();
+        for (int i = 0, size = stars.size(); i < size; i++) {
+            IndexedSubset<String> outer = starProjected.get(i);
+            for (int j = i+1; j < size; j++)
+                joinVars.addAll(outer.createIntersection(starProjected.get(j)));
+        }
+        return joinVars;
     }
 
     private void cleanupStarProjected(@Nonnull List<StarSubQuery> stars, IndexedSet<String> allVars, Set<String> projected) {
@@ -83,8 +98,10 @@ public class StarVarIndex {
             for (int i = 0, size = stars.size(); i < size; i++) {
                 IndexedSubset<String> unused = starProjected.get(i).copy();
                 unused.removeAll(outerProjection);
-                for (int j = i+1; !unused.isEmpty() && j < size; j++)
-                    unused.removeAll(starProjected.get(j));
+                for (int j = 0; !unused.isEmpty() && j < size; j++) {
+                    if (j != i)
+                        unused.removeAll(starProjected.get(j));
+                }
                 starProjected.get(i).removeAll(unused);
             }
         }
@@ -113,7 +130,7 @@ public class StarVarIndex {
             Set<Column> columns = star.getTriples().stream()
                     .map(Triple::getObject).filter(Term::isVar)
                     .map(o -> star.getColumn(o, true)).collect(toSet());
-            Set<Column> idColumns = mapping.getIdColumns(table, columns);
+            List<Column> idColumns = mapping.getIdColumns(table, columns);
             for (Column idColumn : idColumns) {
                 if (columns.contains(idColumn)) continue;
                 String shadow = "_riefederator_id_col_"+(nextId++);
@@ -156,6 +173,9 @@ public class StarVarIndex {
     }
     public @Nonnull SortedSet<String> getOuterProjection() {
         return outerProjection;
+    }
+    public @Nonnull IndexedSubset<String> getJoinVars() {
+        return joinVars;
     }
 
     public int firstStar(@Nonnull String sparqlVar) {

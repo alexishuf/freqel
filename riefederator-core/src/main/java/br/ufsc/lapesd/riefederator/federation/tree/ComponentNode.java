@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;

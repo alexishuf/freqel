@@ -159,10 +159,10 @@ public class StarVarIndexTest implements TestContext {
 
     @Test
     public void testInsertUsedOnURIGeneration() {
-        ContextMapping mapping = ContextMapping.builder("T")
+        ContextMapping mapping = ContextMapping.builder().beginTable("T")
                 .addIdColumn("cu")
                 .fallbackPrefix(EX)
-                .instancePrefix(EX + "inst/").build();
+                .instancePrefix(EX + "inst/").endTable().build();
         CQuery q = createQuery(
                 x, aaT, nameEx, u, aaCu,
                 x, aaT, p1,     o, aaCo,
@@ -173,12 +173,13 @@ public class StarVarIndexTest implements TestContext {
                                               newHashSet("x", "u", "o"), EMPTY_FILTERS, q);
         StarSubQuery starY = new StarSubQuery(q.getSet().subset(asList(q.get(2), q.get(3))),
                                               newHashSet("y", "o", "v"), EMPTY_FILTERS, q);
-        StarVarIndex index = new StarVarIndex(q, asList(starX, starY), mapping);
+        StarVarIndex index = new StarVarIndex(q, asList(starX, starY), mapping, false);
 
         assertEquals(index.getStarProjection(0), newHashSet("x", "u", "o"));
-        assertEquals(index.getStarProjection(1), newHashSet("y", "v"));
+        assertEquals(index.getStarProjection(1), newHashSet("y", "v", "o"));
         assertTrue(index.getOuterProjection().containsAll(newHashSet("x", "y", "u", "v")));
         assertFalse(index.getOuterProjection().contains("o"));
+        assertEquals(index.getJoinVars(), singleton("o"));
 
         assertTrue(index.getIdVar2Column(0).isEmpty());
         assertEquals(new HashSet<>(index.getIdVar2Column(1).values()), singleton(cu));
@@ -186,10 +187,10 @@ public class StarVarIndexTest implements TestContext {
 
     @Test
     public void testDoNotInsertUsedOnURIGeneration() {
-        ContextMapping mapping = ContextMapping.builder("T")
+        ContextMapping mapping = ContextMapping.builder().beginTable("T")
                 .addIdColumn("cu")
                 .fallbackPrefix(EX)
-                .instancePrefix(EX + "inst/").build();
+                .instancePrefix(EX + "inst/").endTable().build();
         CQuery q = createQuery(
                 x, aaT, nameEx, u, aaCu,
                 x, aaT, p1,     o, aaCo,
@@ -200,13 +201,14 @@ public class StarVarIndexTest implements TestContext {
                 newHashSet("x", "u", "o"), EMPTY_FILTERS, q);
         StarSubQuery starY = new StarSubQuery(q.getSet().subset(asList(q.get(2), q.get(3))),
                 newHashSet("y", "o", "v"), EMPTY_FILTERS, q);
-        StarVarIndex index = new StarVarIndex(q, asList(starX, starY), mapping);
+        StarVarIndex index = new StarVarIndex(q, asList(starX, starY), mapping, false);
 
         assertEquals(index.getStarProjection(0), newHashSet("x", "u", "o"));
-        assertEquals(index.getStarProjection(1), singleton("v"));
+        assertEquals(index.getStarProjection(1), newHashSet("v", "o"));
         assertTrue(index.getOuterProjection().containsAll(newHashSet("x", "u", "v")));
         assertFalse(index.getOuterProjection().contains("o"));
         assertFalse(index.getOuterProjection().contains("y"));
+        assertEquals(index.getJoinVars(), singleton("o"));
 
         assertTrue(index.getIdVar2Column(0).isEmpty());
         assertTrue(index.getIdVar2Column(1).isEmpty());

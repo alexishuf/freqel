@@ -9,6 +9,9 @@ import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
@@ -67,6 +70,7 @@ public class CQuery implements  List<Triple> {
     private final @Nullable PrefixDict prefixDict;
 
     private final @Nullable ImmutableSetMultimap<Term, TermAnnotation> termAnnotations;
+    private final @Nullable ImmutableSet<QueryAnnotation> queryAnnotations;
     private final @Nullable ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnnotations;
 
     /* ~~~ cache attributes ~~~ */
@@ -101,12 +105,14 @@ public class CQuery implements  List<Triple> {
                      @Nullable PrefixDict prefixDict,
                      @Nullable ImmutableSetMultimap<Term, TermAnnotation> termAnn,
                      @Nullable ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnn,
+                     @Nullable ImmutableSet<QueryAnnotation> queryAnn,
                      @Nullable Boolean joinConnected) {
         this.list = query;
         this.modifiers = modifiers;
         this.prefixDict = prefixDict;
         this.termAnnotations = termAnn != null && termAnn.isEmpty() ? null : termAnn;
         this.tripleAnnotations = tripleAnn != null && tripleAnn.isEmpty() ? null : tripleAnn;
+        this.queryAnnotations = queryAnn != null && queryAnn.isEmpty() ? null : queryAnn;
         if (CQuery.class.desiredAssertionStatus()) {
             Set<Term> terms = concat(
                     streamTerms(Term.class),
@@ -132,7 +138,7 @@ public class CQuery implements  List<Triple> {
 
     public CQuery(@Nonnull ImmutableList<Triple> query,
                   @Nonnull ImmutableSet<Modifier> modifiers, @Nullable PrefixDict prefixDict) {
-        this(query, modifiers, prefixDict, null, null, null);
+        this(query, modifiers, prefixDict, null, null, null, null);
     }
 
     public CQuery(@Nonnull ImmutableList<Triple> query,
@@ -147,10 +153,11 @@ public class CQuery implements  List<Triple> {
         private boolean distinct = false, ask = false;
         private int limit = -1;
         private boolean distinctRequired = false, askRequired = false, limitRequired = false;
-        private Set<Modifier> modifiers = new LinkedHashSet<>();
+        private final Set<Modifier> modifiers = new LinkedHashSet<>();
         private @Nullable PrefixDict prefixDict = null;
         private @Nullable SetMultimap<Term, TermAnnotation> termAnn;
         private @Nullable SetMultimap<Triple, TripleAnnotation> tripleAnn;
+        private @Nullable Set<QueryAnnotation> queryAnn;
         private @Nullable Boolean joinConnected = null;
 
         protected WithBuilder() {
@@ -272,6 +279,22 @@ public class CQuery implements  List<Triple> {
         }
 
         @CanIgnoreReturnValue
+        public @Contract("_ -> this") @Nonnull
+        WithBuilder annotate(@Nonnull QueryAnnotation annotation) {
+            if (queryAnn == null) queryAnn = new HashSet<>();
+            queryAnn.add(annotation);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_ -> this") @Nonnull
+        WithBuilder annotate(@Nonnull Collection<QueryAnnotation> collection) {
+            if (queryAnn == null) queryAnn = new HashSet<>();
+            queryAnn.addAll(collection);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
         public @Contract("_, _ -> this") @Nonnull
         WithBuilder annotate(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
             if (termAnn == null) termAnn = HashMultimap.create();
@@ -301,6 +324,13 @@ public class CQuery implements  List<Triple> {
         }
 
         @CanIgnoreReturnValue
+        public @Contract("_ -> this") @Nonnull
+        WithBuilder deannotate(@Nonnull QueryAnnotation annotation) {
+            if (queryAnn != null) queryAnn.remove(annotation);
+            return this;
+        }
+
+        @CanIgnoreReturnValue
         public @Contract("_, _ -> this") @Nonnull
         WithBuilder deannotate(@Nonnull Triple triple, @Nonnull TripleAnnotation annotation) {
             if (tripleAnn != null) tripleAnn.remove(triple, annotation);
@@ -318,6 +348,18 @@ public class CQuery implements  List<Triple> {
         public @Contract("_ -> this") @Nonnull
         WithBuilder deannotate(@Nonnull TripleAnnotation a) {
             if (tripleAnn != null) tripleAnn.entries().removeIf(e -> e.getValue().equals(a));
+            return this;
+        }
+
+        @CanIgnoreReturnValue
+        public @Contract("_, _ -> this") @Nonnull
+        WithBuilder reannotate(@Nonnull Predicate<QueryAnnotation> predicate,
+                               @Nonnull QueryAnnotation annotation) {
+            if (queryAnn != null)
+                queryAnn.removeIf(predicate);
+            else
+                queryAnn = new HashSet<>();
+            queryAnn.add(annotation);
             return this;
         }
 
@@ -343,6 +385,11 @@ public class CQuery implements  List<Triple> {
                 tripleAnn = HashMultimap.create();
             tripleAnn.put(triple, annotation);
             return this;
+        }
+
+        @CheckReturnValue
+        public @Nonnull Set<QueryAnnotation> getQueryAnnotations() {
+            return queryAnn == null ? emptySet() : queryAnn;
         }
 
         @CheckReturnValue
@@ -376,6 +423,7 @@ public class CQuery implements  List<Triple> {
         public @Nonnull WithBuilder copyAnnotations(@Nullable CQuery other) {
             if (other == null)
                 return this;
+            annotate(other.getQueryAnnotations());
             other.forEachTripleAnnotation((t, a) -> {
                 if (getList().contains(t)) annotate(t, a);
             });
@@ -429,8 +477,10 @@ public class CQuery implements  List<Triple> {
                     this.termAnn == null ? null : ImmutableSetMultimap.copyOf(this.termAnn);
             ImmutableSetMultimap<Triple, TripleAnnotation> tripleAnn =
                     this.tripleAnn == null ? null : ImmutableSetMultimap.copyOf(this.tripleAnn);
+            ImmutableSet<QueryAnnotation> queryAnn =
+                    this.queryAnn == null ? null : ImmutableSet.copyOf(this.queryAnn);
             assert list != null;
-            return new CQuery(list, b.build(), prefixDict, termAnn, tripleAnn, joinConnected);
+            return new CQuery(list, b.build(), prefixDict, termAnn, tripleAnn, queryAnn, joinConnected);
         }
     }
 
@@ -590,9 +640,29 @@ public class CQuery implements  List<Triple> {
         }
 
         @Override
+        public @Contract("_ -> this") @Nonnull
+        Builder annotate(@Nonnull QueryAnnotation annotation) {
+            super.annotate(annotation);
+            return this;
+        }
+        @Override
+        public @Contract("_ -> this") @Nonnull
+        Builder annotate(@Nonnull Collection<QueryAnnotation> collection) {
+            super.annotate(collection);
+            return this;
+        }
+
+        @Override
         public @Contract("_, _ -> this") @Nonnull
         Builder annotate(@Nonnull Term term, @Nonnull TermAnnotation annotation) {
             super.annotate(term, annotation);
+            return this;
+        }
+
+        @Override
+        public @Contract("_ -> this") @Nonnull
+        Builder deannotate(@Nonnull QueryAnnotation annotation) {
+            super.deannotate(annotation);
             return this;
         }
 
@@ -621,6 +691,14 @@ public class CQuery implements  List<Triple> {
         public @Contract("_ -> this") @Nonnull
         Builder deannotate(@Nonnull TripleAnnotation annotation) {
             super.deannotate(annotation);
+            return this;
+        }
+
+        @Override
+        public @Contract("_, _, -> this") @Nonnull
+        Builder reannotate(@Nonnull Predicate<QueryAnnotation> predicate,
+                               @Nonnull QueryAnnotation annotation) {
+            super.reannotate(predicate, annotation);
             return this;
         }
 
@@ -737,8 +815,8 @@ public class CQuery implements  List<Triple> {
         ImmutableSet.Builder<Modifier> b = ImmutableSet.builder();
         getModifiers().forEach(b::add);
         modifiers.forEach(b::add);
-        CQuery copy = new CQuery(list, b.build(), prefixDict,
-                                 termAnnotations, tripleAnnotations, joinConnected);
+        CQuery copy = new CQuery(list, b.build(), prefixDict, termAnnotations,
+                                 tripleAnnotations, queryAnnotations, joinConnected);
         copy.ask = ask;
         copy.varsCache = varsCache;
         copy.set = set;
@@ -750,7 +828,7 @@ public class CQuery implements  List<Triple> {
         return copy;
     }
 
-    public static @Nonnull CQuery union(@Nonnull Collection<Triple> l,
+    public static @Nonnull CQuery merge(@Nonnull Collection<Triple> l,
                                         @Nonnull Collection<Triple> r) {
         if (l.isEmpty()) return CQuery.from(r);
         if (r.isEmpty()) return CQuery.from(l);
@@ -761,11 +839,13 @@ public class CQuery implements  List<Triple> {
             if (!b.getList().contains(triple)) b.add(triple);
         }
         if (l instanceof CQuery) {
+            b.annotate(((CQuery)l).getQueryAnnotations());
             b.annotateAllTerms(((CQuery) l).termAnnotations);
             b.annotateAllTriples(((CQuery) l).tripleAnnotations);
             ((CQuery) l).getModifiers().forEach(b::modifier);
         }
         if (r instanceof CQuery) {
+            b.annotate(((CQuery)r).getQueryAnnotations());
             b.annotateAllTerms(((CQuery) r).termAnnotations);
             b.annotateAllTriples(((CQuery) r).tripleAnnotations);
             ((CQuery) r).getModifiers().forEach(b::modifier);
@@ -792,6 +872,9 @@ public class CQuery implements  List<Triple> {
     public @Nonnull ImmutableSet<Modifier> getModifiers() { return modifiers; }
 
     /** Indicates if there is any triple annotation. */
+    public boolean hasQueryAnnotations() { return queryAnnotations != null; }
+
+    /** Indicates if there is any triple annotation. */
     public boolean hasTripleAnnotations() { return tripleAnnotations != null; }
 
     /** Indicates whether there is some term annotation in this query. */
@@ -800,11 +883,17 @@ public class CQuery implements  List<Triple> {
     @SuppressWarnings("unchecked")
     public boolean hasAnnotation(@Nonnull Class<?> cls) {
         boolean has = false;
-        if (TermAnnotation.class.isAssignableFrom(cls))
+        if (QueryAnnotation.class.isAssignableFrom(cls))
+            has = getQueryAnnotations().stream().anyMatch(cls::isInstance);
+        if (!has && TermAnnotation.class.isAssignableFrom(cls))
             has = forEachTermAnnotation((Class<? extends TermAnnotation>)cls, (t, a) -> {});
         if (!has && TripleAnnotation.class.isAssignableFrom(cls))
             has = forEachTripleAnnotation((Class<? extends TripleAnnotation>)cls, (t, a) -> {});
         return has;
+    }
+
+    public @Nonnull Set<QueryAnnotation> getQueryAnnotations() {
+        return queryAnnotations == null ? emptySet() : queryAnnotations;
     }
 
     /**
@@ -1127,10 +1216,7 @@ public class CQuery implements  List<Triple> {
             if (i != last)
                 b.add(list.get(last = i));
         }
-        forEachTripleAnnotation((t, a) -> {
-            if (b.mutableList.contains(t))
-                b.annotate(t, a);
-        });
+        b.copyAnnotations(this);
 
         Set<Term> allTerms = new HashSet<>();
         Set<String> allowedProjection = new HashSet<>();
@@ -1156,10 +1242,6 @@ public class CQuery implements  List<Triple> {
                 b.modifier(modifier);
             }
         }
-
-        forEachTermAnnotation((t, a) -> {
-            if (allTerms.contains(t)) b.annotate(t, a);
-        });
 
         return b.build();
     }
@@ -1209,6 +1291,7 @@ public class CQuery implements  List<Triple> {
             return triplesEq;
         return triplesEq
                 && modifiers.equals(((CQuery) o).modifiers)
+                && Objects.equals(queryAnnotations, ((CQuery) o).queryAnnotations)
                 && Objects.equals(termAnnotations, ((CQuery) o).termAnnotations)
                 && Objects.equals(tripleAnnotations, ((CQuery) o).tripleAnnotations);
     }
@@ -1219,6 +1302,7 @@ public class CQuery implements  List<Triple> {
             return list.equals(o); // fallback to list comparison when comparing with a list
         return getSet().equals(((CQuery) o).getSet())
                 && modifiers.equals(((CQuery) o).modifiers)
+                && Objects.equals(queryAnnotations, ((CQuery) o).queryAnnotations)
                 && Objects.equals(termAnnotations, ((CQuery) o).termAnnotations)
                 && Objects.equals(tripleAnnotations, ((CQuery) o).tripleAnnotations);
     }
@@ -1226,7 +1310,8 @@ public class CQuery implements  List<Triple> {
     @Override
     public int hashCode() {
         if (hash == 0)
-            hash = Objects.hash(list, modifiers, termAnnotations, tripleAnnotations);
+            hash = Objects.hash(list, modifiers, queryAnnotations,
+                                termAnnotations, tripleAnnotations);
         return hash;
     }
 
@@ -1269,7 +1354,7 @@ public class CQuery implements  List<Triple> {
         private final @Nonnull JoinType policy;
         private final @Nonnull Multimap<Term, Integer> index;
         private final boolean skipCheck;
-        private @Nonnull ArrayDeque<Integer> stack = new ArrayDeque<>(list.size()*2);
+        private @Nonnull final ArrayDeque<Integer> stack = new ArrayDeque<>(list.size()*2);
 
         public JoinClosureWalker(@Nonnull JoinType policy) {
             this.policy = policy;

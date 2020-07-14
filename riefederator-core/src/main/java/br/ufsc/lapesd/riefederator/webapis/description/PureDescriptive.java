@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.webapis.description;
 
-import br.ufsc.lapesd.riefederator.query.TripleAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import com.google.errorprone.annotations.Immutable;
 
 @Immutable

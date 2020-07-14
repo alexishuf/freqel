@@ -11,7 +11,7 @@ public class AmbiguousTagException extends RuntimeException {
 
     public AmbiguousTagException(@Nonnull Class<? extends ElementTag> tagClass,
                                  @Nonnull Term term) {
-        super("Ambiguous "+tagClass+" for term "+term);
+        super("Ambiguous "+tagClass.getSimpleName()+" for term "+term);
         this.tagClass = tagClass;
         this.term = term;
     }

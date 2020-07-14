@@ -11,6 +11,8 @@ import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
+import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
@@ -565,7 +567,7 @@ public class CQueryTest implements TestContext {
                 x, AtomAnnotation.of(a1), knows, y,
                 y, AtomAnnotation.of(a2), age,   v, SPARQLFilter.build("?v < 23"),
                 y,                        knows, Bob);
-        CQuery actual = CQuery.union(left, right);
+        CQuery actual = CQuery.merge(left, right);
         CQuery expected = createQuery(
                 Alice, knows, x, AtomAnnotation.of(a1),
                 x, age, u, SPARQLFilter.build("?u > 23"),

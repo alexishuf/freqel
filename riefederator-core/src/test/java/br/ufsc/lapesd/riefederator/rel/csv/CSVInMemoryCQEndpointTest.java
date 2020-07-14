@@ -112,12 +112,12 @@ public class CSVInMemoryCQEndpointTest implements TestContext {
     @Test(dataProvider = "queryData")
     public void testQuery(@Nonnull String csvPath, @Nonnull CQuery query,
                           @Nonnull Collection<Solution> expected) throws IOException {
-        ContextMapping.Builder ctxtBuilder = ContextMapping.builder("T")
+        ContextMapping.TableBuilder builder = ContextMapping.builder().beginTable("T")
                 .instancePrefix(EX + "inst/")
                 .fallbackPrefix(EX);
         if (hasId(csvPath))
-            ctxtBuilder.addIdColumn("id");
-        ContextMapping mapping = ctxtBuilder.build();
+            builder.addIdColumn("id");
+        ContextMapping mapping = builder.endTable().build();
         CSVInMemoryCQEndpoint ep;
         try (InputStream in = getClass().getResourceAsStream(csvPath)) {
             assertNotNull(in);

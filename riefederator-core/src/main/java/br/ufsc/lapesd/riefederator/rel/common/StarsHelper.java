@@ -12,7 +12,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;

@@ -1,14 +1,14 @@
 package br.ufsc.lapesd.riefederator.webapis.description;
 
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.query.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.QueryRelevantTermAnnotation;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
 
 @Immutable
-public class AtomAnnotation implements TermAnnotation {
+public class AtomAnnotation implements QueryRelevantTermAnnotation {
     private final @Nonnull Atom atom;
 
     public AtomAnnotation(@Nonnull Atom atom) {

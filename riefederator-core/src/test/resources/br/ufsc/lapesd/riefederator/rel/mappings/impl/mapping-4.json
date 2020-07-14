@@ -1,0 +1,30 @@
+[
+  {
+    "@context": {
+      "@type": "http://xmlns.com/foaf/0.1/Person",
+      "@uriProperty": "name",
+      "name": "http://xmlns.com/foaf/0.1/name"
+    },
+    "tableName": "T1",
+    "@fallbackPrefix": "http://xmlns.com/foaf/0.1/",
+    "@instancePrefix": "http://example.org/"
+  },
+  {
+    "@context": {
+      "@type": ["http://xmlns.com/foaf/0.1/Person"],
+      "@uriProperty": "@GenerateUri",
+      "age": "http://xmlns.com/foaf/0.1/age"
+    },
+    "tableName": "T3",
+    "instancePrefix": "http://example.org/"
+  },
+  {
+    "@context": {
+      "@type": ["http://example.org/Professor"],
+      "@uriProperty": "@blank",
+      "name": "http://xmlns.com/foaf/0.1/name"
+    },
+    "tableName": "T4",
+    "instancePrefix": "http://example.org/"
+  }
+]

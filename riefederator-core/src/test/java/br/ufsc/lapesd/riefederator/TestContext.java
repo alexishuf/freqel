@@ -65,6 +65,9 @@ public interface TestContext {
 
     @Nonnull URI Person   = new StdURI(FOAF.Person.getURI());
     @Nonnull URI Document = new StdURI(FOAF.Document.getURI());
+    @Nonnull URI University = new StdURI("http://example.org/University");
+    @Nonnull URI Paper = new StdURI("http://example.org/Paper");
+    @Nonnull URI Authorship = new StdURI("http://example.org/Authorship");
 
     @Nonnull URI knows            = new StdURI(FOAF.knows.getURI());
     @Nonnull URI name             = new StdURI(FOAF.name.getURI());
@@ -77,21 +80,25 @@ public interface TestContext {
 
     @Nonnull URI Consumer = new StdURI("http://example.org/Consumer");
 
-    @Nonnull URI id         = new StdURI("http://example.org/id");
-    @Nonnull URI p1         = new StdURI("http://example.org/p1");
-    @Nonnull URI p2         = new StdURI("http://example.org/p2");
-    @Nonnull URI p3         = new StdURI("http://example.org/p3");
-    @Nonnull URI p4         = new StdURI("http://example.org/p4");
-    @Nonnull URI p5         = new StdURI("http://example.org/p5");
-    @Nonnull URI p6         = new StdURI("http://example.org/p6");
-    @Nonnull URI p7         = new StdURI("http://example.org/p7");
-    @Nonnull URI p8         = new StdURI("http://example.org/p8");
-    @Nonnull URI p9         = new StdURI("http://example.org/p9");
-    @Nonnull URI nameEx     = new StdURI("http://example.org/name");
-    @Nonnull URI mainName   = new StdURI("http://example.org/mainName");
-    @Nonnull URI authorName = new StdURI("http://example.org/authorName");
-    @Nonnull URI ageEx      = new StdURI("http://example.org/age");
-    @Nonnull URI university = new StdURI("http://example.org/university");
+    @Nonnull URI idEx = new StdURI("http://example.org/id");
+    @Nonnull URI p1            = new StdURI("http://example.org/p1");
+    @Nonnull URI p2            = new StdURI("http://example.org/p2");
+    @Nonnull URI p3            = new StdURI("http://example.org/p3");
+    @Nonnull URI p4            = new StdURI("http://example.org/p4");
+    @Nonnull URI p5            = new StdURI("http://example.org/p5");
+    @Nonnull URI p6            = new StdURI("http://example.org/p6");
+    @Nonnull URI p7            = new StdURI("http://example.org/p7");
+    @Nonnull URI p8            = new StdURI("http://example.org/p8");
+    @Nonnull URI p9            = new StdURI("http://example.org/p9");
+    @Nonnull URI titleEx       = new StdURI("http://example.org/title");
+    @Nonnull URI nameEx        = new StdURI("http://example.org/name");
+    @Nonnull URI mainName      = new StdURI("http://example.org/mainName");
+    @Nonnull URI authorName    = new StdURI("http://example.org/authorName");
+    @Nonnull URI ageEx         = new StdURI("http://example.org/age");
+    @Nonnull URI university    = new StdURI("http://example.org/university");
+    @Nonnull URI university_id = new StdURI("http://example.org/university_id");
+    @Nonnull URI paper_id      = new StdURI("http://example.org/paper_id");
+    @Nonnull URI author_id     = new StdURI("http://example.org/author_id");
     @Nonnull URI likes      = new StdURI("http://example.org/likes");
     @Nonnull URI bornIn     = new StdURI("http://example.org/bornIn");
     @Nonnull URI author     = new StdURI("http://example.org/author");
@@ -115,6 +122,15 @@ public interface TestContext {
     @Nonnull Var p = new StdVar("p");
     @Nonnull Var o = new StdVar("o");
 
+    @Nonnull Var u1 = new StdVar("u1");
+    @Nonnull Var v1 = new StdVar("v1");
+    @Nonnull Var s1 = new StdVar("s1");
+    @Nonnull Var o1 = new StdVar("o1");
+    @Nonnull Var u2 = new StdVar("u2");
+    @Nonnull Var v2 = new StdVar("v2");
+    @Nonnull Var s2 = new StdVar("s2");
+    @Nonnull Var o2 = new StdVar("o2");
+
     @Nonnull Var x1 = new StdVar("x1");
     @Nonnull Var x2 = new StdVar("x2");
     @Nonnull Var x3 = new StdVar("x3");
@@ -125,4 +141,6 @@ public interface TestContext {
     @Nonnull Var y3 = new StdVar("y3");
     @Nonnull Var y4 = new StdVar("y4");
 
+    @Nonnull Var z1 = new StdVar("z1");
+    @Nonnull Var z2 = new StdVar("z2");
 }

@@ -48,12 +48,36 @@ public class StarSqlWriterTest implements TestContext {
     private static final Column cu = new Column("T", "cu");
     private static final Column cv = new Column("T", "cv");
     private static final Column co = new Column("T", "co");
+    private static final Column ku = new Column("U", "ku");
+    private static final Column kv = new Column("U", "kv");
     private static final Atom atomT = Molecule.builder("T").tag(new TableTag("T")).buildAtom();
     private static final Atom atomCu = Molecule.builder("Cu").tag(new ColumnTag(cu)).buildAtom();
     private static final Atom atomCv = Molecule.builder("Cv").tag(new ColumnTag(cv)).buildAtom();
     private static final Atom atomCo = Molecule.builder("Co").tag(new ColumnTag(co)).buildAtom();
+    private static final Atom atomKu = Molecule.builder("Ku").tag(new ColumnTag(ku)).buildAtom();
+    private static final Atom atomT2 = Molecule.builder("T").tag(new TableTag("T"))
+                                                            .tag(new ColumnTag(ku)).buildAtom();
+    private static final Atom atomCu2 = Molecule.builder("Cu").tag(new ColumnTag(cu))
+                                                              .tag(new TableTag("U")).buildAtom();
+    private static final Atom atomCv2 = Molecule.builder("Cv").tag(new ColumnTag(cv))
+                                                              .tag(new TableTag("U")).buildAtom();
+    private static final Atom atomCu3 = Molecule.builder("Cu").tag(new ColumnTag(cu))
+                                                              .tag(new ColumnTag(ku)).buildAtom();
+    private static final Atom atomCv3 = Molecule.builder("Cv").tag(new ColumnTag(cv))
+                                                              .tag(new ColumnTag(kv)).buildAtom();
     private static final Lit i23 = StdLit.fromUnescaped("23", xsdInt);
     private static final Lit i24 = StdLit.fromUnescaped("24", xsdInt);
+
+    private static final AtomAnnotation aaT = AtomAnnotation.of(atomT);
+    private static final AtomAnnotation aaCu = AtomAnnotation.of(atomCu);
+    private static final AtomAnnotation aaCv = AtomAnnotation.of(atomCv);
+    private static final AtomAnnotation aaCo = AtomAnnotation.of(atomCo);
+    private static final AtomAnnotation aaKu = AtomAnnotation.of(atomKu);
+    private static final AtomAnnotation aaT2 = AtomAnnotation.of(atomT2);
+    private static final AtomAnnotation aaCu2 = AtomAnnotation.of(atomCu2);
+    private static final AtomAnnotation aaCu3 = AtomAnnotation.of(atomCu3);
+    private static final AtomAnnotation aaCv2 = AtomAnnotation.of(atomCv2);
+    private static final AtomAnnotation aaCv3 = AtomAnnotation.of(atomCv3);
 
     @Test
     public void testToSelector() {
@@ -137,11 +161,6 @@ public class StarSqlWriterTest implements TestContext {
     }
     @DataProvider
     public static @Nonnull Object[][] writeSqlData() {
-        AtomAnnotation aaT = AtomAnnotation.of(atomT);
-        AtomAnnotation aaCu = AtomAnnotation.of(atomCu);
-        AtomAnnotation aaCv = AtomAnnotation.of(atomCv);
-        AtomAnnotation aaCo = AtomAnnotation.of(atomCo);
-
         return Stream.of(
                 asList(createQuery(x, aaT, name, u, aaCu, Projection.advised("u")),
                                   "T AS star_0", null, null),
@@ -159,7 +178,31 @@ public class StarSqlWriterTest implements TestContext {
                                    "T AS star_0", null, null),
                 asList(createQuery(x, aaT, age, v, aaCv, SPARQLFilter.build("?v < 23")),
                                    "(SELECT T.cv AS v, T.cu AS _riefederator_id_col_0 " +
-                                   "FROM T WHERE (T.cv < 23)) AS star_0", null, null)
+                                   "FROM T WHERE (T.cv < 23)) AS star_0", null, null),
+                // first case with multiple AtomAnnotations on subject
+                asList(createQuery(x, aaT, aaKu, name, u, aaCu, Projection.advised("u")),
+                        "T AS star_0", null, null),
+                // tolerate TableTag on subject atom
+                asList(createQuery(x, aaT, aaKu, name, u, aaCu2, Projection.advised("u")),
+                        "T AS star_0", null, null),
+                // tolerate two ColumnTags on object atom
+                asList(createQuery(x, aaT, name, u, aaCu3, Projection.advised("u")),
+                        "T AS star_0", null, null),
+                // tolerate ColumnTag on subject atom
+                asList(createQuery(x, aaT2, name, u, aaCu3, Projection.advised("u")),
+                        "T AS star_0", null, null),
+                //tolerate table tag on object and column tag on subject
+                asList(createQuery(x, aaT2, name,   u,  aaCu2,
+                                   x, aaT2, age,   i23, aaCv2,
+                                   Projection.required("u")),
+                        "(SELECT T.cu AS u FROM T WHERE T.cv = 23) AS star_0",
+                        null, null),
+                // tolerate unrelated column tag on object
+                asList(createQuery(x, aaT2, name,   u,  aaCu3,
+                                   x, aaT2, age,   i23, aaCv3,
+                                   Projection.required("u")),
+                        "(SELECT T.cu AS u FROM T WHERE T.cv = 23) AS star_0",
+                        null, null)
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
@@ -167,14 +210,14 @@ public class StarSqlWriterTest implements TestContext {
     public void testWriteSql(@Nonnull CQuery query, @Nonnull String expected,
                              @Nullable Set<SPARQLFilter> pendingFilters,
                              @Nullable Set<SPARQLFilter> expectedPendingFilters) {
-        ContextMapping mapping = ContextMapping.builder("T")
+        ContextMapping mapping = ContextMapping.builder().beginTable("T")
                 .addIdColumn("cu")
                 .fallbackPrefix(EX)
-                .instancePrefix(EX + "inst/").build();
+                .instancePrefix(EX + "inst/").endTable().build();
         assertEquals(pendingFilters == null, expectedPendingFilters == null);
         List<StarSubQuery> stars = StarsHelper.findStars(query);
         assertEquals(stars.size(), 1);
-        StarVarIndex index = new StarVarIndex(query, stars, mapping);
+        StarVarIndex index = new StarVarIndex(query, stars, mapping, false);
 
         StarSqlWriter w = new StarSqlWriter(DefaultSqlTermWriter.INSTANCE);
         String actual = w.write(index, 0, pendingFilters);

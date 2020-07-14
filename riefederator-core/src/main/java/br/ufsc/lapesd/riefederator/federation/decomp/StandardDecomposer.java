@@ -14,7 +14,9 @@ import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import com.google.common.collect.*;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.SetMultimap;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,9 +110,9 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
                     Set<CQuery> alts = ne2alts.get(ImmutablePair.of(triplesWithAlts.get(0), ep));
                     triples.remove(triplesWithAlts.get(0));
                     CQuery fixed = CQuery.from(triples);
-                    List<CQuery> egAlts = alts.stream().map(q -> CQuery.union(q, fixed))
+                    List<CQuery> egAlts = alts.stream().map(q -> CQuery.merge(q, fixed))
                                               .collect(toList());
-                    CQuery matched = CQuery.union(CQuery.from(triplesWithAlts.get(0)), fixed);
+                    CQuery matched = CQuery.merge(CQuery.from(triplesWithAlts.get(0)), fixed);
                     qns.add(new ProtoQueryNode(ep, matched, egAlts));
                 } else {
                     // Chaos ensues if we try to to build a single node for the EG
@@ -133,46 +135,62 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
     @Override
     protected @Nonnull List<ProtoQueryNode> minimizeQueryNodes(@Nonnull CQuery query,
                                                                @Nonnull List<ProtoQueryNode> nodes) {
-        SetMultimap<Signature, ProtoQueryNode> sig2pn = HashMultimap.create();
-        nodes.forEach(pn -> sig2pn.put(new Signature(pn, query.getSet(), query.getVars()), pn));
-        List<Signature> signatures = new ArrayList<>(sig2pn.keySet());
-        if (signatures.size() < nodes.size()) {
+        SetMultimap<Signature, ProtoQueryNode> sig2pn = groupAndDedup(query, nodes);
+        if (logger.isDebugEnabled() && sig2pn.values().size() < nodes.size()) {
             logger.debug("Discarded {} nodes due to duplicate  endpoint/triple/inputs signatures",
-                    nodes.size() - signatures.size());
+                    nodes.size() - sig2pn.values().size());
         }
 
+        List<Signature> signatures = new ArrayList<>(sig2pn.keySet());
         List<ProtoQueryNode> reduced = new ArrayList<>(signatures.size());
-        ListMultimap<TPEndpoint, Signature> ep2sig =
-                MultimapBuilder.hashKeys().arrayListValues().build();
+        Map<TPEndpoint, List<ProtoQueryNode>> ep2pn = new HashMap<>();
         BitSet exclusive = getExclusiveSignatures(signatures);
         for (int i = 0, size = signatures.size(); i < size; i++) {
             Signature s = signatures.get(i);
-            if (exclusive.get(i) && s.inputs.isEmpty()
-                    && !sig2pn.get(s).iterator().next().hasAlternatives()) {
-                ep2sig.put(s.endpoint, s);
+            if (!exclusive.get(i) || !s.inputs.isEmpty()) {
+                reduced.addAll(sig2pn.get(s));
             } else {
-                reduced.add(sig2pn.get(s).iterator().next());
+                for (ProtoQueryNode pn : sig2pn.get(s)) {
+                    if (!pn.hasAlternatives())
+                        ep2pn.computeIfAbsent(s.endpoint, k -> new LinkedList<>()).add(pn);
+                    else
+                        reduced.add(pn);
+                }
             }
         }
 
-        for (TPEndpoint ep : ep2sig.keySet()) {
-            List<Signature> list = ep2sig.get(ep);
-            if (list.size() == 1) {
-                reduced.add(sig2pn.get(list.get(0)).iterator().next());
-            } else if (list.size() > 1) {
-                CQuery.Builder b = CQuery.builder();
-                for (Signature sig : list) {
-                    ProtoQueryNode pn = sig2pn.get(sig).iterator().next();
-                    assert !pn.hasAlternatives();
-                    CQuery matchedQuery = pn.getMatchedQuery();
-                    b.addAll(matchedQuery);
-                    b.copyAnnotations(matchedQuery);
-                    b.copyModifiers(matchedQuery);
-                }
-                reduced.add(new ProtoQueryNode(ep, b.build()));
+        for (Map.Entry<TPEndpoint, List<ProtoQueryNode>> e : ep2pn.entrySet()) {
+            List<ProtoQueryNode> list = e.getValue();
+            while (!list.isEmpty()) {
+                if (!tryMerge(list))
+                    reduced.add(list.remove(0));
             }
         }
         return reduced;
+    }
+
+    private boolean tryMerge(@Nonnull List<ProtoQueryNode> list) {
+        if (list.size() <= 1)
+            return false;
+        boolean hasMerge = false;
+        Iterator<ProtoQueryNode> it = list.iterator();
+        ProtoQueryNode left = it.next();
+        assert !left.hasAlternatives();
+        while (it.hasNext()) {
+            ProtoQueryNode right = it.next();
+            assert right.getEndpoint().equals(left.getEndpoint());
+            assert !right.hasAlternatives();
+            CQuery merged = MergeHelper.tryMerge(left.getMatchedQuery(), right.getMatchedQuery());
+            if (merged != null) {
+                hasMerge = true;
+                left = new ProtoQueryNode(left.getEndpoint(), merged);
+                it.remove();
+            }
+        }
+        if (hasMerge)
+            list.set(0, left); //update first element with merged
+        return hasMerge;
+
     }
 
     private @Nonnull BitSet getExclusiveSignatures(@Nonnull List<Signature> list) {
@@ -198,11 +216,6 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
                 bad.or(partial);
             }
         });
-        List<Signature> exclusive = new ArrayList<>(bad.cardinality());
-        for (int i = 0, size = list.size(); i < size; i++) {
-            if (!bad.get(i))
-                exclusive.add(list.get(i));
-        }
         bad.flip(0, list.size());
         return bad;
     }

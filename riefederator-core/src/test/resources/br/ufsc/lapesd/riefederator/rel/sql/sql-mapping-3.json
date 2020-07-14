@@ -1,0 +1,48 @@
+[
+  {
+    "@context": {
+      "@type": "http://example.org/University",
+      "@uriProperty": "id",
+      "id": "http://example.org/id",
+      "name": "http://example.org/name"
+    },
+    "tableName": "University",
+    "@fallbackPrefix": "http://example.org/",
+    "@instancePrefix": "http://example.org/University/"
+  },
+  {
+    "@context": {
+      "@type": "http://example.org/Paper",
+      "@uriProperty": "id",
+      "id": "http://example.org/id",
+      "title": "http://example.org/title"
+    },
+    "tableName": "Paper",
+    "@fallbackPrefix": "http://example.org/",
+    "@instancePrefix": "http://example.org/Paper/"
+  },
+  {
+    "@context": {
+      "@type": "http://xmlns.com/foaf/0.1/Person",
+      "@uriProperty": "id",
+      "id": "http://example.org/id",
+      "name": "http://example.org/name",
+      "age": "http://example.org/age",
+      "university_id": "http://example.org/university_id"
+    },
+    "tableName": "Person",
+    "@fallbackPrefix": "http://example.org/",
+    "@instancePrefix": "http://example.org/Person/"
+  },
+  {
+    "@context": {
+      "@type": "http://xmlns.com/foaf/0.1/Authorship",
+      "@uriProperty": ["paper_id", "author_id"],
+      "paper_id": "http://example.org/paper_id",
+      "author_id": "http://example.org/author_id"
+    },
+    "tableName": "Authorship",
+    "@fallbackPrefix": "http://example.org/",
+    "@instancePrefix": "http://example.org/Authorship/"
+  }
+]

@@ -31,7 +31,7 @@ public class BindJoinCardinalityEstimator implements JoinCardinalityEstimator {
 
     @Override
     public @Nonnull Cardinality estimate(@Nonnull JoinInfo i) {
-        CQuery union = CQuery.union(getTriples(i.getLeft()), getTriples(i.getRight()));
+        CQuery union = CQuery.merge(getTriples(i.getLeft()), getTriples(i.getRight()));
         return cardinalityEnsemble.estimate(union, null);
     }
 

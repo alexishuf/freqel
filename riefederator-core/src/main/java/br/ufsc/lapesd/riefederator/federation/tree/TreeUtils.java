@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
-import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.CardinalityAdder;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -248,16 +248,16 @@ public class TreeUtils {
         node = flattenMultiQuery(node);
         if (!(node instanceof MultiQueryNode)) return node;
 
-        ListMultimap<Set<Triple>, QueryNode> mm;
+        ListMultimap<CQuery, QueryNode> mm;
         mm = MultimapBuilder.hashKeys().arrayListValues().build();
         List<PlanNode> children = node.getChildren();
         for (PlanNode child : children) {
             if (child instanceof QueryNode)
-                mm.put(((QueryNode) child).getQuery().getSet(), (QueryNode) child);
+                mm.put(((QueryNode) child).getQuery(), (QueryNode) child);
         }
 
         BitSet mkd = new BitSet(children.size());
-        for (Set<Triple> key : mm.keySet()) {
+        for (CQuery key : mm.keySet()) {
             List<QueryNode> list = mm.get(key);
             for (int i = 0; i < list.size(); i++) {
                 if (mkd.get(i)) continue;

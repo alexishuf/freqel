@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.description;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.query.TripleAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;

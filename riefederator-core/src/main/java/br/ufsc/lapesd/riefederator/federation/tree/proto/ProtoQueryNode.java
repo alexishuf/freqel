@@ -4,9 +4,12 @@ import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.QueryRelevantTermAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.QueryRelevantTripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
@@ -15,6 +18,7 @@ public class ProtoQueryNode {
     private @Nonnull TPEndpoint endpoint;
     private @Nonnull CQuery matchedQuery;
     private @Nonnull Collection<CQuery> alternatives;
+    private @Nullable Boolean queryRelevantAnnotations = null;
 
     public ProtoQueryNode(@Nonnull TPEndpoint endpoint, @Nonnull CQuery matchedQuery) {
         this(endpoint, matchedQuery, Collections.emptySet());
@@ -69,6 +73,16 @@ public class ProtoQueryNode {
 
     public void setAlternatives(@Nonnull Collection<CQuery> alternatives) {
         this.alternatives = alternatives;
+    }
+
+    public boolean hasQueryRelevantAnnotations() {
+        if (queryRelevantAnnotations != null)
+            return queryRelevantAnnotations;
+        CQuery q = this.matchedQuery;
+        queryRelevantAnnotations =
+                   q.forEachTermAnnotation(QueryRelevantTermAnnotation.class, (t, a) -> {})
+                || q.forEachTripleAnnotation(QueryRelevantTripleAnnotation.class, (t, a) -> {});
+        return queryRelevantAnnotations;
     }
 
     @Override

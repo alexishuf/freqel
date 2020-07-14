@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.InputAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;

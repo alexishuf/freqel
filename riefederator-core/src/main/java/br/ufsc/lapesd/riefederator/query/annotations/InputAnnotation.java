@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.annotations;
 
 
 import br.ufsc.lapesd.riefederator.model.term.Term;

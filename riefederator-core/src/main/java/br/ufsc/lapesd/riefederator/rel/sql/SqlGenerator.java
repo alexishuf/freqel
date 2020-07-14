@@ -25,6 +25,7 @@ public class SqlGenerator {
     private final @Nonnull RelationalMapping mapping;
     private @Nonnull SqlTermWriter termWriter = DefaultSqlTermWriter.INSTANCE;
     private boolean canDistinct = true, canLimit = true;
+    private boolean exposeJoinVars = false;
 
     public SqlGenerator(@Nonnull RelationalMapping mapping) {
         this.mapping = mapping;
@@ -57,6 +58,16 @@ public class SqlGenerator {
         return canLimit;
     }
 
+    @CanIgnoreReturnValue
+    public @Nonnull SqlGenerator setExposeJoinVars(boolean exposeJoinVars) {
+        this.exposeJoinVars = exposeJoinVars;
+        return this;
+    }
+
+    public boolean getExposeJoinVars() {
+        return exposeJoinVars;
+    }
+
     public @Nonnull SqlRewriting transform(@Nonnull CQuery query) {
         return transform(query, StarsHelper.getFilters(query));
     }
@@ -76,7 +87,7 @@ public class SqlGenerator {
 
         IndexedSubset<SPARQLFilter> pendingFilters = filters.fullSubset();
         List<StarSubQuery> stars = StarVarIndex.orderJoinable(StarsHelper.findStars(query));
-        StarVarIndex vars = new StarVarIndex(query, stars, mapping);
+        StarVarIndex vars = new StarVarIndex(query, stars, mapping, exposeJoinVars);
         StarSqlWriter starWriter = new StarSqlWriter(termWriter);
 
         List<String> starSqls = new ArrayList<>(stars.size());

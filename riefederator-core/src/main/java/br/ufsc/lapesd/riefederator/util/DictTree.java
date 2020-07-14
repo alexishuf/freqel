@@ -108,22 +108,28 @@ public class DictTree {
             this.uriResolver = uriResolver;
         }
 
-        public @WillNotClose @Nonnull
-        DictTree
+        public @WillNotClose @Nonnull DictTree
         fromInputStream(@Nonnull InputStream inputStream) throws IOException {
+            return fromInputStreamList(inputStream).get(0);
+        }
+
+        public @WillNotClose @Nonnull List<DictTree>
+        fromInputStreamList(@Nonnull InputStream inputStream) throws IOException {
             BufferedInputStream buffered = inputStream instanceof BufferedInputStream
                     ? (BufferedInputStream)inputStream : new BufferedInputStream(inputStream);
             assert buffered.markSupported();
             buffered.mark(Integer.MAX_VALUE);
             InputStreamReader reader = new InputStreamReader(buffered, StandardCharsets.UTF_8);
-            boolean json = true;
-            for (int value = reader.read(); json && value > -1; value = reader.read()) {
+            boolean json = true, list = false;
+            for (int value = reader.read(); value > -1; value = reader.read()) {
                 char c = (char)value;
-                if      (c == '{' || c == '[')      break;
-                else if (!Character.isSpaceChar(c)) json = false;
+                if      (c == '{')                  {               break; }
+                else if (c == '[')                  { list =  true; break; }
+                else if (!Character.isSpaceChar(c)) { json = false; break; }
             }
             buffered.reset();
-            return json ? fromJson(buffered) : fromYaml(buffered);
+            return json ? (list ? fromJsonList(buffered) : singletonList(fromJson(buffered)))
+                        : fromYamlList(new InputStreamReader(buffered, StandardCharsets.UTF_8));
         }
 
         public  @Nonnull
@@ -290,6 +296,11 @@ public class DictTree {
 
         public @Nonnull DictTree
         fromResource(@Nonnull Class<?> cls, @Nonnull String resourcePath) throws IOException {
+            return fromResourceList(cls, resourcePath).get(0);
+        }
+
+        public @Nonnull List<DictTree>
+        fromResourceList(@Nonnull Class<?> cls, @Nonnull String resourcePath) throws IOException {
             UriResolver fallback = this.uriResolver;
             this.uriResolver = new ResourceResolver(cls, resourcePath, fallback);
             if (this.name == null) {
@@ -297,7 +308,7 @@ public class DictTree {
                                          .replaceAll("/[^/]+$", "") + "/" + resourcePath;
             }
             try (InputStream stream = ResourceOpener.getStream(cls, resourcePath)) {
-                return fromInputStream(stream);
+                return fromInputStreamList(stream);
             } finally {
                 uriResolver = fallback;
             }

@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.rel.sql;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.common.StarSubQuery;
@@ -37,13 +38,18 @@ public class SqlRewriting {
 
         for (int i = 0, size = varIndex.getStarCount(); i < size; i++) {
             StarSubQuery star = varIndex.getStar(i);
+            String table = star.findTable();
+            assert table != null;
             stars.add(star);
             List<String> starVars = new ArrayList<>();
             List<Column> starColumns = new ArrayList<>();
             for (String v : varIndex.getStarProjection(i)) {
                 if (star.isCore(v)) continue;
                 starVars.add(v);
-                starColumns.add(varIndex.getColumn(v));
+                Column column = star.getColumn(new StdVar(v));
+                assert column != null;
+                assert table.equals(column.getTable());
+                starColumns.add(column);
             }
             for (Map.Entry<String, Column> e : varIndex.getIdVar2Column(i).entrySet()) {
                 starVars.add(e.getKey());
@@ -55,8 +61,6 @@ public class SqlRewriting {
             assert new HashSet<>(starVars).size() == starVars.size() : "Duplicates in starVars";
             assert starVars.size() == starColumns.size() : "#vars != #columns for star"+i;
             assert starColumns.stream().noneMatch(Objects::isNull) : "Null Columns in starColumns";
-            assert varIndex.getOuterProjection().containsAll(starVars)
-                    : "starVars for star "+i+" not in outerProjection";
         }
         assert stars.size() == starVars.size();
         assert stars.size() == starColumns.size();

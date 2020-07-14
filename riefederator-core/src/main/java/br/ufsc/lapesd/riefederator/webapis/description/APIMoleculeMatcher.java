@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.reason.tbox.OWLAPITBoxReasoner;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
@@ -99,7 +100,7 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
 
     public APIMoleculeMatcher(@Nonnull APIMolecule apiMolecule,
                               @Nonnull TBoxReasoner reasoner) {
-        super(apiMolecule.getMolecule(), reasoner);
+        super(apiMolecule.getMolecule(), reasoner, NoMergePolicyAnnotation.INSTANCE);
         this.apiMolecule = apiMolecule;
     }
 
@@ -245,7 +246,7 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                 prepareBuild();
                 if (parentEG == null) { // only check if creating the top-level exclusive group
                     getInputsFromFilters();
-                    CQuery query = builder.build();
+                    CQuery query = builder.annotate(NoMergePolicyAnnotation.INSTANCE).build();
 
                     // this check here is more specific than isValidEG(), as it checks inputs
                     // (not atoms) and inputs can come from FILTER()s (and that is not the

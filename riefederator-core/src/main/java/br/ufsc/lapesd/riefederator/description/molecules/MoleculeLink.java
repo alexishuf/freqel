@@ -69,7 +69,7 @@ public class MoleculeLink {
     public int hashCode() {
         int local = hash;
         if (local == 0)
-            hash = local = Objects.hash(getEdge(), getAtom(), isAuthoritative());
+            hash = local = Objects.hash(getEdge(), getAtom(), isAuthoritative(), getTags());
         return local;
     }
 }

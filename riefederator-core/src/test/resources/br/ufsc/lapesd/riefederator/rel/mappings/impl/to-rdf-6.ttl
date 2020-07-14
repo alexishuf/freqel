@@ -1,0 +1,8 @@
+@prefix : <http://example.org/> .
+@prefix plain: <urn:plain:> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+
+:bob a foaf:Person;
+      foaf:name "bob"^^xsd:string ;
+      foaf:age "22"^^xsd:int .

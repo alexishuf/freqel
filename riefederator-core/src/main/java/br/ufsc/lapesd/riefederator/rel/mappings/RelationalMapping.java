@@ -11,7 +11,6 @@ import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 
 /**
  * Defines a mapping from relational/columnar data to RDF.
@@ -105,22 +104,22 @@ public interface RelationalMapping {
      *         {@link RelationalMapping#getIdColumns(String, Collection)} to get {@link Column}
      *         instances.
      */
-    default @Nonnull Set<String> getIdColumnsNames(@Nonnull String table,
+    default @Nonnull List<String> getIdColumnsNames(@Nonnull String table,
                                                    @Nullable Collection<?> columns) {
-        return getIdColumns(table, columns).stream().map(Column::getColumn).collect(toSet());
+        return getIdColumns(table, columns).stream().map(Column::getColumn).collect(toList());
     }
     /** See {@link RelationalMapping#getIdColumnsNames(String, Collection)} */
-    default @Nonnull Set<Column> getIdColumns(@Nonnull String table,
+    default @Nonnull List<Column> getIdColumns(@Nonnull String table,
                                               @Nullable Collection<?> columns) {
         return getIdColumnsNames(table, columns).stream()
-                .map(n -> new Column(table, n)).collect(toSet());
+                .map(n -> new Column(table, n)).collect(toList());
     }
     /** See {@link RelationalMapping#getIdColumnsNames(String, Collection)} */
-    default @Nonnull Set<String> getIdColumnsNames(@Nonnull String table) {
+    default @Nonnull List<String> getIdColumnsNames(@Nonnull String table) {
         return getIdColumnsNames(table, null);
     }
     /** See {@link RelationalMapping#getIdColumnsNames(String, Collection)} */
-    default @Nonnull Set<Column> getIdColumns(@Nonnull String table) {
+    default @Nonnull List<Column> getIdColumns(@Nonnull String table) {
         return getIdColumns(table, null);
     }
 

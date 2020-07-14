@@ -2,6 +2,8 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.parse.CQueryContext;

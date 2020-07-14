@@ -4,7 +4,10 @@ import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSetMultimap;
+import com.google.common.collect.MultimapBuilder;
+import com.google.common.collect.SetMultimap;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
@@ -19,7 +22,7 @@ import static java.util.stream.Stream.concat;
 
 @Immutable
 public class Molecule {
-    private @Nonnull final ImmutableList<Atom> coreAtoms;
+    private @Nonnull final ImmutableSet<Atom> coreAtoms;
     private @LazyInit int hash;
     private @LazyInit int atomCount;
     private @Nonnull final ImmutableSet<AtomFilter> filters;
@@ -50,7 +53,7 @@ public class Molecule {
 
     Molecule(@Nonnull List<Atom> cores, int atomCount,
              @Nonnull Collection<AtomFilter> filters) {
-        this.coreAtoms = ImmutableList.copyOf(cores);
+        this.coreAtoms = ImmutableSet.copyOf(cores);
         this.atomCount = atomCount;
         this.filters = filters instanceof ImmutableSet ? (ImmutableSet<AtomFilter>)filters
                                                        : ImmutableSet.copyOf(filters);
@@ -97,10 +100,10 @@ public class Molecule {
 
     public @Nonnull Atom getCore() {
         if (coreAtoms.isEmpty()) throw new NoSuchElementException();
-        return coreAtoms.get(0);
+        return coreAtoms.iterator().next();
     }
 
-    public @Nonnull ImmutableList<Atom> getCores() {
+    public @Nonnull ImmutableSet<Atom> getCores() {
         return coreAtoms;
     }
 

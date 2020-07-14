@@ -12,7 +12,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.InputAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
@@ -25,8 +25,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.*;
-
-import static java.util.stream.Collectors.toList;
 
 public abstract class SourcesListAbstractDecomposer implements DecompositionStrategy {
     private static final Logger logger
@@ -137,13 +135,28 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
         }
     }
 
+    protected @Nonnull SetMultimap<Signature, ProtoQueryNode>
+    groupAndDedup(@Nonnull CQuery query, @Nonnull Collection<ProtoQueryNode> in) {
+        SetMultimap<Signature, ProtoQueryNode> sig2pn = HashMultimap.create();
+        IndexedSet<Triple> triples = query.getSet();
+        IndexedSet<Var> vars = query.getVars();
+        for (ProtoQueryNode pn : in) sig2pn.put(new Signature(pn, triples, vars), pn);
+
+        Set<CQuery> tmp = new HashSet<>();
+        for (Signature sig : sig2pn.keySet()) {
+            Set<ProtoQueryNode> set = sig2pn.get(sig);
+            if (set.size() > 1) {
+                tmp.clear();
+                set.removeIf(protoQueryNode -> !tmp.add(protoQueryNode.getMatchedQuery()));
+            }
+        }
+        return sig2pn;
+    }
+
     protected @Nonnull List<ProtoQueryNode>
     minimizeQueryNodes(@Nonnull CQuery query, @Nonnull List<ProtoQueryNode> nodes) {
-        SetMultimap<Signature, ProtoQueryNode> sig2pn = HashMultimap.create();
-        nodes.forEach(pn -> sig2pn.put(new Signature(pn, query.getSet(), query.getVars()), pn));
-
-        List<ProtoQueryNode> list = sig2pn.keySet().stream()
-                .map(s -> sig2pn.get(s).iterator().next()).collect(toList());
+        SetMultimap<Signature, ProtoQueryNode> sig2pn = groupAndDedup(query, nodes);
+        List<ProtoQueryNode> list = new ArrayList<>(sig2pn.values());
         if (list.size() < nodes.size()) {
             logger.debug("Discarded {} nodes due to duplicate  endpoint/triple/inputs signatures",
                          nodes.size() - list.size());
