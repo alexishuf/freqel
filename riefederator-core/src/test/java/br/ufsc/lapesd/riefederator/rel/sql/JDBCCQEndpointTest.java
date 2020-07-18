@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
+import br.ufsc.lapesd.riefederator.model.term.std.StdBlank;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
@@ -15,8 +16,8 @@ import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
-import br.ufsc.lapesd.riefederator.rel.mappings.impl.ContextMapping;
-import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnTag;
+import br.ufsc.lapesd.riefederator.rel.mappings.context.ContextMapping;
+import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
@@ -55,47 +56,47 @@ public class JDBCCQEndpointTest implements TestContext {
     private static final Column Person_supervisor = new Column("Person", "supervisor");
 
     private static final Atom aUniversity_id = Molecule.builder("University.id")
-            .tag(new ColumnTag(University_id)).buildAtom();
+            .tag(ColumnsTag.createDirect(University_id)).buildAtom();
     private static final Atom aUniversity_name = Molecule.builder("University.name")
-            .tag(new ColumnTag(University_name)).buildAtom();
+            .tag(ColumnsTag.createDirect(University_name)).buildAtom();
     private static final Atom aUniversity = Molecule.builder("University")
-            .out(idEx, aUniversity_id, new ColumnTag(University_id))
-            .out(nameEx, aUniversity_name, new ColumnTag(University_name))
+            .out(idEx, aUniversity_id, ColumnsTag.createDirect(University_id))
+            .out(nameEx, aUniversity_name, ColumnsTag.createDirect(University_name))
             .tag(new TableTag("University")).exclusive().buildAtom();
 
     private static final Atom aPaper_id = Molecule.builder("Paper.id")
-            .tag(new ColumnTag(Paper_id)).buildAtom();
+            .tag(ColumnsTag.createDirect(Paper_id)).buildAtom();
     private static final Atom aPaper_title = Molecule.builder("Paper.title")
-            .tag(new ColumnTag(Paper_title)).buildAtom();
+            .tag(ColumnsTag.createDirect(Paper_title)).buildAtom();
     private static final Atom aPaper = Molecule.builder("Paper")
-            .out(idEx, aPaper_id, new ColumnTag(Paper_id))
-            .out(titleEx, aPaper_title, new ColumnTag(Paper_title))
+            .out(idEx, aPaper_id, ColumnsTag.createDirect(Paper_id))
+            .out(titleEx, aPaper_title, ColumnsTag.createDirect(Paper_title))
             .tag(new TableTag("Paper")).exclusive().buildAtom();
 
 
     private static final Atom aPerson_id = Molecule.builder("Person.id")
-            .tag(new ColumnTag(Person_id)).buildAtom();
+            .tag(ColumnsTag.createDirect(Person_id)).buildAtom();
     private static final Atom aPerson_name = Molecule.builder("Person.name")
-            .tag(new ColumnTag(Person_name)).buildAtom();
+            .tag(ColumnsTag.createDirect(Person_name)).buildAtom();
     private static final Atom aPerson_age = Molecule.builder("Person.age")
-            .tag(new ColumnTag(Person_age)).buildAtom();
+            .tag(ColumnsTag.createDirect(Person_age)).buildAtom();
     private static final Atom aPerson_university_id = Molecule.builder("Person.university_id")
-            .tag(new ColumnTag(Person_university_id)).buildAtom();
+            .tag(ColumnsTag.createDirect(Person_university_id)).buildAtom();
     private static final Atom aPerson = Molecule.builder("Person")
-            .out(idEx, aPerson_id, new ColumnTag(Person_id))
-            .out(nameEx, aPerson_name, new ColumnTag(Person_name))
-            .out(ageEx, aPerson_age, new ColumnTag(Person_age))
-            .out(university_id, aPerson_university_id, new ColumnTag(Person_university_id))
+            .out(idEx, aPerson_id, ColumnsTag.createDirect(Person_id))
+            .out(nameEx, aPerson_name, ColumnsTag.createDirect(Person_name))
+            .out(ageEx, aPerson_age, ColumnsTag.createDirect(Person_age))
+            .out(university_id, aPerson_university_id, ColumnsTag.createDirect(Person_university_id))
             .tag(new TableTag("Person")).exclusive().buildAtom();
 
 
     private static final Atom aAuthorship_paper_id = Molecule.builder("Authorship.paper_id")
-            .tag(new ColumnTag(Authorship_paper_id)).buildAtom();
+            .tag(ColumnsTag.createDirect(Authorship_paper_id)).buildAtom();
     private static final Atom aAuthorship_author_id = Molecule.builder("Authorship.author_id")
-            .tag(new ColumnTag(Authorship_author_id)).buildAtom();
+            .tag(ColumnsTag.createDirect(Authorship_author_id)).buildAtom();
     private static final Atom aAuthorship = Molecule.builder("Authorship")
-            .out(paper_id, aAuthorship_paper_id, new ColumnTag(Authorship_paper_id))
-            .out(author_id, aAuthorship_author_id, new ColumnTag(Authorship_author_id))
+            .out(paper_id, aAuthorship_paper_id, ColumnsTag.createDirect(Authorship_paper_id))
+            .out(author_id, aAuthorship_author_id, ColumnsTag.createDirect(Authorship_author_id))
             .tag(new TableTag("Authorship")).exclusive().buildAtom();
 
     private static final AtomAnnotation aaUniversity = AtomAnnotation.of(aUniversity);
@@ -143,7 +144,7 @@ public class JDBCCQEndpointTest implements TestContext {
     @DataProvider
     public static @Nonnull Object[][] queryData() {
         return Stream.of(
-                // enumerate a varchar column
+                // enumerate a varchar column, do not inspect subjt
                 asList("dump-1.sql", "sql-mapping-2.json",
                        createQuery(x, nameEx, u, Projection.required("u")),
                        newHashSet(
@@ -152,6 +153,41 @@ public class JDBCCQEndpointTest implements TestContext {
                                MapSolution.build(u, Charlie),
                                MapSolution.build(u, Dave),
                                MapSolution.build(u, Eddie)), false),
+                // enumerate a varchar column and generate subjects
+                asList("dump-1.sql", "sql-mapping-2.json",
+                        createQuery(x, nameEx, u),
+                        newHashSet(
+                                MapSolution.builder().put(x, new StdURI(EX+"inst/1"))
+                                        .put(u, Alice).build(),
+                                MapSolution.builder().put(x, new StdURI(EX+"inst/2"))
+                                        .put(u, Bob).build(),
+                                MapSolution.builder().put(x, new StdURI(EX+"inst/3"))
+                                        .put(u, Charlie).build(),
+                                MapSolution.builder().put(x, new StdURI(EX+"inst/4"))
+                                        .put(u, Dave).build(),
+                                MapSolution.builder().put(x, new StdURI(EX+"inst/5"))
+                                        .put(u, Eddie).build()),
+                        false),
+                // enumerate subjects that have a varchar column
+                asList("dump-1.sql", "sql-mapping-2.json",
+                        createQuery(x, nameEx, u, Projection.required("x")),
+                        newHashSet(
+                                MapSolution.build(x, new StdURI(EX+"inst/1")),
+                                MapSolution.build(x, new StdURI(EX+"inst/2")),
+                                MapSolution.build(x, new StdURI(EX+"inst/3")),
+                                MapSolution.build(x, new StdURI(EX+"inst/4")),
+                                MapSolution.build(x, new StdURI(EX+"inst/5"))),
+                        false),
+                // enumerate subjects that have a varchar column, but use a blank node
+                asList("dump-1.sql", "sql-mapping-2.json",
+                        createQuery(x, nameEx, new StdBlank()),
+                        newHashSet(
+                                MapSolution.build(x, new StdURI(EX+"inst/1")),
+                                MapSolution.build(x, new StdURI(EX+"inst/2")),
+                                MapSolution.build(x, new StdURI(EX+"inst/3")),
+                                MapSolution.build(x, new StdURI(EX+"inst/4")),
+                                MapSolution.build(x, new StdURI(EX+"inst/5"))),
+                        false),
                 // Get alice university
                 // single star, no joins nor URI generation
                 asList("dump-1.sql", "sql-mapping-2.json",
@@ -373,6 +409,7 @@ public class JDBCCQEndpointTest implements TestContext {
             //although MoleculeMatcher breaks queries apart correctly, StandardDecomposer should
             //glue them back together since this is the only source
             boolean[] decomposed = {false};
+
             JDBCCQEndpoint ep = new JDBCCQEndpoint(mapping, dumpPath,
                     () -> DriverManager.getConnection(url)) {
                 @Override

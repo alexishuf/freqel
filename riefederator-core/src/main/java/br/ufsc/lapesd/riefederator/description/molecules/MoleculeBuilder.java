@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
+import br.ufsc.lapesd.riefederator.description.molecules.tags.AtomTag;
+import br.ufsc.lapesd.riefederator.description.molecules.tags.MoleculeLinkTag;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
@@ -16,17 +18,15 @@ import static java.util.Collections.emptySet;
 public class MoleculeBuilder {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(MoleculeBuilder.class);
 
+    private @Nonnull Atom currentAtom;
     private @Nonnull final List<Atom> cores = new ArrayList<>();
-    private @Nonnull String name;
-    private boolean exclusive = false, closed = false, disjoint = false;
-    private @Nonnull final Set<MoleculeLink> in = new HashSet<>(), out = new HashSet<>();
-    private @Nonnull final Set<AtomTag> atomTags = new HashSet<>();
     /* Atom names must be unique within a Molecule. This helps enforcing such rule */
     private @Nonnull final Map<String, Atom> name2atom = new HashMap<>();
     private @Nonnull final Set<AtomFilter> filterSet = new HashSet<>();
 
     public MoleculeBuilder(@Nonnull String name) {
-        this.name = name;
+        this.currentAtom = Atom.createMutable(name);
+        name2atom.put(name, currentAtom);
     }
 
     private void checkAtom(@Nonnull Atom atom) {
@@ -45,11 +45,7 @@ public class MoleculeBuilder {
     public @Nonnull MoleculeBuilder startNewCore(@Nonnull String name) {
         buildCore();
         // setup new core
-        this.name = name;
-        in.clear();
-        out.clear();
-        atomTags.clear();
-        exclusive = closed = disjoint = false;
+        currentAtom = name2atom.computeIfAbsent(name, Atom::createMutable);
         return this;
     }
 
@@ -57,7 +53,7 @@ public class MoleculeBuilder {
     @Contract("-> this") public @Nonnull MoleculeBuilder    exclusive() {return exclusive(true);}
     @Contract("_ -> this")
     public @Nonnull MoleculeBuilder exclusive(boolean value) {
-        this.exclusive = value;
+        currentAtom.setExclusive(value);
         return this;
     }
 
@@ -65,7 +61,7 @@ public class MoleculeBuilder {
     @Contract("-> this") public @Nonnull MoleculeBuilder    closed() {return closed(true);}
     @Contract("_ -> this")
     public @Nonnull MoleculeBuilder closed(boolean value) {
-        this.closed = value;
+        currentAtom.setClosed(value);
         return this;
     }
 
@@ -73,13 +69,28 @@ public class MoleculeBuilder {
     @Contract("-> this") public @Nonnull MoleculeBuilder    disjoint() {return disjoint(true);}
     @Contract("_ -> this")
     public @Nonnull MoleculeBuilder disjoint(boolean value) {
-        this.disjoint = value;
+        currentAtom.setDisjoint(value);
+        return this;
+    }
+
+    @Contract("_, _ -> this")
+    public @Nonnull MoleculeBuilder tag(@Nonnull String atomName,
+                                        @Nonnull Collection<? extends AtomTag> tags) {
+        Atom atom = this.name2atom.computeIfAbsent(atomName, Atom::createMutable);
+        tags.forEach(atom::addTag);
+        return this;
+    }
+    @Contract("_, _ -> this")
+    public @Nonnull MoleculeBuilder tag(@Nonnull String atomName, @Nonnull AtomTag... tags) {
+        Atom atom = this.name2atom.computeIfAbsent(atomName, Atom::createMutable);
+        for (AtomTag tag : tags)
+            atom.addTag(tag);
         return this;
     }
 
     @Contract("_ -> this")
     public @Nonnull MoleculeBuilder tag(@Nonnull AtomTag tag) {
-        this.atomTags.add(tag);
+        this.currentAtom.addTag(tag);
         return this;
     }
 
@@ -100,9 +111,9 @@ public class MoleculeBuilder {
     @Contract("_, _, _, _ -> this")
     public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull Atom atom, 
                                        boolean authoritative,
-                                       @Nonnull Collection<MoleculeLinkTag> tags) {
+                                       @Nonnull Collection<? extends MoleculeLinkTag> tags) {
         checkAtom(atom);
-        this.in.add(new MoleculeLink(edge, atom, authoritative, tags));
+        currentAtom.addIn(new MoleculeLink(edge, atom, authoritative, tags));
         return this;
     }
     @Contract("_, _, _ -> this")
@@ -112,7 +123,7 @@ public class MoleculeBuilder {
     }
     @Contract("_, _, _ -> this")
     public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull Atom atom,
-                                       Collection<MoleculeLinkTag> tags) {
+                                       Collection<? extends MoleculeLinkTag> tags) {
         return in(edge, atom, false, tags);
     }
     @Contract("_, _, _ -> this")
@@ -124,6 +135,16 @@ public class MoleculeBuilder {
     public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull String atomName) {
         return in(edge, atomName, false);
     }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull String atomName,
+                                       @Nonnull MoleculeLinkTag... tags) {
+        return in(edge, atomName, Arrays.asList(tags));
+    }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull String atomName,
+                                       @Nonnull Collection<? extends MoleculeLinkTag> tags) {
+        return in(edge, atomName, false, tags);
+    }
     @Contract("_, _-> this")
     public @Nonnull MoleculeBuilder inAuthoritative(@Nonnull Term edge, @Nonnull String atomName) {
         return in(edge, atomName, true);
@@ -131,9 +152,14 @@ public class MoleculeBuilder {
     @Contract("_, _, _ -> this")
     public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull String atomName,
                                        boolean authoritative) {
-        checkArgument(name2atom.containsKey(atomName),
-                "No Atom named "+atomName+" in this molecule so far");
-        return in(edge, name2atom.get(atomName), authoritative, emptyList());
+        return in(edge, atomName, authoritative, emptyList());
+    }
+    @Contract("_, _, _, _ -> this")
+    public @Nonnull MoleculeBuilder in(@Nonnull Term edge, @Nonnull String atomName,
+                                       boolean authoritative,
+                                       @Nonnull Collection<? extends MoleculeLinkTag> tags) {
+        Atom atom = name2atom.computeIfAbsent(atomName, Atom::createMutable);
+        return in(edge, atom, authoritative, tags);
     }
 
 
@@ -148,14 +174,14 @@ public class MoleculeBuilder {
     @Contract("_, _, _, _ -> this")
     public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull Atom atom,
                                         boolean authoritative,
-                                        @Nonnull Collection<MoleculeLinkTag> tags) {
+                                        @Nonnull Collection<? extends MoleculeLinkTag> tags) {
         checkAtom(atom);
-        this.out.add(new MoleculeLink(edge, atom, authoritative, tags));
+        currentAtom.addOut(new MoleculeLink(edge, atom, authoritative, tags));
         return this;
     }
     @Contract("_, _, _ -> this")
     public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull Atom atom,
-                                        @Nonnull Collection<MoleculeLinkTag> tags) {
+                                        @Nonnull Collection<? extends MoleculeLinkTag> tags) {
         return out(edge, atom, false, tags);
     }
     @Contract("_, _, _ -> this")
@@ -172,6 +198,16 @@ public class MoleculeBuilder {
     public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull String atomName) {
         return out(edge, atomName, false);
     }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull String atomName,
+                                        @Nonnull MoleculeLinkTag... tags) {
+        return out(edge, atomName, Arrays.asList(tags));
+    }
+    @Contract("_, _, _ -> this")
+    public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull String atomName,
+                                        @Nonnull Collection<? extends MoleculeLinkTag> tags) {
+        return out(edge, name2atom.computeIfAbsent(atomName, Atom::createMutable), tags);
+    }
     @Contract("_, _-> this")
     public @Nonnull MoleculeBuilder outAuthoritative(@Nonnull Term edge, @Nonnull String atomName) {
         return out(edge, atomName, true);
@@ -179,9 +215,13 @@ public class MoleculeBuilder {
     @Contract("_, _, _ -> this")
     public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull String atomName,
                                         boolean authoritative) {
-        checkArgument(name2atom.containsKey(atomName),
-                "No Atom named "+atomName+" in this molecule so far");
-        return out(edge, name2atom.get(atomName), authoritative);
+        return out(edge, atomName, authoritative, emptyList());
+    }
+    @Contract("_, _, _, _ -> this")
+    public @Nonnull MoleculeBuilder out(@Nonnull Term edge, @Nonnull String atomName,
+                                        boolean authoritative, Collection<MoleculeLinkTag> tags) {
+        Atom atom = name2atom.computeIfAbsent(atomName, Atom::createMutable);
+        return out(edge, atom, authoritative, tags);
     }
 
     public @Nonnull MoleculeBuilder filter(@Nonnull AtomFilter filter) {
@@ -193,10 +233,9 @@ public class MoleculeBuilder {
     }
 
     private @Nonnull Atom buildCore() {
-        Atom atom = new Atom(name, exclusive, closed, disjoint, in, out, atomTags);
-        cores.add(atom);
-        name2atom.put(name, atom);
-        return atom;
+        cores.add(currentAtom);
+        assert name2atom.containsKey(currentAtom.getName());
+        return currentAtom;
     }
     @Contract("-> new") public @Nonnull Atom buildAtom() {
         if (!filterSet.isEmpty())
@@ -206,6 +245,7 @@ public class MoleculeBuilder {
 
     @Contract("-> new") public @Nonnull Molecule build() {
         buildCore();
+        cores.forEach(Atom::freeze);
         return new Molecule(cores, name2atom.size(), filterSet);
     }
 }

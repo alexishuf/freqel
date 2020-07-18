@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.rel.sql.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.rel.common.Selector;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
-import br.ufsc.lapesd.riefederator.rel.sql.DefaultSqlTermWriter;
 import br.ufsc.lapesd.riefederator.rel.sql.SqlTermWriter;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toSet;
 
-public abstract class SqlSelector {
+public abstract class SqlSelector implements Selector {
     protected final @Nonnull List<Column> columns;
     protected final @Nonnull List<Term> sparqlTerms;
     protected @LazyInit @Nullable Set<String> sparqlVars;
@@ -24,17 +24,17 @@ public abstract class SqlSelector {
         this.sparqlTerms = sparqlTerms;
     }
 
-    abstract public boolean hasSqlCondition();
-    abstract public @Nonnull String getSqlCondition(@Nonnull SqlTermWriter writer);
+    abstract public boolean hasCondition();
+    abstract public @Nonnull String getCondition(@Nonnull SqlTermWriter writer);
 
-    public @Nonnull String getSqlCondition() {
-        return getSqlCondition(DefaultSqlTermWriter.INSTANCE);
+    public @Nonnull String getCondition() {
+        return getCondition(DefaultSqlTermWriter.INSTANCE);
     }
 
     public @Nonnull List<Column> getColumns() {
         return columns;
     }
-    public @Nonnull List<Term> getSparqlTerms() {
+    public @Nonnull List<Term> getTerms() {
         return sparqlTerms;
     }
     public @Nonnull Set<String> getSparqlVars() {
@@ -47,7 +47,7 @@ public abstract class SqlSelector {
 
     @Override
     public String toString() {
-        return hasSqlCondition() ? getSqlCondition()
+        return hasCondition() ? getCondition()
                         : getSparqlVars().stream().map(v -> "?"+v).collect(Collectors.joining());
     }
 }

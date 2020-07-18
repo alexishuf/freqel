@@ -790,6 +790,16 @@ public class CQuery implements  List<Triple> {
     public static @Contract("-> new") @Nonnull Builder builder() {
         return new Builder();
     }
+    public static @Contract("_ -> new") @Nonnull Builder
+    builder(@Nonnull Collection<Triple> collection) {
+        Builder b = new Builder(collection.size());
+        collection.forEach(b::add);
+        if (collection instanceof CQuery) {
+            b.copyAnnotations((CQuery)collection);
+            b.copyModifiers((CQuery)collection);
+        }
+        return b;
+    }
     public static @Contract("_ -> new") @Nonnull Builder builder(int expectedTriples) {
         return new Builder(expectedTriples);
     }
@@ -921,8 +931,10 @@ public class CQuery implements  List<Triple> {
             for (Triple triple : getList()) {
                 boolean has = false;
                 for (TripleAnnotation ann : getTripleAnnotations(triple)) {
-                    if ((has = ann instanceof MatchAnnotation))
+                    if (ann instanceof MatchAnnotation) {
+                        has = true;
                         set.add(((MatchAnnotation) ann).getMatched());
+                    }
                 }
                 if (!has)
                     set.add(triple);

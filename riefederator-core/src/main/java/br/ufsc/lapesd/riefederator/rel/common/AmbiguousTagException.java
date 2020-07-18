@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.rel.common;
 
-import br.ufsc.lapesd.riefederator.description.molecules.ElementTag;
+import br.ufsc.lapesd.riefederator.description.molecules.tags.ElementTag;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 
 import javax.annotation.Nonnull;

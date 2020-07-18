@@ -1,0 +1,33 @@
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ex: <http://example.org/> .
+
+_:n1 rr:objectMap ex:tm-plain .
+_:n2 rr:objectMap ex:tm-string .
+_:n3 rr:objectMap ex:tm-lang .
+_:n4 rr:objectMap ex:tm-iri .
+_:n5 rr:objectMap ex:tm-blank .
+
+ex:tm-plain
+    rr:column "DUMMY" ;
+    rr:termType rr:Literal .
+
+ex:tm-string
+    rr:column "DUMMY" ;
+    rr:termType rr:Literal ;
+    rr:datatype xsd:string .
+
+ex:tm-lang
+    rr:column "DUMMY" ;
+    rr:termType rr:Literal ;
+    rr:language "en" .
+
+ex:tm-iri
+    rr:column "DUMMY" ;
+    rr:termType rr:IRI .
+
+ex:tm-blank
+    rr:column "DUMMY" ;
+    rr:termType rr:BlankNode .

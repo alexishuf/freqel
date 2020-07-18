@@ -14,6 +14,7 @@ import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.MoleculeLinkAnnotation;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -60,12 +61,16 @@ public class MoleculeMatcher implements SemanticDescription {
 
     @Override
     public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
-        return new State(query, false).matchExclusive().matchNonExclusive().build();
+        return createState(query, false).matchExclusive().matchNonExclusive().build();
+    }
+
+    protected @Nonnull MoleculeMatcher.State createState(@Nonnull CQuery query, boolean reasoning) {
+        return new State(query, reasoning);
     }
 
     @Override
     public @Nonnull SemanticCQueryMatch semanticMatch(@Nonnull CQuery query) {
-        return new State(query, true).matchExclusive().matchNonExclusive().build();
+        return createState(query, true).matchExclusive().matchNonExclusive().build();
     }
 
     @Override
@@ -103,12 +108,17 @@ public class MoleculeMatcher implements SemanticDescription {
     protected final static class Link {
         public @Nonnull Atom s, o;
         public @Nonnull Term p;
+        public @Nonnull MoleculeLink link;
+        public final boolean reversed;
         private int hash = 0;
 
-        public Link(@Nonnull Atom s, @Nonnull Term p, @Nonnull Atom o) {
+        public Link(@Nonnull Atom s, @Nonnull MoleculeLink link, @Nonnull Atom o,
+                    boolean reversed) {
             this.s = s;
-            this.p = p;
+            this.link = link;
+            this.p = link.getEdge();
             this.o = o;
+            this.reversed = reversed;
         }
 
         @Override
@@ -196,7 +206,7 @@ public class MoleculeMatcher implements SemanticDescription {
                     exclusive.add(a);
                 for (MoleculeLink l : a.getIn()) {
                     queue.add(l.getAtom());
-                    Link link = new Link(l.getAtom(), l.getEdge(), a);
+                    Link link = new Link(l.getAtom(), l, a, true);
                     if (!a.isExclusive())
                         pred2link.put(l.getEdge(), link);
                     SetMultimap<String, Link> a2l = getAtom2Link(l.getEdge());
@@ -206,7 +216,7 @@ public class MoleculeMatcher implements SemanticDescription {
                 }
                 for (MoleculeLink l : a.getOut()) {
                     queue.add(l.getAtom());
-                    Link link = new Link(a, l.getEdge(), l.getAtom());
+                    Link link = new Link(a, l, l.getAtom(), false);
                     if (!a.isExclusive())
                         pred2link.put(l.getEdge(), link);
                     SetMultimap<String, Link> a2l = getAtom2Link(l.getEdge());
@@ -323,8 +333,13 @@ public class MoleculeMatcher implements SemanticDescription {
             return matchBuilder.build();
         }
 
+        protected boolean ignoreTriple(@Nonnull Triple t) {
+            return false;
+        }
+
         public @Nonnull State matchNonExclusive() {
             for (Triple t : parentQuery) {
+                if (ignoreTriple(t)) continue;
                 if (t.getPredicate().isVar()) {
                     matchBuilder.addTriple(t).addAlternative(t, t);
                 } else {
@@ -494,6 +509,7 @@ public class MoleculeMatcher implements SemanticDescription {
             ArrayList<List<LinkMatch>> linkLists = new ArrayList<>(query.size());
             boolean empty = true;
             for (Triple triple : query) {
+                if (ignoreTriple(triple)) continue;
                 Triple.Position pos = triple.where(termAtom.left);
                 assert pos != null;
                 ArrayList<LinkMatch> found = new ArrayList<>();
@@ -536,7 +552,14 @@ public class MoleculeMatcher implements SemanticDescription {
                         term2atom.put(o, match.l.o.getName());
                     }
                 }
+                addTripleAnnotations(triple, matches);
                 addAtomAnnotations(triple, matches);
+            }
+
+            private void addTripleAnnotations(@Nonnull Triple triple,
+                                              @Nonnull Collection<LinkMatch> matches) {
+                for (LinkMatch m : matches)
+                    builder.annotate(triple, new MoleculeLinkAnnotation(m.l.link, m.l.reversed));
             }
 
             protected void addAtomAnnotations(@Nonnull Triple triple,
@@ -577,13 +600,15 @@ public class MoleculeMatcher implements SemanticDescription {
                 return false;
             }
 
-            public void addAlternative(@Nonnull Triple triple, @Nonnull Triple alt) {
+            public void addAlternative(@Nonnull CQuery query, @Nonnull Triple triple,
+                                       @Nonnull Triple alt) {
                 assert parentQuery.contains(triple);
                 alt.forEach(t -> {
                     if (t.isVar()) allVars.add(t.asVar());
                 });
                 builder.add(alt);
                 parentQuery.getTripleAnnotations(triple).forEach(a -> builder.annotate(alt, a));
+                query.getTripleAnnotations(triple).forEach(a -> builder.annotate(alt, a));
                 if (!alt.equals(triple))
                     builder.annotate(alt, new MatchAnnotation(triple));
             }
@@ -649,7 +674,7 @@ public class MoleculeMatcher implements SemanticDescription {
                 assert ps.size() == query.size();
                 Iterator<Term> it = ps.iterator();
                 for (Triple triple : query)
-                    b.addAlternative(triple, triple.withPredicate(it.next()));
+                    b.addAlternative(query, triple, triple.withPredicate(it.next()));
                 b.addParentModifiers();
                 matchBuilder.addAlternative(query, b.build());
             }

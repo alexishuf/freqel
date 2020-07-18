@@ -17,12 +17,12 @@ public class FilterSelector extends SqlSelector {
     }
 
     @Override
-    public boolean hasSqlCondition() {
+    public boolean hasCondition() {
         return true;
     }
 
     @Override
-    public @Nonnull String getSqlCondition(@Nonnull SqlTermWriter writer) {
+    public @Nonnull String getCondition(@Nonnull SqlTermWriter writer) {
         return sqlCondition;
     }
 }

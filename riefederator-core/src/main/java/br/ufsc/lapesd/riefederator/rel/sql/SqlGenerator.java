@@ -1,15 +1,13 @@
 package br.ufsc.lapesd.riefederator.rel.sql;
 
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
-import br.ufsc.lapesd.riefederator.rel.common.StarSubQuery;
+import br.ufsc.lapesd.riefederator.rel.common.StarJoin;
 import br.ufsc.lapesd.riefederator.rel.common.StarVarIndex;
-import br.ufsc.lapesd.riefederator.rel.common.StarsHelper;
-import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
+import br.ufsc.lapesd.riefederator.rel.sql.impl.DefaultSqlTermWriter;
+import br.ufsc.lapesd.riefederator.rel.sql.impl.SqlSelectorFactory;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.StarSqlWriter;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
@@ -69,11 +67,6 @@ public class SqlGenerator {
     }
 
     public @Nonnull SqlRewriting transform(@Nonnull CQuery query) {
-        return transform(query, StarsHelper.getFilters(query));
-    }
-
-    public @Nonnull SqlRewriting transform(@Nonnull CQuery query,
-                                           @Nonnull IndexedSet<SPARQLFilter> filters) {
         Preconditions.checkArgument(query.isJoinConnected());
         boolean distinct = canDistinct() &&
                 ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
@@ -84,16 +77,13 @@ public class SqlGenerator {
             else
                 limit = ModifierUtils.getFirst(Limit.class, query.getModifiers());
         }
+        SqlSelectorFactory selectorFactory = new SqlSelectorFactory(termWriter);
+        StarVarIndex vars = new StarVarIndex(query, selectorFactory);
 
-        IndexedSubset<SPARQLFilter> pendingFilters = filters.fullSubset();
-        List<StarSubQuery> stars = StarVarIndex.orderJoinable(StarsHelper.findStars(query));
-        StarVarIndex vars = new StarVarIndex(query, stars, mapping, exposeJoinVars);
-        StarSqlWriter starWriter = new StarSqlWriter(termWriter);
-
-        List<String> starSqls = new ArrayList<>(stars.size());
-        BitSet simpleStars = new BitSet(stars.size());
-        for (int i = 0, size = stars.size(); i < size; i++) {
-            starSqls.add(starWriter.write(vars, i, pendingFilters));
+        List<String> starSqls = new ArrayList<>(vars.getStarCount());
+        BitSet simpleStars = new BitSet(vars.getStarCount());
+        for (int i = 0, size = vars.getStarCount(); i < size; i++) {
+            starSqls.add(StarSqlWriter.INSTANCE.write(vars, i));
             if (!SUB_QRY_RX.matcher(starSqls.get(i)).find())
                 simpleStars.set(i);
         }
@@ -103,7 +93,7 @@ public class SqlGenerator {
         b.append(" FROM\n  ");
 
         b.append(starSqls.get(0)).append('\n');
-        for (int i = 1, size = stars.size(); i < size; i++) {
+        for (int i = 1, size = vars.getStarCount(); i < size; i++) {
             b.append("  INNER JOIN ");
             b.append(starSqls.get(i));
             writeJoin(b.append("\n    ON "), vars, i, simpleStars).append('\n');
@@ -111,7 +101,15 @@ public class SqlGenerator {
         if (limit != null) // SQL standard syntax, there are non-standard alternatives
             b.append("FETCH NEXT ").append(limit.getValue()).append(" ROWS ONLY ");
         String sql = b.append(';').toString();
-        IndexedSubset<SPARQLFilter> doneFilters = filters.fullSubset();
+
+
+
+        IndexedSubset<SPARQLFilter> pendingFilters, doneFilters;
+        pendingFilters = vars.getAllFilters().subset(vars.getCrossStarFilters());
+        for (int i = 0, size = vars.getStarCount(); i < size; i++)
+            pendingFilters.addAll(vars.getPendingFilters(i));
+
+        doneFilters = vars.getAllFilters().fullSubset();
         doneFilters.removeAll(pendingFilters);
         return new SqlRewriting(sql, resultVars, distinct, limit != null, query,
                                 pendingFilters, doneFilters, vars);
@@ -119,24 +117,18 @@ public class SqlGenerator {
 
     @VisibleForTesting
     @Nonnull StringBuilder writeJoin(@Nonnull StringBuilder b,
-                                     @Nonnull StarVarIndex varIndex, int i,
+                                     @Nonnull StarVarIndex varIndex, int curr,
                                      @Nonnull BitSet simpleStars) {
-        StarSubQuery myStar = varIndex.getStar(i);
-        IndexedSubset<String> mine = varIndex.getStarProjection(i);
-        for (String v : mine) {
-            int prev = varIndex.firstStar(v);
-            if (prev >= i) continue;
-            Column prevColumn = varIndex.getColumn(v);
-            Column myColumn = myStar.getColumn(new StdVar(v));
-            if (prevColumn == null || myColumn == null) {
-                assert false : "Could not get column of "+v+" in stars "+prev+" and "+i;
-                continue;
-            }
-            String prevName = simpleStars.get(prev) ? prevColumn.getColumn(): v;
-            String myName = simpleStars.get(i) ? myColumn.getColumn(): v;
-            b.append("(star_").append(i).append('.').append(myName).append(" = ")
-                              .append("star_").append(prev).append('.').append(prevName)
-                              .append(") AND ");
+        for (StarJoin join : varIndex.getJoins(curr)) {
+            String myName = join.getVar(curr);
+            int prev = join.getOtherStarIdx(curr);
+            assert prev < curr;
+            String prevName = join.getVar(prev);
+            if (simpleStars.get(curr)) myName = varIndex.getColumn(myName).getColumn();
+            if (simpleStars.get(prev)) prevName = varIndex.getColumn(prevName).getColumn();
+            b.append("(star_").append(curr).append('.').append(myName).append(" = ")
+                    .append("star_").append(prev).append('.').append(prevName)
+                    .append(") AND ");
         }
         assert b.substring(b.length()-4).equals("AND ");
         b.setLength(b.length()-4);
@@ -147,16 +139,13 @@ public class SqlGenerator {
                                                  @Nonnull StarVarIndex vars,
                                                  @Nonnull BitSet simpleStars) {
         Set<String> set = new HashSet<>();
-        for (String name : vars.getOuterProjection()) {
-            int starIdx = vars.firstStar(name);
+        for (String v : vars.getOuterProjection()) {
+            int starIdx = vars.getFirstStar(v);
             assert starIdx >= 0;
-            Column column = vars.getColumn(name);
-            if (column == null)
-                continue;
-            set.add(name);
-            String nameInStar = simpleStars.get(starIdx) ? column.getColumn() : name;
+            set.add(v);
+            String nameInStar = simpleStars.get(starIdx) ? vars.getColumn(v).getColumn() : v;
             b.append("star_").append(starIdx).append('.').append(nameInStar)
-                             .append(" AS ").append(name).append(", ");
+                             .append(" AS ").append(v).append(", ");
         }
         if (!set.isEmpty())
             b.setLength(b.length()-2); //remove last ", "

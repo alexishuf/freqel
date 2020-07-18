@@ -1,7 +1,5 @@
 package br.ufsc.lapesd.riefederator.rel.sql;
 
-import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.common.StarSubQuery;
@@ -14,12 +12,11 @@ import java.util.*;
 
 public class SqlRewriting {
     private @Nonnull final String sql;
+    private @Nonnull final StarVarIndex index;
     private @Nonnull final Set<String> vars;
     private final boolean distinct, limited;
     private @Nonnull final IndexedSubset<SPARQLFilter> pendingFilters;
     private @Nonnull final IndexedSubset<SPARQLFilter> doneFilters;
-    private @Nonnull final CQuery query;
-    private @Nonnull final List<StarSubQuery> stars = new ArrayList<>();
     private @Nonnull final List<List<String>> starVars = new ArrayList<>();
     private @Nonnull final List<List<Column>> starColumns = new ArrayList<>();
 
@@ -32,7 +29,7 @@ public class SqlRewriting {
         this.vars = sqlVars;
         this.distinct = distinct;
         this.limited = limited;
-        this.query = query;
+        this.index = varIndex;
         this.pendingFilters = pendingFilters;
         this.doneFilters = doneFilters;
 
@@ -40,20 +37,13 @@ public class SqlRewriting {
             StarSubQuery star = varIndex.getStar(i);
             String table = star.findTable();
             assert table != null;
-            stars.add(star);
             List<String> starVars = new ArrayList<>();
             List<Column> starColumns = new ArrayList<>();
-            for (String v : varIndex.getStarProjection(i)) {
-                if (star.isCore(v)) continue;
-                starVars.add(v);
-                Column column = star.getColumn(new StdVar(v));
-                assert column != null;
-                assert table.equals(column.getTable());
-                starColumns.add(column);
-            }
-            for (Map.Entry<String, Column> e : varIndex.getIdVar2Column(i).entrySet()) {
-                starVars.add(e.getKey());
-                starColumns.add(e.getValue());
+            for (String v : varIndex.getProjection(i)) {
+                if (varIndex.getOuterProjection().contains(v)) {
+                    starVars.add(v);
+                    starColumns.add(varIndex.getColumn(v));
+                }
             }
             this.starVars.add(starVars);
             this.starColumns.add(starColumns);
@@ -62,12 +52,15 @@ public class SqlRewriting {
             assert starVars.size() == starColumns.size() : "#vars != #columns for star"+i;
             assert starColumns.stream().noneMatch(Objects::isNull) : "Null Columns in starColumns";
         }
-        assert stars.size() == starVars.size();
-        assert stars.size() == starColumns.size();
+        assert starVars.size() == index.getStarCount();
+        assert starColumns.size() == index.getStarCount();
     }
 
     public @Nonnull String getSql() {
         return sql;
+    }
+    public @Nonnull StarVarIndex getIndex() {
+        return index;
     }
     public boolean isDistinct() {
         return distinct;
@@ -85,44 +78,19 @@ public class SqlRewriting {
         return doneFilters;
     }
     public int getStarsCount() {
-        return stars.size();
+        return index.getStarCount();
     }
     public @Nonnull CQuery getQuery() {
-        return query;
+        return index.getQuery();
     }
     public @Nonnull StarSubQuery getStar(int i) {
-        return stars.get(i);
-    }
-    public @Nonnull Term getStarCore(int i) {
-        return getStar(i).getCore();
+        return index.getStar(i);
     }
     public @Nonnull List<String> getStarVars(int i) {
         return starVars.get(i);
     }
     public @Nonnull List<Column> getStarColumns(int i) {
         return starColumns.get(i);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof SqlRewriting)) return false;
-        SqlRewriting that = (SqlRewriting) o;
-        return isDistinct() == that.isDistinct() &&
-                isLimited() == that.isLimited() &&
-                getSql().equals(that.getSql()) &&
-                getVars().equals(that.getVars()) &&
-                getPendingFilters().equals(that.getPendingFilters()) &&
-                getDoneFilters().equals(that.getDoneFilters()) &&
-                getQuery().equals(that.getQuery()) &&
-                stars.equals(that.stars) &&
-                starVars.equals(that.starVars) &&
-                starColumns.equals(that.starColumns);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(getSql(), getVars(), isDistinct(), isLimited(), getPendingFilters(), getDoneFilters(), getQuery(), stars, starVars, starColumns);
     }
 
     @Override

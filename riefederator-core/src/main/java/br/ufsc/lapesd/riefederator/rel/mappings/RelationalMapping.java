@@ -104,34 +104,24 @@ public interface RelationalMapping {
      *         {@link RelationalMapping#getIdColumns(String, Collection)} to get {@link Column}
      *         instances.
      */
-    default @Nonnull List<String> getIdColumnsNames(@Nonnull String table,
-                                                   @Nullable Collection<?> columns) {
+    default @Nonnull Collection<String> getIdColumnsNames(@Nonnull String table,
+                                                          @Nullable Collection<?> columns) {
         return getIdColumns(table, columns).stream().map(Column::getColumn).collect(toList());
     }
     /** See {@link RelationalMapping#getIdColumnsNames(String, Collection)} */
-    default @Nonnull List<Column> getIdColumns(@Nonnull String table,
-                                              @Nullable Collection<?> columns) {
+    default @Nonnull Collection<Column> getIdColumns(@Nonnull String table,
+                                                     @Nullable Collection<?> columns) {
         return getIdColumnsNames(table, columns).stream()
                 .map(n -> new Column(table, n)).collect(toList());
     }
     /** See {@link RelationalMapping#getIdColumnsNames(String, Collection)} */
-    default @Nonnull List<String> getIdColumnsNames(@Nonnull String table) {
+    default @Nonnull Collection<String> getIdColumnsNames(@Nonnull String table) {
         return getIdColumnsNames(table, null);
     }
     /** See {@link RelationalMapping#getIdColumnsNames(String, Collection)} */
-    default @Nonnull List<Column> getIdColumns(@Nonnull String table) {
+    default @Nonnull Collection<Column> getIdColumns(@Nonnull String table) {
         return getIdColumns(table, null);
     }
-
-    /**
-     * Get the predicate that corresponds to a Column, or null if there is no mapping.
-     *
-     * For the reverse, see {@link RelationalMappingUtils#predicate2column(Molecule, Term)}.
-     *
-     * @param column the column to query for
-     * @return predicate corresponding to column or null
-     */
-    @Nullable Term column2predicate(@Nonnull Column column);
 
     /**
      * Gets the subject Term for the record composed of the given values.

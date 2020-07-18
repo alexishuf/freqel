@@ -9,7 +9,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
-import br.ufsc.lapesd.riefederator.rel.mappings.impl.ContextMapping;
+import br.ufsc.lapesd.riefederator.rel.mappings.context.ContextMapping;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.testng.annotations.DataProvider;

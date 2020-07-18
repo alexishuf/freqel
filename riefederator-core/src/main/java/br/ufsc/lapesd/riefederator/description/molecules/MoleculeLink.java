@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
+import br.ufsc.lapesd.riefederator.description.molecules.tags.MoleculeLinkTag;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.Immutable;
@@ -15,11 +16,11 @@ public class MoleculeLink {
     private final @Nonnull Atom atom;
     private final boolean authoritative;
     private final @Nonnull ImmutableSet<MoleculeLinkTag> tags;
-    private @LazyInit int hash = 0;
+    private @LazyInit int stableHash = 0;
 
     public MoleculeLink(@Nonnull Term edge, @Nonnull Atom atom,
                         boolean authoritative,
-                        @Nonnull Collection<MoleculeLinkTag> tags) {
+                        @Nonnull Collection<? extends MoleculeLinkTag> tags) {
         this.edge = edge;
         this.atom = atom;
         this.authoritative = authoritative;
@@ -67,9 +68,9 @@ public class MoleculeLink {
 
     @Override
     public int hashCode() {
-        int local = hash;
+        int local = stableHash;
         if (local == 0)
-            hash = local = Objects.hash(getEdge(), getAtom(), isAuthoritative(), getTags());
-        return local;
+            stableHash = local = Objects.hash(getEdge(),isAuthoritative(), getTags());
+        return 31 * local + getAtom().hashCode();
     }
 }

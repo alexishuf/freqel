@@ -241,7 +241,10 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
             public CQuery build() {
                 if (parentEG != null) {
                     parentEG.forEachTermAnnotation(builder::annotate);
-                    parentEG.forEachTripleAnnotation(builder::annotate);
+                    parentEG.forEachTripleAnnotation((t, a) -> {
+                        if (builder.getList().contains(t))
+                            builder.annotate(t, a);
+                    });
                 }
                 prepareBuild();
                 if (parentEG == null) { // only check if creating the top-level exclusive group

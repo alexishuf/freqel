@@ -2,10 +2,13 @@ package br.ufsc.lapesd.riefederator.rel.mappings;
 
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnTag;
+import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
+import com.google.common.base.Preconditions;
+import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
+import java.util.List;
 
 import static java.util.stream.Collectors.toSet;
 
@@ -25,8 +28,40 @@ public class RelationalMappingUtils {
                                                                @Nonnull Term predicate) {
         return molecule.getIndex().stream(null, predicate, null)
                 .flatMap(t -> t.getEdgeTags().stream())
-                .filter(ColumnTag.class::isInstance)
-                .map(t -> ((ColumnTag) t).getColumn())
+                .filter(ColumnsTag.class::isInstance)
+                .flatMap(t -> ((ColumnsTag) t).getColumns().stream())
                 .collect(toSet());
+    }
+
+    public static String
+    getTable(@Nonnull String method, @Nonnull Logger logger, @Nonnull Collection<Column> columns) {
+        String table = null;
+        if (columns.isEmpty()) {
+            assert false : "Empty column set";
+            logger.warn("No columns given to {}()", method);
+            return null;
+        }
+        for (Column column : columns) {
+            if (table == null) {
+                table = column.getTable();
+            } else if (!table.equals(column.getTable())) {
+                assert false : "Columns have many tables, cannot determine which one to use";
+                logger.warn("Creating a blank node since columns={} span multiple tables", columns);
+                return null;
+            }
+        }
+        return table;
+    }
+
+    public static String
+    getTable(@Nonnull String method, @Nonnull Logger logger, @Nonnull List<Column> columns,
+             @Nonnull List<?> values) {
+        Preconditions.checkArgument(columns.size() == values.size(), "#columns != #values");
+        if (columns.isEmpty()) {
+            assert false : "Empty columns";
+            logger.warn("No columns given to {}()!", method);
+            return null;
+        }
+        return getTable(method, logger, columns);
     }
 }

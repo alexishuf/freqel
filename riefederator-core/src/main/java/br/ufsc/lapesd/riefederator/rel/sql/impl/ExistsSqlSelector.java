@@ -21,8 +21,8 @@ public class ExistsSqlSelector extends SqlSelector {
     }
 
     public @Nonnull Term getTerm() {
-        assert !getSparqlTerms().isEmpty();
-        return getSparqlTerms().get(0);
+        assert !getTerms().isEmpty();
+        return getTerms().get(0);
     }
 
     public @Nonnull Blank getBlank() {
@@ -30,12 +30,12 @@ public class ExistsSqlSelector extends SqlSelector {
     }
 
     @Override
-    public boolean hasSqlCondition() {
+    public boolean hasCondition() {
         return true;
     }
 
     @Override
-    public @Nonnull String getSqlCondition(@Nonnull SqlTermWriter writer) {
+    public @Nonnull String getCondition(@Nonnull SqlTermWriter writer) {
         return getColumn() + " IS NOT NULL";
     }
 }

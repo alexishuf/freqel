@@ -6,16 +6,16 @@ import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
+import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.query.JenaBindingSolution;
 import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.annotations.MergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
@@ -26,8 +26,8 @@ import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.*;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
-import br.ufsc.lapesd.riefederator.rel.common.AmbiguityMergePolicy;
-import br.ufsc.lapesd.riefederator.rel.common.StarSubQuery;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalMoleculeMatcher;
+import br.ufsc.lapesd.riefederator.rel.common.StarVarIndex;
 import br.ufsc.lapesd.riefederator.rel.common.StarsHelper;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
@@ -40,6 +40,7 @@ import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.QueryFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.vocabulary.RDF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,7 @@ import javax.annotation.Nullable;
 import java.sql.*;
 import java.util.*;
 
+import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toSet;
 
 public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
@@ -77,8 +79,7 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         this.connectionSupplier = connectionSupplier;
         this.molecule = mapping.createMolecule();
         TransitiveClosureTBoxReasoner empty = new TransitiveClosureTBoxReasoner();
-        MergePolicyAnnotation policy = new AmbiguityMergePolicy();
-        this.moleculeMatcher = new MoleculeMatcher(this.molecule, empty, policy);
+        this.moleculeMatcher = new RelationalMoleculeMatcher(this.molecule, empty);
     }
 
     public static class Builder {
@@ -137,6 +138,7 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     /* --- --- --- Internals --- --- --- */
 
     private static class AnnotationStatus {
+        private static final @Nonnull URI type = JenaWrappers.fromURIResource(RDF.type);
         final int missingTable, missingColumn, badColumn, size;
 
         public AnnotationStatus(@Nonnull CQuery query) {
@@ -146,10 +148,16 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             for (Triple triple : query) {
                 Term s = triple.getSubject();
                 String table = s2table.computeIfAbsent(s, k -> StarsHelper.findTable(query, s));
-                if (table == null) ++missingTable;
-                Column column = StarsHelper.getColumn(query, table, triple.getObject());
-                if (column == null) ++missingColumns;
-                else if (table != null && !column.getTable().equals(table)) ++badColumn;
+                if (table == null)
+                    ++missingTable;
+                Set<Column> columns = StarsHelper.getColumns(query, table, triple.getObject());
+                if (columns.isEmpty()) {
+                    if (!StarsHelper.isPostRelational(query, triple.getObject()))
+                        ++missingColumns;
+                } else if (table != null) {
+                    if (columns.stream().noneMatch(c -> c.getTable().equals(table)))
+                    ++badColumn;
+                }
             }
             this.missingTable = missingTable;
             this.missingColumn = missingColumns;
@@ -161,7 +169,7 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         }
 
         boolean isEmpty() {
-            return missingTable == size && missingColumn == size;
+            return missingTable == size;
         }
 
 
@@ -216,41 +224,44 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             this.jenaSolutionFac = new ArrayList<>(sql.getStarsCount());
             this.jVars = new ArrayList<>(sql.getStarsCount());
             this.jrVars = new ArrayList<>(sql.getStarsCount());
-            Set<String> sqlVars = sql.getVars();
-            IndexedSet<String> allVars =
-                    IndexedSet.fromDistinct(TreeUtils.union(sqlVars, getVarNames()));
+            StarVarIndex index = sql.getIndex();
+            IndexedSet<String> allVars = index.getAllSparqlVars();
+            Set<String> projection = getVarNames();
             for (int i = 0, size = sql.getStarsCount(); i < size; i++) {
-                StarSubQuery star = sql.getStar(i);
-                CQuery.Builder b = CQuery.builder(star.getTriples().size());
-                for (Triple triple : star.getTriples()) {
-                    Term o = triple.getObject();
-                    if (o.isVar() && sqlVars.contains(o.asVar().getName()))
-                        b.add(triple);
-                }
-                if (b.isEmpty()) { // we've no object to fetch
-                    if (star.getCore().isVar()) { // get the subject
-                        b.add(new Triple(star.getCore(), p, o));
+                CQuery.Builder b = CQuery.builder(index.getPendingTriples(i));
+                index.getPendingFilters(i).forEach(b::modifier);
+                if (b.getList().isEmpty()) {
+                    assert index.getPendingFilters(i).isEmpty();
+                    Term core = sql.getStar(i).getCore();
+                    if (core.isVar() && projection.contains(core.asVar().getName())) {
+                        b.add(new Triple(core, p, o));
+                        b.project(core.asVar().getName());
                         b.distinct();
-                    } else { // degenerate into an ASK query
-                        b.add(new Triple(s, p, o));
-                        b.ask();
+                    } else { // no work on our side, skip it
+                        jenaStars.add(null);
+                        jenaVars.add(Collections.emptySet());
+                        jenaSolutionFac.add(null);
+                        jVars.add(Collections.emptySet());
+                        jrVars.add(Collections.emptySet());
+                        continue;
                     }
                 }
                 FastSPARQLString ss = new FastSPARQLString(b.build());
                 jenaStars.add(QueryFactory.create(ss.getSparql()));
-                jenaVars.add(allVars.subset(ss.getVarNames()));
+                jenaVars.add(ss.getVarNames());
                 jenaSolutionFac.add(JenaBindingSolution.forVars(jenaVars.get(i)));
                 if (i == 0) {
                     jVars.add(Collections.emptySet());
-                    jrVars.add(Collections.emptySet());
+                    jrVars.add(jenaVars.get(i));
                 } else {
+                    // subseting on allVars avoid joining the over the dummy p and o vars
                     IndexedSubset<String> set = allVars.subset(jenaVars.get(i));
                     jVars.add(set.createIntersection(jenaVars.get(i-1)));
                     set.union(jenaVars.get(i-1));
                     jrVars.add(set);
                 }
             }
-            projector = allVars.equals(getVarNames()) ? null : ArraySolution.forVars(getVarNames());
+            projector = allVars.equals(projection) ? null : ArraySolution.forVars(projection);
         }
 
         @Override
@@ -291,9 +302,13 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             Results results = null;
             try {
                 for (int i = 0; i < sql.getStarsCount(); i++) {
+                    if (jenaStars.get(i) == null)
+                        continue; // the query is an ASK that was already executed in SPARQL
                     Results r = executeStar(i);
                     if (results == null) {
                         results = r; // first result, use as root
+                    } else if (jVars.get(i).isEmpty()) {
+                        results = new LazyCartesianResults(asList(results, r), jrVars.get(i));
                     } else {
                         results = new InMemoryHashJoinResults(results, r, jVars.get(i),
                                                               jrVars.get(i), false);
@@ -399,10 +414,11 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
                         " ColumnTags not matching the TableTag. Query: "+query);
             }
         }
-        IndexedSet<SPARQLFilter> filters = StarsHelper.getFilters(query);
         SqlRewriting sql;
         try {
-            sql = sqlGenerator.transform(query, filters);
+            sql = sqlGenerator.transform(query);
+            logger.debug("{} Query:\n  {}\nSQL:\n  {}", this, query.toString().replace("\n", "\n  "),
+                         sql.getSql().replace("\n", "\n  "));
         } catch (RuntimeException e) {
             throw new QueryExecutionException("Could not generate SQL for "+query, e);
         }

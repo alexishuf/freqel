@@ -10,6 +10,8 @@ import java.util.Collections;
 import java.util.NoSuchElementException;
 
 public class AskResults extends DelegatingResults implements Results {
+    private boolean answered, answer, answering;
+
     public AskResults(@Nonnull Results in) {
         super(Collections.emptySet(), in);
     }
@@ -21,10 +23,26 @@ public class AskResults extends DelegatingResults implements Results {
     }
 
     @Override
+    public boolean hasNext() {
+        if (answered) return answer;
+        answer = super.hasNext();
+        answered = true;
+        return answer;
+    }
+
+    @Override
+    public boolean hasNext(int millisecondsTimeout) {
+        if (answered) return answer;
+        answer = super.hasNext(millisecondsTimeout);
+        answered = true;
+        return answer;
+    }
+
+    @Override
     public @Nonnull Solution next() {
         if (!hasNext())
             throw new NoSuchElementException();
-        in.next();
+        answer = false; //only one result
         return ArraySolution.EMPTY;
     }
 }

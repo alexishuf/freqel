@@ -1,0 +1,66 @@
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix ex: <http://example.org/> .
+
+_:n1 rr:objectMap ex:column-plain .
+_:n2 rr:objectMap ex:column-lang .
+_:n3 rr:objectMap ex:const-iri .
+_:n4 rr:objectMap ex:const-predicate .
+_:n5 rr:objectMap ex:const-object .
+_:n6 rr:objectMap ex:const-object-lit .
+_:n7 rr:objectMap ex:tpl-iri .
+_:n8 rr:objectMap ex:tpl-lit .
+
+ex:column-plain
+    rr:column "A";
+    rr:termType rr:Literal .
+
+ex:column-lang
+    rr:column "A";
+    rr:termType rr:Literal ;
+    rr:language "en" .
+
+ex:const-iri
+    rr:constant ex:Alice .
+
+ex:shortcut-predicate
+    rr:predicate foaf:knows ;
+    rr:object ex:Dummy .
+
+ex:shortcut-object
+    rr:predicate ex:Dummy ;
+    rr:object ex:Bob .
+
+ex:shortcut-object-lit
+    rr:predicate ex:Dummy ;
+    rr:object "23"^^xsd:int .
+
+ex:tpl-iri
+    rr:template "http://example.org/{A}/{B}" ;
+    rr:termType rr:IRI .
+
+ex:tpl-lit
+    rr:template "{A} - {B}" ;
+    rr:termType rr:Literal ;
+    rr:datatype xsd:string .
+
+ex:ref-obj
+    rr:parentTriplesMap ex:tgt-triples-map ;
+    rr:joinCondition [ rr:child "A" ; rr:parent "A" ] ;
+    rr:joinCondition [ rr:child "B" ; rr:parent "B" ] .
+
+ex:ref-swap
+    rr:parentTriplesMap ex:tgt-triples-map ;
+    rr:joinCondition [ rr:child "B" ; rr:parent "A" ] ;
+    rr:joinCondition [ rr:child "A" ; rr:parent "B" ] .
+
+ex:tgt-triples-map
+    rr:logicalTable [ rr:tableName "Table" ];
+    rr:subjectMap ex:tpl-iri ;
+    rr:predicateObjectMap [
+        rr:predicate ex:pred-1 ;
+        rr:object ex:obj-1
+    ] .

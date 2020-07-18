@@ -1,0 +1,38 @@
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix ex: <http://example.org/> .
+
+ex:triples-map-prof
+    rr:logicalTable [ rr:tableName "Professor" ] ;
+    rr:subjectMap [
+        rr:template "http://example.org/Professor/{id}" ;
+        rr:class ex:Professor
+    ] ;
+    rr:predicateObjectMap [
+        rr:predicate ex:name ;
+        rr:objectMap [ rr:column "nm" ]
+    ] ;
+    rr:predicateObjectMap [
+        rr:predicate ex:university ;
+        rr:objectMap [
+            rr:parentTriplesMap ex:triples-map-uni ;
+            rr:joinCondition [
+                rr:child "uni_id" ;
+                rr:parent "id"
+            ]
+        ]
+    ] .
+
+ex:triples-map-uni
+    rr:logicalTable [ rr:tableName "University" ] ;
+    rr:subjectMap [
+        rr:template "http://example.org/University/{id}" ;
+        rr:class ex:University
+    ] ;
+    rr:predicateObjectMap [
+        rr:predicate ex:name ;
+        rr:objectMap [ rr:column "nm" ]
+    ] .

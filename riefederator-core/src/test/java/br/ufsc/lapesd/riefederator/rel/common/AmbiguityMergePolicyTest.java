@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
-import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnTag;
+import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import org.testng.annotations.DataProvider;
@@ -30,11 +30,11 @@ public class AmbiguityMergePolicyTest implements TestContext {
 
     private static final Atom atomT = Molecule.builder("T").tag(new TableTag("T")).buildAtom();
     private static final Atom atomU = Molecule.builder("U").tag(new TableTag("U")).buildAtom();
-    private static final Atom atomCu = Molecule.builder("T").tag(new ColumnTag(cu)).buildAtom();
-    private static final Atom atomCv = Molecule.builder("T").tag(new ColumnTag(cv)).buildAtom();
-    private static final Atom atomCo = Molecule.builder("T").tag(new ColumnTag(co)).buildAtom();
-    private static final Atom atomKu = Molecule.builder("Ku").tag(new ColumnTag(ku)).buildAtom();
-    private static final Atom atomKo = Molecule.builder("Ko").tag(new ColumnTag(ko)).buildAtom();
+    private static final Atom atomCu = Molecule.builder("T").tag(ColumnsTag.createDirect(cu)).buildAtom();
+    private static final Atom atomCv = Molecule.builder("T").tag(ColumnsTag.createDirect(cv)).buildAtom();
+    private static final Atom atomCo = Molecule.builder("T").tag(ColumnsTag.createDirect(co)).buildAtom();
+    private static final Atom atomKu = Molecule.builder("Ku").tag(ColumnsTag.createDirect(ku)).buildAtom();
+    private static final Atom atomKo = Molecule.builder("Ko").tag(ColumnsTag.createDirect(ko)).buildAtom();
 
     private static final AtomAnnotation aaT = AtomAnnotation.of(atomT);
     private static final AtomAnnotation aaU = AtomAnnotation.of(atomU);

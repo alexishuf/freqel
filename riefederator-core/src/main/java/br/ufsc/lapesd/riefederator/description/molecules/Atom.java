@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
+import br.ufsc.lapesd.riefederator.description.molecules.tags.AtomTag;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import com.google.common.collect.ImmutableSet;
@@ -8,10 +9,12 @@ import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Preconditions.checkState;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
@@ -19,9 +22,11 @@ import static java.util.Collections.emptySet;
 @Immutable
 public class Atom implements MoleculeElement {
     private final @Nonnull String name;
-    private final boolean exclusive, closed, disjoint;
-    private final @Nonnull ImmutableSet<MoleculeLink> in, out;
-    private final @Nonnull ImmutableSet<AtomTag> tags;
+    private boolean exclusive, closed, disjoint;
+    private ImmutableSet<MoleculeLink> in, out;
+    private ImmutableSet<AtomTag> tags;
+    Set<MoleculeLink> protoIn, protoOut;
+    Set<AtomTag> protoTags;
     private @LazyInit int hash = 0;
 
     public Atom(@Nonnull String name, boolean exclusive, boolean closed,
@@ -44,6 +49,69 @@ public class Atom implements MoleculeElement {
     public Atom(@Nonnull String name) {
         this(name, false, false, false, emptySet(), emptySet(), emptyList());
     }
+
+    /* --- --- --- mutability --- --- --- */
+
+    Atom(@Nonnull String name, boolean dummy) {
+        assert dummy;
+        this.name = name;
+        this.protoIn = new HashSet<>();
+        this.protoOut = new HashSet<>();
+        this.protoTags = new HashSet<>();
+    }
+
+    static @Nonnull Atom createMutable(@Nonnull String name) {
+        return new Atom(name, true);
+    }
+
+    void addOut(@Nonnull MoleculeLink link) {
+        checkState(protoOut != null, "Already frozen!");
+        protoOut.add(link);
+    }
+
+    void addIn(@Nonnull MoleculeLink link) {
+        checkState(protoIn != null, "Already frozen!");
+        protoIn.add(link);
+    }
+
+    void addTag(@Nonnull AtomTag tag) {
+        checkState(protoTags != null, "Already frozen!");
+        protoTags.add(tag);
+    }
+
+    void setExclusive(boolean exclusive) {
+        checkState(protoOut != null, "Already frozen!");
+        this.exclusive = exclusive;
+    }
+
+    void setClosed(boolean closed) {
+        checkState(protoOut != null, "Already frozen!");
+        this.closed = closed;
+    }
+
+    void setDisjoint(boolean disjoint) {
+        checkState(protoOut != null, "Already frozen!");
+        this.disjoint = disjoint;
+    }
+
+    void freeze() {
+        if (out == null) {
+            assert in == null && tags == null;
+            assert protoOut != null && protoIn != null && protoTags != null;
+            for (MoleculeLink link : protoIn)
+                link.getAtom().freeze();
+            for (MoleculeLink link : protoOut)
+                link.getAtom().freeze();
+            this.in = ImmutableSet.copyOf(protoIn);
+            this.out = ImmutableSet.copyOf(protoOut);
+            this.tags = ImmutableSet.copyOf(protoTags);
+            this.protoOut = null;
+            this.protoIn = null;
+            this.protoTags = null;
+        }
+    }
+
+    /* --- --- --- public interface --- --- --- */
 
     @Override
     public @Nonnull String getName() {
@@ -85,15 +153,15 @@ public class Atom implements MoleculeElement {
         return disjoint;
     }
 
-    public @Nonnull Set<MoleculeLink> getIn() {
-        return in;
+    public @Nonnull ImmutableSet<MoleculeLink> getIn() {
+        return in != null ? in : ImmutableSet.copyOf(protoIn);
     }
-    public @Nonnull Set<MoleculeLink> getOut() {
-        return out;
+    public @Nonnull ImmutableSet<MoleculeLink> getOut() {
+        return out != null ? out : ImmutableSet.copyOf(protoOut);
     }
 
     public @Nonnull ImmutableSet<AtomTag> getTags() {
-        return tags;
+        return tags != null ? tags : ImmutableSet.copyOf(protoTags);
     }
 
     public @Nonnull Stream<MoleculeLink> streamLinks() {
@@ -161,9 +229,13 @@ public class Atom implements MoleculeElement {
 
     @Override
     public int hashCode() {
-        if (hash == 0)
-            hash = Objects.hash(getName(), isExclusive(), isClosed(), isDisjoint(),
+        int code = hash;
+        if (code == 0 || out == null) {
+            code = Objects.hash(getName(), isExclusive(), isClosed(), isDisjoint(),
                                 getIn(), getOut(), getTags());
-        return hash;
+            if (out != null)
+                hash = code; //only cache if frozen
+        }
+        return code;
     }
 }

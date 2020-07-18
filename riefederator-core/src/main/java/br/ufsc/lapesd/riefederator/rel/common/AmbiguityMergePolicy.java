@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class AmbiguityMergePolicy implements MergePolicyAnnotation {
     private static final Logger logger = LoggerFactory.getLogger(AmbiguityMergePolicy.class);
@@ -55,11 +56,11 @@ public class AmbiguityMergePolicy implements MergePolicyAnnotation {
             String table = tableMap.getOrDefault(triple.getSubject(), null);
             if (table == null) continue;
             Term obj = triple.getObject();
-            Column expected = StarsHelper.getColumn(a, table, obj);
-            if (expected == null) continue;
-            Column other = StarsHelper.getColumn(b, table, obj);
-            if (other != null && other.getTable().equals(table) && !other.equals(expected)) {
-                logger.debug("Ambiguity: object {} has column {} in query a and column {} " +
+            Set<Column> expected = StarsHelper.getColumns(a, table, obj);
+            if (expected.isEmpty()) continue;
+            Set<Column> other = StarsHelper.getColumns(b, table, obj);
+            if (!expected.containsAll(other)) {
+                logger.debug("Ambiguity: object {} has columns {} in query a and columns {} " +
                              "in query b.", obj, expected, other);
                 return false;
             }

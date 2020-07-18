@@ -111,6 +111,11 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
                                          : fromDistinct(new LinkedHashSet<>(collection));
     }
 
+    @CheckReturnValue @SafeVarargs
+    public static @Nonnull <U> IndexedSet<U> newIndexedSet(U... values) {
+        return from(Arrays.asList(values));
+    }
+
     @CheckReturnValue
     public @Nonnull IndexedSubset<T> fullSubset() {
         BitSet bitSet = new BitSet(size());
@@ -132,6 +137,11 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
                 bitSet.set(idx);
         }
         return new IndexedSubset<>(this, bitSet);
+    }
+
+    @CheckReturnValue @SafeVarargs
+    public @Nonnull final IndexedSubset<T> subsetWith(@Nonnull T... array) {
+        return subset(Arrays.asList(array));
     }
 
     @CheckReturnValue

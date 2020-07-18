@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
+import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.base.Preconditions;
@@ -23,13 +24,13 @@ public class StarSubQuery {
     private static final Logger logger = LoggerFactory.getLogger(StarSubQuery.class);
 
     private final @Nonnull IndexedSubset<Triple> triples;
-    private final @Nonnull Set<String> varNames;
+    private final @Nonnull IndexedSubset<String> varNames;
     private final @Nonnull IndexedSubset<SPARQLFilter> filters;
     private final @Nonnull CQuery query;
     private @LazyInit @Nullable String table;
 
     public StarSubQuery(@Nonnull IndexedSubset<Triple> triples,
-                        @Nonnull Set<String> varNames,
+                        @Nonnull IndexedSubset<String> varNames,
                         @Nonnull IndexedSubset<SPARQLFilter> filters,
                         @Nonnull CQuery query) {
         Preconditions.checkArgument(!triples.isEmpty());
@@ -43,7 +44,7 @@ public class StarSubQuery {
     public @Nonnull IndexedSubset<Triple> getTriples() {
         return triples;
     }
-    public @Nonnull Set<String> getVarNames() {
+    public @Nonnull IndexedSubset<String> getVarNames() {
         return varNames;
     }
     public @Nonnull IndexedSubset<SPARQLFilter> getFilters() {
@@ -67,19 +68,20 @@ public class StarSubQuery {
         return ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
     }
 
-    public @Nullable Column getColumn(@Nonnull Term term) {
-        return getColumn(term, !StarSubQuery.class.desiredAssertionStatus());
+    public @Nonnull Set<Column> getAllColumns(@Nonnull Term term) {
+        return StarsHelper.getColumns(query, findTable(), term);
     }
 
-    public @Nullable Column getColumn(@Nonnull Term term, boolean forgiveAmbiguity) {
-        return StarsHelper.getColumn(query, findTable(forgiveAmbiguity), term, forgiveAmbiguity);
+    public @Nullable ColumnsTag getColumnsTag(@Nonnull Term term) {
+        String table = findTable();
+        if (table == null) {
+            assert false : "Star has no table";
+            return null;
+        }
+        return StarsHelper.getColumnsTag(query, table, term, triples);
     }
 
     public @Nullable String findTable() {
-        return findTable(!StarSubQuery.class.desiredAssertionStatus());
-    }
-
-    public @Nullable String findTable(boolean forgiveAmbiguity) {
         if (this.table != null)
             return this.table;
         if (triples.isEmpty()) {
@@ -88,7 +90,7 @@ public class StarSubQuery {
         }
         Term core = getCore();
         assert triples.stream().allMatch(t -> t.getSubject().equals(core));
-        table = StarsHelper.findTable(query, core, forgiveAmbiguity);
+        table = StarsHelper.findTable(query, core);
         if (table == null)
             logger.warn("Star core has no AtomAnnotation/TableTag");
         return table;

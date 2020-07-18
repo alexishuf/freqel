@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
+import br.ufsc.lapesd.riefederator.description.molecules.tags.AtomTag;
+import br.ufsc.lapesd.riefederator.description.molecules.tags.MoleculeLinkTag;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;

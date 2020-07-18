@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.rel.mappings.tags;
 
-import br.ufsc.lapesd.riefederator.description.molecules.AtomTag;
+import br.ufsc.lapesd.riefederator.description.molecules.tags.AtomTag;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
