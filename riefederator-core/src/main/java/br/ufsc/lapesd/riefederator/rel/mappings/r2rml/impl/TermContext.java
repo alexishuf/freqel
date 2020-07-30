@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.rel.mappings.r2rml.impl;
 
+import br.ufsc.lapesd.riefederator.rel.common.RelationalTermParser;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.RR;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.RRTemplate;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.enh.JoinCondition;
@@ -7,7 +8,6 @@ import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.enh.ReferencingObjectMap;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.enh.TermMap;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.enh.TermType;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.exceptions.InvalidRRException;
-import br.ufsc.lapesd.riefederator.rel.sql.SqlTermParser;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.errorprone.annotations.concurrent.LazyInit;
@@ -132,7 +132,7 @@ public class TermContext {
     }
 
     private @Nullable RDFNode expandReference(@Nonnull Map<String, ?> childCol2value,
-                                              @Nonnull SqlTermParser parser, 
+                                              @Nonnull RelationalTermParser parser,
                                               @Nonnull String baseURI) {
         assert parentCtx != null;
         assert parent2child != null;
@@ -143,12 +143,12 @@ public class TermContext {
     }
 
     public @Nullable RDFNode createTerm(@Nonnull Map<String, ?> col2value,
-                                        @Nonnull SqlTermParser parser) {
+                                        @Nonnull RelationalTermParser parser) {
         return createTerm(col2value, parser, "");
     }
 
     public @Nullable RDFNode createTerm(@Nonnull Map<String, ?> col2value,
-                                        @Nonnull SqlTermParser parser,
+                                        @Nonnull RelationalTermParser parser,
                                         @Nonnull String baseURI) {
         // as per test case http://www.w3.org/2001/sw/rdb2rdf/test-cases/#tc001b,
         // termType takes precedence

@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.rel.sql.impl;
 
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.rel.sql.SqlTermWriter;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalTermWriter;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Literal;
@@ -12,8 +12,9 @@ import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-public class DefaultSqlTermWriter implements SqlTermWriter {
-    public static final @Nonnull SqlTermWriter INSTANCE = new DefaultSqlTermWriter();
+public class DefaultSqlTermWriter implements RelationalTermWriter {
+    public static final @Nonnull
+    RelationalTermWriter INSTANCE = new DefaultSqlTermWriter();
 
     @Override
     public @Nullable String apply(@Nonnull Term term) {

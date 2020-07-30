@@ -58,34 +58,34 @@ public class StarVarIndexTest implements TestContext {
     private static final Column lv  = new Column("W", "lv");
 
     private static final Atom atomT = Molecule.builder("T").tag(new TableTag("T"))
-                                                           .tag(ColumnsTag.createDirect(cu))
+                                                           .tag(ColumnsTag.direct(cu))
                                                            .buildAtom();
     private static final Atom atomU = Molecule.builder("U").tag(new TableTag("U"))
-                                                           .tag(ColumnsTag.createDirect(ku))
+                                                           .tag(ColumnsTag.direct(ku))
                                                            .buildAtom();
     private static final Atom atomV = Molecule.builder("V").tag(new TableTag("V"))
-                                                           .tag(ColumnsTag.createDirect(ju))
+                                                           .tag(ColumnsTag.direct(ju))
                                                            .buildAtom();
     private static final Atom atomW = Molecule.builder("W").tag(new TableTag("W"))
                                                            .tag(new ColumnsTag(asList(lu1, lu2)))
                                                            .buildAtom();
 
-    private static final Atom atomCu = Molecule.builder("T").tag(ColumnsTag.createDirect(cu)).buildAtom();
-    private static final Atom atomCv = Molecule.builder("T").tag(ColumnsTag.createDirect(cv)).buildAtom();
-    private static final Atom atomCo = Molecule.builder("T").tag(ColumnsTag.createDirect(co)).buildAtom();
+    private static final Atom atomCu = Molecule.builder("T").tag(ColumnsTag.direct(cu)).buildAtom();
+    private static final Atom atomCv = Molecule.builder("T").tag(ColumnsTag.direct(cv)).buildAtom();
+    private static final Atom atomCo = Molecule.builder("T").tag(ColumnsTag.direct(co)).buildAtom();
     private static final Atom atomCp = Molecule.builder("T").tag(new ColumnsTag(singletonList(cp))).buildAtom();
     private static final Atom atomCvv = Molecule.builder("T").tag(new ColumnsTag(asList(cv1, cv2))).buildAtom();
 
-    private static final Atom atomKu = Molecule.builder("U").tag(ColumnsTag.createDirect(ku)).buildAtom();
-    private static final Atom atomKv = Molecule.builder("U").tag(ColumnsTag.createDirect(kv)).buildAtom();
-    private static final Atom atomKo = Molecule.builder("U").tag(ColumnsTag.createDirect(ko)).buildAtom();
+    private static final Atom atomKu = Molecule.builder("U").tag(ColumnsTag.direct(ku)).buildAtom();
+    private static final Atom atomKv = Molecule.builder("U").tag(ColumnsTag.direct(kv)).buildAtom();
+    private static final Atom atomKo = Molecule.builder("U").tag(ColumnsTag.direct(ko)).buildAtom();
 
-    private static final Atom atomJu = Molecule.builder("V").tag(ColumnsTag.createDirect(ju)).buildAtom();
-    private static final Atom atomJv = Molecule.builder("V").tag(ColumnsTag.createDirect(jv)).buildAtom();
-    private static final Atom atomJo = Molecule.builder("V").tag(ColumnsTag.createDirect(jo)).buildAtom();
+    private static final Atom atomJu = Molecule.builder("V").tag(ColumnsTag.direct(ju)).buildAtom();
+    private static final Atom atomJv = Molecule.builder("V").tag(ColumnsTag.direct(jv)).buildAtom();
+    private static final Atom atomJo = Molecule.builder("V").tag(ColumnsTag.direct(jo)).buildAtom();
 
     private static final Atom atomLu = Molecule.builder("W").tag(new ColumnsTag(asList(lu1, lu2))).buildAtom();
-    private static final Atom atomLv = Molecule.builder("W").tag(ColumnsTag.createDirect(lv)).buildAtom();
+    private static final Atom atomLv = Molecule.builder("W").tag(ColumnsTag.direct(lv)).buildAtom();
 
     private static final AtomAnnotation aaT = AtomAnnotation.of(atomT);
     private static final AtomAnnotation aaU = AtomAnnotation.of(atomU);

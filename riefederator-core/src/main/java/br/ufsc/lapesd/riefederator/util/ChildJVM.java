@@ -44,6 +44,13 @@ public class ChildJVM implements AutoCloseable {
         return new Builder(aClass);
     }
 
+    public static @Nonnull String getJavaPath() {
+        String separator = System.getProperty("file.separator");
+        String javaHome = System.getProperty("java.home");
+        return javaHome + separator + "bin" + separator + "java" +
+               (SystemUtils.IS_OS_WINDOWS ? ".exe" : "");
+    }
+
     public static class Builder {
         private final @Nonnull Class<?> aClass;
         private @Nonnull final String java;
@@ -60,10 +67,7 @@ public class ChildJVM implements AutoCloseable {
 
         public Builder(@Nonnull Class<?> aClass) {
             this.aClass = aClass;
-            String separator = System.getProperty("file.separator");
-            String javaHome = System.getProperty("java.home");
-            java = javaHome + separator + "bin" + separator + "java" +
-                   (SystemUtils.IS_OS_WINDOWS ? ".exe" : "");
+            java = getJavaPath();
             xmx = String.valueOf(Runtime.getRuntime().maxMemory());
             classpath = System.getProperty("java.class.path");
         }

@@ -47,6 +47,9 @@ public class Molecule {
     public static @Nonnull MoleculeBuilder builder(@Nonnull String name) {
         return new MoleculeBuilder(name);
     }
+    public static @Nonnull MoleculeBuilder builder(@Nonnull Atom atom) {
+        return new MoleculeBuilder(atom);
+    }
 
     Molecule(@Nonnull Atom core, int atomCount,
              @Nonnull Collection<AtomFilter> filters) {

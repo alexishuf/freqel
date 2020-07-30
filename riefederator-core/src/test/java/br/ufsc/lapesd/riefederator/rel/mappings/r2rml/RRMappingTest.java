@@ -33,12 +33,12 @@ public class RRMappingTest implements TestContext {
                                                 .tag(PostRelationalTag.INSTANCE).buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(p1, Molecule.builder(p1.getURI())
-                                                .tag(ColumnsTag.createDirect("T1", "cB"))
+                                                .tag(ColumnsTag.direct("T1", "cB"))
                                                 .buildAtom(),
-                                        ColumnsTag.createDirect("T1", "cB"))
+                                        ColumnsTag.direct("T1", "cB"))
                                 .out(p2, Molecule.builder(p2.getURI())
-                                                .tag(ColumnsTag.createDirect("T1", "cC")).buildAtom(),
-                                        ColumnsTag.createDirect("T1", "cC"))
+                                                .tag(ColumnsTag.direct("T1", "cC")).buildAtom(),
+                                        ColumnsTag.direct("T1", "cC"))
                                 .out(p3, Molecule.builder(p3.getURI())
                                                 .tag(new ColumnsTag(asList(new Column("T1", "cD"),
                                                                           new Column("T1", "cE"))))
@@ -46,7 +46,7 @@ public class RRMappingTest implements TestContext {
                                         new ColumnsTag(asList(new Column("T1", "cD"),
                                                              new Column("T1", "cE"))))
                                 .tag(new TableTag("T1"))
-                                .tag(ColumnsTag.createNonDirect("T1", "cA"))
+                                .tag(ColumnsTag.nonDirect("T1", "cA"))
                                 .exclusive().closed().build()
                 ),
                 asList("r2rml-2.ttl",
@@ -56,12 +56,12 @@ public class RRMappingTest implements TestContext {
                                                 .tag(PostRelationalTag.INSTANCE).buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(nameEx, Molecule.builder(nameEx.getURI()+"-2")
-                                                .tag(ColumnsTag.createDirect("University", "nm"))
+                                                .tag(ColumnsTag.direct("University", "nm"))
                                                 .buildAtom(),
-                                        ColumnsTag.createDirect("University", "nm"))
+                                        ColumnsTag.direct("University", "nm"))
                                 .tag(new TableTag("University"))
-                                .tag(ColumnsTag.createNonDirect("Professor", "uni_id")) // from the referencing object map
-                                .tag(ColumnsTag.createNonDirect("University", "id"))
+                                .tag(ColumnsTag.nonDirect("Professor", "uni_id")) // from the referencing object map
+                                .tag(ColumnsTag.nonDirect("University", "id"))
                                 .exclusive().closed()
                                 .startNewCore(Professor.getURI())
                                 .out(type, Molecule.builder(Professor.getURI()+"-type")
@@ -69,13 +69,13 @@ public class RRMappingTest implements TestContext {
                                                 .tag(PostRelationalTag.INSTANCE).buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(nameEx, Molecule.builder(nameEx.getURI()+"-1")
-                                                .tag(ColumnsTag.createDirect("Professor", "nm"))
+                                                .tag(ColumnsTag.direct("Professor", "nm"))
                                                 .buildAtom(),
-                                        ColumnsTag.createDirect("Professor", "nm"))
+                                        ColumnsTag.direct("Professor", "nm"))
                                 .out(university, University.getURI(),
-                                        ColumnsTag.createNonDirect("Professor", "uni_id"))
+                                        ColumnsTag.nonDirect("Professor", "uni_id"))
                                 .tag(new TableTag("Professor"))
-                                .tag(ColumnsTag.createNonDirect("Professor", "id"))
+                                .tag(ColumnsTag.nonDirect("Professor", "id"))
                                 .exclusive().closed().build()
                 )
         ).map(List::toArray).toArray(Object[][]::new);

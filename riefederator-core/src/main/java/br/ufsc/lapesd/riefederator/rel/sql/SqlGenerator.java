@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.rel.sql;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalTermWriter;
 import br.ufsc.lapesd.riefederator.rel.common.StarJoin;
 import br.ufsc.lapesd.riefederator.rel.common.StarVarIndex;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
@@ -21,7 +22,7 @@ public class SqlGenerator {
     private static final Pattern SUB_QRY_RX = Pattern.compile("^\\s*\\(?\\s*SELECT");
 
     private final @Nonnull RelationalMapping mapping;
-    private @Nonnull SqlTermWriter termWriter = DefaultSqlTermWriter.INSTANCE;
+    private @Nonnull RelationalTermWriter termWriter = DefaultSqlTermWriter.INSTANCE;
     private boolean canDistinct = true, canLimit = true;
     private boolean exposeJoinVars = false;
 
@@ -30,11 +31,12 @@ public class SqlGenerator {
     }
 
     @CanIgnoreReturnValue
-    public @Nonnull SqlGenerator setTermWriter(@Nonnull SqlTermWriter termWriter) {
+    public @Nonnull SqlGenerator setTermWriter(@Nonnull RelationalTermWriter termWriter) {
         this.termWriter = termWriter;
         return this;
     }
-    public @Nonnull SqlTermWriter getTermWriter() {
+    public @Nonnull
+    RelationalTermWriter getTermWriter() {
         return termWriter;
     }
 
@@ -66,7 +68,8 @@ public class SqlGenerator {
         return exposeJoinVars;
     }
 
-    public @Nonnull SqlRewriting transform(@Nonnull CQuery query) {
+    public @Nonnull
+    RelationalRewriting transform(@Nonnull CQuery query) {
         Preconditions.checkArgument(query.isJoinConnected());
         boolean distinct = canDistinct() &&
                 ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
@@ -111,8 +114,8 @@ public class SqlGenerator {
 
         doneFilters = vars.getAllFilters().fullSubset();
         doneFilters.removeAll(pendingFilters);
-        return new SqlRewriting(sql, resultVars, distinct, limit != null, query,
-                                pendingFilters, doneFilters, vars);
+        return new RelationalRewriting(sql, resultVars, distinct, limit != null,
+                pendingFilters, doneFilters, vars);
     }
 
     @VisibleForTesting

@@ -7,6 +7,7 @@ import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -71,6 +72,13 @@ public class Projection implements Modifier {
         Builder b = builder(names.length).advised();
         for (String name : names) b.add(name);
         return b.build();
+    }
+
+    public static @Nonnull Projection required(@Nonnull Collection<String> names) {
+        return new Projection(ImmutableSet.copyOf(names), true);
+    }
+    public static @Nonnull Projection advised(@Nonnull Collection<String> names) {
+        return new Projection(ImmutableSet.copyOf(names), false);
     }
 
     /* ~~~ actual methods ~~~ */

@@ -1,9 +1,9 @@
 package br.ufsc.lapesd.riefederator.rel.sql.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalTermWriter;
 import br.ufsc.lapesd.riefederator.rel.common.Selector;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
-import br.ufsc.lapesd.riefederator.rel.sql.SqlTermWriter;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
@@ -25,7 +25,7 @@ public abstract class SqlSelector implements Selector {
     }
 
     abstract public boolean hasCondition();
-    abstract public @Nonnull String getCondition(@Nonnull SqlTermWriter writer);
+    abstract public @Nonnull String getCondition(@Nonnull RelationalTermWriter writer);
 
     public @Nonnull String getCondition() {
         return getCondition(DefaultSqlTermWriter.INSTANCE);

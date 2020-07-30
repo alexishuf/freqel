@@ -47,22 +47,22 @@ public class SqlGeneratorTest implements TestContext {
             .tag(new ColumnsTag(singletonList(cu), false)).buildAtom();
     private static final Atom atomU = Molecule.builder("U").tag(new TableTag("U"))
             .tag(new ColumnsTag(singletonList(ku), false)).buildAtom();
-    private static final Atom atomCu = Molecule.builder("T").tag(ColumnsTag.createDirect(cu)).buildAtom();
-    private static final Atom atomCv = Molecule.builder("T").tag(ColumnsTag.createDirect(cv)).buildAtom();
-    private static final Atom atomCo = Molecule.builder("T").tag(ColumnsTag.createDirect(co)).buildAtom();
-    private static final Atom atomKu = Molecule.builder("Ku").tag(ColumnsTag.createDirect(ku)).buildAtom();
-    private static final Atom atomKv = Molecule.builder("Kv").tag(ColumnsTag.createDirect(kv)).buildAtom();
-    private static final Atom atomKo = Molecule.builder("Ko").tag(ColumnsTag.createDirect(ko)).buildAtom();
+    private static final Atom atomCu = Molecule.builder("T").tag(ColumnsTag.direct(cu)).buildAtom();
+    private static final Atom atomCv = Molecule.builder("T").tag(ColumnsTag.direct(cv)).buildAtom();
+    private static final Atom atomCo = Molecule.builder("T").tag(ColumnsTag.direct(co)).buildAtom();
+    private static final Atom atomKu = Molecule.builder("Ku").tag(ColumnsTag.direct(ku)).buildAtom();
+    private static final Atom atomKv = Molecule.builder("Kv").tag(ColumnsTag.direct(kv)).buildAtom();
+    private static final Atom atomKo = Molecule.builder("Ko").tag(ColumnsTag.direct(ko)).buildAtom();
     private static final Atom atomT2 = Molecule.builder("T").tag(new TableTag("T"))
-                                                            .tag(ColumnsTag.createDirect(ku)).buildAtom();
-    private static final Atom atomCu2 = Molecule.builder("Cu").tag(ColumnsTag.createDirect(cu))
+                                                            .tag(ColumnsTag.direct(ku)).buildAtom();
+    private static final Atom atomCu2 = Molecule.builder("Cu").tag(ColumnsTag.direct(cu))
                                                             .tag(new TableTag("U")).buildAtom();
-    private static final Atom atomCv2 = Molecule.builder("Cv").tag(ColumnsTag.createDirect(cv))
+    private static final Atom atomCv2 = Molecule.builder("Cv").tag(ColumnsTag.direct(cv))
                                                             .tag(new TableTag("U")).buildAtom();
-    private static final Atom atomCu3 = Molecule.builder("Cu").tag(ColumnsTag.createDirect(cu))
-                                                              .tag(ColumnsTag.createDirect(ku)).buildAtom();
-    private static final Atom atomCv3 = Molecule.builder("Cv").tag(ColumnsTag.createDirect(cv))
-                                                              .tag(ColumnsTag.createDirect(kv)).buildAtom();
+    private static final Atom atomCu3 = Molecule.builder("Cu").tag(ColumnsTag.direct(cu))
+                                                              .tag(ColumnsTag.direct(ku)).buildAtom();
+    private static final Atom atomCv3 = Molecule.builder("Cv").tag(ColumnsTag.direct(cv))
+                                                              .tag(ColumnsTag.direct(kv)).buildAtom();
 
     private static final AtomAnnotation aaT = AtomAnnotation.of(atomT);
     private static final AtomAnnotation aaU = AtomAnnotation.of(atomU);
@@ -218,7 +218,7 @@ public class SqlGeneratorTest implements TestContext {
         ContextMapping mapping = ContextMapping.parse(
                 DictTree.load().fromResourceList(getClass(), mappingPath));
         SqlGenerator generator = new SqlGenerator(mapping);
-        SqlRewriting sql = generator.transform(query);
+        RelationalRewriting sql = generator.transform(query);
         assertEquals(sql.isDistinct(),
                      ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null);
         Set<Column> actualColumns = sql.getVars().stream().map(sql.getIndex()::getColumn)
@@ -234,7 +234,7 @@ public class SqlGeneratorTest implements TestContext {
                                      .replaceAll("@", "[ck][uvo]")
                                      .replaceAll("\\$", "vi?\\\\d+")
                                      .replaceAll("([()])", "\\\\s*\\\\$1\\\\s*");
-        assertTrue(Pattern.compile(rxString).matcher(sql.getSql()).matches(),
-                "\n\""+sql.getSql()+"\" does not match \n\""+expectedSql+"\"");
+        assertTrue(Pattern.compile(rxString).matcher(sql.getRelationalQuery()).matches(),
+                "\n\""+sql.getRelationalQuery()+"\" does not match \n\""+expectedSql+"\"");
     }
 }

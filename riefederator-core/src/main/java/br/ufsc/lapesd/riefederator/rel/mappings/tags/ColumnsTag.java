@@ -35,13 +35,13 @@ public class ColumnsTag implements HybridTag {
         this.direct = direct;
     }
 
-    public static @Nonnull ColumnsTag createDirect(@Nonnull Column column) {
+    public static @Nonnull ColumnsTag direct(@Nonnull Column column) {
         return new ColumnsTag(singletonList(column), true);
     }
-    public static @Nonnull ColumnsTag createDirect(@Nonnull String table, @Nonnull String column) {
+    public static @Nonnull ColumnsTag direct(@Nonnull String table, @Nonnull String column) {
         return new ColumnsTag(singletonList(new Column(table, column)), true);
     }
-    public static @Nonnull ColumnsTag createNonDirect(@Nonnull String table, @Nonnull String column) {
+    public static @Nonnull ColumnsTag nonDirect(@Nonnull String table, @Nonnull String column) {
         return new ColumnsTag(singletonList(new Column(table, column)), false);
     }
 

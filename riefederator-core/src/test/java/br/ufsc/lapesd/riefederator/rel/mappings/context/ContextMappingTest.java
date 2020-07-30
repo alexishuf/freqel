@@ -56,11 +56,11 @@ public class ContextMappingTest implements TestContext {
                                         .tag(ValueTag.of(Person))
                                         .buildAtom(),
                                 PostRelationalTag.INSTANCE)
-                        .out(name, Molecule.builder("T1.name").tag(ColumnsTag.createDirect("T1", "name"))
+                        .out(name, Molecule.builder("T1.name").tag(ColumnsTag.direct("T1", "name"))
                                            .buildAtom(),
-                                ColumnsTag.createDirect("T1", "name"))
+                                ColumnsTag.direct("T1", "name"))
                         .tag(new TableTag("T1"))
-                        .tag(ColumnsTag.createNonDirect("T1", "name"))
+                        .tag(ColumnsTag.nonDirect("T1", "name"))
                         .exclusive().build(),
                         "{\"T1\": [\"name\"]}"),
                 asList("mapping-2.json", Molecule.builder("T2")
@@ -70,9 +70,9 @@ public class ContextMappingTest implements TestContext {
                                         .tag(ValueTag.of(Document))
                                         .buildAtom(),
                                 PostRelationalTag.INSTANCE)
-                        .out(age, Molecule.builder("T2.age").tag(ColumnsTag.createDirect("T2", "age"))
+                        .out(age, Molecule.builder("T2.age").tag(ColumnsTag.direct("T2", "age"))
                                           .buildAtom(),
-                                ColumnsTag.createDirect("T2", "age"))
+                                ColumnsTag.direct("T2", "age"))
                         .tag(new TableTag("T2")).exclusive().build(),
                         "{\"T2\":[]}"),
                 asList("mapping-3.json", Molecule.builder("T3")
@@ -80,9 +80,9 @@ public class ContextMappingTest implements TestContext {
                                         .tag(PostRelationalTag.INSTANCE)
                                         .tag(ValueTag.of(Person)).buildAtom(),
                                 PostRelationalTag.INSTANCE)
-                        .out(age, Molecule.builder("T3.age").tag(ColumnsTag.createDirect("T3", "age"))
+                        .out(age, Molecule.builder("T3.age").tag(ColumnsTag.direct("T3", "age"))
                                           .buildAtom(),
-                                ColumnsTag.createDirect("T3", "age"))
+                                ColumnsTag.direct("T3", "age"))
                         .tag(new TableTag("T3")).exclusive().build(),
                         "{\"T3\":[]}"),
                 asList("mapping-4.json",
@@ -92,11 +92,11 @@ public class ContextMappingTest implements TestContext {
                                             .tag(ValueTag.of(Person))
                                             .buildAtom(),
                                     PostRelationalTag.INSTANCE)
-                            .out(name, Molecule.builder("T1.name").tag(ColumnsTag.createDirect("T1", "name"))
+                            .out(name, Molecule.builder("T1.name").tag(ColumnsTag.direct("T1", "name"))
                                             .buildAtom(),
-                                    ColumnsTag.createDirect("T1", "name"))
+                                    ColumnsTag.direct("T1", "name"))
                             .tag(new TableTag("T1"))
-                           .tag(ColumnsTag.createNonDirect("T1", "name"))
+                           .tag(ColumnsTag.nonDirect("T1", "name"))
                            .exclusive()
                        .startNewCore("T3")
                             .out(type, Molecule.builder("T3."+RDF.type.getURI())
@@ -104,9 +104,9 @@ public class ContextMappingTest implements TestContext {
                                             .tag(ValueTag.of(Person))
                                             .buildAtom(),
                                     PostRelationalTag.INSTANCE)
-                            .out(age, Molecule.builder("T3.age").tag(ColumnsTag.createDirect("T3", "age"))
+                            .out(age, Molecule.builder("T3.age").tag(ColumnsTag.direct("T3", "age"))
                                             .buildAtom(),
-                                    ColumnsTag.createDirect("T3", "age"))
+                                    ColumnsTag.direct("T3", "age"))
                             .tag(new TableTag("T3")).exclusive()
                        .startNewCore("T4")
                                .out(type, Molecule.builder("T4."+RDF.type.getURI())
@@ -115,8 +115,8 @@ public class ContextMappingTest implements TestContext {
                                                .buildAtom(),
                                        PostRelationalTag.INSTANCE)
                                .out(name, Molecule.builder("T4.name")
-                                               .tag(ColumnsTag.createDirect("T4", "name")).buildAtom(),
-                                       ColumnsTag.createDirect("T4", "name"))
+                                               .tag(ColumnsTag.direct("T4", "name")).buildAtom(),
+                                       ColumnsTag.direct("T4", "name"))
                                .tag(new TableTag("T4")).exclusive().build(),
                        "{\"T1\": [\"name\"], \"T3\":[], \"T4\":[]}"),
                 asList("mapping-5.json",
@@ -127,11 +127,11 @@ public class ContextMappingTest implements TestContext {
                                                 .buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(name, Molecule.builder("T5.name")
-                                        .tag(ColumnsTag.createDirect("T5", "name")).buildAtom(),
-                                        ColumnsTag.createDirect("T5", "name"))
+                                        .tag(ColumnsTag.direct("T5", "name")).buildAtom(),
+                                        ColumnsTag.direct("T5", "name"))
                                 .out(age, Molecule.builder("T5.age")
-                                        .tag(ColumnsTag.createDirect("T5", "age")).buildAtom(),
-                                        ColumnsTag.createDirect("T5", "age"))
+                                        .tag(ColumnsTag.direct("T5", "age")).buildAtom(),
+                                        ColumnsTag.direct("T5", "age"))
                                 .tag(new TableTag("T5"))
                                 .tag(new ColumnsTag(asList(new Column("T5", "name"),
                                                                  new Column("T5", "age"))))
@@ -179,10 +179,10 @@ public class ContextMappingTest implements TestContext {
                                                 .tag(ValueTag.of(Person)).buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(name, Molecule.builder("T1.name")
-                                                   .tag(ColumnsTag.createDirect("T1", "name")).buildAtom(),
-                                        ColumnsTag.createDirect("T1", "name"))
+                                                   .tag(ColumnsTag.direct("T1", "name")).buildAtom(),
+                                        ColumnsTag.direct("T1", "name"))
                                 .tag(new TableTag("T1"))
-                                .tag(ColumnsTag.createNonDirect("T1", "name"))
+                                .tag(ColumnsTag.nonDirect("T1", "name"))
                                 .exclusive().build()),
                 asList("mapping-1.json", "{\"T1\": [\"name\", \"age\"]}",
                         Molecule.builder("T1")
@@ -191,13 +191,13 @@ public class ContextMappingTest implements TestContext {
                                                 .tag(ValueTag.of(Person)).buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(name, Molecule.builder("T1.name")
-                                                   .tag(ColumnsTag.createDirect("T1", "name")).buildAtom(),
-                                        ColumnsTag.createDirect("T1", "name"))
+                                                   .tag(ColumnsTag.direct("T1", "name")).buildAtom(),
+                                        ColumnsTag.direct("T1", "name"))
                                 .out(age, Molecule.builder("T1.age")
-                                                   .tag(ColumnsTag.createDirect("T1", "age")).buildAtom(),
-                                        ColumnsTag.createDirect("T1", "age"))
+                                                   .tag(ColumnsTag.direct("T1", "age")).buildAtom(),
+                                        ColumnsTag.direct("T1", "age"))
                                 .tag(new TableTag("T1"))
-                                .tag(ColumnsTag.createNonDirect("T1", "name"))
+                                .tag(ColumnsTag.nonDirect("T1", "name"))
                                 .exclusive().build()),
                 asList("mapping-2.json", "{\"T2\": [\"age\"]}",
                         Molecule.builder("T2")
@@ -207,8 +207,8 @@ public class ContextMappingTest implements TestContext {
                                                 .tag(ValueTag.of(Document)).buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(age, Molecule.builder("T2.age")
-                                                  .tag(ColumnsTag.createDirect("T2", "age")).buildAtom(),
-                                        ColumnsTag.createDirect("T2", "age"))
+                                                  .tag(ColumnsTag.direct("T2", "age")).buildAtom(),
+                                        ColumnsTag.direct("T2", "age"))
                                 .tag(new TableTag("T2")).exclusive().build()),
                 asList("mapping-3.json", "{\"T3\": [\"age\"]}",
                         Molecule.builder("T3")
@@ -217,8 +217,8 @@ public class ContextMappingTest implements TestContext {
                                                 .tag(ValueTag.of(Person)).buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(age, Molecule.builder("T3.age")
-                                                  .tag(ColumnsTag.createDirect("T3", "age")).buildAtom(),
-                                        ColumnsTag.createDirect("T3", "age"))
+                                                  .tag(ColumnsTag.direct("T3", "age")).buildAtom(),
+                                        ColumnsTag.direct("T3", "age"))
                                 .tag(new TableTag("T3")).exclusive().build()),
                 asList("mapping-3.json", "{\"T3\": [\"name\"]}",
                         Molecule.builder("T3")
@@ -228,26 +228,26 @@ public class ContextMappingTest implements TestContext {
                                         PostRelationalTag.INSTANCE)
                                 .out(new StdPlain("name"),
                                         Molecule.builder("T3.name")
-                                                .tag(ColumnsTag.createDirect("T3", "name")).buildAtom(),
-                                        ColumnsTag.createDirect("T3", "name"))
+                                                .tag(ColumnsTag.direct("T3", "name")).buildAtom(),
+                                        ColumnsTag.direct("T3", "name"))
                                 .tag(new TableTag("T3")).exclusive().build()),
                 asList("{\"@tableName\": \"T\"}", "{\"T\": [\"name\"]}",
                         Molecule.builder("T")
                                 .out(new StdPlain("name"),
-                                        Molecule.builder("T.name").tag(ColumnsTag.createDirect("T", "name"))
+                                        Molecule.builder("T.name").tag(ColumnsTag.direct("T", "name"))
                                                 .buildAtom(),
-                                        ColumnsTag.createDirect("T", "name"))
+                                        ColumnsTag.direct("T", "name"))
                                 .tag(new TableTag("T")).exclusive().build()),
                 asList("{\"@tableName\": \"T\"}", "{\"T\": [\"name\", \"age\"]}",
                         Molecule.builder("T")
                                 .out(new StdPlain("name"),
-                                        Molecule.builder("T.name").tag(ColumnsTag.createDirect("T", "name"))
+                                        Molecule.builder("T.name").tag(ColumnsTag.direct("T", "name"))
                                                 .buildAtom(),
-                                        ColumnsTag.createDirect("T", "name"))
+                                        ColumnsTag.direct("T", "name"))
                                 .out(new StdPlain("age"),
-                                        Molecule.builder("T.age").tag(ColumnsTag.createDirect("T", "age"))
+                                        Molecule.builder("T.age").tag(ColumnsTag.direct("T", "age"))
                                                 .buildAtom(),
-                                        ColumnsTag.createDirect("T", "age"))
+                                        ColumnsTag.direct("T", "age"))
                                 .tag(new TableTag("T")).exclusive().build()),
                 asList("mapping-4.json", "{\"T1\": [\"name\", \"age\"]}",
                         Molecule.builder("T1")
@@ -255,14 +255,14 @@ public class ContextMappingTest implements TestContext {
                                                 .tag(PostRelationalTag.INSTANCE)
                                                 .tag(ValueTag.of(Person)).buildAtom(),
                                         PostRelationalTag.INSTANCE)
-                                .out(name, Molecule.builder("T1.name").tag(ColumnsTag.createDirect("T1", "name"))
+                                .out(name, Molecule.builder("T1.name").tag(ColumnsTag.direct("T1", "name"))
                                                 .buildAtom(),
-                                        ColumnsTag.createDirect("T1", "name"))
-                                .out(age, Molecule.builder("T1.age").tag(ColumnsTag.createDirect("T1", "age"))
+                                        ColumnsTag.direct("T1", "name"))
+                                .out(age, Molecule.builder("T1.age").tag(ColumnsTag.direct("T1", "age"))
                                                 .buildAtom(),
-                                        ColumnsTag.createDirect("T1", "age"))
+                                        ColumnsTag.direct("T1", "age"))
                                 .tag(new TableTag("T1"))
-                                .tag(ColumnsTag.createNonDirect("T1", "name"))
+                                .tag(ColumnsTag.nonDirect("T1", "name"))
                                 .exclusive().build()),
                 asList("mapping-4.json", "{\"T3\": [\"name\"], \"T4\": [\"name\", \"age\"]}",
                         Molecule.builder("T3")
@@ -271,8 +271,8 @@ public class ContextMappingTest implements TestContext {
                                                 .tag(ValueTag.of(Person)).buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(new StdPlain("name"), Molecule.builder("T3.name")
-                                                .tag(ColumnsTag.createDirect("T3", "name")).buildAtom(),
-                                        ColumnsTag.createDirect("T3", "name"))
+                                                .tag(ColumnsTag.direct("T3", "name")).buildAtom(),
+                                        ColumnsTag.direct("T3", "name"))
                                 .tag(new TableTag("T3")).exclusive()
                                 .startNewCore("T4")
                                 .out(type, Molecule.builder("T4."+RDF.type.getURI())
@@ -280,11 +280,11 @@ public class ContextMappingTest implements TestContext {
                                                 .tag(ValueTag.of(Professor)).buildAtom(),
                                         PostRelationalTag.INSTANCE)
                                 .out(name, Molecule.builder("T4.name")
-                                                .tag(ColumnsTag.createDirect("T4", "name")).buildAtom(),
-                                        ColumnsTag.createDirect("T4", "name"))
+                                                .tag(ColumnsTag.direct("T4", "name")).buildAtom(),
+                                        ColumnsTag.direct("T4", "name"))
                                 .out(new StdPlain("age"), Molecule.builder("T4.age")
-                                                .tag(ColumnsTag.createDirect("T4", "age")).buildAtom(),
-                                        ColumnsTag.createDirect("T4", "age"))
+                                                .tag(ColumnsTag.direct("T4", "age")).buildAtom(),
+                                        ColumnsTag.direct("T4", "age"))
                                 .tag(new TableTag("T4")).exclusive().build())
         ).map(List::toArray).toArray(Object[][]::new);
     }

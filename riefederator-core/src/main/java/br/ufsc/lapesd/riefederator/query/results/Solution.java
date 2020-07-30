@@ -36,10 +36,10 @@ public interface Solution {
     }
 
     default boolean isEmpty() {
-        if (!getVarNames().isEmpty())
+        if (getVarNames().isEmpty())
             return true;
         boolean[] empty = {true};
-        forEach((n, t) -> empty[0] |= t != null);
+        forEach((n, t) -> empty[0] &= t == null);
         return empty[0];
     }
 

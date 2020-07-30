@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeBuilder;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalTermParser;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.enh.RRFactory;
@@ -12,7 +13,6 @@ import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.exceptions.RRException;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.exceptions.RRMappingException;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.impl.AtomNameSelector;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.impl.TriplesMapContext;
-import br.ufsc.lapesd.riefederator.rel.sql.SqlTermParser;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.NaturalSqlTermParser;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
@@ -24,6 +24,7 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.RiotException;
+import org.apache.jena.vocabulary.OWL2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,13 +44,13 @@ public class RRMapping implements RelationalMapping {
     }
 
     private @Nonnull final Multimap<String, TriplesMapContext> table2contexts;
-    private @Nonnull final SqlTermParser sqlTermParser;
+    private @Nonnull final RelationalTermParser sqlTermParser;
     private final boolean strict;
     private final @Nullable String name;
     private final @Nonnull String baseURI;
     private @LazyInit Molecule molecule;
 
-    public RRMapping(@Nonnull Model model, @Nonnull SqlTermParser sqlTermParser,
+    public RRMapping(@Nonnull Model model, @Nonnull RelationalTermParser sqlTermParser,
                      @Nullable String name, boolean strict, @Nonnull String baseURI) {
         this.sqlTermParser = sqlTermParser;
         this.strict = strict;
@@ -66,7 +67,8 @@ public class RRMapping implements RelationalMapping {
 
     public static class Builder {
         private boolean strict = RRMapping.class.desiredAssertionStatus();
-        private @Nonnull SqlTermParser termParser = NaturalSqlTermParser.INSTANCE;
+        private @Nonnull
+        RelationalTermParser termParser = NaturalSqlTermParser.INSTANCE;
         private @Nullable String name = null;
         private @Nullable String baseURI = null;
         private @Nullable String mappingBaseURI = null;
@@ -77,7 +79,7 @@ public class RRMapping implements RelationalMapping {
             return this;
         }
 
-        public @Nonnull Builder sqlTermParser(@Nonnull SqlTermParser termParser) {
+        public @Nonnull Builder sqlTermParser(@Nonnull RelationalTermParser termParser) {
             this.termParser = termParser;
             return this;
         }
@@ -299,6 +301,10 @@ public class RRMapping implements RelationalMapping {
     public int toRDF(@Nonnull Model model, @Nonnull List<Column> columns, @Nonnull List<?> values) {
         Preconditions.checkArgument(columns.size() == values.size(), "#columns != #values");
         assert columns.stream().noneMatch(Objects::isNull) : "null columns";
+        if (columns.isEmpty()) {
+            model.createResource(OWL2.Thing);
+            return 1;
+        }
         Map<String, Map<String, RDFNode>> maps = new HashMap<>();
         for (int i = 0, size = columns.size(); i < size; i++) {
             Column c = columns.get(i);

@@ -30,11 +30,11 @@ public class AmbiguityMergePolicyTest implements TestContext {
 
     private static final Atom atomT = Molecule.builder("T").tag(new TableTag("T")).buildAtom();
     private static final Atom atomU = Molecule.builder("U").tag(new TableTag("U")).buildAtom();
-    private static final Atom atomCu = Molecule.builder("T").tag(ColumnsTag.createDirect(cu)).buildAtom();
-    private static final Atom atomCv = Molecule.builder("T").tag(ColumnsTag.createDirect(cv)).buildAtom();
-    private static final Atom atomCo = Molecule.builder("T").tag(ColumnsTag.createDirect(co)).buildAtom();
-    private static final Atom atomKu = Molecule.builder("Ku").tag(ColumnsTag.createDirect(ku)).buildAtom();
-    private static final Atom atomKo = Molecule.builder("Ko").tag(ColumnsTag.createDirect(ko)).buildAtom();
+    private static final Atom atomCu = Molecule.builder("T").tag(ColumnsTag.direct(cu)).buildAtom();
+    private static final Atom atomCv = Molecule.builder("T").tag(ColumnsTag.direct(cv)).buildAtom();
+    private static final Atom atomCo = Molecule.builder("T").tag(ColumnsTag.direct(co)).buildAtom();
+    private static final Atom atomKu = Molecule.builder("Ku").tag(ColumnsTag.direct(ku)).buildAtom();
+    private static final Atom atomKo = Molecule.builder("Ko").tag(ColumnsTag.direct(ko)).buildAtom();
 
     private static final AtomAnnotation aaT = AtomAnnotation.of(atomT);
     private static final AtomAnnotation aaU = AtomAnnotation.of(atomU);

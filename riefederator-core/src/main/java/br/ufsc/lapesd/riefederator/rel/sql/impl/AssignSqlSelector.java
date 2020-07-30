@@ -2,8 +2,8 @@ package br.ufsc.lapesd.riefederator.rel.sql.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalTermWriter;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
-import br.ufsc.lapesd.riefederator.rel.sql.SqlTermWriter;
 
 import javax.annotation.Nonnull;
 import java.util.Collections;
@@ -32,7 +32,7 @@ public class AssignSqlSelector extends SqlSelector {
         return false;
     }
     @Override
-    public @Nonnull String getCondition(@Nonnull SqlTermWriter writer) {
+    public @Nonnull String getCondition(@Nonnull RelationalTermWriter writer) {
         return "";
     }
 }

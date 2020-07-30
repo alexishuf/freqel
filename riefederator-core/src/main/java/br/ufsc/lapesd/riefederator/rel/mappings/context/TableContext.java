@@ -124,7 +124,7 @@ class TableContext {
         for (String column : columns) {
             URI uri = getUri(column);
             if (uri != null) {
-                ColumnsTag tag = ColumnsTag.createDirect(tableName, column);
+                ColumnsTag tag = ColumnsTag.direct(tableName, column);
                 Atom colAtom = Molecule.builder(tableName + "." + column).tag(tag).buildAtom();
                 b.out(uri, colAtom, singletonList(tag));
             }

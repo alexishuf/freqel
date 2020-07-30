@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.rel.sql.impl;
 
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.rel.sql.SqlTermParser;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalTermParser;
 import org.apache.jena.graph.Node;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.ResourceFactory;
@@ -11,7 +11,7 @@ import org.apache.jena.rdf.model.impl.ResourceImpl;
 
 import javax.annotation.Nullable;
 
-public class JenaSqlTermParser implements SqlTermParser {
+public class JenaSqlTermParser implements RelationalTermParser {
     @Override
     public @Nullable Term parseTerm(@Nullable Object sqlObject) {
         if (sqlObject == null || (sqlObject instanceof Term))

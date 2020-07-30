@@ -110,12 +110,19 @@ public class SolutionTest implements TestContext {
     @Test(dataProvider = "emptyData")
     public void testEmpty(Supplier<Solution> supplier) {
         Solution s = supplier.get();
+        assertTrue(s.isEmpty());
         assertFalse(s.has("x"));
         assertFalse(s.has("missing"));
         assertEquals(s.get("x", Alice), Alice);
         assertEquals(s.get("missing", Alice), Alice);
         assertNull(s.get("x"));
         assertNull(s.get("missing"));
+    }
+
+    @Test(dataProvider = "nonEmptyData")
+    public void testNonEmpty(Supplier<Solution> supplier) {
+        Solution s = supplier.get();
+        assertFalse(s.isEmpty());
     }
 
     @Test(dataProvider = "nonEmptyData")

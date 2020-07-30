@@ -5,13 +5,6 @@ import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
-import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
-import br.ufsc.lapesd.riefederator.jena.query.JenaBindingSolution;
-import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
-import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -20,37 +13,24 @@ import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.query.results.*;
-import br.ufsc.lapesd.riefederator.query.results.impl.*;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
+import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.LimitResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.riefederator.rel.common.AnnotationStatus;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalMoleculeMatcher;
-import br.ufsc.lapesd.riefederator.rel.common.StarVarIndex;
-import br.ufsc.lapesd.riefederator.rel.common.StarsHelper;
-import br.ufsc.lapesd.riefederator.rel.mappings.Column;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalResults;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.inject.Guice;
-import org.apache.jena.query.Query;
-import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.QueryExecutionFactory;
-import org.apache.jena.query.QueryFactory;
-import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.vocabulary.RDF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.sql.*;
-import java.util.*;
-
-import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.toSet;
+import java.util.Properties;
 
 public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(JDBCCQEndpoint.class);
@@ -137,44 +117,6 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     /* --- --- --- Internals --- --- --- */
 
-    private static class AnnotationStatus {
-        private static final @Nonnull URI type = JenaWrappers.fromURIResource(RDF.type);
-        final int missingTable, missingColumn, badColumn, size;
-
-        public AnnotationStatus(@Nonnull CQuery query) {
-            int missingTable = 0, missingColumns = 0, badColumn = 0;
-            this.size = query.size();
-            Map<Term, String> s2table = new HashMap<>();
-            for (Triple triple : query) {
-                Term s = triple.getSubject();
-                String table = s2table.computeIfAbsent(s, k -> StarsHelper.findTable(query, s));
-                if (table == null)
-                    ++missingTable;
-                Set<Column> columns = StarsHelper.getColumns(query, table, triple.getObject());
-                if (columns.isEmpty()) {
-                    if (!StarsHelper.isPostRelational(query, triple.getObject()))
-                        ++missingColumns;
-                } else if (table != null) {
-                    if (columns.stream().noneMatch(c -> c.getTable().equals(table)))
-                    ++badColumn;
-                }
-            }
-            this.missingTable = missingTable;
-            this.missingColumn = missingColumns;
-            this.badColumn = badColumn;
-        }
-
-        boolean isValid() {
-            return missingTable == 0 && missingColumn == 0 && badColumn == 0;
-        }
-
-        boolean isEmpty() {
-            return missingTable == size;
-        }
-
-
-    }
-
     private @Nonnull Results runUnderFederation(@Nonnull CQuery query) {
             SimpleFederationModule m = new SimpleFederationModule() {
                 @Override
@@ -188,214 +130,43 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             }
     }
 
-    private static @Nonnull Set<String> getResultVars(@Nonnull CQuery query) {
-        if (query.isAsk())
-            return Collections.emptySet();
-        Projection p = ModifierUtils.getFirst(Projection.class, query.getModifiers());
-        if (p != null) return p.getVarNames();
-        return query.getTermVars().stream().map(Var::getName).collect(toSet());
-    }
-
-    private class SqlResults extends AbstractResults {
-        private boolean closed = false;
-        private final boolean ask;
+    private class SqlResults extends RelationalResults {
         private final @Nonnull Statement stmt;
         private final @Nonnull ResultSet rs;
-        private SQLException exception = null;
-        private final @Nonnull Queue<Solution> queue = new ArrayDeque<>();
-        private final @Nonnull SqlRewriting sql;
-        private final @Nonnull Model tmpModel = ModelFactory.createDefaultModel();
-        private final @Nonnull List<Query> jenaStars;
-        private final @Nonnull List<Set<String>> jenaVars;
-        private final @Nonnull List<JenaBindingSolution.Factory> jenaSolutionFac;
-        private final @Nonnull List<Set<String>> jVars;
-        private final @Nonnull List<Set<String>> jrVars;
-        private final @Nullable ArraySolution.ValueFactory projector;
 
-        public SqlResults(@Nonnull SqlRewriting sql,
+        public SqlResults(@Nonnull RelationalRewriting sql,
                           @Nonnull Statement stmt, @Nonnull ResultSet rs) {
-            super(getResultVars(sql.getQuery()));
-            this.ask = sql.getQuery().isAsk();
+            super(sql, mapping);
             this.stmt = stmt;
             this.rs = rs;
-            this.sql = sql;
-            this.jenaStars = new ArrayList<>(sql.getStarsCount());
-            this.jenaVars = new ArrayList<>(sql.getStarsCount());
-            this.jenaSolutionFac = new ArrayList<>(sql.getStarsCount());
-            this.jVars = new ArrayList<>(sql.getStarsCount());
-            this.jrVars = new ArrayList<>(sql.getStarsCount());
-            StarVarIndex index = sql.getIndex();
-            IndexedSet<String> allVars = index.getAllSparqlVars();
-            Set<String> projection = getVarNames();
-            for (int i = 0, size = sql.getStarsCount(); i < size; i++) {
-                CQuery.Builder b = CQuery.builder(index.getPendingTriples(i));
-                index.getPendingFilters(i).forEach(b::modifier);
-                if (b.getList().isEmpty()) {
-                    assert index.getPendingFilters(i).isEmpty();
-                    Term core = sql.getStar(i).getCore();
-                    if (core.isVar() && projection.contains(core.asVar().getName())) {
-                        b.add(new Triple(core, p, o));
-                        b.project(core.asVar().getName());
-                        b.distinct();
-                    } else { // no work on our side, skip it
-                        jenaStars.add(null);
-                        jenaVars.add(Collections.emptySet());
-                        jenaSolutionFac.add(null);
-                        jVars.add(Collections.emptySet());
-                        jrVars.add(Collections.emptySet());
-                        continue;
-                    }
-                }
-                FastSPARQLString ss = new FastSPARQLString(b.build());
-                jenaStars.add(QueryFactory.create(ss.getSparql()));
-                jenaVars.add(ss.getVarNames());
-                jenaSolutionFac.add(JenaBindingSolution.forVars(jenaVars.get(i)));
-                if (i == 0) {
-                    jVars.add(Collections.emptySet());
-                    jrVars.add(jenaVars.get(i));
-                } else {
-                    // subseting on allVars avoid joining the over the dummy p and o vars
-                    IndexedSubset<String> set = allVars.subset(jenaVars.get(i));
-                    jVars.add(set.createIntersection(jenaVars.get(i-1)));
-                    set.union(jenaVars.get(i-1));
-                    jrVars.add(set);
-                }
-            }
-            projector = allVars.equals(projection) ? null : ArraySolution.forVars(projection);
         }
 
         @Override
-        public int getReadyCount() {
-            return queue.size();
+        protected boolean relationalAdvance() throws SQLException {
+            return rs.next();
         }
 
         @Override
-        public boolean isDistinct() {
-            return sql.isDistinct();
-        }
-
-        @Override
-        public boolean hasNext() {
-            while (!closed && queue.isEmpty()) {
-                try {
-                    if (!rs.next())
-                        break;
-                    convert();
-                } catch (SQLException e) {
-                    exception = e;
-                    silentClose();
-                }
-            }
-            if (ask && !closed) { //will only close once, after first hasNext()
-                boolean ok = !queue.isEmpty();
-                queue.clear();
-                silentClose();
-                assert getVarNames().isEmpty();
-                if (ok)
-                    queue.add(ArraySolution.EMPTY); //else: leave queue empty
-            }
-            return !queue.isEmpty();
-        }
-
-        private void convert() throws SQLException {
-            // results will be a tree of hash joins among the results of each star
-            Results results = null;
-            try {
-                for (int i = 0; i < sql.getStarsCount(); i++) {
-                    if (jenaStars.get(i) == null)
-                        continue; // the query is an ASK that was already executed in SPARQL
-                    Results r = executeStar(i);
-                    if (results == null) {
-                        results = r; // first result, use as root
-                    } else if (jVars.get(i).isEmpty()) {
-                        results = new LazyCartesianResults(asList(results, r), jrVars.get(i));
-                    } else {
-                        results = new InMemoryHashJoinResults(results, r, jVars.get(i),
-                                                              jrVars.get(i), false);
-                    }
-                }
-                assert results != null;
-                filter(results);
-            } finally {
-                if (results != null) {
-                    try {
-                        results.close();
-                    } catch (ResultsCloseException e) {
-                        logger.error("results.close() threw during convert(): ", e);
-                    }
-                }
-            }
-        }
-
-        private @Nonnull Results executeStar(int i) throws SQLException {
-            List<String> starVars = sql.getStarVars(i);
-            List<Object> starValues = new ArrayList<>(starVars.size());
-            for (String v : starVars)
-                starValues.add(rs.getObject(v));
-
-            tmpModel.removeAll();
-            mapping.toRDF(tmpModel, sql.getStarColumns(i), starValues);
-            JenaBindingSolution.Factory factory = jenaSolutionFac.get(i);
-            List<Solution> solutions = new ArrayList<>();
-            try (QueryExecution exec = QueryExecutionFactory.create(jenaStars.get(i), tmpModel)) {
-                org.apache.jena.query.ResultSet rs = exec.execSelect();
-                while (rs.hasNext())
-                    solutions.add(factory.transform(rs.nextBinding()));
-            } catch (Exception e) {
-                logger.error("Problem executing ARQ query for star {}={}. Will continue with " +
-                             "{}} results.", i, jenaStars.get(i), solutions.size(), e);
-            }
-            return new CollectionResults(solutions, jenaVars.get(i));
-        }
-
-        /**
-         * Apply filters not applied in SQL to the results and add valid Solutions to the queue
-         */
-        private void filter(@Nonnull Results results) {
-            rs_loop:
-            while (results.hasNext()) {
-                Solution solution = results.next();
-                for (SPARQLFilter filter : sql.getPendingFilters()) {
-                    if (!filter.evaluate(solution))
-                        continue rs_loop;
-                }
-                if (projector != null) queue.add(projector.fromSolution(solution));
-                else                   queue.add(solution);
-            }
-        }
-
-        @Override
-        public @Nonnull Solution next() {
-            if (!hasNext())
-                throw new NoSuchElementException();
-            return queue.remove();
-        }
-
-        private void silentClose() {
+        protected void relationalClose() throws SQLException {
+            SQLException exception = null;
             try {
                 stmt.close();
+            } catch (SQLException e) {
+                exception = e;
+            }
+            try {
+                rs.close();
             } catch (SQLException e) {
                 if (exception == null) exception = e;
                 else                   exception.addSuppressed(e);
             }
-            closed = true;
+            if (exception != null)
+                throw exception;
         }
 
         @Override
-        public void close() throws ResultsCloseException {
-            if (exception != null) {
-                SQLException cause = this.exception;
-                this.exception = null;
-                throw new ResultsCloseException(this, "SQLException during hasNext()", cause);
-            }
-            if (!closed) {
-                closed = true;
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                    throw new ResultsCloseException(this, e);
-                }
-            }
+        protected @Nullable Object relationalGetValue(String relationalVar) throws SQLException {
+            return rs.getObject(relationalVar);
         }
     }
 
@@ -405,26 +176,20 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     public @Nonnull Results query(@Nonnull CQuery query) {
         AnnotationStatus st = new AnnotationStatus(query);
         if (!st.isValid()) {
-            if (st.isEmpty()) {
-                return runUnderFederation(query);
-            } else {
-                throw new IllegalArgumentException("Query is partially annotated! It misses " +
-                        "table annotation on "+st.missingTable+" triples, misses column " +
-                        "annotations on "+st.missingColumn+" triples and has "+st.badColumn +
-                        " ColumnTags not matching the TableTag. Query: "+query);
-            }
+            if (st.isEmpty()) return runUnderFederation(query);
+            else              st.checkNotPartiallyAnnotated(); //throws IllegalArgumentException
         }
-        SqlRewriting sql;
+        RelationalRewriting sql;
         try {
             sql = sqlGenerator.transform(query);
             logger.debug("{} Query:\n  {}\nSQL:\n  {}", this, query.toString().replace("\n", "\n  "),
-                         sql.getSql().replace("\n", "\n  "));
+                         sql.getRelationalQuery().replace("\n", "\n  "));
         } catch (RuntimeException e) {
             throw new QueryExecutionException("Could not generate SQL for "+query, e);
         }
         try {
             Statement stmt = connectionSupplier.connect().createStatement();
-            ResultSet rs = stmt.executeQuery(sql.getSql());
+            ResultSet rs = stmt.executeQuery(sql.getRelationalQuery());
             Results results = new SqlResults(sql, stmt, rs);
             // SqlResults implements FILTER()s and projection.
             // Maybe the SQL engine provided DISTINCT and LIMIT. If not (and required) provide here

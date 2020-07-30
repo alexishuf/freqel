@@ -60,6 +60,23 @@ public class Atom implements MoleculeElement {
         this.protoTags = new HashSet<>();
     }
 
+    Atom(@Nonnull Atom other) {
+        this.name = other.getName();
+        this.protoIn = new HashSet<>();
+        this.protoOut = new HashSet<>();
+        this.protoTags = new HashSet<>();
+        this.protoIn.addAll(other.getIn());
+        this.protoOut.addAll(other.getOut());
+        this.protoTags.addAll(other.getTags());
+        this.exclusive = other.isExclusive();
+        this.closed = other.isClosed();
+        this.disjoint = other.isDisjoint();
+        this.in = null;
+        this.out = null;
+        this.tags = null;
+        this.hash = 0;
+    }
+
     static @Nonnull Atom createMutable(@Nonnull String name) {
         return new Atom(name, true);
     }

@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.rel.sql.impl;
 
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.rel.sql.SqlTermParser;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalTermParser;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Node;
 import org.apache.jena.rdf.model.RDFNode;
@@ -26,7 +26,7 @@ import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
  *
  * [1]: https://www.w3.org/TR/2012/REC-r2rml-20120927/#natural-mapping
  */
-public class NaturalSqlTermParser implements SqlTermParser {
+public class NaturalSqlTermParser implements RelationalTermParser {
     public static final @Nonnull NaturalSqlTermParser INSTANCE = new NaturalSqlTermParser();
     private static final Map<Class<?>, Function<Object, RDFNode>> cls2converter;
 

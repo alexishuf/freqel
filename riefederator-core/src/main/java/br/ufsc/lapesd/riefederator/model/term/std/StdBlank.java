@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.model.term.std;
 
 import br.ufsc.lapesd.riefederator.model.term.AbstractBlank;
+import br.ufsc.lapesd.riefederator.model.term.Blank;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
@@ -24,6 +25,10 @@ public class StdBlank extends AbstractBlank {
 
     public StdBlank() {
         this(null);
+    }
+
+    public static @Nonnull Blank blank() {
+        return new StdBlank();
     }
 
     @Override

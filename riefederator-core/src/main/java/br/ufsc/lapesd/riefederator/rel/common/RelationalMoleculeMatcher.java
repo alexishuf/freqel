@@ -4,13 +4,18 @@ import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.MergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 
 import javax.annotation.Nonnull;
 
 public class RelationalMoleculeMatcher extends MoleculeMatcher {
+    public RelationalMoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBoxReasoner reasoner,
+                                     @Nonnull MergePolicyAnnotation mergePolicy) {
+        super(molecule, reasoner, mergePolicy);
+    }
     public RelationalMoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBoxReasoner reasoner) {
-        super(molecule, reasoner, new AmbiguityMergePolicy());
+        this(molecule, reasoner, new AmbiguityMergePolicy());
     }
 
     @Override

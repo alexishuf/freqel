@@ -98,6 +98,7 @@ public interface TestContext {
     @Nonnull URI ageEx         = new StdURI(EX+"age");
     @Nonnull URI university    = new StdURI(EX+"university");
     @Nonnull URI university_id = new StdURI(EX+"university_id");
+    @Nonnull URI supervisor    = new StdURI(EX+"supervisor");
     @Nonnull URI paper_id      = new StdURI(EX+"paper_id");
     @Nonnull URI author_id     = new StdURI(EX+"author_id");
     @Nonnull URI likes      = new StdURI(EX+"likes");

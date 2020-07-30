@@ -23,6 +23,7 @@ import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
+import org.apache.jena.vocabulary.OWL2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -356,6 +357,10 @@ public class ContextMapping implements RelationalMapping {
     @Override
     public int toRDF(@Nonnull Model model, @Nonnull List<Column> columns, @Nonnull List<?> values) {
         Map<String, ToRDFArgs> table2args = new HashMap<>();
+        if (columns.isEmpty()) {
+            model.createResource(OWL2.Thing);
+            return 1;
+        }
         for (int i = 0, size = columns.size(); i < size; i++) {
             Column col = columns.get(i);
             ToRDFArgs args = table2args.computeIfAbsent(col.getTable(), k -> new ToRDFArgs());

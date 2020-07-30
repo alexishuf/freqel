@@ -34,21 +34,21 @@ public class StarSqlWriterTest implements TestContext {
     private static final Column ku = new Column("U", "ku");
     private static final Column kv = new Column("U", "kv");
     private static final Atom atomT = Molecule.builder("T").tag(new TableTag("T"))
-            .tag(ColumnsTag.createNonDirect("T", "cu")).buildAtom();
-    private static final Atom atomCu = Molecule.builder("Cu").tag(ColumnsTag.createDirect(cu)).buildAtom();
-    private static final Atom atomCv = Molecule.builder("Cv").tag(ColumnsTag.createDirect(cv)).buildAtom();
-    private static final Atom atomCo = Molecule.builder("Co").tag(ColumnsTag.createDirect(co)).buildAtom();
-    private static final Atom atomKu = Molecule.builder("Ku").tag(ColumnsTag.createDirect(ku)).buildAtom();
+            .tag(ColumnsTag.nonDirect("T", "cu")).buildAtom();
+    private static final Atom atomCu = Molecule.builder("Cu").tag(ColumnsTag.direct(cu)).buildAtom();
+    private static final Atom atomCv = Molecule.builder("Cv").tag(ColumnsTag.direct(cv)).buildAtom();
+    private static final Atom atomCo = Molecule.builder("Co").tag(ColumnsTag.direct(co)).buildAtom();
+    private static final Atom atomKu = Molecule.builder("Ku").tag(ColumnsTag.direct(ku)).buildAtom();
     private static final Atom atomT2 = Molecule.builder("T").tag(new TableTag("T"))
-                                                            .tag(ColumnsTag.createDirect(ku)).buildAtom();
-    private static final Atom atomCu2 = Molecule.builder("Cu").tag(ColumnsTag.createDirect(cu))
+                                                            .tag(ColumnsTag.direct(ku)).buildAtom();
+    private static final Atom atomCu2 = Molecule.builder("Cu").tag(ColumnsTag.direct(cu))
                                                               .tag(new TableTag("U")).buildAtom();
-    private static final Atom atomCv2 = Molecule.builder("Cv").tag(ColumnsTag.createDirect(cv))
+    private static final Atom atomCv2 = Molecule.builder("Cv").tag(ColumnsTag.direct(cv))
                                                               .tag(new TableTag("U")).buildAtom();
-    private static final Atom atomCu3 = Molecule.builder("Cu").tag(ColumnsTag.createDirect(cu))
-                                                              .tag(ColumnsTag.createDirect(ku)).buildAtom();
-    private static final Atom atomCv3 = Molecule.builder("Cv").tag(ColumnsTag.createDirect(cv))
-                                                              .tag(ColumnsTag.createDirect(kv)).buildAtom();
+    private static final Atom atomCu3 = Molecule.builder("Cu").tag(ColumnsTag.direct(cu))
+                                                              .tag(ColumnsTag.direct(ku)).buildAtom();
+    private static final Atom atomCv3 = Molecule.builder("Cv").tag(ColumnsTag.direct(cv))
+                                                              .tag(ColumnsTag.direct(kv)).buildAtom();
     private static final Lit i23 = StdLit.fromUnescaped("23", xsdInt);
     private static final Lit i24 = StdLit.fromUnescaped("24", xsdInt);
 

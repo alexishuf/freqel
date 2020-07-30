@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -29,6 +30,18 @@ public class MoleculeBuilder {
         name2atom.put(name, currentAtom);
     }
 
+    public MoleculeBuilder(@Nonnull Atom atom) {
+        currentAtom = new Atom(atom);
+        registerAtoms(atom);
+    }
+
+    private void registerAtoms(@Nonnull Atom atom) {
+        Atom old = name2atom.put(atom.getName(), atom);
+        assert old == null || old.equals(atom);
+        Stream.concat(atom.getIn().stream(), atom.getOut().stream())
+                .map(MoleculeLink::getAtom).forEach(this::registerAtoms);
+    }
+
     private void checkAtom(@Nonnull Atom atom) {
         Atom old = name2atom.getOrDefault(atom.getName(), null);
         if (old == null) {
@@ -44,8 +57,15 @@ public class MoleculeBuilder {
     @Contract("_ -> this")
     public @Nonnull MoleculeBuilder startNewCore(@Nonnull String name) {
         buildCore();
-        // setup new core
         currentAtom = name2atom.computeIfAbsent(name, Atom::createMutable);
+        return this;
+    }
+
+    @Contract("_ -> this")
+    public @Nonnull MoleculeBuilder startNewCore(@Nonnull Atom atom) {
+        buildCore();
+        currentAtom = new Atom(atom);
+        registerAtoms(atom);
         return this;
     }
 

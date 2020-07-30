@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.riefederator.rel.mappings.r2rml;
 
+import br.ufsc.lapesd.riefederator.rel.common.RelationalTermParser;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.enh.TermMap;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.enh.TermType;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.exceptions.RRMappingException;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.exceptions.RRTemplateException;
-import br.ufsc.lapesd.riefederator.rel.sql.SqlTermParser;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.NaturalSqlTermParser;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -106,7 +106,7 @@ public class RRTemplate {
     }
 
     /**
-     * See {@link RRTemplate#tryExpand(Map, TermMap, SqlTermParser, String)}.
+     * See {@link RRTemplate#tryExpand(Map, TermMap, RelationalTermParser, String)}.
      */
     public @Nullable RDFNode tryExpand(@Nonnull Map<String, ?> assignments,
                                        @Nonnull TermMap termMap) throws RRTemplateException {
@@ -132,7 +132,7 @@ public class RRTemplate {
      */
     public @Nullable RDFNode tryExpand(@Nonnull Map<String, ?> assignments,
                                        @Nonnull TermMap termMap,
-                                       @Nonnull SqlTermParser termParser,
+                                       @Nonnull RelationalTermParser termParser,
                                        @Nonnull String baseURI)
             throws RRTemplateException {
         TermType type = termMap.getTermType();
@@ -170,11 +170,11 @@ public class RRTemplate {
     }
 
     /**
-     * Same as {@link RRTemplate#tryExpand(Map, TermMap, SqlTermParser, String)}, but
+     * Same as {@link RRTemplate#tryExpand(Map, TermMap, RelationalTermParser, String)}, but
      * throws {@link IllegalArgumentException} instead of returning null.
      */
     public @Nonnull RDFNode expand(@Nonnull Map<String, ?> assignments,
-                                   @Nonnull TermMap termMap, @Nonnull SqlTermParser termParser,
+                                   @Nonnull TermMap termMap, @Nonnull RelationalTermParser termParser,
                                    @Nonnull String baseURI)
             throws RRTemplateException {
         RDFNode node = tryExpand(assignments, termMap, termParser, baseURI);
@@ -222,7 +222,7 @@ public class RRTemplate {
 
     @VisibleForTesting
     @Nullable String tryExpandToString(@Nonnull Map<String, ?> assignments, @Nonnull TermType type,
-                                       @Nonnull SqlTermParser termParser) {
+                                       @Nonnull RelationalTermParser termParser) {
         StringBuilder b = new StringBuilder(template.length()*2);
         int nextCopy = 0;
         for (Map.Entry<String, Segment> e : placeholders.entrySet()) {

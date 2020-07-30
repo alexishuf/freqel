@@ -21,6 +21,7 @@
   </properties>
 
   <modules>
+    <module>cassandra-test-container</module>
     <module>riefederator-core</module>
     <module>microbench</module>
   </modules>

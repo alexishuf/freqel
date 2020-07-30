@@ -56,47 +56,47 @@ public class JDBCCQEndpointTest implements TestContext {
     private static final Column Person_supervisor = new Column("Person", "supervisor");
 
     private static final Atom aUniversity_id = Molecule.builder("University.id")
-            .tag(ColumnsTag.createDirect(University_id)).buildAtom();
+            .tag(ColumnsTag.direct(University_id)).buildAtom();
     private static final Atom aUniversity_name = Molecule.builder("University.name")
-            .tag(ColumnsTag.createDirect(University_name)).buildAtom();
+            .tag(ColumnsTag.direct(University_name)).buildAtom();
     private static final Atom aUniversity = Molecule.builder("University")
-            .out(idEx, aUniversity_id, ColumnsTag.createDirect(University_id))
-            .out(nameEx, aUniversity_name, ColumnsTag.createDirect(University_name))
+            .out(idEx, aUniversity_id, ColumnsTag.direct(University_id))
+            .out(nameEx, aUniversity_name, ColumnsTag.direct(University_name))
             .tag(new TableTag("University")).exclusive().buildAtom();
 
     private static final Atom aPaper_id = Molecule.builder("Paper.id")
-            .tag(ColumnsTag.createDirect(Paper_id)).buildAtom();
+            .tag(ColumnsTag.direct(Paper_id)).buildAtom();
     private static final Atom aPaper_title = Molecule.builder("Paper.title")
-            .tag(ColumnsTag.createDirect(Paper_title)).buildAtom();
+            .tag(ColumnsTag.direct(Paper_title)).buildAtom();
     private static final Atom aPaper = Molecule.builder("Paper")
-            .out(idEx, aPaper_id, ColumnsTag.createDirect(Paper_id))
-            .out(titleEx, aPaper_title, ColumnsTag.createDirect(Paper_title))
+            .out(idEx, aPaper_id, ColumnsTag.direct(Paper_id))
+            .out(titleEx, aPaper_title, ColumnsTag.direct(Paper_title))
             .tag(new TableTag("Paper")).exclusive().buildAtom();
 
 
     private static final Atom aPerson_id = Molecule.builder("Person.id")
-            .tag(ColumnsTag.createDirect(Person_id)).buildAtom();
+            .tag(ColumnsTag.direct(Person_id)).buildAtom();
     private static final Atom aPerson_name = Molecule.builder("Person.name")
-            .tag(ColumnsTag.createDirect(Person_name)).buildAtom();
+            .tag(ColumnsTag.direct(Person_name)).buildAtom();
     private static final Atom aPerson_age = Molecule.builder("Person.age")
-            .tag(ColumnsTag.createDirect(Person_age)).buildAtom();
+            .tag(ColumnsTag.direct(Person_age)).buildAtom();
     private static final Atom aPerson_university_id = Molecule.builder("Person.university_id")
-            .tag(ColumnsTag.createDirect(Person_university_id)).buildAtom();
+            .tag(ColumnsTag.direct(Person_university_id)).buildAtom();
     private static final Atom aPerson = Molecule.builder("Person")
-            .out(idEx, aPerson_id, ColumnsTag.createDirect(Person_id))
-            .out(nameEx, aPerson_name, ColumnsTag.createDirect(Person_name))
-            .out(ageEx, aPerson_age, ColumnsTag.createDirect(Person_age))
-            .out(university_id, aPerson_university_id, ColumnsTag.createDirect(Person_university_id))
+            .out(idEx, aPerson_id, ColumnsTag.direct(Person_id))
+            .out(nameEx, aPerson_name, ColumnsTag.direct(Person_name))
+            .out(ageEx, aPerson_age, ColumnsTag.direct(Person_age))
+            .out(university_id, aPerson_university_id, ColumnsTag.direct(Person_university_id))
             .tag(new TableTag("Person")).exclusive().buildAtom();
 
 
     private static final Atom aAuthorship_paper_id = Molecule.builder("Authorship.paper_id")
-            .tag(ColumnsTag.createDirect(Authorship_paper_id)).buildAtom();
+            .tag(ColumnsTag.direct(Authorship_paper_id)).buildAtom();
     private static final Atom aAuthorship_author_id = Molecule.builder("Authorship.author_id")
-            .tag(ColumnsTag.createDirect(Authorship_author_id)).buildAtom();
+            .tag(ColumnsTag.direct(Authorship_author_id)).buildAtom();
     private static final Atom aAuthorship = Molecule.builder("Authorship")
-            .out(paper_id, aAuthorship_paper_id, ColumnsTag.createDirect(Authorship_paper_id))
-            .out(author_id, aAuthorship_author_id, ColumnsTag.createDirect(Authorship_author_id))
+            .out(paper_id, aAuthorship_paper_id, ColumnsTag.direct(Authorship_paper_id))
+            .out(author_id, aAuthorship_author_id, ColumnsTag.direct(Authorship_author_id))
             .tag(new TableTag("Authorship")).exclusive().buildAtom();
 
     private static final AtomAnnotation aaUniversity = AtomAnnotation.of(aUniversity);

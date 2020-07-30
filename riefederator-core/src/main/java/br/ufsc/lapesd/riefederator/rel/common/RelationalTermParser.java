@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.rel.sql;
+package br.ufsc.lapesd.riefederator.rel.common;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import org.apache.jena.rdf.model.RDFNode;
@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nullable;
 
-public interface SqlTermParser {
+public interface RelationalTermParser {
     @Contract("null -> null ; !null -> !null")
     @Nullable Term parseTerm(@Nullable Object sqlObject);
 

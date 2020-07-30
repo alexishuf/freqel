@@ -177,6 +177,11 @@
       <artifactId>sevenzipjbinding-all-platforms</artifactId>
       <version>16.02-2.01</version>
     </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-core</artifactId>
+      <version>4.3.1</version>
+    </dependency>
   </dependencies>
 
   <build>

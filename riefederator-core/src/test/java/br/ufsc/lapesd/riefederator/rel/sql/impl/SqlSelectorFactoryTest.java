@@ -40,9 +40,9 @@ public class SqlSelectorFactoryTest implements TestContext {
     private static final Column kv = new Column("U", "kv");
 
     private static final Atom atomT = Molecule.builder("T").tag(new TableTag("T")).buildAtom();
-    private static final Atom atomCu = Molecule.builder("Cu").tag(ColumnsTag.createDirect(cu)).buildAtom();
-    private static final Atom atomCv = Molecule.builder("Cv").tag(ColumnsTag.createDirect(cv)).buildAtom();
-    private static final Atom atomCo = Molecule.builder("Co").tag(ColumnsTag.createDirect(co)).buildAtom();
+    private static final Atom atomCu = Molecule.builder("Cu").tag(ColumnsTag.direct(cu)).buildAtom();
+    private static final Atom atomCv = Molecule.builder("Cv").tag(ColumnsTag.direct(cv)).buildAtom();
+    private static final Atom atomCo = Molecule.builder("Co").tag(ColumnsTag.direct(co)).buildAtom();
 
     private static final AtomAnnotation aaT = AtomAnnotation.of(atomT);
     private static final AtomAnnotation aaCu = AtomAnnotation.of(atomCu);

@@ -10,8 +10,8 @@ import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import javax.annotation.Nonnull;
 import java.util.*;
 
-public class SqlRewriting {
-    private @Nonnull final String sql;
+public class RelationalRewriting {
+    private @Nonnull final String relationalQuery;
     private @Nonnull final StarVarIndex index;
     private @Nonnull final Set<String> vars;
     private final boolean distinct, limited;
@@ -20,12 +20,12 @@ public class SqlRewriting {
     private @Nonnull final List<List<String>> starVars = new ArrayList<>();
     private @Nonnull final List<List<Column>> starColumns = new ArrayList<>();
 
-    public SqlRewriting(@Nonnull String sql, @Nonnull Set<String> sqlVars,
-                        boolean distinct, boolean limited, @Nonnull CQuery query,
-                        @Nonnull IndexedSubset<SPARQLFilter> pendingFilters,
-                        @Nonnull IndexedSubset<SPARQLFilter> doneFilters,
-                        @Nonnull StarVarIndex varIndex) {
-        this.sql = sql;
+    public RelationalRewriting(@Nonnull String relationalQuery, @Nonnull Set<String> sqlVars,
+                               boolean distinct, boolean limited,
+                               @Nonnull IndexedSubset<SPARQLFilter> pendingFilters,
+                               @Nonnull IndexedSubset<SPARQLFilter> doneFilters,
+                               @Nonnull StarVarIndex varIndex) {
+        this.relationalQuery = relationalQuery;
         this.vars = sqlVars;
         this.distinct = distinct;
         this.limited = limited;
@@ -56,8 +56,8 @@ public class SqlRewriting {
         assert starColumns.size() == index.getStarCount();
     }
 
-    public @Nonnull String getSql() {
-        return sql;
+    public @Nonnull String getRelationalQuery() {
+        return relationalQuery;
     }
     public @Nonnull StarVarIndex getIndex() {
         return index;
@@ -95,6 +95,6 @@ public class SqlRewriting {
 
     @Override
     public @Nonnull String toString() {
-        return sql;
+        return relationalQuery;
     }
 }

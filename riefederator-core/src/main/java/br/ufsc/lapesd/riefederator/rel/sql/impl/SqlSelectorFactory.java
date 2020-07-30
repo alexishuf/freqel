@@ -4,13 +4,8 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.rel.common.Selector;
-import br.ufsc.lapesd.riefederator.rel.common.SelectorFactory;
-import br.ufsc.lapesd.riefederator.rel.common.StarsHelper;
+import br.ufsc.lapesd.riefederator.rel.common.*;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
-import br.ufsc.lapesd.riefederator.rel.sql.SqlTermWriter;
-import org.apache.jena.sparql.expr.*;
-import org.apache.jena.sparql.serializer.SerializationContext;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -19,7 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
 import static java.util.Arrays.asList;
 
 public class SqlSelectorFactory implements SelectorFactory {
@@ -35,52 +29,10 @@ public class SqlSelectorFactory implements SelectorFactory {
         sparqlOp2sqlOp = map;
     }
 
-    private final @Nonnull SqlTermWriter termWriter;
+    private @Nonnull final FilterOperatorRewriter filterRw;
 
-    public SqlSelectorFactory(@Nonnull SqlTermWriter termWriter) {
-        this.termWriter = termWriter;
-    }
-
-    /* --- --- --- Internals  --- --- --- */
-
-    private StringBuilder replacingOperators(@Nonnull StringBuilder b, @Nonnull Context ctx,
-                                             @Nonnull SPARQLFilter filter, @Nonnull Expr expr) {
-        if (expr instanceof NodeValue) {
-            String sql = termWriter.apply(fromJena(((NodeValue) expr).asNode()));
-            return sql != null ? b.append(sql) : null;
-        } else if (expr instanceof ExprVar) {
-            Term term = filter.getVar2Term().get(expr.getVarName());
-            assert term != null;
-            Var var = term.asVar();
-            Column column = ctx.getDirectMapped(var, null);
-            assert column != null;
-            return b.append(column);
-        } else if (expr instanceof ExprNone || expr instanceof ExprAggregator) {
-            return b;
-        }
-
-        assert expr instanceof ExprFunction;
-        ExprFunction function = (ExprFunction) expr;
-        String name = function.getOpName();
-        if (name == null)
-            name = function.getFunctionName(new SerializationContext());
-
-        String sql = sparqlOp2sqlOp.get(name);
-        if (sql == null)
-            return null; //abort
-        b.append('(');
-        if (function.numArgs() == 2) {
-            if (replacingOperators(b, ctx, filter, function.getArg(1)) == null)
-                return null;
-            b.append(' ').append(sql).append(' ');
-            if (replacingOperators(b, ctx, filter, function.getArg(2)) != null)
-                return b.append(')');
-        } else if (function.numArgs() == 1) {
-            b.append(sql).append(' ');
-            if (replacingOperators(b, ctx, filter, function.getArg(1)) != null)
-                return b.append(')');
-        }
-        return null;
+    public SqlSelectorFactory(@Nonnull RelationalTermWriter termWriter) {
+        filterRw = new FilterOperatorRewriter(sparqlOp2sqlOp, termWriter);
     }
 
     /*  --- --- --- Interface  --- --- --- */
@@ -96,11 +48,8 @@ public class SqlSelectorFactory implements SelectorFactory {
             columns.add(column);
         }
 
-        StringBuilder builder = replacingOperators(new StringBuilder(), context,
-                                                   filter, filter.getExpr());
-        if (builder != null)
-            return new FilterSelector(columns, vars, builder.toString());
-        return null;
+        String rewritten = filterRw.rewrite(context, filter);
+        return rewritten != null ? new FilterSelector(columns, vars, rewritten) : null;
     }
 
     @Override
