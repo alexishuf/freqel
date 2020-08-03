@@ -48,6 +48,7 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.TPEndpointTest;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -116,6 +117,7 @@ import static br.ufsc.lapesd.riefederator.federation.SimpleFederationModule.conf
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.*;
 import static br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint.forModel;
 import static br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint.forService;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.webapis.TransparencyService.*;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
@@ -839,8 +841,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                        newHashSet(MapSolution.builder().put(x, ex("books/1"))
                                                        .put(y, ex("authors/1")).build())),
                 asList(new SetupBookShop(0),
-                       CQuery.with(asList(new Triple(x, author, y),
-                                          new Triple(y, nameEx, author1))).project(x).build(),
+                        createQuery(x, author, y, y, nameEx, author1, Projection.advised("x")),
                         newHashSet(MapSolution.build(x, ex("books/1")))),
                 asList(new SetupBookShop(0),
                         CQuery.from(asList(new Triple(x, author, y),
@@ -851,16 +852,16 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                                                         .put(y, ex("authors/1"))
                                                         .put(z, ex("genres/1")).build())),
                 asList(new SetupBookShop(0),
-                        CQuery.with(asList(new Triple(x, author, y),
-                                           new Triple(x, genre, z),
-                                           new Triple(y, nameEx, author1),
-                                           new Triple(z, genreName, genre1))).project(x).build(),
+                        createQuery(x, author, y,
+                                    x, genre, z,
+                                    y, nameEx, author1,
+                                    z, genreName, genre1, Projection.advised("x")),
                         newHashSet(MapSolution.build(x, ex("books/1")))),
                 asList(new SetupBookShop(0),
-                        CQuery.with(asList(new Triple(x, author, y),
-                                           new Triple(x, genre, z),
-                                           new Triple(y, nameEx, author1),
-                                           new Triple(z, genreName, genre1))).project(y).build(),
+                        createQuery(x, author, y,
+                                    x, genre, z,
+                                    y, nameEx, author1,
+                                    z, genreName, genre1, Projection.advised("y")),
                         newHashSet(MapSolution.build(y, ex("authors/1")))),
                 asList(new SetupBookShop(0),
                        CQuery.from(asList(new Triple(x, title, title1),
@@ -870,9 +871,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                                                        .put(y, ex("genres/1"))
                                                        .put(z, genre1).build())),
                 asList(new SetupBookShop(0),
-                       CQuery.with(asList(new Triple(x, title, title1),
-                                          new Triple(x, genre, y),
-                                          new Triple(y, genreName, z))).project(x).build(),
+                       createQuery(x, title, title1,
+                                   x, genre, y,
+                                   y, genreName, z, Projection.advised("x")),
                        newHashSet(MapSolution.build(x, ex("books/1"))))
         );
     }

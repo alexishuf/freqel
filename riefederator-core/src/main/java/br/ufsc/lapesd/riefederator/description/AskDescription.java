@@ -4,8 +4,10 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -40,8 +42,9 @@ public class AskDescription implements Description {
                 .build(new CacheLoader<Triple, Boolean>() {
                     @Override
                     public Boolean load(@Nonnull Triple triple) {
-                        CQuery cQuery = CQuery.with(triple).ask(false).build();
-                        try (Results results = endpoint.query(cQuery)) {
+                        MutableCQuery query = MutableCQuery.from(triple);
+                        query.addModifier(Ask.ADVISED);
+                        try (Results results = endpoint.query(query)) {
                             return results.hasNext();
                         }
                     }

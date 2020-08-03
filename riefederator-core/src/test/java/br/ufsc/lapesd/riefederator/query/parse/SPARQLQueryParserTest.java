@@ -148,7 +148,7 @@ public class SPARQLQueryParserTest implements TestContext {
         if (exception == null) {
             CQuery query = parser.parse(sparql);
             assertNotNull(expected); // bad test data
-            assertEquals(query.getSet(), expected.getSet());
+            assertEquals(query.attr().getSet(), expected.attr().getSet());
             assertEquals(query.getModifiers(), expected.getModifiers());
             //noinspection SimplifiedTestNGAssertion
             assertTrue(query.equals(expected));

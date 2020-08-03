@@ -176,6 +176,6 @@ public class AskDescriptionTest implements TestContext {
                                    SPARQLFilter.build("?y > 23"));
         CQueryMatch match = d.match(query);
         assertEquals(match.getKnownExclusiveGroups(), emptyList());
-        assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.getSet());
+        assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.attr().getSet());
     }
 }

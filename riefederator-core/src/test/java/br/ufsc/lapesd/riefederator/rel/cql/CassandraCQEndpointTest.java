@@ -82,9 +82,7 @@ public class CassandraCQEndpointTest implements TestContext {
             .tag(new TableTag("other_ks.otherperson"))
             .exclusive().buildAtom();
 
-    private static final AtomAnnotation aaOtherPerson_id = AtomAnnotation.of(OtherPerson_id);
     private static final AtomAnnotation aaOtherPerson_name = AtomAnnotation.of(OtherPerson_name);
-    private static final AtomAnnotation aaOtherPerson_age = AtomAnnotation.of(OtherPerson_age);
     private static final AtomAnnotation aaOtherPerson_university = AtomAnnotation.of(OtherPerson_university);
     private static final AtomAnnotation aaOtherPerson = AtomAnnotation.of(aOtherPerson);
 
@@ -148,18 +146,6 @@ public class CassandraCQEndpointTest implements TestContext {
             .out(author_id, Authorship_author_id, ColumnsTag.direct(cAuthorship_author_id))
             .tag(new TableTag("def_ks.authorship"))
             .exclusive().buildAtom();
-
-    private static final AtomAnnotation aaUniversity_id = AtomAnnotation.of(University_id);
-    private static final AtomAnnotation aaUniversity_name = AtomAnnotation.of(University_name);
-    private static final AtomAnnotation aaPerson_id = AtomAnnotation.of(Person_id);
-    private static final AtomAnnotation aaPerson_name = AtomAnnotation.of(Person_name);
-    private static final AtomAnnotation aaPerson_age = AtomAnnotation.of(Person_age);
-    private static final AtomAnnotation aaPerson_university_id = AtomAnnotation.of(Person_university_id);
-    private static final AtomAnnotation aaPerson_supervisor = AtomAnnotation.of(Person_supervisor);
-    private static final AtomAnnotation aaPaper_id = AtomAnnotation.of(Paper_id);
-    private static final AtomAnnotation aaPaper_title = AtomAnnotation.of(Paper_title);
-    private static final AtomAnnotation aaAuthorship_author_id = AtomAnnotation.of(Authorship_author_id);
-    private static final AtomAnnotation aaAuthorship_paper_id = AtomAnnotation.of(Authorship_paper_id);
 
     @BeforeClass
     public void setUp() throws IOException, InterruptedException {

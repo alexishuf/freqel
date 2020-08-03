@@ -56,7 +56,7 @@ public class JoinPathsPlanner implements Planner {
             logger.info("No subqueries (lack of sources?). Query: \"\"\"{}\"\"\"", query);
             return new EmptyNode(query);
         }
-        IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.getMatchedTriples());
+        IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.attr().matchedTriples());
         if (JoinPathsPlanner.class.desiredAssertionStatus()) {
             checkArgument(qns.stream().allMatch(n -> full.containsAll(n.getMatchedTriples())),
                           "Some QueryNodes match triples not in query");
@@ -66,14 +66,14 @@ public class JoinPathsPlanner implements Planner {
         /* throw instead of EmptyNode bcs allowJoinDisconnected(). Failing here means someone
            built a Federation using incompatible components. This is likely a bug in the
            Federation creator */
-        if (!query.isJoinConnected()) {
+        if (!query.attr().isJoinConnected()) {
             PlanNode plan = new NaiveOuterPlanner().plan(query);
             logger.warn("JoinPathsPlanner was designed for handling conjunctive queries, yet " +
                         "the given query requires Cartesian products or unions. Will try to " +
                         "continue, but planning may fail. Query: {}", query);
             Map<PlanNode, PlanNode> replacements = new HashMap<>();
             TreeUtils.streamPreOrder(plan).filter(ComponentNode.class::isInstance).forEach(n -> {
-                IndexedSet<Triple> component = ((ComponentNode) n).getQuery().getSet();
+                IndexedSet<Triple> component = ((ComponentNode) n).getQuery().attr().getSet();
                 List<PlanNode> relevant = qns.stream()
                         .filter(qn -> component.containsAny(qn.getMatchedTriples()))
                         .collect(toList());
@@ -175,7 +175,7 @@ public class JoinPathsPlanner implements Planner {
                     QueryNode qn = (QueryNode) node;
                     TPEndpoint endpoint = qn.getEndpoint();
                     int canonIdx = -1;
-                    for (QueryNode candidate : mm.get(qn.getQuery().getSet())) {
+                    for (QueryNode candidate : mm.get(qn.getQuery().attr().getSet())) {
                         if (candidate.getEndpoint().isAlternative(endpoint)) {
                             canonIdx = n2idx.get(candidate);
                             assert canonIdx >= 0 && canonIdx < list.size();
@@ -185,7 +185,7 @@ public class JoinPathsPlanner implements Planner {
                     if (canonIdx == -1) {
                         n2idx.put(qn, list.size());
                         list.add(qn);
-                        mm.put(qn.getQuery().getSet(), qn);
+                        mm.put(qn.getQuery().attr().getSet(), qn);
                     } else {
                         n2idx.put(qn, canonIdx);
                     }

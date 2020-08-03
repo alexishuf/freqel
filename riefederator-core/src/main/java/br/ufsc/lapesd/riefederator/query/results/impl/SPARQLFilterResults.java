@@ -19,7 +19,7 @@ import static java.util.stream.Collectors.toList;
 public class SPARQLFilterResults extends DelegatingResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(SPARQLFilterResults.class);
 
-    private final @Nonnull List<SPARQLFilter> filters;
+    private final @Nonnull Collection<SPARQLFilter> filters;
     private final @Nonnull ArrayDeque<Solution> ready = new ArrayDeque<>();
     private int included = 0, excluded = 0;
 
@@ -46,15 +46,14 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
             checkArgument(new HashSet<>(filters).size() == filters.size());
         if (filters.isEmpty())
             logger.warn("Empty filters: SPARQLFilterResults will not filter anything");
-        this.filters = filters instanceof List ? (List<SPARQLFilter>)filters
-                                               : new ArrayList<>(filters);
+        this.filters = filters;
     }
 
     public @Nonnull Results getIn() {
         return in;
     }
 
-    public @Nonnull List<SPARQLFilter> getFilters() {
+    public @Nonnull Collection<SPARQLFilter> getFilters() {
         return filters;
     }
 

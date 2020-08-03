@@ -2,40 +2,44 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
+import com.google.common.collect.ImmutableSet;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.stream.Collectors.toSet;
 
 public class ComponentNode extends AbstractPlanNode {
     protected final @Nonnull CQuery query;
-    protected @Nullable Set<String> allVars, resultVars, reqInputs, optInputs;
+    protected @Nullable Set<String> reqInputs, optInputs;
 
     public ComponentNode(@Nonnull CQuery query, @Nullable Set<String> projection,
                          @Nonnull Cardinality cardinality) {
         super(cardinality, projection);
         this.query = query;
         if (projection != null) {
-            Set<Var> termVars = query.getTermVars();
-            checkArgument(projection.size() <= termVars.size(),
+            IndexedSet<String> vars = query.attr().tripleVarNames();
+            checkArgument(projection.size() <= vars.size(),
                     "Some projected variables are not result variables");
-            assert termVars.stream().map(Var::getName).collect(toSet()).containsAll(projection);
-            assert projection.size() < termVars.size() : "Projecting all result variables is useless";
+            assert vars.containsAll(projection);
+            assert projection.size() < vars.size() : "Projecting all result variables is useless";
         }
         assertAllInvariants();
     }
@@ -50,18 +54,14 @@ public class ComponentNode extends AbstractPlanNode {
 
     @Override
     public @Nonnull Set<String> getAllVars() {
-        if (allVars == null)
-            allVars = query.getVars().stream().map(Var::getName).collect(toSet());
-        return allVars;
+        return query.attr().allVarNames();
     }
 
     @Override
     public @Nonnull Set<String> getResultVars() {
         if (projection != null)
             return projection;
-        if (resultVars == null)
-            resultVars = query.getTermVars().stream().map(Var::getName).collect(toSet());
-        return resultVars;
+        return query.attr().tripleVarNames();
     }
 
     private Set<String> scanInputs(boolean required) {
@@ -119,47 +119,38 @@ public class ComponentNode extends AbstractPlanNode {
 
     protected @Nonnull BindData createBindData(@Nonnull Solution s) {
         CQuery q = getQuery();
-        ArrayList<Triple> bound = new ArrayList<>(q.size());
-        for (Triple t : q)
-            bound.add(bind(t, s));
-
-        CQuery.WithBuilder builder = CQuery.with(bound);
-        Set<Term> nonFilterTerms = q.stream().flatMap(Triple::stream).collect(toSet());
-        Set<Term> filterTerms = q.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
-                .flatMap(m -> ((SPARQLFilter) m).getTerms().stream()).collect(toSet());
+        MutableCQuery b = new MutableCQuery();
+        for (Triple triple : q) {
+            Triple bound = bind(triple, s);
+            b.add(bound);
+            q.getTripleAnnotations(triple).forEach(a -> b.annotate(bound, a));
+        }
+        for (Modifier modifier : q.getModifiers()) {
+            if (modifier instanceof Projection) {
+                ImmutableSet.Builder<String> set = ImmutableSet.builder();
+                ((Projection) modifier).getVarNames().forEach(n -> {if (!s.has(n)) set.add(n);});
+                modifier = new Projection(set.build(), modifier.isRequired());
+            } else if (modifier instanceof SPARQLFilter) {
+                modifier = ((SPARQLFilter)modifier).bind(s);
+            }
+            b.addModifier(modifier);
+        }
+        IndexedSet<Term> tripleTerms = q.attr().tripleTerms();
         q.forEachTermAnnotation((t, a) -> {
             Term boundTerm = bind(t, s, t);
-            if (filterTerms.contains(t))
-                builder.annotate(SPARQLFilter.generalizeAsBind(boundTerm), a);
-            if (nonFilterTerms.contains(t))
-                builder.annotate(boundTerm, a);
-            assert filterTerms.contains(t) || nonFilterTerms.contains(t);
+            if (tripleTerms.contains(t)) b.annotate(boundTerm, a);
+            else                         b.annotate(SPARQLFilter.generalizeAsBind(boundTerm), a);
         });
-        q.forEachTripleAnnotation((t, a) -> builder.annotate(bind(t, s), a));
-        for (Modifier m : q.getModifiers()) {
-            switch (m.getCapability()) {
-                case PROJECTION:
-                    for (String n : ((Projection) m).getVarNames()) {
-                        if (!s.has(n)) builder.project(n);
-                    }
-                    break;
-                case SPARQL_FILTER:
-                    builder.modifier(((SPARQLFilter)m).bind(s));
-                    break;
-                default:
-                    builder.modifier(m);
-            }
-        }
-        q = builder.build();
-
 
         Set<String> projection = this.projection;
         if (this.projection != null) {
             projection = setMinus(this.projection, s.getVarNames());
-            if (q.getTermVars().size() == projection.size())
+            if (b.attr().tripleVars().size() == projection.size()) {
+                assert b.attr().tripleVarNames().equals(projection);
                 projection = null;
+            }
         }
-        return new BindData(q, projection);
+        return new BindData(b, projection);
     }
 
 
@@ -181,7 +172,7 @@ public class ComponentNode extends AbstractPlanNode {
 
     @Override
     public @Nonnull Set<Triple> getMatchedTriples() {
-        return getQuery().getMatchedTriples();
+        return getQuery().attr().matchedTriples();
     }
 
     @Override

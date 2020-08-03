@@ -128,8 +128,7 @@ public class SPARQLStringTest implements TestContext {
     @Test
     public void testConjunctiveSELECTWithPureDescriptive() {
         Triple descriptive = new Triple(x, knows, Bob);
-        CQuery query = CQuery.with(descriptive, new Triple(x, knows, Alice))
-                             .annotate(descriptive, PureDescriptive.INSTANCE).build();
+        CQuery query = createQuery(descriptive, PureDescriptive.INSTANCE, x, knows, Alice);
         SPARQLString string = new SPARQLString(query, EMPTY, emptyList());
         assertEquals(string.getType(), SPARQLString.Type.SELECT);
         String sparql = string.getString();
@@ -148,7 +147,7 @@ public class SPARQLStringTest implements TestContext {
         assertEquals(string.getFilters(), emptySet());
 
         CQuery parsed = SPARQLQueryParser.strict().parse(string.getString());
-        assertEquals(parsed.getSet(), Sets.newHashSet(
+        assertEquals(parsed.attr().getSet(), Sets.newHashSet(
                 new Triple(Alice, knows, x),
                 new Triple(x, age, y)));
     }

@@ -86,7 +86,7 @@ public class SqlSelectorFactoryTest implements TestContext {
         SqlSelectorFactory fac = new SqlSelectorFactory(DefaultSqlTermWriter.INSTANCE);
         assertNull(fac.create(ctx, query.get(0)));
 
-        SqlSelector eqSelector = (SqlSelector) fac.create(ctx, query.getList().get(1));
+        SqlSelector eqSelector = (SqlSelector) fac.create(ctx, query.asList().get(1));
         assertNotNull(eqSelector);
         assertTrue(eqSelector.hasCondition());
         assertTrue(eqSelector.getCondition().matches("\\(?T.cv = 23\\)?"));
@@ -95,7 +95,7 @@ public class SqlSelectorFactoryTest implements TestContext {
         assertEquals(eqSelector.getSparqlVars(), emptySet());
 
         // blank node translates into IS NOT NULL
-        SqlSelector nnSelector = (SqlSelector) fac.create(ctx, query.getList().get(2));
+        SqlSelector nnSelector = (SqlSelector) fac.create(ctx, query.asList().get(2));
         assertNotNull(nnSelector);
         assertEquals(nnSelector.getColumns(), singletonList(co));
         assertEquals(nnSelector.getTerms(), singletonList(blank));

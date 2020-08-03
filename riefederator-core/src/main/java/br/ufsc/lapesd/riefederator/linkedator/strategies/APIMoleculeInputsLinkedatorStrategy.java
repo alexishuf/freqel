@@ -9,7 +9,7 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.model.term.std.TemplateLink;
-import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.SimplePath;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
@@ -64,22 +64,22 @@ public class APIMoleculeInputsLinkedatorStrategy implements LinkedatorStrategy {
         assert !outSig.getAtoms().isEmpty();
 
         IndexedSet<String> joinAtoms = IndexedSet.from(outSig.getAtoms());
-        CQuery.Builder builder = CQuery.builder();
+        MutableCQuery query = new MutableCQuery();
         Var effSrc = outSig.getAnchorPath().isEmpty() ? src : srcAnchor;
         if (!outSig.getAnchorPath().isEmpty())
-            builder.add(src, outSig.getAnchorPath(), srcAnchor);
+            query.add(src, outSig.getAnchorPath(), srcAnchor);
         for (String a : joinAtoms) {
             SimplePath path = outSig.getAtomPaths().get(a);
             assert path != null;
             assert !path.isEmpty();
-            builder.add(effSrc, path, joinVar(joinAtoms.indexOf(a)));
+            query.add(effSrc, path, joinVar(joinAtoms.indexOf(a)));
         }
         Var effDst = inSig.getAnchorPath().isEmpty() ? dst : dstAnchor;
         if (!inSig.getAnchorPath().isEmpty())
-            builder.add(dst, inSig.getAnchorPath(), dstAnchor);
+            query.add(dst, inSig.getAnchorPath(), dstAnchor);
         for (String a : joinAtoms)
-            builder.add(effDst, inSig.getAtomPaths().get(a), joinVar(joinAtoms.indexOf(a)));
-        TemplateLink templateLink = new TemplateLink(relation, builder.build(), src, dst);
+            query.add(effDst, inSig.getAtomPaths().get(a), joinVar(joinAtoms.indexOf(a)));
+        TemplateLink templateLink = new TemplateLink(relation, query, src, dst);
 
         return new LinkedatorResult(templateLink, this, 1);
     }

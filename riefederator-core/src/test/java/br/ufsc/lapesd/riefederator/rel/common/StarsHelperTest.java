@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.rel.common;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import org.testng.annotations.Test;
 
@@ -21,7 +20,7 @@ public class StarsHelperTest implements TestContext {
         CQuery query = createQuery(x, name,   u, x, knows, o,
                                    y, name,   u, y, age,   lit(22),
                                    z, author, w, z, sameAs, y);
-        ImmutableList<Triple> tripleList = query.getList();
+        List<Triple> tripleList = query.asList();
 
         List<StarSubQuery> stars = StarsHelper.findStars(query);
 

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query;
 
+import br.ufsc.lapesd.riefederator.query.impl.RelativeCardinalityAdder;
 import com.google.inject.ProvidedBy;
 
 import java.util.function.BinaryOperator;

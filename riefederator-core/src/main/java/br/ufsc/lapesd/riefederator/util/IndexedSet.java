@@ -18,7 +18,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     @SuppressWarnings("Immutable")
     private final @Nonnull List<T> data;
     @SuppressWarnings("Immutable")
-    private final @Nonnull ImmutableMap<T, Integer> indexMap;
+    private final @Nonnull Map<T, Integer> indexMap;
     private @LazyInit int hash = 0;
 
     private static final @Nonnull IndexedSet<?> EMPTY
@@ -39,7 +39,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
         indexMap = createIndexMap(data = new ArrayList<>(new HashSet<>(collection)));
     }
 
-    protected IndexedSet(@Nonnull List<T> data, @Nonnull ImmutableMap<T, Integer> indexMap) {
+    protected IndexedSet(@Nonnull List<T> data, @Nonnull Map<T, Integer> indexMap) {
         this.data = data;
         this.indexMap = indexMap;
     }
@@ -67,7 +67,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
         }
         if (list.isEmpty())
             return empty();
-        return new IndexedSet<>(list, ImmutableMap.copyOf(map));
+        return new IndexedSet<>(list, map);
     }
 
     @CheckReturnValue
@@ -116,6 +116,11 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
         return from(Arrays.asList(values));
     }
 
+
+    public @Nonnull Map<T, Integer> getPositionsMap() {
+        return Collections.unmodifiableMap(indexMap);
+    }
+
     @CheckReturnValue
     public @Nonnull IndexedSubset<T> fullSubset() {
         BitSet bitSet = new BitSet(size());
@@ -130,6 +135,11 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
 
     @CheckReturnValue
     public @Nonnull IndexedSubset<T> subset(@Nonnull Collection<? extends T> collection) {
+        if (collection instanceof IndexedSubset
+                && ((IndexedSubset<?>) collection).getParent() == this) {
+            //noinspection unchecked
+            return (IndexedSubset<T>)collection;
+        }
         BitSet bitSet = new BitSet(size());
         for (T o : collection) {
             int idx = indexOf(o);
@@ -145,7 +155,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     }
 
     @CheckReturnValue
-    public @Nonnull IndexedSubset<T> subset(@Nonnull Predicate<T> predicate) {
+    public @Nonnull IndexedSubset<T> subset(@Nonnull Predicate<? super T> predicate) {
         BitSet bitSet = new BitSet(size());
         for (int i = 0; i < size(); i++) {
             if (predicate.test(get(i)))

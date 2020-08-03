@@ -6,7 +6,6 @@ import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -17,8 +16,6 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -69,7 +66,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toSet;
 
 public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(SPARQLClient.class);
@@ -274,14 +270,9 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
-        if (query.isAsk())
+        if (query.attr().isAsk())
             return execute(query, JSON_ACCEPT, emptySet(), AskResults::new);
-
-        Projection projection = ModifierUtils.getFirst(Projection.class, query.getModifiers());
-        Set<String> vars = projection == null
-                ? query.getTermVars().stream().map(Var::getName).collect(toSet())
-                : projection.getVarNames();
-        return execute(query, TSV_ACCEPT, vars, TSVResults::new);
+        return execute(query, TSV_ACCEPT, query.attr().publicTripleVarNames(), TSVResults::new);
     }
 
     @Override
@@ -290,7 +281,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
         if (EstimatePolicy.canQueryRemote(policy) || EstimatePolicy.canAskRemote(policy)) {
             Set<Modifier> mods = query.getModifiers();
-            if (!query.isAsk())
+            if (!query.attr().isAsk())
                 (mods = new HashSet<>(query.getModifiers())).add(Ask.REQUIRED);
             try (Results results = query(query.withModifiers(mods))) {
                 return results.hasNext() ? NON_EMPTY : EMPTY;

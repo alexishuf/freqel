@@ -2,17 +2,21 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.DISTINCT;
@@ -44,7 +48,9 @@ public class SPARQLValuesTemplateNode extends AbstractPlanNode {
         this.endpoint = endpoint;
         StringBuilder b = new StringBuilder(query.size()*60);
         distinct = ModifierUtils.getFirst(DISTINCT, query.getModifiers()) != null;
-        FastSPARQLString.writeHeader(b, ask = query.isAsk(), distinct, vars = getVars(query));
+        ask = query.attr().isAsk();
+        vars = query.attr().publicTripleVarNames();
+        FastSPARQLString.writeHeader(b, ask, distinct, vars);
         FastSPARQLString.writeTriples(b, query);
 
         for (Modifier m : query.getModifiers()) {
@@ -56,19 +62,6 @@ public class SPARQLValuesTemplateNode extends AbstractPlanNode {
             b.append(filter.getSparqlFilter()).append(' ');
 
         template = b.append('}').toString();
-    }
-
-    private static @Nonnull Set<String> getVars(@Nonnull CQuery query) {
-        Projection prj = ModifierUtils.getFirst(Projection.class, query.getModifiers());
-        if (prj != null) {
-            return prj.getVarNames();
-        } else {
-            IndexedSet<Var> termVars = query.getTermVars();
-            Set<String> names = new HashSet<>((int)Math.ceil(termVars.size()/0.75)+1);
-            for (Var v : termVars)
-                names.add(v.getName());
-            return names;
-        }
     }
 
     public @Nonnull SPARQLValuesTemplateNode withEndpoint(@Nonnull TPEndpoint endpoint) {

@@ -63,10 +63,10 @@ public class CQueryContextTest implements TestContext {
             }
         }.build();
 
-        CQuery expected = CQuery.with(new Triple(Alice, p1, x),
-                                      new Triple(x, p1, Bob))
-                .annotate(Alice, ta1)
-                .annotate(Bob, ta2).build();
+        MutableCQuery expected = new MutableCQuery(
+                asList(new Triple(Alice, p1, x), new Triple(x, p1, Bob)));
+        expected.annotate(Alice, ta1);
+        expected.annotate(Bob, ta2);
         assertEquals(actual, expected);
     }
 
@@ -103,10 +103,10 @@ public class CQueryContextTest implements TestContext {
 
         Triple t1 = new Triple(Alice, p1, x);
         Triple t2 = new Triple(x, p2, Bob);
-        CQuery expected = CQuery.with(t1, t2)
-                .annotate(t1, a1)
-                .annotate(t1, a2)
-                .annotate(t2, a3).build();
+        MutableCQuery expected = new MutableCQuery(asList(t1, t2));
+        expected.annotate(t1, a1);
+        expected.annotate(t1, a2);
+        expected.annotate(t2, a3);
         assertEquals(actual, expected);
         assertEquals(newHashSet(actual.getTripleAnnotations(t1)), newHashSet(a1, a2));
         assertEquals(actual.getTripleAnnotations(t2), Collections.singleton(a3));
@@ -124,8 +124,10 @@ public class CQueryContextTest implements TestContext {
         }.build();
 
         Triple triple = new Triple(Alice, p1, x);
-        CQuery expected = CQuery.with(triple, new Triple(x, p2, Bob))
-                .annotate(x, a1).annotate(Bob, a1).annotate(triple, a2).build();
+        MutableCQuery expected = new MutableCQuery(asList(triple, new Triple(x, p2, Bob)));
+        expected.annotate(x, a1);
+        expected.annotate(Bob, a1);
+        expected.annotate(triple, a2);
         assertEquals(actual, expected);
     }
 
@@ -140,8 +142,9 @@ public class CQueryContextTest implements TestContext {
         }.build();
 
         Triple triple = new Triple(Alice, p1, x);
-        CQuery expected = CQuery.with(triple, new Triple(x, p2, Bob))
-                .annotate(triple, a).annotate(Bob, a).build();
+        MutableCQuery expected = new MutableCQuery(asList(triple, new Triple(x, p2, Bob)));
+        expected.annotate(triple, a);
+        expected.annotate(Bob, a);
         assertEquals(actual, expected);
     }
 

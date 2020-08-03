@@ -15,11 +15,11 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.RelativeCardinalityAdder;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.impl.RelativeCardinalityAdder;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.EmptyWebApiEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
@@ -78,13 +78,13 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
 
     private static @Nonnull QueryNode n(@Nonnull CQEndpoint ep, Cardinality cardinality,
                                         List<Var> inputs, Term... terms) {
-        CQuery.Builder b = CQuery.builder();
+        MutableCQuery q = new MutableCQuery();
         for (int i = 0; i < terms.length; i +=3)
-            b.add(new Triple(terms[i], terms[i+1], terms[i+2]));
+            q.add(new Triple(terms[i], terms[i+1], terms[i+2]));
         int i = 0;
         for (Var input : inputs)
-            b.annotate(input, AtomInputAnnotation.asRequired(new Atom("Atom-" + i), "Atom-" + i).get());
-        return new QueryNode(ep, b.build(), cardinality);
+            q.annotate(input, AtomInputAnnotation.asRequired(new Atom("Atom-" + i), "Atom-" + i).get());
+        return new QueryNode(ep, q, cardinality);
     }
     private static @Nonnull QueryNode n(@Nonnull CQEndpoint ep, Cardinality cardinality,
                                         Term... terms) {

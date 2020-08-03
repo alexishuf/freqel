@@ -155,7 +155,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public @Nonnull Results execute(@Nonnull CQuery query, PlanNode plan) {
-        assert plan.getMatchedTriples().equals(query.getSet())
+        assert plan.getMatchedTriples().equals(query.attr().getSet())
                 : "This plan does not correspond to this query!";
         Results results = executor.executePlan(plan);
         results = ProjectingResults.applyIf(results, query);

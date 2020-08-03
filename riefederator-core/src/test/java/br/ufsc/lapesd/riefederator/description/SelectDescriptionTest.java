@@ -167,7 +167,7 @@ public class SelectDescriptionTest implements TestContext {
         SelectDescription description = new SelectDescription(rdf1, fetchClasses);
         CQueryMatch match = description.match(query);
         assertEquals(match.getKnownExclusiveGroups(), emptyList());
-        assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.getSet());
+        assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.attr().getSet());
     }
 
     @Test(dataProvider = "fetchClassesData", groups = {"fast"})
@@ -193,8 +193,8 @@ public class SelectDescriptionTest implements TestContext {
 
             // both answer match() correctly
             CQuery q = createQuery(s, name, o);
-            assertEquals(d2.match(q).getNonExclusiveRelevant(), q.getList());
-            assertEquals(d1.match(q).getNonExclusiveRelevant(), q.getList());
+            assertEquals(d2.match(q).getNonExclusiveRelevant(), q.asList());
+            assertEquals(d1.match(q).getNonExclusiveRelevant(), q.asList());
         } finally {
             FileUtils.deleteDirectory(dir);
         }
@@ -224,8 +224,8 @@ public class SelectDescriptionTest implements TestContext {
 
                         // both answer match() correctly
                         CQuery q = createQuery(s, name, o);
-                        assertEquals(d2.match(q).getNonExclusiveRelevant(), q.getList());
-                        assertEquals(d1.match(q).getNonExclusiveRelevant(), q.getList());
+                        assertEquals(d2.match(q).getNonExclusiveRelevant(), q.asList());
+                        assertEquals(d1.match(q).getNonExclusiveRelevant(), q.asList());
                         return null;
                     }));
                 }

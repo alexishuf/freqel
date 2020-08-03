@@ -611,7 +611,7 @@ public class MoleculeMatcherTest implements TestContext {
         List<Collection<Triple>> exclusiveGroupsAsTriples = new ArrayList<>();
         for (Object eg : exclusiveGroups) {
             if (eg instanceof CQuery)
-                exclusiveGroupsAsTriples.add(((CQuery)eg).getSet());
+                exclusiveGroupsAsTriples.add(((CQuery)eg).attr().getSet());
             else
                 exclusiveGroupsAsTriples.add((Collection<Triple>)eg);
         }
@@ -647,7 +647,7 @@ public class MoleculeMatcherTest implements TestContext {
                 if (!(eg instanceof CQuery)) continue;
                 CQuery expected = (CQuery) eg;
                 Set<CQuery> matchingGroups = match.getKnownExclusiveGroups().stream()
-                        .filter(a -> a.getSet().equals(expected.getSet()))
+                        .filter(a -> a.attr().getSet().equals(expected.attr().getSet()))
                         .filter(a -> a.getModifiers().containsAll(expected.getModifiers()))
                         .filter(a -> {
                             boolean[] ok = {true};
@@ -690,7 +690,7 @@ public class MoleculeMatcherTest implements TestContext {
         // all alternative must match its EG
         for (CQuery eg : match.getKnownExclusiveGroups()) {
             for (CQuery alternative : match.getAlternatives(eg)) {
-                assertEquals(alternative.getMatchedTriples(), eg.getSet());
+                assertEquals(alternative.attr().matchedTriples(), eg.attr().getSet());
             }
         }
     }

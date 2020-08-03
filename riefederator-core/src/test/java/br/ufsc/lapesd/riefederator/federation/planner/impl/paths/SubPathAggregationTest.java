@@ -11,6 +11,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
@@ -50,15 +51,15 @@ public class SubPathAggregationTest implements TestContext {
     public static @Nonnull
     QueryNode node(@Nonnull CQEndpoint endpoint, @Nonnull Term s, @Nonnull Term p, @Nonnull Term o,
                    @Nonnull Triple.Position input) {
-        CQuery.WithBuilder b = CQuery.with(new Triple(s, p, o));
+        MutableCQuery query = MutableCQuery.from(new Triple(s, p, o));
         if (input == SUBJ) {
-            b.annotate(s, AtomInputAnnotation.asRequired(A1, "A1").get())
-             .annotate(o, AtomAnnotation.of(A2));
+            query.annotate(s, AtomInputAnnotation.asRequired(A1, "A1").get());
+            query.annotate(o, AtomAnnotation.of(A2));
         } else if (input == OBJ) {
-            b.annotate(s, AtomAnnotation.of(A1))
-              .annotate(o, AtomInputAnnotation.asRequired(A2, "A2").get());
+            query.annotate(s, AtomAnnotation.of(A1));
+            query.annotate(o, AtomInputAnnotation.asRequired(A2, "A2").get());
         }
-        return new QueryNode(endpoint, b.build());
+        return new QueryNode(endpoint, query);
     }
 
     public static QueryNode n1 = node(e1, Alice, p1, x), n2 = node(e1, x, p2, y),

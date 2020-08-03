@@ -12,6 +12,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
@@ -330,9 +331,9 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
 
         public CassandraResults(@Nonnull RelationalRewriting rw,
                                 @Nonnull CompletionStage<AsyncResultSet> rsStage) {
-            super(ResultsUtils.getResultVars(rw.getQuery()));
+            super(rw.getQuery().attr().publicTripleVarNames());
             converterResults = new ConverterResults(rw, mapping);
-            ask = rw.getQuery().isAsk();
+            ask = rw.getQuery().attr().isAsk();
             fetchFuture = rsStage.handle(this::handle).toCompletableFuture();
         }
 
@@ -483,11 +484,11 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
         List<PlanNode> leaves = new ArrayList<>();
         for (int i = 0, size = index.getStarCount(); i < size; i++) {
             StarSubQuery star = index.getStar(i);
-            CQuery.Builder b = CQuery.builder(star.getTriples());
-            star.getFilters().forEach(b::modifier);
+            MutableCQuery cQuery = MutableCQuery.from(star.getTriples());
+            star.getFilters().forEach(cQuery::addModifier);
             if (distinct)
-                b.modifier(Distinct.ADVISED);
-            leaves.add(new QueryNode(this, b.build()));
+                cQuery.addModifier(Distinct.ADVISED);
+            leaves.add(new QueryNode(this, cQuery));
         }
         // optimize as usual, then execute under the inner federation
         PlanNode plan = getPlanner().plan(query, leaves);

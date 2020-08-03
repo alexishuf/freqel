@@ -5,11 +5,9 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.DefaultInnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
-import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.RelativeCardinalityAdder;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.impl.RelativeCardinalityAdder;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -30,7 +28,7 @@ import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
 public class TreeUtilsTest implements TestContext {
-    private static EmptyEndpoint ep = new EmptyEndpoint();
+    private static final EmptyEndpoint ep = new EmptyEndpoint();
     private final Atom person = Molecule.builder("Person").buildAtom();
 
     @DataProvider
@@ -69,9 +67,9 @@ public class TreeUtilsTest implements TestContext {
     public void testIsTreeForgivesQueryNodes() {
         QueryNode q1  = new QueryNode(ep, createQuery(x, knows, Alice));
         QueryNode q2  = new QueryNode(ep, createQuery(x, knows, Bob));
-        QueryNode q1a = new QueryNode(ep, CQuery.with(new Triple(x, knows, Alice))
-                .annotate(x, AtomInputAnnotation.asRequired(person, "person").get())
-                .build());
+        QueryNode q1a = new QueryNode(ep, createQuery(
+                x, AtomInputAnnotation.asRequired(person, "person").get(),
+                        knows, Alice));
         JoinNode j1 = JoinNode.builder(q1,  q2).build();
         JoinNode j2 = JoinNode.builder(q1a, q2).build();
         MultiQueryNode root = MultiQueryNode.builder().add(j1).add(j2).build();
@@ -202,13 +200,11 @@ public class TreeUtilsTest implements TestContext {
         Atom atom1 = new Atom("Atom1");
         Atom atom2 = new Atom("Atom2");
 
-        QueryNode xInYZOut = new QueryNode(ep, CQuery.with(new Triple(x, y, z))
-                .annotate(x, AtomInputAnnotation.asRequired(atom1, "atom1").get())
-                .build());
-        QueryNode xyInZOut = new QueryNode(ep, CQuery.with(new Triple(x, y, z))
-                .annotate(x, AtomInputAnnotation.asRequired(atom1, "atom1").get())
-                .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get())
-                .build());
+        QueryNode xInYZOut = new QueryNode(ep, createQuery(
+                x, AtomInputAnnotation.asRequired(atom1, "atom1").get(), y, z));
+        QueryNode xyInZOut = new QueryNode(ep, createQuery(
+                x, AtomInputAnnotation.asRequired(atom1, "atom1").get(),
+                        y, z, AtomInputAnnotation.asRequired(atom2, "atom2").get()));
         QueryNode xKnowsALICE = new QueryNode(ep, createQuery(x, knows, Alice));
         QueryNode xKnowsZ = new QueryNode(ep, createQuery(x, knows, z));
         QueryNode xKnowsY = new QueryNode(ep, createQuery(x, knows, y));

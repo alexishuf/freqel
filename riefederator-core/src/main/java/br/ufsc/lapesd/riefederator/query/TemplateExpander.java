@@ -2,7 +2,6 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.model.term.std.TemplateLink;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -44,7 +43,7 @@ public class TemplateExpander implements Function<CQuery, CQuery> {
             return query; // no template
         if (lastId == null)
             lastId = new int[]{getLastId(query)};
-        CQuery.Builder builder = CQuery.builder(query.size() + 10);
+        MutableCQuery result = new MutableCQuery(query.size() + 10);
         Map<Term, Term> var2Safe = new HashMap<>();
         for (Triple triple : query) {
             Term predicate = triple.getPredicate();
@@ -53,21 +52,21 @@ public class TemplateExpander implements Function<CQuery, CQuery> {
                 if (template != null)
                     triple = triple.withPredicate(template);
             }
-            expandTo(query, builder, lastId, var2Safe, triple);
+            expandTo(query, result, lastId, var2Safe, triple);
             var2Safe.clear();
         }
         // copy annotations for terms in query triple annotations are copied in expandTo
-        query.forEachTermAnnotation(builder::annotate);
-        return builder.build();
+        result.copyTermAnnotations(query);
+        return result;
     }
 
-    private void expandTo(@Nonnull CQuery inQuery, @Nonnull CQuery.Builder builder,
+    private void expandTo(@Nonnull CQuery inQuery, @Nonnull MutableCQuery out,
                           @Nonnull int[] lastId, @Nonnull Map<Term, Term> var2Safe,
                           @Nonnull Triple input) {
         assert var2Safe.isEmpty();
         if (!(input.getPredicate() instanceof TemplateLink)) {
-            builder.add(input);
-            inQuery.getTripleAnnotations(input).forEach(a -> builder.annotate(input, a));
+            out.add(input);
+            inQuery.getTripleAnnotations(input).forEach(a -> out.annotate(input, a));
             return;
         }
         TemplateLink templateLink = (TemplateLink) input.getPredicate();
@@ -78,12 +77,12 @@ public class TemplateExpander implements Function<CQuery, CQuery> {
             Triple rewritten = new Triple(s, triple.getPredicate(), o);
 
             // add triple and triple annotations (from tplQuery)
-            builder.add(rewritten);
-            tplQuery.getTripleAnnotations(triple).forEach(a -> builder.annotate(rewritten, a));
+            out.add(rewritten);
+            tplQuery.getTripleAnnotations(triple).forEach(a -> out.annotate(rewritten, a));
         }
         //transfer term annotations from tplQuery
         for (Map.Entry<Term, Term> e : var2Safe.entrySet())
-            tplQuery.getTermAnnotations(e.getKey()).forEach(a -> builder.annotate(e.getValue(), a));
+            out.annotate(e.getValue(), tplQuery.getTermAnnotations(e.getKey()));
     }
 
     private @Nonnull Term getCanon(@Nonnull int[] lastId, @Nonnull Map<Term, Term> var2Id,
@@ -96,7 +95,7 @@ public class TemplateExpander implements Function<CQuery, CQuery> {
     }
 
     private @Nonnull Integer getLastId(@Nonnull CQuery query) {
-        return query.streamTerms(Var.class).map(Var::getName).map(n -> {
+        return query.attr().allVarNames().stream().map(n -> {
             Matcher matcher = TPL_RX.matcher(n);
             if (!matcher.matches()) return null;
             return Integer.parseInt(matcher.group(1));

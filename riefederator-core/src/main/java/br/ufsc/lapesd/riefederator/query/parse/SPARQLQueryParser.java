@@ -3,8 +3,8 @@ package br.ufsc.lapesd.riefederator.query.parse;
 import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
-import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Query;
@@ -45,9 +45,6 @@ public class SPARQLQueryParser {
 
     static @Nonnull StdVar hidden(int id) {
         return new StdVar(HIDDEN_VAR_PREFIX+id);
-    }
-    static boolean isHidden(@Nonnull Term term) {
-        return term.isVar() && term.asVar().getName().matches(HIDDEN_VAR_PREFIX+"\\d+");
     }
 
     public @Nonnull SPARQLQueryParser lockConfiguration() {
@@ -95,7 +92,7 @@ public class SPARQLQueryParser {
 
     /* ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- v*/
 
-    public @Nonnull CQuery parse(@Nonnull String sparql) throws SPARQLParseException {
+    public @Nonnull MutableCQuery parse(@Nonnull String sparql) throws SPARQLParseException {
         try {
             return convert(QueryFactory.create(sparql));
         } catch (QueryParseException e) {
@@ -103,7 +100,7 @@ public class SPARQLQueryParser {
         }
     }
 
-    public @Nonnull CQuery parse(@Nonnull Reader sparqlReader) throws SPARQLParseException {
+    public @Nonnull MutableCQuery parse(@Nonnull Reader sparqlReader) throws SPARQLParseException {
         try {
             return parse(IOUtils.toString(sparqlReader));
         } catch (IOException e) {
@@ -111,11 +108,11 @@ public class SPARQLQueryParser {
         }
     }
 
-    public @Nonnull CQuery parse(@Nonnull InputStream stream) throws SPARQLParseException {
+    public @Nonnull MutableCQuery parse(@Nonnull InputStream stream) throws SPARQLParseException {
         return parse(new InputStreamReader(stream, StandardCharsets.UTF_8));
     }
 
-    public @Nonnull CQuery parse(@Nonnull File file) throws SPARQLParseException, IOException {
+    public @Nonnull MutableCQuery parse(@Nonnull File file) throws SPARQLParseException, IOException {
         try (FileInputStream stream = new FileInputStream(file)) {
             return parse(stream);
         }
@@ -129,8 +126,8 @@ public class SPARQLQueryParser {
         }
     }
 
-    public @Nonnull CQuery convert(@Nonnull Query q) throws SPARQLParseException {
-        CQuery.Builder builder = CQuery.builder().allowExtraProjection(allowExtraProjections);
+    public @Nonnull MutableCQuery convert(@Nonnull Query q) throws SPARQLParseException {
+        MutableCQuery cQuery = new MutableCQuery();
         Set<String> allResultVars = new HashSet<>();
         Set<String> projection = new HashSet<>();
         int[] lastHidden = {-1};
@@ -140,14 +137,14 @@ public class SPARQLQueryParser {
                 public void startVisit(Query query) { }
                 @Override
                 public void visitPrologue(Prologue prologue) {
-                    builder.prefixDict(new PrefixMappingDict(prologue.getPrefixMapping()));
+                    cQuery.setPrefixDict(new PrefixMappingDict(prologue.getPrefixMapping()));
                 }
                 @Override
                 public void visitResultForm(Query query) {}
                 @Override
                 public void visitSelectResultForm(Query query) {
                     if (query.isDistinct())
-                        builder.distinct(true);
+                        cQuery.addModifier(Distinct.REQUIRED);
                     query.getProjectVars().stream().map(Var::getVarName).forEach(projection::add);
                 }
                 @Override
@@ -160,7 +157,7 @@ public class SPARQLQueryParser {
                 }
                 @Override
                 public void visitAskResultForm(Query query) {
-                    builder.ask(false);
+                    cQuery.addModifier(Ask.ADVISED);
                 }
                 @Override
                 public void visitJsonResultForm(Query query) {}
@@ -178,7 +175,7 @@ public class SPARQLQueryParser {
                         if (t.isVar())
                             allResultVars.add(t.asVar().getName());
                     });
-                    builder.add(triple);
+                    cQuery.add(triple);
                 }
 
                 @Override
@@ -187,7 +184,7 @@ public class SPARQLQueryParser {
                         @Override
                         public void visit(ElementTriplesBlock el) {
                             el.patternElts().forEachRemaining(t
-                                    -> builder.add(fromJena(t)));
+                                    -> cQuery.add(fromJena(t)));
                         }
 
                         @Override
@@ -197,7 +194,7 @@ public class SPARQLQueryParser {
                                 throw new FeatureException("FILTER EXISTS is not supported");
                             if (expr instanceof E_NotExists)
                                 throw new FeatureException("FILTER NOT EXISTS is not supported");
-                            builder.modifier(SPARQLFilter.build(expr));
+                            cQuery.addModifier(SPARQLFilter.build(expr));
                         }
 
                         @Override
@@ -389,7 +386,7 @@ public class SPARQLQueryParser {
                 @Override
                 public void visitLimit(Query query) {
                     if (query.hasLimit())
-                        builder.limit(query.getLimit());
+                        cQuery.addModifier(Limit.advised((int)query.getLimit()));
                 }
                 @Override
                 public void visitOffset(Query query) {
@@ -405,10 +402,13 @@ public class SPARQLQueryParser {
                 public void finishVisit(Query query) {}
             });
             if (!q.isAskType() && !projection.containsAll(allResultVars)) {
-                projection.forEach(builder::project);
-                builder.requireProjection();
+                cQuery.addModifier(Projection.required(projection));
+                if (!allowExtraProjections && cQuery.sanitizeProjectionStrict()) {
+                    throw new IllegalArgumentException("There projected variables that cannot " +
+                                                       "be bound from any triple pattern");
+                }
             }
-            return builder.build();
+            return cQuery;
         } catch (FeatureException e) {
             throw new UnsupportedSPARQLFeatureException(e.message, q);
         } catch (RuntimeException e) {

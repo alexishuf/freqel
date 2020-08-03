@@ -79,8 +79,7 @@ public class SPARQLFilterTest implements TestContext {
         assertEquals(filter.getVars(), singleton("x"));
         assertEquals(filter.getVarTerms(), singleton(x));
         assertEquals(filter.getVarTermNames(), singleton("x"));
-        StdLit i23 = StdLit.fromUnescaped("23", xsdInteger);
-        assertEquals(filter.getTerms(), Sets.newHashSet(x, i23, xsdString));
+        assertEquals(filter.getTerms(), Sets.newHashSet(x, integer(23), xsdString));
     }
 
     @Test
@@ -89,8 +88,7 @@ public class SPARQLFilterTest implements TestContext {
         SPARQLFilter bound = filter.bind(MapSolution.build(u, lit(23)));
         assertEquals(bound.getVars(), singleton("x"));
         assertEquals(bound.getVarTerms(), singleton(x));
-        StdLit i23 = StdLit.fromUnescaped("23", xsdInteger); //Jena forces this conversion
-        assertEquals(bound.getTerms(), Sets.newHashSet(x, i23));
+        assertEquals(bound.getTerms(), Sets.newHashSet(x, integer(23)));
     }
 
     @Test

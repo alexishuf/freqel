@@ -113,9 +113,9 @@ public class SemanticSelectDescriptionTest implements TestContext {
         Triple qManages = new Triple(Alice, manages, o);
         MatchAnnotation annotation = new MatchAnnotation(qry);
         assertEquals(m.getAlternatives(qry),
-                Sets.newHashSet(CQuery.with(qAdvises).annotate(qAdvises, annotation).build(),
-                                CQuery.with(qMentors).annotate(qMentors, annotation).build(),
-                                CQuery.with(qManages).annotate(qManages, annotation).build()));
+                Sets.newHashSet(createQuery(qAdvises, annotation),
+                                createQuery(qMentors, annotation),
+                                createQuery(qManages, annotation)));
         assertEquals(m.getAlternatives(CQuery.from(qry)), emptySet());
     }
 
@@ -135,7 +135,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
         MatchAnnotation annotation = new MatchAnnotation(qry);
         assertEquals(m.getAlternatives(qry),
                 Sets.newHashSet(CQuery.from(qry),
-                                CQuery.with(qMentors).annotate(qMentors, annotation).build()));
+                                createQuery(qMentors, annotation)));
     }
 
 
@@ -170,8 +170,8 @@ public class SemanticSelectDescriptionTest implements TestContext {
         Triple qManager = new Triple(s, type, Manager);
         MatchAnnotation ann = new MatchAnnotation(qry);
         assertEquals(m.getAlternatives(qry),
-                     Sets.newHashSet(CQuery.with(qEmployee).annotate(qEmployee, ann).build(),
-                                     CQuery.with(qManager ).annotate(qManager,  ann).build()));
+                     Sets.newHashSet(createQuery(qEmployee, ann),
+                                     createQuery(qManager,  ann)));
     }
 
 
@@ -190,7 +190,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
         Triple qManager = new Triple(s, type, Manager);
         assertEquals(m.getAlternatives(qry), Sets.newHashSet(
                 CQuery.from(qry),
-                CQuery.with(qManager).annotate(qManager, new MatchAnnotation(qry)).build()));
+                createQuery(qManager, new MatchAnnotation(qry))));
     }
 
 
@@ -215,9 +215,9 @@ public class SemanticSelectDescriptionTest implements TestContext {
         Triple altMentors = query.get(0).withPredicate(mentors);
         Triple altManages = query.get(0).withPredicate(manages);
         MatchAnnotation matchAnnotation = new MatchAnnotation(query.get(0));
-        expected.add(CQuery.with(altAdvises).annotate(altAdvises, matchAnnotation).build());
-        expected.add(CQuery.with(altMentors).annotate(altMentors, matchAnnotation).build());
-        expected.add(CQuery.with(altManages).annotate(altManages, matchAnnotation).build());
+        expected.add(createQuery(altAdvises, matchAnnotation));
+        expected.add(createQuery(altMentors, matchAnnotation));
+        expected.add(createQuery(altManages, matchAnnotation));
 
         assertEquals(match.getAlternatives(query.get(0)), expected);
     }

@@ -103,8 +103,6 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public static final @Nonnull Atom Book = new Atom("Book");
     public static final @Nonnull Atom Person = new Atom("Person");
     public static final @Nonnull Atom KnownPerson = new Atom("KnownPerson");
-    public static final @Nonnull Atom LikedPerson = new Atom("LikedPerson");
-    public static final @Nonnull Atom PersonName = new Atom("PersonName");
 
     static {
         empty3a.addAlternative(empty3b);
@@ -116,7 +114,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
     public static void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query,
                                          boolean allowEmptyNode, boolean forgiveFilters) {
-        IndexedSet<Triple> triples = IndexedSet.from(query.getMatchedTriples());
+        IndexedSet<Triple> triples = IndexedSet.from(query.attr().matchedTriples());
 
         // the plan is acyclic
         assertTrue(isAcyclic(root));
@@ -239,7 +237,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
                 }).collect(toList());
 
         if (!forgiveFilters) {
-            Set<String> allVars = query.getTermVars().stream().map(Var::getName).collect(toSet());
+            Set<String> allVars = query.attr().tripleVarNames();
             List<SPARQLFilter> allFilters = query.getModifiers().stream()
                     .filter(SPARQLFilter.class::isInstance).map(m -> (SPARQLFilter) m)
                     .map(f -> {
@@ -504,9 +502,9 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void booksByAuthorWithIncompatibleService(Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
-        QueryNode q2 = new QueryNode(empty2, CQuery.with(new Triple(x, author, y))
-                .annotate(x, AtomInputAnnotation.asRequired(Book, "Book").get())
-                .annotate(y, AtomAnnotation.of(Person)).build());
+        QueryNode q2 = new QueryNode(empty2,
+                createQuery(x, AtomInputAnnotation.asRequired(Book, "Book").get(),
+                                author, y, AtomAnnotation.of(Person)));
         CQuery query = CQuery.from(new Triple(y, name, author1), new Triple(x, author, y));
 
         for (List<PlanNode> nodes : asList(asList((PlanNode)q1, q2), asList((PlanNode)q2, q1))) {
@@ -525,15 +523,14 @@ public class PlannerTest implements TransparencyServiceTestContext {
 
         QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
         assertEquals(q1.getStrictResultVars(), singleton("y"));
-        QueryNode q2 = new QueryNode(e2, CQuery.with(new Triple(x, author, y))
-                .annotate(x, AtomInputAnnotation.asRequired(Book, "Book").get())
-                .annotate(y, AtomAnnotation.of(Person)).build());
-        QueryNode q3 = new QueryNode(e3, CQuery.with(new Triple(x, author, y))
-                .annotate(x, AtomAnnotation.of(Book))
-                .annotate(y, AtomInputAnnotation.asRequired(Person, "Person").get()).build());
+        QueryNode q2 = new QueryNode(e2,
+                createQuery(x, AtomInputAnnotation.asRequired(Book, "Book").get(),
+                                author, y, AtomAnnotation.of(Person)));
+        QueryNode q3 = new QueryNode(e3,
+                createQuery(x, AtomAnnotation.of(Book),
+                                author, y, AtomInputAnnotation.asRequired(Person, "Person").get()));
         List<PlanNode> nodes = addFromSubject ? asList(q1, q2, q3) : asList(q1, q3);
         CQuery query = CQuery.from(new Triple(y, name, author1),
-                                   new Triple(x, author, y),
                                    new Triple(x, author, y));
 
         //noinspection UnstableApiUsage
@@ -574,25 +571,21 @@ public class PlannerTest implements TransparencyServiceTestContext {
             query = CQuery.from(new Triple(Alice, knows, x),
                                 new Triple(x, knows, y),
                                 new Triple(y, knows, Bob));
-            q1 = new QueryNode(epFromAlice, CQuery.with(new Triple(Alice, knows, x))
-                    .annotate(Alice, AtomInputAnnotation.asRequired(Person, "Person").get())
-                    .annotate(x, AtomAnnotation.of(KnownPerson)).build());
-            q2 = new QueryNode(epFromAlice, CQuery.with(new Triple(x, knows, y))
-                    .annotate(x, AtomInputAnnotation.asRequired(Person, "Person").get())
-                    .annotate(y, AtomAnnotation.of(KnownPerson)).build());
-            q3 = new QueryNode(epFromAlice, CQuery.with(new Triple(y, knows, Bob))
-                    .annotate(y, AtomInputAnnotation.asRequired(Person, "Person").get())
-                    .annotate(Bob, AtomAnnotation.of(KnownPerson)).build());
+            q1 = new QueryNode(epFromAlice, createQuery(
+                    Alice, AtomInputAnnotation.asRequired(Person, "Person").get(),
+                            knows, x, AtomAnnotation.of(KnownPerson)));
+            q2 = new QueryNode(epFromAlice, createQuery(
+                    x, AtomInputAnnotation.asRequired(Person, "Person").get(),
+                            knows, y, AtomAnnotation.of(KnownPerson)));
+            q3 = new QueryNode(epFromAlice, createQuery(y, AtomInputAnnotation.asRequired(Person, "Person").get(),
+                            knows, Bob, AtomAnnotation.of(KnownPerson)));
 
-            p1 = new QueryNode(epFromBob, CQuery.with(new Triple(Alice, knows, x))
-                    .annotate(Alice, AtomAnnotation.of(Person))
-                    .annotate(x, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()).build());
-            p2 = new QueryNode(epFromBob, CQuery.with(new Triple(x, knows, y))
-                    .annotate(x, AtomAnnotation.of(Person))
-                    .annotate(y, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()).build());
-            p3 = new QueryNode(epFromBob, CQuery.with(new Triple(y, knows, Bob))
-                    .annotate(y, AtomAnnotation.of(Person))
-                    .annotate(Bob, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()).build());
+            p1 = new QueryNode(epFromBob, createQuery(Alice, AtomAnnotation.of(Person),
+                            knows, x, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()));
+            p2 = new QueryNode(epFromBob, createQuery(x, AtomAnnotation.of(Person),
+                            knows, y, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()));
+            p3 = new QueryNode(epFromBob, createQuery(y, AtomAnnotation.of(Person), knows, Bob,
+                    AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()));
             all = asList(q1, q2, q3, p1, p2, p3);
             fromAlice  = asList(q1, q2, q3);
             fromAlice2 = asList(q1, q2, p3);
@@ -685,43 +678,36 @@ public class PlannerTest implements TransparencyServiceTestContext {
         QueryNode orgByDesc = new QueryNode(empty1, CQuery.from(
                 new Triple(x, p1, t)
         ));
-        QueryNode contract = new QueryNode(empty1, CQuery.with(
-                new Triple(y, p2, b),
-                new Triple(y, p3, c),
-                new Triple(y, p4, t)
-        ).annotate(t, AtomInputAnnotation.asRequired(new Atom("A1"), "A1").get()).build());
-        QueryNode contractById = new QueryNode(empty1, CQuery.with(
-                new Triple(b, p5, o3)
-        ).annotate(b, AtomInputAnnotation.asRequired(new Atom("A2"), "A2").get()).build());
-        QueryNode contractorByName = new QueryNode(empty1, CQuery.with(
-                new Triple(c, p6, s)
-        ).annotate(c, AtomInputAnnotation.asRequired(new Atom("A3"), "A3").get()).build());
-        QueryNode procurementsOfContractor = new QueryNode(empty1, CQuery.with(
-                new Triple(s, p7, a)
-        ).annotate(s, AtomInputAnnotation.asRequired(new Atom("A4"), "A4").get()).build());
-        QueryNode procurementById = new QueryNode(empty1, CQuery.with(
-                new Triple(a, p8, d)
-        ).annotate(a, AtomInputAnnotation.asRequired(new Atom("A5"), "A5").get()).build());
-        QueryNode modalities = new QueryNode(empty1, CQuery.from(
-                new Triple(z, p9, d)
-        ));
+        QueryNode contract = new QueryNode(empty1, createQuery(
+                y, p2, b,
+                y, p3, c,
+                y, p4, t, AtomInputAnnotation.asRequired(new Atom("A1"), "A1").get()));
+        QueryNode contractById = new QueryNode(empty1, createQuery(
+                b, AtomInputAnnotation.asRequired(new Atom("A2"), "A2").get(), p5, o3));
+        QueryNode contractorByName = new QueryNode(empty1, createQuery(
+                c, AtomInputAnnotation.asRequired(new Atom("A3"), "A3").get(), p6, s));
+        QueryNode procurementsOfContractor = new QueryNode(empty1, createQuery(
+                s, AtomInputAnnotation.asRequired(new Atom("A4"), "A4").get(), p7, a));
+        QueryNode procurementById = new QueryNode(empty1, createQuery(
+                a, AtomInputAnnotation.asRequired(new Atom("A5"), "A5").get(), p8, d));
+        QueryNode modalities = new QueryNode(empty1, createQuery(z, p9, d));
 
-        CQuery query = CQuery.from(
-                new Triple(x, p1, t),
-                new Triple(y, p2, b),
-                new Triple(y, p3, c),
-                new Triple(y, p4, t),
-                new Triple(b,  p5, o3),
-                new Triple(c,  p6, s),
-                new Triple(s,  p7, a),
-                new Triple(a,  p8, d),
-                new Triple(z, p9, d)
+        CQuery query = createQuery(
+                x, p1, t,
+                y, p2, b,
+                y, p3, c,
+                y, p4, t,
+                b, p5, o3,
+                c, p6, s,
+                s, p7, a,
+                a, p8, d,
+                z, p9, d
         );
 
         Planner planner = supplier.get();
         List<PlanNode> nodes = asList(contractorByName, procurementsOfContractor,
                 contractById, modalities, procurementById, orgByDesc, contract);
-        assertTrue(nodes.stream().allMatch(n -> query.getSet().containsAll(n.getMatchedTriples())));
+        assertTrue(nodes.stream().allMatch(n -> query.attr().getSet().containsAll(n.getMatchedTriples())));
 
         PlanNode plan = planner.plan(query, nodes);
         assertPlanAnswers(plan, query);

@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
@@ -51,13 +52,13 @@ public class JoinPathsPlannerTest implements TestContext {
         e1.addAlternative(e1a);
     }
 
-    private static  @Nonnull QueryNode node(CQEndpoint ep, @Nonnull Consumer<CQuery.Builder> setup,
+    private static  @Nonnull QueryNode node(CQEndpoint ep, @Nonnull Consumer<MutableCQuery> setup,
                                             @Nonnull Term... terms) {
-        CQuery.Builder builder = CQuery.builder();
+        MutableCQuery query = new MutableCQuery();
         for (int i = 0; i < terms.length; i += 3)
-            builder.add(new Triple(terms[i], terms[i+1], terms[i+2]));
-        setup.accept(builder);
-        return new QueryNode(ep, builder.build());
+            query.add(new Triple(terms[i], terms[i+1], terms[i+2]));
+        setup.accept(query);
+        return new QueryNode(ep, query);
     }
     private static  @Nonnull QueryNode node(CQEndpoint ep, @Nonnull Term... terms) {
         return node(ep, b -> {}, terms);
@@ -147,9 +148,8 @@ public class JoinPathsPlannerTest implements TestContext {
     public void testBuildPath() {
         QueryNode n1 = node(e1, Alice, p1, x);
         QueryNode n2 = node(e1, x, p2, y);
-        QueryNode n3 = new QueryNode(e2, CQuery.with(new Triple(y, p3, Bob))
-                .annotate(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get())
-                .annotate(Bob, AtomAnnotation.of(Person)).build());
+        QueryNode n3 = new QueryNode(e2, createQuery(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get(),
+                        p3, Bob, AtomAnnotation.of(Person)));
         IndexedSet<PlanNode> nodes = IndexedSet.fromDistinct(asList(n1, n2, n3));
 
         JoinComponent path1, path2, path3;
@@ -212,9 +212,8 @@ public class JoinPathsPlannerTest implements TestContext {
     public static Object[][] groupNodesData() {
         QueryNode n1 = node(e1, Alice, p1, x), n2 = node(e1, x, p2, y), n3 = node(e1, y, p3, Bob);
         QueryNode o1 = node(e2, Alice, p1, x), o2 = node(e2, x, p2, y), o3 = node(e2, y, p3, Bob);
-        QueryNode i2 = new QueryNode(e2, CQuery.with(new Triple(x, p2, y))
-                .annotate(x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get())
-                .annotate(y, AtomAnnotation.of(Atom1)).build());
+        QueryNode i2 = new QueryNode(e2, createQuery(x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get(),
+                        p2, y, AtomAnnotation.of(Atom1)));
         QueryNode aliceKnowsX = node(e1, Alice, knows, x), yKnowsBob = node(e1, y, knows, Bob);
 
         return Stream.of(
@@ -255,29 +254,23 @@ public class JoinPathsPlannerTest implements TestContext {
         QueryNode n6 = node(e1, y, p2, x);
 
         // n*i :: SUBJ is input
-        QueryNode n1i = new QueryNode(e2, CQuery.with(new Triple(Alice, p1, x))
-                .annotate(Alice, AtomInputAnnotation.asRequired(Person, "Person").get())
-                .annotate(x, AtomAnnotation.of(Atom1)).build());
-        QueryNode n2i = new QueryNode(e2, CQuery.with(new Triple(x, p1, y))
-                .annotate(x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get())
-                .annotate(y, AtomAnnotation.of(Atom1)).build());
-        QueryNode n4i = new QueryNode(e2, CQuery.with(new Triple(y, p1, Bob))
-                .annotate(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get())
-                .annotate(Bob, AtomAnnotation.of(Person)).build());
-        QueryNode n5i = new QueryNode(e2, CQuery.with(new Triple(y, p2, Bob))
-                .annotate(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get())
-                .annotate(Bob, AtomAnnotation.of(Person)).build());
+        QueryNode n1i = new QueryNode(e2, createQuery(
+                Alice, AtomInputAnnotation.asRequired(Person, "Person").get(),
+                        p1, x, AtomAnnotation.of(Atom1)));
+        QueryNode n2i = new QueryNode(e2, createQuery(x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get(),
+                        p1, y, AtomAnnotation.of(Atom1)));
+        QueryNode n4i = new QueryNode(e2, createQuery(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get(),
+                        p1, Bob, AtomAnnotation.of(Person)));
+        QueryNode n5i = new QueryNode(e2, createQuery(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get(),
+                        p2, Bob, AtomAnnotation.of(Person)));
 
         // n*j :: OBJ is input
-        QueryNode n1j = new QueryNode(e3, CQuery.with(new Triple(Alice, p1, x))
-                .annotate(Alice, AtomAnnotation.of(Person))
-                .annotate(x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get()).build());
-        QueryNode n2j = new QueryNode(e3, CQuery.with(new Triple(x, p1, y))
-                .annotate(x, AtomAnnotation.of(Atom1))
-                .annotate(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get()).build());
-        QueryNode n5j = new QueryNode(e3, CQuery.with(new Triple(y, p2, Bob))
-                .annotate(y, AtomAnnotation.of(Atom1))
-                .annotate(Bob, AtomInputAnnotation.asRequired(Person, "Person").get()).build());
+        QueryNode n1j = new QueryNode(e3, createQuery(Alice, AtomAnnotation.of(Person),
+                        p1, x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get()));
+        QueryNode n2j = new QueryNode(e3, createQuery(x, AtomAnnotation.of(Atom1),
+                        p1, y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get()));
+        QueryNode n5j = new QueryNode(e3, createQuery(y, AtomAnnotation.of(Atom1),
+                        p2, Bob, AtomInputAnnotation.asRequired(Person, "Person").get()));
 
         // mXi == M(nX, nXi)
         MultiQueryNode m1i = m(n1, n1i);
@@ -379,7 +372,7 @@ public class JoinPathsPlannerTest implements TestContext {
             JoinGraph g = new JoinGraph(IndexedSet.fromDistinct(permutation));
             JoinPathsPlanner planner = new JoinPathsPlanner(new ArbitraryJoinOrderPlanner());
             Stopwatch sw = Stopwatch.createStarted();
-            List<JoinComponent> paths = planner.getPaths(fromDistinctCopy(query.getMatchedTriples()), g);
+            List<JoinComponent> paths = planner.getPaths(fromDistinctCopy(query.attr().matchedTriples()), g);
             sum += sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
             ++count;
 
@@ -464,7 +457,7 @@ public class JoinPathsPlannerTest implements TestContext {
             for (int j = i+1; j < set.size(); j++) {
                 if (!(set.get(j) instanceof QueryNode)) continue;
                 QueryNode inner = (QueryNode) set.get(j);
-                if (outer.getQuery().getSet().equals(inner.getQuery().getSet())) {
+                if (outer.getQuery().attr().getSet().equals(inner.getQuery().attr().getSet())) {
                     assertFalse(outer.getEndpoint().isAlternative(inner.getEndpoint()));
                     assertFalse(inner.getEndpoint().isAlternative(outer.getEndpoint()));
                 }
@@ -548,7 +541,7 @@ public class JoinPathsPlannerTest implements TestContext {
                 for (int k = j+1; k < pathNodes.size(); k++) {
                     if (!(pathNodes.get(k) instanceof QueryNode)) continue;
                     QueryNode inner = (QueryNode) pathNodes.get(k);
-                    if (outer.getQuery().getSet().equals(inner.getQuery().getSet())) {
+                    if (outer.getQuery().attr().getSet().equals(inner.getQuery().attr().getSet())) {
                         assertFalse(inner.getEndpoint().isAlternative(outer.getEndpoint()));
                         assertFalse(outer.getEndpoint().isAlternative(inner.getEndpoint()));
                     }

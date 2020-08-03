@@ -12,7 +12,6 @@ import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
@@ -29,7 +28,6 @@ import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.MoleculeLinkAnnotation;
-import com.google.common.base.Preconditions;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import org.slf4j.Logger;
@@ -40,6 +38,7 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.SUBJ;
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
 public class StarsHelper {
@@ -69,7 +68,7 @@ public class StarsHelper {
      */
     public static @Nonnull
     Results executeJoinDisconnected(@Nonnull CQuery query, @Nonnull CQEndpoint target) {
-        Preconditions.checkArgument(!query.isJoinConnected(), "Query should not be join-connected");
+        checkArgument(!query.attr().isJoinConnected(), "Query should not be join-connected");
 
         Injector injector = getInjector();
         PlanExecutor planExecutor = injector.getInstance(PlanExecutor.class);
@@ -100,16 +99,15 @@ public class StarsHelper {
         List<StarSubQuery> list = new ArrayList<>();
 
         IndexedSubset<SPARQLFilter> pendingFilters = filters.fullSubset();
-        IndexedSet<String> allVarNames = IndexedSet.fromDistinct(
-                query.getTermVars().stream().map(Var::getName).collect(toList()));
-        IndexedSet<Triple> triples = query.getSet();
+        IndexedSet<String> allVarNames = query.attr().tripleVarNames();
+        IndexedSet<Triple> triples = query.attr().getSet();
         IndexedSubset<Triple> visited = triples.emptySubset();
         ArrayDeque<Triple> queue = new ArrayDeque<>(triples);
         while (!queue.isEmpty()) {
             Triple triple = queue.remove();
             if (!visited.add(triple))
                 continue;
-            IndexedSubset<Triple> star = query.getTriplesWithTermAt(triple.getSubject(), SUBJ);
+            IndexedSubset<Triple> star = query.attr().triplesWithTermAt(triple.getSubject(), SUBJ);
             visited.addAll(star);
 
             IndexedSubset<String> vars = allVarNames.subset(star.stream().flatMap(Triple::stream)

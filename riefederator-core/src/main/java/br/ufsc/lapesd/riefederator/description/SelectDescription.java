@@ -7,9 +7,12 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.MissingCapabilityException;
+import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.util.LogUtils;
 import com.esotericsoftware.yamlbeans.YamlReader;
@@ -254,7 +257,9 @@ public class SelectDescription implements Description {
 
     private Set<Term> fill(@Nonnull Triple query, @Nonnull String varName) {
         Stopwatch sw = Stopwatch.createStarted();
-        CQuery cQuery = CQuery.with(query).project(varName).distinct().build();
+        MutableCQuery cQuery = MutableCQuery.from(query);
+        cQuery.addModifier(Projection.advised(varName));
+        cQuery.addModifier(Distinct.ADVISED);
         Set<Term> set = null;
         try (Results results = endpoint.query(cQuery)) {
             set = new HashSet<>();

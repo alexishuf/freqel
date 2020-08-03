@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -62,6 +62,6 @@ public class NaiveOuterPlannerTest implements TestContext {
         List<IndexedSet<Triple>> list = planner.getCartesianComponents(IndexedSet.from(triples));
         assertEquals(new HashSet<>(list), expected.stream().map(IndexedSet::from).collect(toSet()));
 
-        assertEquals(CQuery.with(triples).build().isJoinConnected(), expected.size()==1);
+        assertEquals(MutableCQuery.from(triples).attr().isJoinConnected(), expected.size()==1);
     }
 }

@@ -7,9 +7,14 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
-import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.query.results.*;
+import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.LazyCartesianResults;
@@ -53,10 +58,10 @@ public abstract class RelationalResults extends AbstractResults {
 
     protected RelationalResults(@Nonnull RelationalRewriting rw,
                                 @Nonnull RelationalMapping mapping) {
-        super(ResultsUtils.getResultVars(rw.getQuery()));
+        super(rw.getQuery().attr().publicTripleVarNames());
         this.rewriting = rw;
         this.mapping = mapping;
-        this.ask = rw.getQuery().isAsk();
+        this.ask = rw.getQuery().attr().isAsk();
         this.jenaStars = new ArrayList<>(rw.getStarsCount());
         this.jenaVars = new ArrayList<>(rw.getStarsCount());
         this.jenaSolutionFac = new ArrayList<>(rw.getStarsCount());
@@ -66,15 +71,15 @@ public abstract class RelationalResults extends AbstractResults {
         IndexedSet<String> allVars = index.getAllSparqlVars();
         Set<String> projection = getVarNames();
         for (int i = 0, size = rw.getStarsCount(); i < size; i++) {
-            CQuery.Builder b = CQuery.builder(index.getPendingTriples(i));
-            index.getPendingFilters(i).forEach(b::modifier);
-            if (b.getList().isEmpty()) {
+            MutableCQuery b = MutableCQuery.from(index.getPendingTriples(i));
+            index.getPendingFilters(i).forEach(b::addModifier);
+            if (b.isEmpty()) {
                 assert index.getPendingFilters(i).isEmpty();
                 Term core = rw.getStar(i).getCore();
                 if (core.isVar() && projection.contains(core.asVar().getName())) {
                     b.add(new Triple(core, p, o));
-                    b.project(core.asVar().getName());
-                    b.distinct();
+                    b.addModifier(Projection.required(core.asVar().getName()));
+                    b.addModifier(Distinct.REQUIRED);
                 } else { // no work on our side, skip it
                     jenaStars.add(null);
                     jenaVars.add(Collections.emptySet());
@@ -84,7 +89,7 @@ public abstract class RelationalResults extends AbstractResults {
                     continue;
                 }
             }
-            FastSPARQLString ss = new FastSPARQLString(b.build());
+            FastSPARQLString ss = new FastSPARQLString(b);
             jenaStars.add(QueryFactory.create(ss.getSparql()));
             jenaVars.add(ss.getVarNames());
             jenaSolutionFac.add(JenaBindingSolution.forVars(jenaVars.get(i)));

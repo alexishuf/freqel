@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -15,7 +14,6 @@ import java.util.Set;
 
 import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
 import static java.util.Collections.emptySet;
-import static java.util.stream.Collectors.toSet;
 
 public class EmptyNode extends AbstractPlanNode {
     private @Nullable CQuery query;
@@ -50,7 +48,7 @@ public class EmptyNode extends AbstractPlanNode {
     }
 
     public EmptyNode(@Nonnull CQuery query) {
-        this(query.getVars().stream().map(Var::getName).collect(toSet()));
+        this(query.attr().allVarNames());
         this.query = query;
     }
 
@@ -76,7 +74,7 @@ public class EmptyNode extends AbstractPlanNode {
 
     @Override
     public @Nonnull Set<Triple> getMatchedTriples() {
-        return query == null ? emptySet() : query.getMatchedTriples();
+        return query == null ? emptySet() : query.attr().matchedTriples();
     }
 
     @Override

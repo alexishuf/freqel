@@ -7,11 +7,12 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.QueryNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.SPARQLValuesTemplateNodeExecutor;
 import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
@@ -25,10 +26,7 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
-
-import static java.util.Collections.singleton;
 
 public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
         implements QueryNodeExecutor, MultiQueryNodeExecutor, CartesianNodeExecutor,
@@ -102,50 +100,35 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
                 .allMatch(m -> ep.hasCapability(m.getCapability()))
                 && (node.getFilters().isEmpty() || canFilter) ;
 
+        MutableCQuery mQuery = new MutableCQuery(query);
+        Set<SPARQLFilter> removed = mQuery.sanitizeFiltersStrict();
+        if (!removed.isEmpty()) {
+            logger.warn("Query had {} filters with input variables. Such variables should've " +
+                        "been bound before execution against {}. Offending filters: {}. " +
+                        "Offending query: {}", removed.size(), ep, removed, query);
+            assert false : "Attempted to execute query with input vars in filters";
+        }
+
         if (hasCapabilities) {
-            if (node.getFilters().isEmpty() || query.getModifiers().containsAll(node.getFilters()))
-                return ep.query(query);
+            mQuery.addModifiers(node.getFilters());
+            return ep.query(mQuery);
+        } else { // endpoint cannot handle some modifiers, not even locally
+            mQuery.removeModifierIf(m -> !ep.hasCapability(m.getCapability()));
+            if (canFilter) mQuery.addModifiers(node.getFilters());
+            Results results = ep.query(mQuery);
 
-            CQuery.WithBuilder b = CQuery.with(query).copyModifiers(query).copyAnnotations(query);
-            for (SPARQLFilter filter : node.getFilters())
-                b.modifier(filter);
-            CQuery augmented = b.build();
-            assert augmented.getModifiers().containsAll(query.getModifiers());
-            return ep.query(augmented);
-        } else {
-            // endpoint cannot handle some modifiers, not even locally
-            Projection projection = null;
-            Distinct distinct = null;
-            Ask ask = null;
-            CQuery.WithBuilder b = CQuery.with(query.getList()).copyAnnotations(query);
-            for (Modifier m : query.getModifiers()) {
-                if (ep.hasCapability(m.getCapability())) b.modifier(m);
-                else if (m instanceof Ask)               ask = (Ask)m;
-                else if (m instanceof Projection)        projection = (Projection)m;
-                else if (m instanceof Distinct)          distinct = (Distinct)m;
-            }
-            if (canFilter) {
-                for (SPARQLFilter filter : node.getFilters())
-                    b.modifier(filter);
-            }
-            Results results = ep.query(b.build());
-
+            if (query.attr().isDistinct() && !mQuery.attr().isDistinct())
+                results = HashDistinctResults.applyIf(results, query);
             if (!canFilter) {
-                List<SPARQLFilter> filters = new ArrayList<>();
-                query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
-                                    .map(m -> (SPARQLFilter)m).forEach(filters::add);
-                filters.addAll(node.getFilters());
-                results = new SPARQLFilterResults(results, filters);
+                Set<SPARQLFilter> set = TreeUtils.union(query.attr().filters(), node.getFilters());
+                results = SPARQLFilterResults.applyIf(results, set);
             }
-            if (projection != null)
-                results = new ProjectingResults(results, projection.getVarNames());
-            if (ask != null) {
-                Set<String> vs = results.getVarNames();
-                return results.hasNext() ? new CollectionResults(singleton(MapSolution.EMPTY), vs)
-                                         : CollectionResults.empty(vs);
-            }
-            if (distinct != null)
-                results = new HashDistinctResults(results);
+            if (query.attr().limit() > 0 && mQuery.attr().limit() <= 0)
+                results = LimitResults.applyIf(results, query);
+            results = ProjectingResults.applyIf(results, query);
+            if (query.attr().isAsk() && !mQuery.attr().isAsk())
+                results  = AskResults.applyIf(results, query);
+
             return results;
         }
     }

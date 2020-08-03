@@ -1,4 +1,7 @@
-package br.ufsc.lapesd.riefederator.query;
+package br.ufsc.lapesd.riefederator.query.impl;
+
+import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.CardinalityAdder;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

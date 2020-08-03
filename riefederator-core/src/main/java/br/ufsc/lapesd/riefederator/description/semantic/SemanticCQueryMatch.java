@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSetMultimap;
@@ -72,11 +73,10 @@ public class SemanticCQueryMatch extends CQueryMatch {
 
         @CanIgnoreReturnValue
         public @Nonnull Builder addAlternative(@Nonnull Triple query, @Nonnull Triple alternative) {
-            if (alternative.equals(query))
-                return addAlternative(query, CQuery.from(alternative));
-            return addAlternative(query, CQuery.with(alternative)
-                    .annotate(alternative, new MatchAnnotation(query))
-                    .build());
+            MutableCQuery cQuery = MutableCQuery.from(alternative);
+            if (!alternative.equals(query))
+                cQuery.annotate(alternative, new MatchAnnotation(query));
+            return addAlternative(query, cQuery);
         }
 
         @CanIgnoreReturnValue
@@ -84,7 +84,7 @@ public class SemanticCQueryMatch extends CQueryMatch {
                                                @Nonnull CQuery alternative) {
             if (getClass().desiredAssertionStatus()) {
                 Preconditions.checkArgument(query.containsAll(exGroup), "exGroup not in query");
-                boolean hasAnnotation = alternative.hasAnnotation(MatchAnnotation.class);
+                boolean hasAnnotation = alternative.hasTripleAnnotations(MatchAnnotation.class);
                 if (!hasAnnotation && !exGroup.containsAll(alternative)) {
                     logger.info("addAlternative({}, {}) has new triples without MatchAnnotations",
                                 exGroup, alternative);

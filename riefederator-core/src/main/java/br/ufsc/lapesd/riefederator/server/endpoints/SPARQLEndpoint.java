@@ -45,7 +45,7 @@ public class SPARQLEndpoint {
             CQuery cQuery = SPARQLQueryParser.tolerant().parse(query);
             Results results = getFederation().query(cQuery);
             return ResultsFormatterDispatcher.getDefault()
-                    .format(results, cQuery.isAsk(), headers, uriInfo)
+                    .format(results, cQuery.attr().isAsk(), headers, uriInfo)
                     .toResponse().build();
         } catch (UnsupportedSPARQLFeatureException e) {
             return createExceptionResponse(query, "Unsupported SPARQL Feature", e);

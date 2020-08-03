@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
@@ -283,11 +284,9 @@ public class WebAPICQEndpointTest
     @Test
     public void testDirectQueryDescriptiveTriple() {
         WebAPICQEndpoint ep = new WebAPICQEndpoint(expMolecule());
-        CQuery query = CQuery.with(new Triple(x, exponent, i3),
-                                   new Triple(x, op1, i4),
-                                   new Triple(x, result, y))
-                .annotate(new Triple(x, exponent, i3), PureDescriptive.INSTANCE)
-                .build();
+        CQuery query = createQuery(x, exponent, i3, PureDescriptive.INSTANCE,
+                                   x, op1, i4,
+                                   x, result, y);
         List<Term> list = new ArrayList<>();
         ep.query(query).forEachRemainingThenClose(s -> list.add(s.get(y)));
         assertEquals(list, singletonList(fromJena(createTypedLiteral(64))));

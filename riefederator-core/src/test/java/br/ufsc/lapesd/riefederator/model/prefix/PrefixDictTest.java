@@ -178,12 +178,12 @@ public class PrefixDictTest {
         String preamble = "http://example.org/";
         String letters = "abcdefghijklmnoprstuvxywz";
         for (int i = 0; i < letters.length(); i++)
-            d.put(letters.substring(i, i + 1), preamble + letters.substring(i, i + 1) + "/");
+            d.put(letters.substring(i, i + 1), preamble + letters.charAt(i) + "/");
         // cannto shorten: too short
         assertFalse(d.shorten(preamble).isShortened());
         // shorten the prefixes
         for (int i = 0; i < letters.length(); i++) {
-            String uri = preamble + letters.substring(i, i + 1) + "/";
+            String uri = preamble + letters.charAt(i) + "/";
             PrefixDict.Shortened shortened = d.shorten(uri);
             assertTrue(shortened.isShortened());
             assertEquals(shortened.getNamespace(), uri);
@@ -192,7 +192,7 @@ public class PrefixDictTest {
         }
         // shorten URIs
         for (int i = 0; i < letters.length(); i++) {
-            String namespace = preamble + letters.substring(i, i + 1) + "/";
+            String namespace = preamble + letters.charAt(i) + "/";
             PrefixDict.Shortened shortened = d.shorten(namespace+"inst");
             assertTrue(shortened.isShortened());
             assertEquals(shortened.getNamespace(), namespace);

@@ -124,12 +124,12 @@ public class OuterPlannerTest implements TestContext {
         HashSet<CQuery> expected = new HashSet<>(expectedComponents);
 
         assertTrue(expected.stream().allMatch(e -> actual.stream()
-                .anyMatch(a -> a.getSet().equals(e.getSet())
+                .anyMatch(a -> a.attr().getSet().equals(e.attr().getSet())
                             && a.getModifiers().equals(e.getModifiers()))));
         assertTrue(actual.stream().allMatch(a -> expected.stream()
-                .anyMatch(e -> e.getSet().equals(a.getSet())
+                .anyMatch(e -> e.attr().getSet().equals(a.attr().getSet())
                         && e.getModifiers().equals(a.getModifiers()))));
 
-        assertEquals(query.isJoinConnected(), expectedComponents.size()==1);
+        assertEquals(query.attr().isJoinConnected(), expectedComponents.size()==1);
     }
 }

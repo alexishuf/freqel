@@ -111,8 +111,8 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
 
         public Estimator(@Nonnull CQuery query) {
             this.query = query;
-            visited = query.getSet().emptySubset();
-            pathVisited = query.getSet().emptySubset();
+            visited = query.attr().getSet().emptySubset();
+            pathVisited = query.attr().getSet().emptySubset();
             stack  = new ArrayDeque<>();
             pathStack  = new ArrayDeque<>();
             pathEstimator = new PathEstimator(query);
@@ -128,12 +128,12 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
                 Triple triple = stack.pop();
                 if (visited.add(triple)) {
                     best = avg(best, pathEstimator.visitPath(triple, visited));
-                    query.getTriplesWithTerm(triple.getSubject()).forEach(stack::push);
-                    query.getTriplesWithTerm(triple.getObject()).forEach(stack::push);
+                    query.attr().triplesWithTerm(triple.getSubject()).forEach(stack::push);
+                    query.attr().triplesWithTerm(triple.getObject()).forEach(stack::push);
                     // only consider connection through predicate if it leads toa  subject or object
                     // ex:Alice ex:pred ?z and ex:Bob ex:pred ?y are disjoint (and dangerous)
                     Term p = triple.getPredicate();
-                    query.getTriplesWithTerm(p).forEach(next -> {
+                    query.attr().triplesWithTerm(p).forEach(next -> {
                         if (next.getSubject().equals(p) || next.getObject().equals(p))
                             stack.push(next);
                     });
@@ -177,7 +177,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
                 this.opposite = position.opposite();
                 this.localTriples = visited.getParent().emptySubset();
                 this.boundary = visited.getParent().emptySubset();
-                this.localTerms = query.getTerms().emptySubset();
+                this.localTerms = query.attr().tripleTerms().emptySubset();
             }
 
             public void clear() {
@@ -201,7 +201,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
                 // explore subject <--> object joins
                 Term term = t.get(position);
                 if (localTerms.add(term)) {
-                    for (Triple next : query.getTriplesWithTerm(term)) {
+                    for (Triple next : query.attr().triplesWithTerm(term)) {
                         if (next.get(opposite).equals(term))
                             queue.add(next);
                     }
@@ -233,7 +233,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
                 for (Triple localTriple : localTriples) {
                     Term term = localTriple.get(position);
                     if (!localTerms.add(term)) continue;
-                    queue.addAll(query.getTriplesWithTermAt(term, opposite));
+                    queue.addAll(query.attr().triplesWithTermAt(term, opposite));
                 }
 
                 assert localTerms.contains(core);
@@ -241,7 +241,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             }
 
             private void addBoundary(@Nonnull Triple triple) {
-                assert query.getTriplesWithTermAt(triple.get(opposite), position).isEmpty()
+                assert query.attr().triplesWithTermAt(triple.get(opposite), position).isEmpty()
                         : "add() on non-boundary triple " + triple + " position="+position;
                 IndexedSet<Triple> allTriples = boundary.getParent();
                 int idx = allTriples.indexOf(triple);
@@ -252,7 +252,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             }
 
             private int estimateInnerTriple(@Nonnull Triple triple) {
-                assert !query.getTriplesWithTermAt(triple.get(opposite), position).isEmpty()
+                assert !query.attr().triplesWithTermAt(triple.get(opposite), position).isEmpty()
                         : "Tried to estimate boundary triple " + triple + " as if non-boundary";
                 // when fromSubj crosses the core and processes a triple from the other side,
                 // always allow it to replace the subject. This has the effect of sometimes
@@ -291,8 +291,8 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
 
         public PathEstimator(@Nonnull CQuery query) {
             this.query = query;
-            this.visited = query.getSet().emptySubset();
-            this.coreCandidates = query.getTerms().emptySubset();
+            this.visited = query.attr().getSet().emptySubset();
+            this.coreCandidates = query.attr().tripleTerms().emptySubset();
             this.fromSubj = new Side(OBJ);
             this.fromObj = new Side(SUBJ);
             tripleCost = new int[query.size()];
@@ -376,14 +376,14 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
         }
 
         private void applyStarSelectivity() {
-            IndexedSubset<Term> visitedSubjects = query.getTerms().emptySubset();
+            IndexedSubset<Term> visitedSubjects = query.attr().tripleTerms().emptySubset();
             IndexedSet<Triple> allTriples = visited.getParent();
             for (Triple triple : visited) {
                 Term s = triple.getSubject();
                 if (!visitedSubjects.add(s))
                     continue;
                 // get the star of this subject
-                IndexedSubset<Triple> star = query.getTriplesWithTermAt(s, SUBJ);
+                IndexedSubset<Triple> star = query.attr().triplesWithTermAt(s, SUBJ);
                 if (star.size() == 1)
                     continue; // no discount will ever be given
 
@@ -441,11 +441,11 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
                     continue;
 
                 // try subj --> obj joins
-                IndexedSubset<Triple> set = query.getTriplesWithTermAt(t.getSubject(), OBJ);
+                IndexedSubset<Triple> set = query.attr().triplesWithTermAt(t.getSubject(), OBJ);
                 if (set.isEmpty()) fromSubj.addBoundary(t);
                 else               set.forEach(stack::push);
                 // try obj --> subj joins
-                set = query.getTriplesWithTermAt(t.getObject(), SUBJ);
+                set = query.attr().triplesWithTermAt(t.getObject(), SUBJ);
                 if (set.isEmpty()) fromObj.addBoundary(t);
                 else               set.forEach(stack::push);
             }

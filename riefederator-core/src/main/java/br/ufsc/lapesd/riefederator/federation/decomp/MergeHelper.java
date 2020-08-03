@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.decomp;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.MergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
 
@@ -26,13 +27,8 @@ public class MergeHelper {
     public static @Nullable CQuery tryMerge(@Nonnull CQuery left, @Nonnull CQuery right) {
         if (!canMerge(left, right))
             return null;
-        CQuery.Builder b = CQuery.builder(left.size() + right.size());
-        b.addAll(left);
-        b.copyAnnotations(left);
-        b.copyModifiers(left);
-        b.addAll(right);
-        b.copyAnnotations(right);
-        b.copyModifiers(right);
-        return b.build();
+        MutableCQuery q = new MutableCQuery(left);
+        q.mergeWith(right);
+        return q;
     }
 }

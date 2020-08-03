@@ -12,6 +12,17 @@ public enum  Capability {
     SPARQL_FILTER,
     VALUES;
 
+    public boolean isUniqueModifier() {
+        switch (this) {
+            case ASK:
+            case LIMIT:
+            case PROJECTION:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     @CanIgnoreReturnValue
     public @Nonnull TPEndpoint requireFrom(@Nonnull TPEndpoint ep) throws MissingCapabilityException {
         if (!ep.hasCapability(this))

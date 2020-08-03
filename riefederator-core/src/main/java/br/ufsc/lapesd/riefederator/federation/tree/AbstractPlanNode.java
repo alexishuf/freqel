@@ -18,7 +18,7 @@ public abstract class AbstractPlanNode implements PlanNode {
     protected @Nullable Set<String> strictResultVarsCache, publicVarsCache, allInputVarsCache;
     protected @Nonnull String name;
     private @Nonnull Cardinality cardinality;
-    private @Nonnull HashSet<SPARQLFilter> filters = new HashSet<>();
+    private @Nonnull final HashSet<SPARQLFilter> filters = new HashSet<>();
 
     protected AbstractPlanNode(@Nonnull Cardinality cardinality, @Nullable Set<String> projection) {
         this.projection = projection == null ? null : ImmutableSet.copyOf(projection);

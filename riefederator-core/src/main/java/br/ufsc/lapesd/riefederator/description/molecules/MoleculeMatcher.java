@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.MergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
@@ -419,7 +420,8 @@ public class MoleculeMatcher implements SemanticDescription {
 
         @SuppressWarnings("ReferenceEquality")
         private @Nullable EGPrototype tryMerge(@Nonnull EGPrototype l, @Nonnull EGPrototype r) {
-            Set<Triple> commonTriples = TreeUtils.intersect(l.query.getSet(), r.query.getSet());
+            Set<Triple> commonTriples = TreeUtils.intersect(l.query.attr().getSet(),
+                                                            r.query.attr().getSet());
             if (commonTriples.isEmpty())
                 return null; //no intersection
             CQuery union = CQuery.merge(l.query, r.query);
@@ -528,14 +530,14 @@ public class MoleculeMatcher implements SemanticDescription {
         }
 
         protected class EGQueryBuilder {
-            protected CQuery.Builder builder;
+            protected MutableCQuery mQuery;
             protected Set<Var> allVars = new HashSet<>();
             protected SetMultimap<Term, String> term2atom = HashMultimap.create();
             protected Map<SPARQLFilter.SubsumptionResult, AtomFilter> subsumption2matched
                     = new HashMap<>();
 
             public EGQueryBuilder(int sizeHint) {
-                builder = CQuery.builder(sizeHint);
+                mQuery = new MutableCQuery(sizeHint);
             }
 
             public void add(@Nonnull Triple triple, @Nonnull Collection<LinkMatch> matches) {
@@ -543,8 +545,8 @@ public class MoleculeMatcher implements SemanticDescription {
                 triple.forEach(t -> {
                     if (t.isVar()) allVars.add(t.asVar());
                 });
-                builder.add(triple);
-                parentQuery.getTripleAnnotations(triple).forEach(a -> builder.annotate(triple, a));
+                mQuery.add(triple);
+                parentQuery.getTripleAnnotations(triple).forEach(a -> mQuery.annotate(triple, a));
                 Term s = triple.getSubject(), o = triple.getObject();
                 if (!molecule.getFilters().isEmpty()) {
                     for (LinkMatch match : matches) {
@@ -559,15 +561,15 @@ public class MoleculeMatcher implements SemanticDescription {
             private void addTripleAnnotations(@Nonnull Triple triple,
                                               @Nonnull Collection<LinkMatch> matches) {
                 for (LinkMatch m : matches)
-                    builder.annotate(triple, new MoleculeLinkAnnotation(m.l.link, m.l.reversed));
+                    mQuery.annotate(triple, new MoleculeLinkAnnotation(m.l.link, m.l.reversed));
             }
 
             protected void addAtomAnnotations(@Nonnull Triple triple,
                                               @Nonnull Collection<LinkMatch> matches) {
                 Term s = triple.getSubject(), o = triple.getObject();
                 for (LinkMatch match : matches) {
-                    builder.annotate(s, AtomAnnotation.of(match.l.s));
-                    builder.annotate(o, AtomAnnotation.of(match.l.o));
+                    mQuery.annotate(s, AtomAnnotation.of(match.l.s));
+                    mQuery.annotate(o, AtomAnnotation.of(match.l.o));
                 }
             }
 
@@ -592,7 +594,7 @@ public class MoleculeMatcher implements SemanticDescription {
                     SPARQLFilter.SubsumptionResult result;
                     result = filter.areResultsSubsumedBy(candidate.getSPARQLFilter());
                     if (result.getValue()) {
-                        builder.modifier(filter);
+                        mQuery.addModifier(filter);
                         subsumption2matched.put(result, candidate);
                         return true;
                     }
@@ -606,19 +608,19 @@ public class MoleculeMatcher implements SemanticDescription {
                 alt.forEach(t -> {
                     if (t.isVar()) allVars.add(t.asVar());
                 });
-                builder.add(alt);
-                parentQuery.getTripleAnnotations(triple).forEach(a -> builder.annotate(alt, a));
-                query.getTripleAnnotations(triple).forEach(a -> builder.annotate(alt, a));
+                mQuery.add(alt);
+                parentQuery.getTripleAnnotations(triple).forEach(a -> mQuery.annotate(alt, a));
+                query.getTripleAnnotations(triple).forEach(a -> mQuery.annotate(alt, a));
                 if (!alt.equals(triple))
-                    builder.annotate(alt, new MatchAnnotation(triple));
+                    mQuery.annotate(alt, new MatchAnnotation(triple));
             }
 
             public boolean isEmpty() {
-                return builder.isEmpty();
+                return mQuery.isEmpty();
             }
 
             public int size() {
-                return builder.size();
+                return mQuery.size();
             }
 
             public void addParentModifiers() {
@@ -626,16 +628,10 @@ public class MoleculeMatcher implements SemanticDescription {
                         .forEach(m -> tryAdd((SPARQLFilter)m));
             }
 
-            protected void prepareBuild() {
-                //copy all term annotations
-                builder.getList().stream().flatMap(Triple::stream).distinct()
-                        .forEach(t -> parentQuery.getTermAnnotations(t)
-                                .forEach(a -> builder.annotate(t, a)));
-            }
-
             public CQuery build() {
-                prepareBuild();
-                return builder.annotate(mergePolicyAnnotation).build();
+                mQuery.copyTermAnnotations(parentQuery);
+                mQuery.annotate(mergePolicyAnnotation);
+                return mQuery;
             }
         }
 

@@ -10,10 +10,7 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
-import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
@@ -221,8 +218,7 @@ public class QueryNodeTest implements TestContext {
 
     @Test(dataProvider = "factoryData")
     public void testCreateBoundNoOp(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
-        CQuery query = CQuery.with(asList(new Triple(Alice, knows, x),
-                                          new Triple(x, knows, Bob))).distinct(true).build();
+        CQuery query = createQuery(Alice, knows, x, x, knows, Bob, Distinct.REQUIRED);
         ComponentNode node = fac.apply(query, null);
         ComponentNode bound = node.createBound(MapSolution.build("y", Charlie));
         if (node instanceof QueryNode) {
@@ -239,15 +235,12 @@ public class QueryNodeTest implements TestContext {
 
     @Test(dataProvider = "factoryData")
     public void testCreateBoundBindingOneVar(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
-        CQuery query = CQuery.with(asList(new Triple(x, knows, Alice),
-                                          new Triple(y, knows, x))).ask(false).build();
+        CQuery query = createQuery(x, knows, Alice, y, knows, x, Ask.ADVISED);
         ComponentNode node = fac.apply(query, null);
         ComponentNode bound = node.createBound(MapSolution.build("x", Bob));
 
         assertEquals(bound.getQuery(),
-                     CQuery.with(asList(new Triple(Bob, knows, Alice),
-                                        new Triple(y, knows, Bob))
-                                ).ask(false).build());
+                     createQuery(Bob, knows, Alice, y, knows, Bob, Ask.ADVISED));
         Modifier modifier = ModifierUtils.getFirst(Capability.ASK, bound.getQuery().getModifiers());
         assertTrue(modifier instanceof Ask);
         assertFalse(modifier.isRequired());
@@ -293,9 +286,8 @@ public class QueryNodeTest implements TestContext {
 
     @Test(dataProvider = "factoryData")
     public void testBindingNoChangePreservesAnnotations(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
-        CQuery query = CQuery.with(new Triple(Alice, knows, y))
-                .annotate(Alice, AtomAnnotation.of(atom1))
-                .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get()).build();
+        CQuery query = createQuery(Alice, AtomAnnotation.of(atom1),
+                knows, y, AtomInputAnnotation.asRequired(atom2, "atom2").get());
         ComponentNode node = fac.apply(query, null);
         ComponentNode bound = node.createBound(MapSolution.build(x, Bob));
 
@@ -309,11 +301,10 @@ public class QueryNodeTest implements TestContext {
 
     @Test(dataProvider = "factoryData")
     public void testBindingPreservesAnnotations(BiFunction<CQuery, Set<String>, ComponentNode> fac) {
-        CQuery query = CQuery.with(new Triple(x, knows, y), new Triple(Alice, knows, x))
-                .annotate(x, AtomInputAnnotation.asRequired(atom1, "atom1").get())
-                .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get())
-                .annotate(Alice, AtomAnnotation.of(atom3))
-                .build();
+        CQuery query = createQuery(
+                x, AtomInputAnnotation.asRequired(atom1, "atom1").get(),
+                        knows, y, AtomInputAnnotation.asRequired(atom2, "atom2").get(),
+                Alice, AtomAnnotation.of(atom3), knows, x);
         ComponentNode node = fac.apply(query, null);
         ComponentNode bound = node.createBound(MapSolution.build(x, Bob));
 
@@ -321,11 +312,10 @@ public class QueryNodeTest implements TestContext {
         assertTrue(bound.hasInputs());
         assertEquals(bound.getRequiredInputVars(), singleton("y"));
 
-        CQuery expected = CQuery.with(new Triple(Bob, knows, y), new Triple(Alice, knows, Bob))
-                .annotate(Bob, AtomInputAnnotation.asRequired(atom1, "atom1").get())
-                .annotate(y, AtomInputAnnotation.asRequired(atom2, "atom2").get())
-                .annotate(Alice, AtomAnnotation.of(atom3))
-                .build();
+        CQuery expected = createQuery(
+                Bob, AtomInputAnnotation.asRequired(atom1, "atom1").get(),
+                        knows, y, AtomInputAnnotation.asRequired(atom2, "atom2").get(),
+                Alice, AtomAnnotation.of(atom3), knows, Bob);
         //noinspection SimplifiedTestNGAssertion
         assertTrue(bound.getQuery().equals(expected));
         assertTrue(bound.getQuery().getTermAnnotations(Bob)

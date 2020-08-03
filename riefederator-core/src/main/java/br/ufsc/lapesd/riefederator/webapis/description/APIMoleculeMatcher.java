@@ -193,8 +193,8 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                                            @Nonnull Collection<LinkMatch> matches) {
                 Term s = triple.getSubject(), o = triple.getObject();
                 for (LinkMatch match : matches) {
-                    builder.annotate(s, inputAtoms.asAnnotation(match.l.s, null));
-                    builder.annotate(o, inputAtoms.asAnnotation(match.l.o, null));
+                    mQuery.annotate(s, inputAtoms.asAnnotation(match.l.s, null));
+                    mQuery.annotate(o, inputAtoms.asAnnotation(match.l.o, null));
                 }
             }
 
@@ -227,12 +227,13 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                         AtomAnnotation ann = inputAtoms.asAnnotation(atomFilter, atom, input);
                         String inputName = ann instanceof AtomInputAnnotation ?
                                 ((AtomInputAnnotation) ann).getInputName() : null;
-                        builder.reannotate(out, a -> {
+                        mQuery.deannotateTermIf(out, a -> {
                             if (!(a instanceof AtomAnnotation)) return false;
                             if (inputName == null || !(a instanceof AtomInputAnnotation))
                                 return true;
                             return ((AtomInputAnnotation)a).getInputName().equals(inputName);
-                        }, ann);
+                        });
+                        mQuery.annotate(out, ann);
                     }
                 }
             }
@@ -240,16 +241,14 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
             @Override
             public CQuery build() {
                 if (parentEG != null) {
-                    parentEG.forEachTermAnnotation(builder::annotate);
-                    parentEG.forEachTripleAnnotation((t, a) -> {
-                        if (builder.getList().contains(t))
-                            builder.annotate(t, a);
-                    });
+                    mQuery.copyTermAnnotations(parentEG);
+                    mQuery.copyTripleAnnotations(parentEG);
                 }
-                prepareBuild();
+                mQuery.copyTermAnnotations(parentQuery);
                 if (parentEG == null) { // only check if creating the top-level exclusive group
                     getInputsFromFilters();
-                    CQuery query = builder.annotate(NoMergePolicyAnnotation.INSTANCE).build();
+                    mQuery.annotate(NoMergePolicyAnnotation.INSTANCE);
+                    CQuery query = mQuery;
 
                     // this check here is more specific than isValidEG(), as it checks inputs
                     // (not atoms) and inputs can come from FILTER()s (and that is not the
@@ -295,7 +294,7 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                      * this is handled more easily at the execution phase */
                     return query;
                 } else {
-                    return builder.build();
+                    return mQuery;
                 }
             }
         }

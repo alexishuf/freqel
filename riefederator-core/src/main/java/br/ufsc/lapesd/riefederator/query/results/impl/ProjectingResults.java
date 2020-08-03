@@ -20,7 +20,7 @@ public class ProjectingResults extends DelegatingResults implements Results {
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
         Projection projection = ModifierUtils.getFirst(Projection.class, query.getModifiers());
-        if (projection != null)
+        if (projection != null && !projection.getVarNames().equals(in.getVarNames()))
             return new ProjectingResults(in, projection.getVarNames());
         return in;
     }

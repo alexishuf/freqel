@@ -56,7 +56,7 @@ public class FilterAssigner {
         List<PlanNode> result = new ArrayList<>(list.size());
         for (ProtoQueryNode proto : list) {
             PlanNode leafNode = proto.toNode(); //QueryNode or MultiQueryNode
-            Set<Var> vars = proto.getMatchedQuery().getVars();
+            Set<Var> vars = proto.getMatchedQuery().attr().allVars();
             vars.stream()
                     .flatMap(v -> term2filter.get(v).stream())
                     .distinct().filter(a -> vars.containsAll(a.getVarTerms()))

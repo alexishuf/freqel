@@ -154,7 +154,7 @@ public class StarVarIndex {
                 star2vars.add(new HashSet<>());
                 star2col2var.add(new HashMap<>());
             }
-            hasNonDirectJoin = query.getSet().emptySubset();
+            hasNonDirectJoin = query.attr().getSet().emptySubset();
             nonDirectJoinSparqlVar = new HashSet<>();
             createVars();
         }

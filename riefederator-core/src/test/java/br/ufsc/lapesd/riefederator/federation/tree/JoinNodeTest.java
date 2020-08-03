@@ -33,10 +33,8 @@ public class JoinNodeTest implements TestContext {
     public void setUp() {
         aliceKnowsX = new QueryNode(empty, CQuery.from(new Triple(Alice, knows, x)));
         xKnowsY = new QueryNode(empty, CQuery.from(new Triple(x, knows, y)));
-        xKnowsYInput = new QueryNode(empty, CQuery.with(new Triple(x, knows, y))
-                .annotate(x, AtomAnnotation.of(Person))
-                .annotate(y, AtomInputAnnotation.asRequired(KnownPerson, "knownPerson").get())
-                .build());
+        xKnowsYInput = new QueryNode(empty, createQuery(x, AtomAnnotation.of(Person),
+                knows, y, AtomInputAnnotation.asRequired(KnownPerson, "knownPerson").get()));
         yKnown = new QueryNode(empty, CQuery.from(new Triple(x, knows, y)), singleton("y"));
         yInputKnowsAlice = new QueryNode(empty, createQuery(
                 y, AtomInputAnnotation.asRequired(Person, "person").get(), knows, Alice

@@ -70,7 +70,7 @@ public class SqlGenerator {
 
     public @Nonnull
     RelationalRewriting transform(@Nonnull CQuery query) {
-        Preconditions.checkArgument(query.isJoinConnected());
+        Preconditions.checkArgument(query.attr().isJoinConnected());
         boolean distinct = canDistinct() &&
                 ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
         Limit limit = null;

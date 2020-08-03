@@ -105,7 +105,7 @@ public class JoinOrderPlannerTest implements TestContext {
                 .reduce(TreeUtils::union).orElse(emptySet());
 
         // more general tests from PlannerTest
-        CQuery query = CQuery.builder().addAll(allTriples).build();
+        CQuery query = CQuery.from(allTriples);
         PlannerTest.assertPlanAnswers(root, query);
 
         // no duplicate leaves (QueryNodes)
@@ -121,12 +121,12 @@ public class JoinOrderPlannerTest implements TestContext {
         // every QueryNode from expectedQNLeaves missing from leaves must be equivalent to another
         List<PlanNode> missingLeaves = expectedQNLeaves.stream().filter(qn -> !leaves.contains(qn))
                 .filter(missing -> {
-                    Set<Triple> triples = ((QueryNode) missing).getQuery().getSet();
+                    Set<Triple> triples = ((QueryNode) missing).getQuery().attr().getSet();
                     TPEndpoint ep = ((QueryNode) missing).getEndpoint();
                     for (PlanNode leaf : leaves) {
                         QueryNode leafQN = (QueryNode) leaf;
                         TPEndpoint candidate = leafQN.getEndpoint();
-                        if (leafQN.getQuery().getSet().equals(triples) &&
+                        if (leafQN.getQuery().attr().getSet().equals(triples) &&
                                 (candidate.isAlternative(ep) || ep.isAlternative(candidate))) {
                             return false;
                         }
@@ -163,8 +163,7 @@ public class JoinOrderPlannerTest implements TestContext {
         QueryNode n6 = new QueryNode(e1, createQuery(w, p6, Bob));
         QueryNode n7 = new QueryNode(e1, createQuery(z, p7, x));
 
-        QueryNode n2i = new QueryNode(e1, CQuery.with(new Triple(x, p2, y))
-                .annotate(x, AtomInputAnnotation.asRequired(Person, "Person").get()).build());
+        QueryNode n2i = new QueryNode(e1, createQuery(x, AtomInputAnnotation.asRequired(Person, "Person").get(), p2, y));
         QueryNode n3a = new QueryNode(e1a, createQuery(y, p3, z));
         QueryNode n4b  = new QueryNode(e2, createQuery(z, p4, w));
 
@@ -246,23 +245,18 @@ public class JoinOrderPlannerTest implements TestContext {
     @Test(dataProvider = "suppliersData", groups = {"fast"})
     public void testPlanGivenNodesNonLinearPath(Supplier<JoinOrderPlanner> supplier) {
         QueryNode orgByDesc = new QueryNode(e1, createQuery(o1, p1, t));
-        QueryNode contract = new QueryNode(e1, CQuery.with(
-                new Triple(o2, p2, b),
-                new Triple(o2, p3, c),
-                new Triple(o2, p4, t)
-        ).annotate(t, AtomInputAnnotation.asRequired(new Atom("A1"), "A1").get()).build());
-        QueryNode contractById = new QueryNode(e1, CQuery.with(
-                new Triple(b, p5, o3)
-        ).annotate(b, AtomInputAnnotation.asRequired(new Atom("A2"), "A2").get()).build());
-        QueryNode contractorByName = new QueryNode(e1, CQuery.with(
-                new Triple(c, p6, s)
-        ).annotate(c, AtomInputAnnotation.asRequired(new Atom("A3"), "A3").get()).build());
-        QueryNode procurementsOfContractor = new QueryNode(e1, CQuery.with(
-                new Triple(s, p7, a)
-        ).annotate(s, AtomInputAnnotation.asRequired(new Atom("A4"), "A4").get()).build());
-        QueryNode procurementById = new QueryNode(e1, CQuery.with(
-                new Triple(a, p8, d)
-        ).annotate(a, AtomInputAnnotation.asRequired(new Atom("A5"), "A5").get()).build());
+        QueryNode contract = new QueryNode(e1, createQuery(
+                o2, p2, b,
+                o2, p3, c,
+                o2, p4, t, AtomInputAnnotation.asRequired(new Atom("A1"), "A1").get()));
+        QueryNode contractById = new QueryNode(e1, createQuery(
+                b, AtomInputAnnotation.asRequired(new Atom("A2"), "A2").get(), p5, o3));
+        QueryNode contractorByName = new QueryNode(e1, createQuery(
+                c, AtomInputAnnotation.asRequired(new Atom("A3"), "A3").get(), p6, s));
+        QueryNode procurementsOfContractor = new QueryNode(e1, createQuery(
+                s, AtomInputAnnotation.asRequired(new Atom("A4"), "A4").get(), p7, a));
+        QueryNode procurementById = new QueryNode(e1, createQuery(
+                a, AtomInputAnnotation.asRequired(new Atom("A5"), "A5").get(), p8, d));
         QueryNode modalities = new QueryNode(e1, createQuery(o4, p9, d));
 
         JoinOrderPlanner planner = supplier.get();

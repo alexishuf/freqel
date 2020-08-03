@@ -249,7 +249,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             return Cardinality.UNSUPPORTED;
 
         PrefixDict dict = query.getPrefixDict(StdPrefixDict.EMPTY);
-        ImmutableSet<Modifier> mods = query.getModifiers();
+        Set<Modifier> mods = query.getModifiers();
         if ((isLocal() && !canQueryLocal(policy)) || (!isLocal() && !canQueryRemote(policy)))
             mods = ImmutableSet.<Modifier>builder().addAll(mods).add(Ask.ADVISED).build();
 

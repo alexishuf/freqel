@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.jena.query.JenaBindingResults;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.TPEndpointTest;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
@@ -81,7 +82,7 @@ public class BSBMSelfTest {
         return new InputStreamReader(getStream(path), StandardCharsets.UTF_8);
     }
 
-    public static @Nonnull CQuery loadQueryWithLimit(@Nonnull String queryName) throws
+    public static @Nonnull MutableCQuery loadQueryWithLimit(@Nonnull String queryName) throws
             IOException, SPARQLParseException {
         try (Reader reader = getReader("queries/" + queryName)) {
             SPARQLQueryParser tolerant = SPARQLQueryParser.tolerant();
@@ -91,10 +92,9 @@ public class BSBMSelfTest {
 
     public static @Nonnull CQuery loadQuery(@Nonnull String queryName) throws
             IOException, SPARQLParseException {
-        CQuery query = loadQueryWithLimit(queryName);
-        CQuery.WithBuilder builder = CQuery.with(query.getSet()).allowExtraProjection(true);
-        query.getModifiers().stream().filter(m -> !(m instanceof Limit)).forEach(builder::modifier);
-        return builder.build();
+        MutableCQuery query = loadQueryWithLimit(queryName);
+        query.removeModifierIf(Limit.class::isInstance);
+        return query;
     }
 
     public static @Nonnull Model loadData(@Nonnull String fileName) throws IOException {

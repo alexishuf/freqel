@@ -27,7 +27,7 @@ public class CqlGenerator {
     }
 
     public @Nonnull RelationalRewriting transform(@Nonnull CQuery query) throws MultiStarException {
-        checkArgument(query.isJoinConnected());
+        checkArgument(query.attr().isJoinConnected());
         boolean distinct = ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
         Limit limit = ModifierUtils.getFirst(Limit.class, query.getModifiers());
         if (ModifierUtils.getFirst(Ask.class, query.getModifiers()) != null)

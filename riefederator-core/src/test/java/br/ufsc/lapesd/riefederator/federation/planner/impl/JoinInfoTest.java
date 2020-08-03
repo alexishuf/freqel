@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
@@ -47,12 +48,10 @@ public class JoinInfoTest implements TestContext {
     private static final CQuery zpx = CQuery.from(new Triple(z, p1, x));
     private static final CQuery xpyfz = createQuery(x, p1, y, SPARQLFilter.build("?y < ?z"));
 
-    private static final CQuery xpyi = CQuery.with(new Triple(x, p1, y))
-            .annotate(x, AtomAnnotation.of(X))
-            .annotate(y, AtomInputAnnotation.asRequired(Y, "Y").get()).build();
-    private static final CQuery yipz = CQuery.with(new Triple(y, p1, z))
-            .annotate(y, AtomInputAnnotation.asRequired(Y, "Y").get())
-            .annotate(z, AtomAnnotation.of(Z)).build();
+    private static final CQuery xpyi = createQuery(x, AtomAnnotation.of(X),
+            p1, y, AtomInputAnnotation.asRequired(Y, "Y").get());
+    private static final CQuery yipz = createQuery(y, AtomInputAnnotation.asRequired(Y, "Y").get(),
+            p1, z, AtomAnnotation.of(Z));
 
 
     private static @Nonnull PlanNode node(@Nonnull CQuery... queries) {
@@ -61,19 +60,19 @@ public class JoinInfoTest implements TestContext {
 
     private static @Nonnull QueryNode node(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
         int oldModifiersCount = query.getModifiers().size();
-        Set<Var> termVars = query.getTermVars();
+        Set<Var> termVars = query.attr().tripleVars();
         Set<Var> filterVars = query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
                 .flatMap(m -> ((SPARQLFilter) m).getVarTerms().stream())
                 .filter(v -> !termVars.contains(v))
                 .collect(toSet());
         if (!filterVars.isEmpty()) {
-            CQuery.WithBuilder builder = CQuery.with(query);
+            MutableCQuery mQuery = new MutableCQuery(query);
             int idx = 1;
             for (Var var : filterVars) {
-                builder.annotate(var, AtomInputAnnotation.asRequired(new Atom("A" + idx), "a"+idx).get());
+                mQuery.annotate(var, AtomInputAnnotation.asRequired(new Atom("A" + idx), "a"+idx).get());
                 ++idx;
             }
-            query = builder.build();
+            query = mQuery;
             assert query.getModifiers().size() == oldModifiersCount : "Lost modifiers";
         }
         QueryNode node = new QueryNode(endpoint, query);

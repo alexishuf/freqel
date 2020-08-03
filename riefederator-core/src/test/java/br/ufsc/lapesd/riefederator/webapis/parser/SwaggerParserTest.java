@@ -317,7 +317,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
         assertEquals(match.getNonExclusiveRelevant().size(), 0);
         CQuery eg = match.getKnownExclusiveGroups().iterator().next();
-        assertEquals(query.getSet(), eg.getSet());
+        assertEquals(query.attr().getSet(), eg.attr().getSet());
         assertEquals(query.getModifiers(), eg.getModifiers());
 
         Set<String> ids = new HashSet<>();

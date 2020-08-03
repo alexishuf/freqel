@@ -9,7 +9,6 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutio
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinPathsPlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
@@ -91,7 +90,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
         MapSolution bound = b.build();
 
         Set<String> missing = IndexedParam.getMissing(exec.getRequiredInputs(), bound.getVarNames());
-        Set<String> resultVars = query.getTermVars().stream().map(Var::getName).collect(toSet());
+        Set<String> resultVars = query.attr().tripleVarNames();
         if (!missing.isEmpty()) {
             logger.error("The required inputs {} are missing when invoking {}. " +
                          "Will return no results", missing, this);
@@ -124,7 +123,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
 
     private @Nonnull Results matchAndQuery(@Nonnull CQuery query, boolean throwOnFailedMatch) {
         APIMoleculeMatcher matcher = getMatcher();
-        Set<String> varNames = query.streamTerms(Var.class).map(Var::getName).collect(toSet());
+        Set<String> varNames = query.attr().allVarNames();
         CQueryMatch match = matcher.match(query);
         if (match.getKnownExclusiveGroups().isEmpty()) {
             return reportFailure(query, throwOnFailedMatch, varNames);
@@ -136,7 +135,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
         } else {
             Set<Triple> allTriples = match.getKnownExclusiveGroups().stream()
                     .flatMap(CQuery::stream).collect(toSet());
-            if (!allTriples.equals(query.getSet()))
+            if (!allTriples.equals(query.attr().getSet()))
                 return reportFailure(query, throwOnFailedMatch, varNames);
 
             // use a federation over myself to plan and execute the joins

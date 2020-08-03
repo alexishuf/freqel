@@ -138,8 +138,8 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     protected @Nonnull SetMultimap<Signature, ProtoQueryNode>
     groupAndDedup(@Nonnull CQuery query, @Nonnull Collection<ProtoQueryNode> in) {
         SetMultimap<Signature, ProtoQueryNode> sig2pn = HashMultimap.create();
-        IndexedSet<Triple> triples = query.getSet();
-        IndexedSet<Var> vars = query.getVars();
+        IndexedSet<Triple> triples = query.attr().getSet();
+        IndexedSet<Var> vars = query.attr().allVars();
         for (ProtoQueryNode pn : in) sig2pn.put(new Signature(pn, triples, vars), pn);
 
         Set<CQuery> tmp = new HashSet<>();

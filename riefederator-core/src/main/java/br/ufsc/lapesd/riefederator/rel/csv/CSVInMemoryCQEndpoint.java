@@ -275,7 +275,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
         if (query.isEmpty())
             return CollectionResults.empty(emptyList());
         Results results;
-        if (!query.isJoinConnected()) { // code after this if cannot deal with cartesians
+        if (!query.attr().isJoinConnected()) { // code after this if cannot deal with cartesians
             results = StarsHelper.executeJoinDisconnected(query, this);
         } else {
             results = queryConnected(query);

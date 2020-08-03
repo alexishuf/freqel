@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
@@ -17,6 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
 public abstract class CQueryContext {
@@ -86,16 +88,25 @@ public abstract class CQueryContext {
     }
 
     static @Nonnull CQuery createQuery(boolean tolerant, Object... termAndAnnotations) {
-        CQuery.Builder builder = CQuery.builder(termAndAnnotations.length / 3)
-                                       .allowExtraProjection(tolerant);
+        MutableCQuery query = new MutableCQuery(termAndAnnotations.length / 3);
         PrefixDict prefixDict = null;
         List<Term> window = new ArrayList<>();
+        List<TermAnnotationPair> pending = new ArrayList<>();
         for (Object next : termAndAnnotations) {
-            if (next instanceof Term) {
+            if (next instanceof Triple) {
+                checkArgument(window.isEmpty(), "Found a triple within a window of 3 terms");
+                query.add((Triple)next);
+                for (TermAnnotationPair pair : pending)
+                    query.annotate(pair.term, pair.annotation);
+                pending.clear();
+            } else if (next instanceof Term) {
                 window.add((Term) next);
                 if (window.size() == 3) {
-                    builder.add(new Triple(window.get(0), window.get(1), window.get(2)));
+                    query.add(new Triple(window.get(0), window.get(1), window.get(2)));
                     window.clear();
+                    for (TermAnnotationPair pair : pending)
+                        query.annotate(pair.term, pair.annotation);
+                    pending.clear();
                 }
             } else {
                 boolean processed = false;
@@ -106,21 +117,20 @@ public abstract class CQueryContext {
                 if (isTermAnnotation) {
                     Term term;
                     if (window.isEmpty()) {
-                        List<Triple> triples = builder.getList();
-                        checkState(!triples.isEmpty(), "Received TermAnnotation before any term!");
-                        term = triples.get(triples.size() - 1).getObject();
+                        checkState(!query.isEmpty(), "Received TermAnnotation before any term!");
+                        term = query.get(query.size()-1).getObject();
+                        query.annotate(term, (TermAnnotation) next);
                     } else {
                         term = window.get(window.size() - 1);
+                        pending.add(new TermAnnotationPair(term, (TermAnnotation)next));
                     }
-                    builder.annotate(term, (TermAnnotation) next);
                     processed = true;
                 }
                 if (isTripleAnnotation) {
-                    List<Triple> triples = builder.getList();
-                    checkState(isTermAnnotation || !triples.isEmpty(),
+                    checkState(isTermAnnotation || !query.isEmpty(),
                             "Received TripleAnnotation before first triple is complete!");
                     if (window.isEmpty()) {
-                        builder.annotate(triples.get(triples.size() - 1), (TripleAnnotation) next);
+                        query.annotate(query.get(query.size() - 1), (TripleAnnotation) next);
                     } else {
                         checkState(isTermAnnotation, "Annotation "+next+" only implements " +
                                 "TripleAnnotation but is positioned after a subject or predicate");
@@ -128,7 +138,7 @@ public abstract class CQueryContext {
                     processed = true;
                 }
                 if (next instanceof Modifier) {
-                    builder.modifier((Modifier) next);
+                    query.addModifier((Modifier) next);
                     processed = true;
                 }
                 if (next instanceof PrefixDict) {
@@ -139,14 +149,16 @@ public abstract class CQueryContext {
                 }
                 if (next instanceof TermAnnotationPair) {
                     TermAnnotationPair pair = (TermAnnotationPair) next;
-                    builder.annotate(pair.getTerm(), pair.getAnnotation());
+                    query.annotate(pair.getTerm(), pair.getAnnotation());
                     processed = true;
                 }
                 if (!processed)
                     throw new IllegalArgumentException("Unsupported type for "+next);
             }
         }
-        builder.prefixDict(prefixDict == null ? StdPrefixDict.STANDARD : prefixDict);
-        return builder.build();
+        query.setPrefixDict(prefixDict == null ? StdPrefixDict.STANDARD : prefixDict);
+        if (!tolerant)
+            query.sanitizeProjectionStrict();
+        return query;
     }
 }

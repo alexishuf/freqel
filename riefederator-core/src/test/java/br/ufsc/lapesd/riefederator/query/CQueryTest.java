@@ -13,6 +13,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
+import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
@@ -26,12 +27,13 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.query.JoinType.OBJ_SUBJ;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -49,128 +51,6 @@ public class CQueryTest implements TestContext {
     private static final Atom A2 = new Atom("A2");
 
     /* ~~~ data methods ~~~ */
-
-    @DataProvider
-    public static Object[][] joinClosureData() {
-        Triple[] ts = new Triple[]{
-                new Triple(Alice, knows, x), // 0
-                new Triple(x, knows, y), // 1
-                new Triple(y, knows, Bob), // 2
-                new Triple(y, age,   AGE_1), // 3
-                new Triple(y, p, z), // 4
-                new Triple(p, subPropertyOf, knows), // 5
-                new Triple(z, knows, Alice), // 6
-        };
-        List<Triple> all = asList(ts);
-        return new Object[][] {
-                new Object[]{singletonList(ts[0]), ts[0], x, JoinType.ANY,
-                        emptyList()},
-                new Object[]{singletonList(ts[0]), null, x, JoinType.ANY,
-                        singletonList(ts[0])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[0], x, JoinType.ANY,
-                        asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, x, JoinType.ANY,
-                        asList(ts[0], ts[1], ts[2])},
-
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[0], x, JoinType.VARS,
-                        asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, x, JoinType.VARS,
-                        asList(ts[0], ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[0], x, OBJ_SUBJ,
-                        asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, x, OBJ_SUBJ,
-                        asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[1], y, OBJ_SUBJ,
-                        singletonList(ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, y, OBJ_SUBJ,
-                        singletonList(ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2]), ts[1], x, OBJ_SUBJ,
-                        emptyList()},
-                new Object[]{asList(ts[0], ts[1], ts[2]), null, x, OBJ_SUBJ,
-                        asList(ts[1], ts[2])},
-                new Object[]{asList(ts[0], ts[1], ts[2], ts[6]), ts[1], x, JoinType.SUBJ_OBJ,
-                        asList(ts[0], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[2], ts[6]), null, x, JoinType.SUBJ_OBJ,
-                        asList(ts[0], ts[6])},
-
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Alice,
-                        JoinType.ANY, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Alice,
-                        JoinType.ANY, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Alice,
-                        OBJ_SUBJ, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Alice,
-                        OBJ_SUBJ, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Alice,
-                        JoinType.SUBJ_SUBJ, singletonList(ts[0])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Alice,
-                        JoinType.SUBJ_SUBJ, singletonList(ts[0])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], Alice,
-                        JoinType.SUBJ_OBJ, emptyList()},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, Alice,
-                        JoinType.SUBJ_OBJ, asList(ts[0], ts[1], ts[4], ts[6])},
-
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], z,
-                        JoinType.ANY, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, z,
-                        JoinType.ANY, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], z,
-                        JoinType.VARS, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, z,
-                        JoinType.VARS, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], z,
-                        OBJ_SUBJ, emptyList()},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, z,
-                        OBJ_SUBJ, asList(ts[0], ts[1], ts[4], ts[6])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), ts[6], z,
-                        JoinType.SUBJ_OBJ, asList(ts[0], ts[1], ts[4])},
-                new Object[]{asList(ts[0], ts[1], ts[4], ts[6]), null, z,
-                        JoinType.SUBJ_OBJ, asList(ts[0], ts[1], ts[4], ts[6])},
-
-                new Object[]{all, ts[0], x, JoinType.ANY,
-                        asList(ts[1], ts[2], ts[3], ts[4], ts[5], ts[6])},
-                new Object[]{all, null, x, JoinType.ANY, all},
-                new Object[]{all, ts[0], x, JoinType.VARS,
-                        asList(ts[1], ts[2], ts[3], ts[4], ts[5], ts[6])},
-                new Object[]{all, null, x, JoinType.VARS, all},
-                new Object[]{all, ts[0], x, OBJ_SUBJ,
-                        asList(ts[1], ts[2], ts[3], ts[4], ts[6])},
-                new Object[]{all, null, x, OBJ_SUBJ,
-                        asList(ts[0], ts[1], ts[2], ts[3], ts[4], ts[6])},
-                new Object[]{all, ts[0], x, JoinType.SUBJ_SUBJ, singletonList(ts[1])},
-                new Object[]{all, null, x, JoinType.SUBJ_SUBJ, singletonList(ts[1])},
-                new Object[]{all, ts[0], x, JoinType.OBJ_OBJ,  emptyList()},
-                new Object[]{all, null, x, JoinType.OBJ_OBJ,  singletonList(ts[0])},
-        };
-    }
-
-    @DataProvider
-    public static @Nonnull Object[][] triplesJoinClosureData() {
-        Triple[] ts = new Triple[]{
-                new Triple(Alice, knows, x), // 0
-                new Triple(x, knows, y), // 1
-                new Triple(y, knows, Bob), // 2
-                new Triple(y, age,   AGE_1), // 3
-                new Triple(y, p, z), // 4
-                new Triple(p, subPropertyOf, knows), // 5
-                new Triple(z, knows, Alice), // 6
-        };
-        List<Triple> all = asList(ts);
-        List<Triple> e = emptyList();
-        List<Triple> all_0 = all.subList(1, all.size());
-        List<Triple> all_0_5 = asList(ts[1], ts[2], ts[3], ts[4], ts[6]);
-        List<Triple> all_5_6 = asList(ts[0], ts[1], ts[2], ts[3], ts[4]);
-        return new Object[][] {
-                /* query, seed, policy, expected (not including seed) */
-                new Object[] {singletonList(ts[0]), singletonList(ts[0]), JoinType.ANY, e},
-                new Object[] {singletonList(ts[0]), singletonList(ts[0]), JoinType.VARS, e},
-                new Object[] {all, singletonList(ts[0]), JoinType.ANY, all_0},
-                new Object[] {all, singletonList(ts[0]), OBJ_SUBJ, all_0_5},
-                new Object[] {all, singletonList(ts[6]), OBJ_SUBJ, all_5_6},
-                new Object[] {all, asList(ts[6], ts[0]), OBJ_SUBJ, all.subList(1, 5)},
-                new Object[] {all, asList(ts[6], ts[5], ts[0]), OBJ_SUBJ, all.subList(1, 5)},
-        };
-    }
 
     @DataProvider
     public static @Nonnull Object[][] containingData() {
@@ -255,17 +135,6 @@ public class CQueryTest implements TestContext {
     }
 
     @Test
-    @SuppressWarnings("DoNotCall")
-    public void testImmutable() {
-        CQuery q = CQuery.from(new Triple(Alice, knows, Bob));
-        expectThrows(UnsupportedOperationException.class, q::clear);
-        Triple triple = new Triple(Bob, knows, Alice);
-        expectThrows(UnsupportedOperationException.class, () -> q.add(triple));
-        expectThrows(UnsupportedOperationException.class, () -> q.remove(triple));
-        expectThrows(UnsupportedOperationException.class, () -> q.remove(0));
-    }
-
-    @Test
     @SuppressWarnings({"UseBulkOperation", "ForLoopReplaceableByForEach", "SimplifyStreamApiCallChains"})
     public void testList() {
         Triple t1 = new Triple(Alice, knows, Bob), t2 = new Triple(Bob, knows, Alice);
@@ -326,9 +195,9 @@ public class CQueryTest implements TestContext {
         Triple triple = new Triple(x, knows, y);
         CQuery plain1 = CQuery.from(triple);
         CQuery plain2 = CQuery.from(triple);
-        CQuery distinct1 = CQuery.with(triple).distinct().build();
-        CQuery distinct2 = CQuery.with(triple).distinct().build();
-        CQuery projected = CQuery.with(triple).project("y").build();
+        CQuery distinct1 = createQuery(triple, Distinct.ADVISED);
+        CQuery distinct2 = createQuery(triple, Distinct.ADVISED);
+        CQuery projected = createQuery(triple, Projection.advised("y"));
 
         assertEquals(plain1, plain2);
         assertEquals(distinct1, distinct2);
@@ -347,11 +216,11 @@ public class CQueryTest implements TestContext {
 
     @Test
     public void testEqualsConsidersTermAnnotations() {
-        CQuery qy = CQuery.with(new Triple(x, knows, y)).annotate(y, new MockAnnotation()).build();
-        CQuery qx = CQuery.with(new Triple(x, knows, y)).annotate(x, new MockAnnotation()).build();
+        CQuery qy = createQuery(x, knows, y, new MockAnnotation());
+        CQuery qx = createQuery(x, new MockAnnotation(), knows, y);
         MockAnnotation annotation = new MockAnnotation();
-        CQuery qk1 = CQuery.with(new Triple(x, knows, y)).annotate(knows, annotation).build();
-        CQuery qk2 = CQuery.with(new Triple(x, knows, y)).annotate(knows, annotation).build();
+        CQuery qk1 = createQuery(x, knows, annotation, y);
+        CQuery qk2 = createQuery(x, knows, annotation, y);
         CQuery plain = CQuery.from(new Triple(x, knows, y));
 
         assertEquals(qy, qy);
@@ -369,11 +238,11 @@ public class CQueryTest implements TestContext {
     @Test
     public void testEqualsConsidersTripleAnnotations() {
         Triple triple = new Triple(x, knows, y);
-        CQuery q1 = CQuery.with(triple).annotate(triple, new MockAnnotation()).build();
-        CQuery q2 = CQuery.with(triple).annotate(triple, new MockAnnotation()).build();
+        CQuery q1 = createQuery(triple, new MockAnnotation());
+        CQuery q2 = createQuery(triple, new MockAnnotation());
         MockAnnotation annotation = new MockAnnotation();
-        CQuery qs1 = CQuery.with(triple).annotate(triple, annotation).build();
-        CQuery qs2 = CQuery.with(triple).annotate(triple, annotation).build();
+        CQuery qs1 = createQuery(triple, annotation);
+        CQuery qs2 = createQuery(triple, annotation);
         CQuery plain = CQuery.from(triple);
 
         assertEquals(q1, q1);
@@ -389,18 +258,17 @@ public class CQueryTest implements TestContext {
     @Test
     public void testGetSelfMatchedSet() {
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(x, knows, Bob));
-        assertEquals(query.getMatchedTriples(), Sets.newHashSet(
+        assertEquals(query.attr().matchedTriples(), Sets.newHashSet(
                 new Triple(x, knows, y), new Triple(x, knows, Bob)
         ));
     }
 
     @Test
     public void testGetSelfAndAnnotatedMatchedSet() {
-        List<Triple> triples = asList(new Triple(x, knows, y), new Triple(x, ageEx, AGE_1));
-        CQuery query = CQuery.with(triples)
-                .annotate(triples.get(1), new MatchAnnotation(new Triple(x, age, AGE_1)))
-                .build();
-        assertEquals(query.getMatchedTriples(), Sets.newHashSet(
+        CQuery query = createQuery(
+                x, knows, y,
+                x, ageEx, AGE_1, new MatchAnnotation(new Triple(x, age, AGE_1)));
+        assertEquals(query.attr().matchedTriples(), Sets.newHashSet(
                 new Triple(x, knows, y),
                 new Triple(x, age, AGE_1)
         ));
@@ -410,90 +278,13 @@ public class CQueryTest implements TestContext {
     public void testIsASK() {
         Triple t1 = new Triple(Alice, knows, Bob), t2 = new Triple(Bob, knows, Alice),
                t3 = new Triple(Bob, knows, x);
-        assertTrue(CQuery.from(t1).isAsk());
-        assertTrue(CQuery.from(asList(t1, t2)).isAsk());
+        assertTrue(CQuery.from(t1).attr().isAsk());
+        assertTrue(CQuery.from(asList(t1, t2)).attr().isAsk());
 
-        assertFalse(CQuery.EMPTY.isAsk());
-        assertFalse(CQuery.from(t3).isAsk());
-        assertFalse(CQuery.from(asList(t1, t3)).isAsk());
-        assertFalse(CQuery.from(asList(t1, t3, t2)).isAsk());
-    }
-
-    @Test(dataProvider = "joinClosureData")
-    public void testJoinClosure(@Nonnull List<Triple> query, @Nullable Triple triple,
-                                @Nonnull Term join, @Nonnull JoinType policy,
-                                @Nonnull List<Triple> expected) {
-        CQuery cquery = CQuery.from(query);
-        CQuery closure = cquery.joinClosure(policy, join, triple);
-        assertEquals(closure, expected);
-
-        // caches should still work
-        for (int i = 0; i < 4; i++) {
-            CQuery otherClosure = cquery.joinClosure(policy, join, triple);
-            assertEquals(otherClosure, expected);
-        }
-    }
-
-    @Test(dataProvider = "joinClosureData")
-    public void testParallelJoinClosure(@Nonnull List<Triple> query, @Nullable Triple triple,
-                                        @Nonnull Term join, @Nonnull JoinType policy,
-                                        @Nonnull List<Triple> expected)
-                throws InterruptedException, ExecutionException {
-        CQuery cquery = CQuery.from(query);
-        ExecutorService e = Executors.newCachedThreadPool();
-        ArrayList<Future<?>> futures = new ArrayList<>();
-        try {
-            for (int i = 0; i < 32; i++) {
-                futures.add(e.submit(() -> {
-                    CQuery otherClosure = cquery.joinClosure(policy, join, triple);
-                    assertEquals(otherClosure, expected);
-                }));
-            }
-        } finally {
-            e.shutdown();
-            e.awaitTermination(5, TimeUnit.SECONDS);
-        }
-        for (Future<?> future : futures)
-            future.get(); // throws AssertionError's within ExecutionExceptions
-    }
-
-    @Test(dataProvider = "triplesJoinClosureData")
-    public void testTripleJoinClosure(@Nonnull List<Triple> query, @Nonnull List<Triple> seed,
-                                      @Nonnull JoinType policy, @Nonnull List<Triple> expected) {
-        CQuery cquery = CQuery.from(query);
-        CQuery closure = cquery.joinClosure(seed, policy);
-        assertEquals(closure, expected);
-
-        CQuery closureIncluding = cquery.joinClosure(seed, true, policy);
-        Set<Triple> expectedIncluding = Sets.newHashSet(expected);
-        expectedIncluding.addAll(seed);
-        assertEquals(Sets.newHashSet(closureIncluding), expectedIncluding);
-    }
-
-    @Test(dataProvider = "triplesJoinClosureData")
-    public void testParallelTripleJoinClosure(@Nonnull List<Triple> query,
-                                              @Nonnull List<Triple> seed, @Nonnull JoinType pol,
-                                              @Nonnull List<Triple> expected) throws Exception {
-        ExecutorService exec = Executors.newCachedThreadPool();
-        CQuery cquery = CQuery.from(query);
-        ArrayList<Future<?>> futures = new ArrayList<>();
-        try {
-            for (int i = 0; i < 32; i++)
-                futures.add(exec.submit(() -> {
-                    CQuery closure = cquery.joinClosure(seed, pol);
-                    assertEquals(closure, expected);
-
-                    CQuery closureIncluding = cquery.joinClosure(seed, true, pol);
-                    Set<Triple> expectedIncluding = Sets.newHashSet(expected);
-                    expectedIncluding.addAll(seed);
-                    assertEquals(Sets.newHashSet(closureIncluding), expectedIncluding);
-                }));
-        } finally {
-            exec.shutdown();
-            exec.awaitTermination(10, TimeUnit.SECONDS);
-        }
-        for (Future<?> future : futures)
-            future.get(); // re-throws AssertionError as ExecutionExceptions
+        assertFalse(CQuery.EMPTY.attr().isAsk());
+        assertFalse(CQuery.from(t3).attr().isAsk());
+        assertFalse(CQuery.from(asList(t1, t3)).attr().isAsk());
+        assertFalse(CQuery.from(asList(t1, t3, t2)).attr().isAsk());
     }
 
     @Test(dataProvider = "containingData")
@@ -596,7 +387,7 @@ public class CQueryTest implements TestContext {
                 x, age, u, SPARQLFilter.build("?u > 23"),
                 Projection.required("x", "y"));
         CQuery sub = query.containing(x, Triple.Position.SUBJ, Triple.Position.OBJ);
-        assertEquals(sub.getSet(), Sets.newHashSet(
+        assertEquals(sub.attr().getSet(), Sets.newHashSet(
                 new Triple(Alice, knows, x),
                 new Triple(x, age, u)
         ));
@@ -610,59 +401,11 @@ public class CQueryTest implements TestContext {
                      singleton(PureDescriptive.INSTANCE));
     }
 
-    @Test
-    public void testAddPathRequiresNonEmpty() {
-        expectThrows(IllegalArgumentException.class,
-                     () -> CQuery.builder().add(x, SimplePath.EMPTY, y));
-    }
-
-    @Test
-    public void testAddPath() {
-        CQuery query = CQuery.builder()
-                .add(new Triple(x, age, lit(22)))
-                .add(x, SimplePath.fromTerms(knows, isPrimaryTopicOf, title), y)
-                .add(x, SimplePath.fromTerms(author, genre), z)
-                .annotate(y, AtomInputAnnotation.asRequired(A1, "a1").get())
-                .build();
-        assertEquals(query.size(), 6);
-        assertTrue(query.contains(new Triple(x, age, lit(22))));
-        assertTrue(query.getVars().containsAll(Sets.newHashSet(x, y, z)));
-        assertEquals(query.getVars().size(), 3/*x, y, z*/ + 3 /*hidden*/);
-        assertEquals(query.getTermAnnotations(y),
-                     singleton(AtomInputAnnotation.asRequired(A1, "a1").get()));
-
-        HashSet<Triple> set = new HashSet<>(query.getSet());
-        assertTrue(set.remove(new Triple(x, age, lit(22))));
-        Triple kt, it, tt, at, gt;
-        kt = set.stream().filter(t -> t.getPredicate().equals(knows)).findFirst().orElse(null);
-        it = set.stream().filter(t -> t.getPredicate().equals(isPrimaryTopicOf)).findFirst().orElse(null);
-        tt = set.stream().filter(t -> t.getPredicate().equals(title)).findFirst().orElse(null);
-        at = set.stream().filter(t -> t.getPredicate().equals(author)).findFirst().orElse(null);
-        gt = set.stream().filter(t -> t.getPredicate().equals(genre)).findFirst().orElse(null);
-        assertNotNull(kt);
-        assertNotNull(it);
-        assertNotNull(tt);
-        assertNotNull(at);
-        assertNotNull(gt);
-        assertEquals(kt.getSubject(), x);
-        assertEquals(kt.getObject(), it.getSubject());
-        assertEquals(it.getObject(), tt.getSubject());
-        assertEquals(tt.getObject(), y);
-
-        assertEquals(at.getSubject(), x);
-        assertEquals(at.getObject(), gt.getSubject());
-        assertEquals(gt.getObject(), z);
-
-        assertNotEquals(at.getObject(), kt.getObject());
-        assertNotEquals(at.getObject(), it.getObject());
-    }
-
     @DataProvider
     public static @Nonnull Object[][] isJoinConnectedData() throws Exception {
         return Stream.of(
                 asList(CQuery.EMPTY, true),
                 asList(createQuery(Alice, knows, x), true),
-                asList(createQuery(Alice, knows, x, Alice, knows, x), true),
                 asList(createQuery(Alice, knows, x, x, knows, Bob), true),
                 asList(createQuery(Alice, knows, x, Bob, knows, x), true),
                 asList(createQuery(Alice, knows, x, Bob, knows, y), false),
@@ -680,7 +423,7 @@ public class CQueryTest implements TestContext {
 
     @Test(dataProvider = "isJoinConnectedData")
     public void testIsJoinConnected(@Nonnull CQuery query, boolean expected) {
-        assertEquals(query.isJoinConnected(), expected);
+        assertEquals(query.attr().isJoinConnected(), expected);
     }
 
 }

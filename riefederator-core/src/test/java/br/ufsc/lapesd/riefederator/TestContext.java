@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator;
 
-import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -9,13 +8,15 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
-import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 
 import javax.annotation.Nonnull;
+
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
+import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 
 public interface TestContext {
     @Nonnull String EX = "http://example.org/";
@@ -50,8 +51,11 @@ public interface TestContext {
     default @Nonnull Lit lit(int value) {
         return StdLit.fromUnescaped(String.valueOf(value), xsdInt);
     }
+    default @Nonnull Lit integer(int value) {
+        return fromJena(createTypedLiteral(String.valueOf(value), XSDDatatype.XSDinteger));
+    }
     default @Nonnull Lit lit(double value) {
-        return JenaWrappers.fromJena(ResourceFactory.createTypedLiteral(value));
+        return fromJena(createTypedLiteral(value));
     }
     default @Nonnull Lit lit(String value) {
         return StdLit.fromUnescaped(String.valueOf(value), xsdString);
@@ -60,7 +64,7 @@ public interface TestContext {
         return StdLit.fromUnescaped(String.valueOf(value), langTag);
     }
     default @Nonnull Lit date(String iso) {
-        return JenaWrappers.fromJena(ResourceFactory.createTypedLiteral(iso, XSDDatatype.XSDdate));
+        return fromJena(createTypedLiteral(iso, XSDDatatype.XSDdate));
     }
 
     @Nonnull URI Person   = new StdURI(FOAF.Person.getURI());
@@ -133,6 +137,7 @@ public interface TestContext {
     @Nonnull Var s2 = new StdVar("s2");
     @Nonnull Var o2 = new StdVar("o2");
 
+    @Nonnull Var x0 = new StdVar("x0");
     @Nonnull Var x1 = new StdVar("x1");
     @Nonnull Var x2 = new StdVar("x2");
     @Nonnull Var x3 = new StdVar("x3");

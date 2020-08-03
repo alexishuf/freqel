@@ -10,8 +10,6 @@ import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.apache.jena.fuseki.main.FusekiServer;
 import org.apache.jena.query.Dataset;
@@ -153,8 +151,8 @@ public class TPEndpointTest extends EndpointTestBase {
         try (Fixture<TPEndpoint> fixture = f.apply(getClass().getResourceAsStream(filename))) {
             Set<Solution> ac = new HashSet<>();
             if (modifiers.length > 0) {
-                CQuery cQuery = new CQuery(ImmutableList.of(query),
-                                           ImmutableSet.copyOf(modifiers));
+                MutableCQuery cQuery = MutableCQuery.from(query);
+                cQuery.addModifiers(modifiers);
                 boolean repeated = false;
                 if (poll) {
                     try (Results results = fixture.endpoint.query(cQuery)) {
@@ -313,7 +311,7 @@ public class TPEndpointTest extends EndpointTestBase {
     public void testForceAskWithVars(Function<InputStream, Fixture<TPEndpoint>> f) {
         InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
-            CQuery cQuery = CQuery.with(new Triple(s, p, o)).ask(true).build();
+            CQuery cQuery = createQuery(s, p, o, Ask.REQUIRED);
             try (Results results = fix.endpoint.query(cQuery)) {
                 assertTrue(results.hasNext());
                 assertFalse(results.next().has(p.getName()));
@@ -325,7 +323,7 @@ public class TPEndpointTest extends EndpointTestBase {
     public void testForceAskWithVarsNegative(Function<InputStream, Fixture<TPEndpoint>> f) {
         InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
-            CQuery cQuery = CQuery.with(new Triple(s, primaryTopic, o)).ask(true).build();
+            CQuery cQuery = createQuery(s, primaryTopic, o, Ask.REQUIRED);
             try (Results results = fix.endpoint.query(cQuery)) {
                 assertFalse(results.hasNext());
             }
@@ -336,7 +334,7 @@ public class TPEndpointTest extends EndpointTestBase {
     public void testForceAskWithVarsNegativePoll(Function<InputStream, Fixture<TPEndpoint>> f) {
         InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
-            CQuery cQuery = CQuery.with(new Triple(s, primaryTopic, o)).ask(true).build();
+            CQuery cQuery = createQuery(s, primaryTopic, o, Ask.REQUIRED);
             try (Results results = fix.endpoint.query(cQuery)) {
                 assertFalse(results.hasNext(0)); //timeout or exhausted
                 assertFalse(results.hasNext()); //exhausted

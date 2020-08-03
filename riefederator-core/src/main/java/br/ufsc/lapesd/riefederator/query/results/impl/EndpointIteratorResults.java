@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -18,8 +17,6 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import static java.util.stream.Collectors.toSet;
-
 public class EndpointIteratorResults extends AbstractResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(EndpointIteratorResults.class);
 
@@ -29,16 +26,12 @@ public class EndpointIteratorResults extends AbstractResults implements Results 
     private @Nullable Results current = null;
     private TPEndpoint currentEp;
 
-    private static @Nonnull Set<String> computeVarNames(@Nonnull CQuery query) {
-        return query.streamTerms(Var.class).map(Var::getName).collect(toSet());
-    }
-
     public EndpointIteratorResults(@Nonnull Iterator<? extends TPEndpoint> epIterator,
                                    @Nonnull CQuery query,
                                    @Nonnull Set<String> varNames, boolean projecting) {
         super(varNames);
         if (getClass().desiredAssertionStatus()) {
-            Set<String> all = computeVarNames(query);
+            Set<String> all = query.attr().allVarNames();
             Preconditions.checkArgument(all.containsAll(varNames),
                     "There are names in varNames which do not occur in query!");
             Preconditions.checkArgument(projecting || all.equals(varNames),
@@ -53,7 +46,7 @@ public class EndpointIteratorResults extends AbstractResults implements Results 
 
     public EndpointIteratorResults(@Nonnull Iterator<? extends TPEndpoint> epIterator,
                                    @Nonnull CQuery query) {
-        this(epIterator, query, computeVarNames(query), false);
+        this(epIterator, query, query.attr().allVarNames(), false);
     }
 
     @Override

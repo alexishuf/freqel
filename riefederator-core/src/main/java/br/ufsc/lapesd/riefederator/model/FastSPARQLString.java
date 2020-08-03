@@ -4,18 +4,20 @@ import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
-import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
-import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.XSD;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.Collection;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 import static java.util.stream.Collectors.joining;
 
@@ -42,37 +44,21 @@ public class FastSPARQLString {
 
     public FastSPARQLString(@Nonnull CQuery query) {
         assert canWrite(query);
-        boolean distinct = false;
-        Set<String> varNames = null;
-        List<SPARQLFilter> filters = new ArrayList<>();
-        List<ValuesModifier> valuesList = new ArrayList<>();
-        int limit = -1;
-        for (Modifier m : query.getModifiers()) {
-            if (m instanceof Distinct) distinct = true;
-            else if (m instanceof Projection) varNames = ((Projection)m).getVarNames();
-            else if (m instanceof SPARQLFilter) filters.add((SPARQLFilter)m);
-            else if (m instanceof ValuesModifier) valuesList.add((ValuesModifier) m);
-            else if (m instanceof Limit) limit = ((Limit)m).getValue();
-        }
-
-        ask = query.isAsk();
-        this.distinct = distinct;
-        if (ask) {
-            varNames = Collections.emptySet();
-        } else if (varNames == null) {
-            Collection<Var> vars = query.getTermVars();
-            varNames = new HashSet<>((int)Math.ceil(vars.size()/0.75)+1);
-            for (Var var : vars) varNames.add(var.getName());
-        }
-        this.limit = limit;
-        this.varNames = varNames;
+        ask = query.attr().isAsk();
+        distinct = query.attr().isDistinct();
+        limit = query.attr().limit();
+        varNames = query.attr().publicTripleVarNames();
 
         StringBuilder b = new StringBuilder(query.size()*60);
         writeHeader(b, ask, distinct, varNames);
         writeTriples(b, query);
-        writeFilters(b, filters);
-        for (ValuesModifier values : valuesList)
-            writeValues(b, values.getVarNames(), values.getAssignments());
+        writeFilters(b, query.attr().filters());
+        for (Modifier modifier : query.getModifiers()) {
+            if (modifier instanceof ValuesModifier) {
+                ValuesModifier values = (ValuesModifier) modifier;
+                writeValues(b, values.getVarNames(), values.getAssignments());
+            }
+        }
         b.append('}'); // ends SELECT/ASK
         if (limit > 0)
             b.append(" LIMIT ").append(limit);
@@ -169,17 +155,14 @@ public class FastSPARQLString {
     }
 
     public static boolean canWrite(@Nonnull CQuery query) {
-        boolean bad = query.stream().flatMap(t -> query.getTripleAnnotations(t).stream())
-                           .anyMatch(PureDescriptive.class::isInstance);
-        if (bad)
-            return false;
-        for (Term term : query.getTerms()) {
-            for (TermAnnotation ann : query.getTermAnnotations(term)) {
-                if (ann instanceof InputAnnotation && ((InputAnnotation) ann).isMissingInResult())
-                    return false;
-            }
+        boolean[] ok = {!query.hasTripleAnnotations(PureDescriptive.class)};
+        if (ok[0]) {
+            query.forEachTermAnnotation(InputAnnotation.class, (t, a) -> {
+                if (a.isMissingInResult())
+                    ok[0] = false;
+            });
         }
-        return true;
+        return ok[0];
     }
 
 }

@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.rel.mappings.r2rml.enh.RRFactory;
@@ -58,7 +59,6 @@ import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
-@Test(groups = {"fast"})
 public class RRMappingW3CTest implements TestContext {
     private static final Logger logger = LoggerFactory.getLogger(RRMappingW3CTest.class);
 
@@ -244,7 +244,7 @@ public class RRMappingW3CTest implements TestContext {
         ).stream().map(c -> new Object[]{c}).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "toRDFData")
+    @Test(dataProvider = "toRDFData", groups = {"fast"})
     public void testToRDF(@Nonnull TestCase testCase) throws Exception {
         SetMultimap<String, String> table2col = testCase.getTableColumns();
 
@@ -304,13 +304,13 @@ public class RRMappingW3CTest implements TestContext {
         try {
             List<CQuery> queries = new ArrayList<>();
             testCase.getRDF().listSubjects().forEachRemaining(subj -> {
-                CQuery.Builder builder = CQuery.builder();
+                MutableCQuery query = new MutableCQuery();
                 int[] count = {0};
                 subj.listProperties().forEachRemaining(stmt -> {
                     StdVar obj = new StdVar("o" + (++count[0]));
-                    builder.add(new Triple(s, fromJena(stmt.getPredicate()), obj));
+                    query.add(new Triple(s, fromJena(stmt.getPredicate()), obj));
                 });
-                queries.add(builder.build());
+                queries.add(query);
             });
             return queries;
         } catch (IOException e) {
@@ -336,12 +336,12 @@ public class RRMappingW3CTest implements TestContext {
         try {
             List<CQuery> queries = new ArrayList<>();
             testCase.getRDF().listSubjects().forEachRemaining(subj -> {
-                CQuery.Builder b = CQuery.builder();
+                MutableCQuery query = new MutableCQuery();
                 subj.listProperties().forEachRemaining(s -> {
                     if (!s.getObject().isAnon())
-                        b.add(new Triple(x, fromJena(s.getPredicate()), fromJena(s.getObject())));
+                        query.add(new Triple(x, fromJena(s.getPredicate()), fromJena(s.getObject())));
                 });
-                queries.add(b.build());
+                queries.add(query);
             });
             return queries;
         } catch (IOException e) {

@@ -17,7 +17,7 @@ public class AskResults extends DelegatingResults implements Results {
     }
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
-        if (query.isAsk())
+        if (query.attr().isAsk())
             return new AskResults(in);
         return in;
     }
