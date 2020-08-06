@@ -4,7 +4,6 @@ import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -14,6 +13,7 @@ import br.ufsc.lapesd.riefederator.query.annotations.MergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.MoleculeLinkAnnotation;
 import com.google.common.base.Preconditions;
@@ -420,7 +420,7 @@ public class MoleculeMatcher implements SemanticDescription {
 
         @SuppressWarnings("ReferenceEquality")
         private @Nullable EGPrototype tryMerge(@Nonnull EGPrototype l, @Nonnull EGPrototype r) {
-            Set<Triple> commonTriples = TreeUtils.intersect(l.query.attr().getSet(),
+            Set<Triple> commonTriples = CollectionUtils.intersect(l.query.attr().getSet(),
                                                             r.query.attr().getSet());
             if (commonTriples.isEmpty())
                 return null; //no intersection
@@ -586,7 +586,7 @@ public class MoleculeMatcher implements SemanticDescription {
                     } else {
                         if (candidates.isEmpty())
                             return false;
-                        candidates = TreeUtils.intersect(candidates, set);
+                        candidates = CollectionUtils.intersect(candidates, set);
                     }
                 }
                 if (candidates == null) candidates = Collections.emptySet();

@@ -2,8 +2,8 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
 import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -84,7 +84,7 @@ public class JoinInfo {
              @Nonnull ImmutableSet.Builder<String> pendingReqIns,
              @Nonnull ImmutableSet.Builder<String> pendingOptIns,
              @Nullable Set<String> allowed) {
-        Set<String> set = TreeUtils.intersect(l.getPublicVars(), r.getPublicVars());
+        Set<String> set = CollectionUtils.intersect(l.getPublicVars(), r.getPublicVars());
 
         if (allowed != null) {
             if (!set.containsAll(allowed)) {

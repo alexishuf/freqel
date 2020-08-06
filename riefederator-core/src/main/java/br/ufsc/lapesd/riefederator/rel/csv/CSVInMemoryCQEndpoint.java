@@ -4,7 +4,6 @@ import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.model.term.node.JenaNodeTermFactory;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
@@ -32,6 +31,7 @@ import br.ufsc.lapesd.riefederator.rel.common.StarsHelper;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.base.Preconditions;
@@ -194,7 +194,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
                 List<String> actualColumns = columns == null ? parser.getHeaderNames() : columns;
                 Set<String> missing;
                 if (columns != null && format.getSkipHeaderRecord()) {
-                    missing = TreeUtils.setMinus(columns, parser.getHeaderNames());
+                    missing = CollectionUtils.setMinus(columns, parser.getHeaderNames());
                     if (!missing.isEmpty())
                         logger.warn("Projection includes columns missing in CSV: {}", missing);
                 } else {
@@ -318,8 +318,8 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
         }
         Set<String> av = a.getVarNames();
         Set<String> bv = b.getVarNames();
-        Set<String> all = TreeUtils.union(av, bv);
-        Set<String> jv = TreeUtils.intersect(av, bv);
+        Set<String> all = CollectionUtils.union(av, bv);
+        Set<String> jv = CollectionUtils.intersect(av, bv);
         assert !jv.isEmpty();
         return CollectionResults.greedy(new InMemoryHashJoinResults(a, b, jv, all, false));
     }

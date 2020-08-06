@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
@@ -12,6 +13,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.BiConsumer;
+
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 
 public abstract class AbstractPlanNode implements PlanNode {
     protected @Nullable Set<String> projection;
@@ -60,7 +63,7 @@ public abstract class AbstractPlanNode implements PlanNode {
     public @Nonnull Set<String> getStrictResultVars() {
         if (strictResultVarsCache == null) {
             if (hasInputs())
-                strictResultVarsCache = TreeUtils.setMinus(getResultVars(), getInputVars());
+                strictResultVarsCache = CollectionUtils.setMinus(getResultVars(), getInputVars());
             else
                 strictResultVarsCache = getResultVars();
             assert projection == null || projection.containsAll(strictResultVarsCache);
@@ -71,14 +74,14 @@ public abstract class AbstractPlanNode implements PlanNode {
     @Override
     public @Nonnull Set<String> getPublicVars() {
         if (publicVarsCache == null)
-            publicVarsCache = TreeUtils.union(getResultVars(), getInputVars());
+            publicVarsCache = union(getResultVars(), getInputVars());
         return publicVarsCache;
     }
 
     @Override
     public @Nonnull Set<String> getInputVars() {
         if (allInputVarsCache == null)
-            allInputVarsCache = TreeUtils.union(getRequiredInputVars(), getOptionalInputVars());
+            allInputVarsCache = union(getRequiredInputVars(), getOptionalInputVars());
         return allInputVarsCache;
     }
 

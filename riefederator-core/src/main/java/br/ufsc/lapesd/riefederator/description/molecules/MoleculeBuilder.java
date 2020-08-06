@@ -11,7 +11,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.setMinus;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;

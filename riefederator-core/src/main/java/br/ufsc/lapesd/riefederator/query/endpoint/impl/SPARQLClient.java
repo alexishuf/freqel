@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.endpoint.impl;
 
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
@@ -21,6 +20,7 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -866,7 +866,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             nullColumnsCount = varNames.size() - actual.size();
             assert nullColumnsCount >= 0;
             if (nullColumnsCount > 0) {
-                Set<String> missing = TreeUtils.setMinus(varNames, actual);
+                Set<String> missing = CollectionUtils.setMinus(varNames, actual);
                 logger.warn("{} omitted variables {} in response to {}", host, missing, getURI());
                 assert missing.stream().noneMatch(actual::contains);
                 actual.addAll(missing);

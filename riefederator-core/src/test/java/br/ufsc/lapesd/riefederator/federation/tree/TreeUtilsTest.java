@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinal
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.impl.RelativeCardinalityAdder;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -150,7 +151,7 @@ public class TreeUtilsTest implements TestContext {
     public void testIntersectResults(@Nonnull Collection<PlanNode> list,
                                      @Nonnull Collection<String> expected, boolean dropExpected) {
         AtomicBoolean dropped = new AtomicBoolean();
-        Set<String> actual = TreeUtils.intersect(list, PlanNode::getResultVars, dropped);
+        Set<String> actual = CollectionUtils.intersect(list, PlanNode::getResultVars, dropped);
         assertEquals(actual, new HashSet<>(expected));
         assertEquals(dropped.get(), dropExpected);
     }
@@ -179,7 +180,7 @@ public class TreeUtilsTest implements TestContext {
     public void testUnionResults(@Nonnull Collection<PlanNode> list,
                                  @Nonnull Collection<String> expected) {
 
-        assertEquals(TreeUtils.union(list, PlanNode::getResultVars), new HashSet<>(expected));
+        assertEquals(CollectionUtils.union(list, PlanNode::getResultVars), new HashSet<>(expected));
     }
 
     @Test
@@ -188,11 +189,11 @@ public class TreeUtilsTest implements TestContext {
         List<String> xyz = asList("x", "y", "z");
         Set<String> x = singleton("x");
 
-        assertEquals(TreeUtils.intersect(xy, x), newHashSet("x"));
-        assertEquals(TreeUtils.intersect(x, xy), newHashSet("x"));
-        assertEquals(TreeUtils.intersect(xyz, xy), newHashSet("x", "y"));
-        assertEquals(TreeUtils.intersect(xy, xyz), newHashSet("x", "y"));
-        assertEquals(TreeUtils.intersect(xyz, xyz), newHashSet("x", "y", "z"));
+        assertEquals(CollectionUtils.intersect(xy, x), newHashSet("x"));
+        assertEquals(CollectionUtils.intersect(x, xy), newHashSet("x"));
+        assertEquals(CollectionUtils.intersect(xyz, xy), newHashSet("x", "y"));
+        assertEquals(CollectionUtils.intersect(xy, xyz), newHashSet("x", "y"));
+        assertEquals(CollectionUtils.intersect(xyz, xyz), newHashSet("x", "y", "z"));
     }
 
     @DataProvider

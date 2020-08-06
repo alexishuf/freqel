@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
+
 public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
         implements QueryNodeExecutor, MultiQueryNodeExecutor, CartesianNodeExecutor,
                    SPARQLValuesTemplateNodeExecutor {
@@ -120,7 +122,7 @@ public class SimpleQueryNodeExecutor extends SimpleNodeExecutor
             if (query.attr().isDistinct() && !mQuery.attr().isDistinct())
                 results = HashDistinctResults.applyIf(results, query);
             if (!canFilter) {
-                Set<SPARQLFilter> set = TreeUtils.union(query.attr().filters(), node.getFilters());
+                Set<SPARQLFilter> set = union(query.attr().filters(), node.getFilters());
                 results = SPARQLFilterResults.applyIf(results, set);
             }
             if (query.attr().limit() > 0 && mQuery.attr().limit() <= 0)

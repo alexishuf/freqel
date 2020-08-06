@@ -15,7 +15,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.setMinus;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.stream.Collectors.toSet;
 
@@ -172,12 +172,13 @@ public class AtomFilter implements MoleculeElement {
         public @Nonnull AtomFilter buildFilter() {
             SPARQLFilter filter = super.build();
             ImmutableBiMap<AtomWithRole, String> atom2var = atom2varBuilder.build();
-            checkState(filter.getVars().containsAll(atom2var.values()),
-                       "Some vars to wich atoms map are not present in the SPARQLFilter: " +
-                       setMinus(atom2var.keySet().stream().map(AtomWithRole::getAtomName)
-                                                 .collect(toSet()),
-                                filter.getVars())
-            );
+            if (!filter.getVars().containsAll(atom2var.values())) {
+                throw new IllegalStateException("Some vars to which atoms map are not present " +
+                        "in the SPARQLFilter: " +
+                        setMinus(atom2var.keySet().stream().map(AtomWithRole::getAtomName)
+                                                           .collect(toSet()),
+                                filter.getVars()));
+            }
             if (name == null) name = generateName(filter, atom2var);
             return new AtomFilter(filter, atom2var, name, inputIndex, requiredFilter);
         }

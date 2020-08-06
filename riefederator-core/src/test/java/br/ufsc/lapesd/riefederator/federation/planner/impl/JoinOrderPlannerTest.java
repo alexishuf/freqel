@@ -11,7 +11,10 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivit
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
-import br.ufsc.lapesd.riefederator.federation.tree.*;
+import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
+import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
+import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
+import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -20,6 +23,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Collections2;
@@ -102,7 +106,7 @@ public class JoinOrderPlannerTest implements TestContext {
         assertTrue(isTree(root)); //stricter than acyclic
 
         Set<Triple> allTriples = expectedLeaves.stream().map(PlanNode::getMatchedTriples)
-                .reduce(TreeUtils::union).orElse(emptySet());
+                .reduce(CollectionUtils::union).orElse(emptySet());
 
         // more general tests from PlannerTest
         CQuery query = CQuery.from(allTriples);

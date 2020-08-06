@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinal
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
@@ -15,16 +16,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
 public class JoinNode extends AbstractInnerPlanNode {
-    private @Nonnull ImmutableSet<String> joinVars;
-    private @Nonnull ImmutableSet<String> reqInputs, optInputs;
+    private @Nonnull final ImmutableSet<String> joinVars, reqInputs, optInputs;
 
     public static class Builder {
-        private @Nonnull PlanNode left, right;
+        private @Nonnull final PlanNode left, right;
         private @Nullable Set<String> joinVars = null, resultVars = null;
         private Cardinality cardinality = null;
 
@@ -81,7 +81,7 @@ public class JoinNode extends AbstractInnerPlanNode {
             checkArgument(info.isValid(), "Nodes cannot be joined! joinVars="+joinVars);
             Set<String> allVars = union(left.getResultVars(), right.getResultVars());
             if (resultVars != null) {
-                Set<String> m = setMinus(resultVars, allVars);
+                Set<String> m = CollectionUtils.setMinus(resultVars, allVars);
                 checkArgument(m.isEmpty(), "Some of the selected resultVars are missing: " + m);
             } else {
                 resultVars = allVars;
@@ -140,8 +140,8 @@ public class JoinNode extends AbstractInnerPlanNode {
         PlanNode left = getLeft().createBound(solution);
         PlanNode right = getRight().createBound(solution);
 
-        Set<String> results = setMinus(getResultVars(), solution.getVarNames());
-        Set<String> joinVars = setMinus(getJoinVars(), solution.getVarNames());
+        Set<String> results = CollectionUtils.setMinus(getResultVars(), solution.getVarNames());
+        Set<String> joinVars = CollectionUtils.setMinus(getJoinVars(), solution.getVarNames());
         JoinNode bound = builder(left, right).setJoinVars(joinVars).setResultVars(results).build();
         bound.addBoundFiltersFrom(getFilters(), solution);
         return bound;
@@ -155,7 +155,7 @@ public class JoinNode extends AbstractInnerPlanNode {
         PlanNode l = map.getOrDefault(getLeft(), getLeft());
         PlanNode r = map.getOrDefault(getRight(), getRight());
 
-        Set<String> joinVars = intersect(l.getPublicVars(), r.getPublicVars(), getJoinVars());
+        Set<String> joinVars = CollectionUtils.intersect(l.getPublicVars(), r.getPublicVars(), getJoinVars());
         JoinNode newNode = builder(l, r).addJoinVars(joinVars).build();
         newNode.addApplicableFilters(getFilters());
         return newNode;

@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.query.modifiers;
 
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
@@ -13,6 +12,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.util.ArraySet;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import com.google.common.collect.*;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -123,11 +123,11 @@ public class SPARQLFilter implements Modifier {
         } else if (!var2term.keySet().equals(actualNames)) {
             if (!actualNames.containsAll(var2term.keySet())) {
                 logger.warn("var2term map mentions variables not appearing in the expression: {}",
-                        TreeUtils.setMinus(actualNames, var2term.keySet()));
+                        CollectionUtils.setMinus(actualNames, var2term.keySet()));
             }
             if (!var2term.keySet().containsAll(actualNames)) {
                 logger.info("var2term misses some variables in query. Will map to homonyms: {}",
-                        TreeUtils.setMinus(var2term.keySet(), actualNames));
+                        CollectionUtils.setMinus(var2term.keySet(), actualNames));
             }
             HashBiMap<String, Term> v2t = HashBiMap.create(var2term);
             for (String name : actualNames) {

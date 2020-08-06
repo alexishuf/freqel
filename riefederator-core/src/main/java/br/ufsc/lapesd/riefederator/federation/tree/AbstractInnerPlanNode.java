@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nonnull;
@@ -36,7 +37,7 @@ public abstract class AbstractInnerPlanNode extends AbstractPlanNode {
         this.children = ImmutableList.copyOf(children);
         this.hasInputs = hasInputs;
         assert projection == null ||
-                TreeUtils.union(children, PlanNode::getResultVars).containsAll(projection)
+                CollectionUtils.union(children, PlanNode::getResultVars).containsAll(projection)
                 : "Projection contains variables that are not result in any child";
     }
 
@@ -61,7 +62,7 @@ public abstract class AbstractInnerPlanNode extends AbstractPlanNode {
         if (projection != null)
             return projection;
         if (resultVarsCache == null)
-            resultVarsCache = TreeUtils.union(children, PlanNode::getResultVars);
+            resultVarsCache = CollectionUtils.union(children, PlanNode::getResultVars);
         return resultVarsCache;
     }
 

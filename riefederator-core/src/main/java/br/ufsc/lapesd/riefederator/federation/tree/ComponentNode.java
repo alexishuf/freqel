@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.ImmutableSet;
@@ -23,7 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.setMinus;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class ComponentNode extends AbstractPlanNode {
@@ -87,7 +88,7 @@ public class ComponentNode extends AbstractPlanNode {
     public @Nonnull Set<String> getOptionalInputVars() {
         if (optInputs == null)
             optInputs = scanInputs(false);
-        assert TreeUtils.intersect(optInputs, getRequiredInputVars()).isEmpty();
+        assert CollectionUtils.intersect(optInputs, getRequiredInputVars()).isEmpty();
         return optInputs;
     }
 

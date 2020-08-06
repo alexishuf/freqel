@@ -15,8 +15,8 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import java.util.*;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.intersect;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.intersect;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;

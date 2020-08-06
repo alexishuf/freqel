@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.riefederator.model;
 
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
@@ -12,6 +11,7 @@ import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
@@ -113,7 +113,7 @@ public class SPARQLString {
             Projection project = (Projection)ModifierUtils.getFirst(PROJECTION, modifiers);
             if (project != null) {
                 this.publicVarNames = ImmutableSet.copyOf(
-                        TreeUtils.intersect(project.getVarNames(), this.varNames));
+                        CollectionUtils.intersect(project.getVarNames(), this.varNames));
                 for (String name : this.publicVarNames)
                     b.append(" ?").append(name);
             } else {

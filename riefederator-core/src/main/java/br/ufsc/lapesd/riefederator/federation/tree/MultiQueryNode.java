@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.tree;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -12,8 +13,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.union;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.setMinus;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 import static com.google.common.base.Preconditions.checkArgument;
 
 /**
@@ -98,10 +99,10 @@ public class MultiQueryNode extends AbstractInnerPlanNode {
         @CheckReturnValue
         public @Nonnull MultiQueryNode build() {
             Preconditions.checkState(!isEmpty(), "Builder is empty");
-            Set<String> all = TreeUtils.union(list, PlanNode::getResultVars);
+            Set<String> all = CollectionUtils.union(list, PlanNode::getResultVars);
             if (resultVars == null) {
                 if (intersect)
-                    resultVars = TreeUtils.intersect(list, PlanNode::getResultVars);
+                    resultVars = CollectionUtils.intersect(list, PlanNode::getResultVars);
                 else
                     resultVars = all;
             } else {
@@ -136,7 +137,7 @@ public class MultiQueryNode extends AbstractInnerPlanNode {
         if (!intersectInputs)
             return super.getInputVars();
         if (allInputVarsCache == null)
-            allInputVarsCache = TreeUtils.intersect(getChildren(), PlanNode::getInputVars);
+            allInputVarsCache = CollectionUtils.intersect(getChildren(), PlanNode::getInputVars);
         return allInputVarsCache;
     }
 
@@ -145,7 +146,7 @@ public class MultiQueryNode extends AbstractInnerPlanNode {
         if (!intersectInputs)
             return super.getRequiredInputVars();
         if (reqInputsCache == null)
-            reqInputsCache = TreeUtils.intersect(super.getRequiredInputVars(), getInputVars());
+            reqInputsCache = CollectionUtils.intersect(super.getRequiredInputVars(), getInputVars());
         return reqInputsCache;
     }
 
@@ -154,7 +155,7 @@ public class MultiQueryNode extends AbstractInnerPlanNode {
         if (!intersectInputs)
             return super.getOptionalInputVars();
         if (optInputsCache == null)
-            optInputsCache = TreeUtils.intersect(getInputVars(), super.getOptionalInputVars());
+            optInputsCache = CollectionUtils.intersect(getInputVars(), super.getOptionalInputVars());
         return optInputsCache;
     }
 

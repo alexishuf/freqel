@@ -9,11 +9,11 @@ import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.SetMultimap;
@@ -122,7 +122,7 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
                         qns.add(new ProtoQueryNode(ep, CQuery.from(triple),
                                                    ne2alts.get(ImmutablePair.of(triple, ep))));
                     }
-                    Set<Triple> safeTriples = TreeUtils.setMinus(triples, triplesWithAlts);
+                    Set<Triple> safeTriples = CollectionUtils.setMinus(triples, triplesWithAlts);
                     if (!safeTriples.isEmpty())
                         qns.add(new ProtoQueryNode(ep, CQuery.from(safeTriples)));
                 }

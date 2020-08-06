@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.setMinus;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.setMinus;
 import static java.util.Collections.emptySet;
 
 public class EmptyNode extends AbstractPlanNode {
