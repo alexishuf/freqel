@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl.paths;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
@@ -61,10 +61,10 @@ public class SubPathAggregation {
 
     @VisibleForTesting
     static class PlannedComponent {
-        IndexedSubset<PlanNode> component;
-        PlanNode node;
+        IndexedSubset<Op> component;
+        Op node;
 
-        public PlannedComponent(IndexedSubset<PlanNode> component, PlanNode node) {
+        public PlannedComponent(IndexedSubset<Op> component, Op node) {
             this.component = component;
             this.node = node;
         }
@@ -73,7 +73,7 @@ public class SubPathAggregation {
     @VisibleForTesting
     static class State {
         private @Nonnull JoinGraph graph;
-        private @Nonnull List<IndexedSubset<PlanNode>> components;
+        private @Nonnull List<IndexedSubset<Op>> components;
         private List<PlannedComponent> planned;
         private JoinGraph reducedGraph;
 
@@ -83,7 +83,7 @@ public class SubPathAggregation {
         }
 
         @VisibleForTesting
-        @Nonnull List<IndexedSubset<PlanNode>> getComponents() {
+        @Nonnull List<IndexedSubset<Op>> getComponents() {
             return components;
         }
 
@@ -98,7 +98,7 @@ public class SubPathAggregation {
             checkDisjointness();
 
             planned = new ArrayList<>(components.size());
-            for (IndexedSubset<PlanNode> component : components) {
+            for (IndexedSubset<Op> component : components) {
                 if (component.size() == 1)
                     planned.add(new PlannedComponent(component, component.iterator().next()));
                 else
@@ -110,14 +110,14 @@ public class SubPathAggregation {
             Preconditions.checkState(planned != null, "Call planComponents() before!");
             Preconditions.checkState(planned.size() == components.size());
 
-            IndexedSubset<PlanNode> visited = graph.getNodes().emptySubset();
-            List<PlanNode> nodes = new ArrayList<>(graph.size());
+            IndexedSubset<Op> visited = graph.getNodes().emptySubset();
+            List<Op> nodes = new ArrayList<>(graph.size());
             for (PlannedComponent pc : planned) {
                 nodes.add(pc.node);
                 visited.addAll(pc.component);
             }
             for (JoinComponent path : paths) {
-                IndexedSubset<PlanNode> novel = path.getNodes().createDifference(visited);
+                IndexedSubset<Op> novel = path.getNodes().createDifference(visited);
                 nodes.addAll(novel);
                 visited.addAll(novel);
             }
@@ -129,8 +129,8 @@ public class SubPathAggregation {
         public @Nonnull JoinComponent reducePath(@Nonnull JoinComponent path) {
             if (path.isWhole())
                 return path;
-            IndexedSubset<PlanNode> nodes = reducedGraph.getNodes().emptySubset();
-            IndexedSubset<PlanNode> pending = path.getNodes().copy();
+            IndexedSubset<Op> nodes = reducedGraph.getNodes().emptySubset();
+            IndexedSubset<Op> pending = path.getNodes().copy();
             boolean needsRebuild = false;
             for (PlannedComponent pc : planned) {
                 if (path.getNodes().containsAll(pc.component)) {
@@ -147,11 +147,11 @@ public class SubPathAggregation {
             return path; // no components or only singleton components
         }
 
-        private boolean hasNoSubsumedNodes(IndexedSubset<PlanNode> nodes) {
-            List<PlanNode> subsumed = new ArrayList<>();
-            for (PlanNode i : nodes) {
+        private boolean hasNoSubsumedNodes(IndexedSubset<Op> nodes) {
+            List<Op> subsumed = new ArrayList<>();
+            for (Op i : nodes) {
                 Set<Triple> iMatched = i.getMatchedTriples();
-                for (PlanNode j : nodes) {
+                for (Op j : nodes) {
                     if (i == j) continue;
                     Set<Triple> jMatched = j.getMatchedTriples();
                     if (iMatched.containsAll(jMatched))
@@ -164,18 +164,18 @@ public class SubPathAggregation {
         public void processPair(@Nonnull JoinComponent left, @Nonnull JoinComponent right) {
             assert left.getNodes().getParent().containsAll(right.getNodes());
             assert right.getNodes().getParent().containsAll(left.getNodes());
-            IndexedSubset<PlanNode> common = left.getNodes().createIntersection(right.getNodes());
-            IndexedSubset<PlanNode> visited = common.copy();
+            IndexedSubset<Op> common = left.getNodes().createIntersection(right.getNodes());
+            IndexedSubset<Op> visited = common.copy();
             visited.clear();
-            ArrayDeque<PlanNode> stack = new ArrayDeque<>();
-            for (PlanNode start : common) {
+            ArrayDeque<Op> stack = new ArrayDeque<>();
+            for (Op start : common) {
                 if (visited.contains(start))
                     continue;
                 stack.push(start);
-                IndexedSubset<PlanNode> component = common.copy();
+                IndexedSubset<Op> component = common.copy();
                 component.clear();
                 while (!stack.isEmpty()) {
-                    PlanNode node = stack.pop();
+                    Op node = stack.pop();
                     if (component.add(node)) {
                         graph.forEachNeighbor(node, (i, n) -> {
                             if (common.contains(n)) stack.push(n);
@@ -187,11 +187,11 @@ public class SubPathAggregation {
             }
         }
 
-        public void store(@Nonnull IndexedSubset<PlanNode> novel) {
+        public void store(@Nonnull IndexedSubset<Op> novel) {
             checkJoinConnected(novel);
-            List<IndexedSubset<PlanNode>> dismembered = new ArrayList<>();
-            for (IndexedSubset<PlanNode> c : components) {
-                IndexedSubset<PlanNode> common = c.createIntersection(novel);
+            List<IndexedSubset<Op>> dismembered = new ArrayList<>();
+            for (IndexedSubset<Op> c : components) {
+                IndexedSubset<Op> common = c.createIntersection(novel);
                 if (!common.isEmpty()) {
                     if (common.size() != c.size()) {
                         c.removeAll(common);
@@ -206,17 +206,17 @@ public class SubPathAggregation {
             checkDisjointness();
         }
 
-        private void checkJoinConnected(@Nonnull IndexedSubset<PlanNode> component) {
+        private void checkJoinConnected(@Nonnull IndexedSubset<Op> component) {
             if (!SubPathAggregation.class.desiredAssertionStatus())
                 return; //check is expensive
             if (component.isEmpty())
                 return; //empty is always join-connected
-            IndexedSubset<PlanNode> visited = component.copy();
+            IndexedSubset<Op> visited = component.copy();
             visited.clear();
-            ArrayDeque<PlanNode> stack = new ArrayDeque<>(component.size());
+            ArrayDeque<Op> stack = new ArrayDeque<>(component.size());
             stack.push(component.iterator().next());
             while (!stack.isEmpty()) {
-                PlanNode node = stack.pop();
+                Op node = stack.pop();
                 if (visited.add(node)) {
                     graph.forEachNeighbor(node, (i, n) -> {
                         if (component.contains(n))
@@ -226,7 +226,7 @@ public class SubPathAggregation {
             }
             assert visited.size() <= component.size();
             if (!visited.equals(component)) {
-                IndexedSubset<PlanNode> missing = component.copy();
+                IndexedSubset<Op> missing = component.copy();
                 missing.removeAll(visited);
                 throw new IllegalArgumentException("component "+component+" is disconnected. "+
                         missing+" are not reachable from the first member");
@@ -237,7 +237,7 @@ public class SubPathAggregation {
             if (State.class.desiredAssertionStatus()) {
                 for (int i = 0; i < components.size(); i++) {
                     for (int j = i+1; j < components.size(); j++) {
-                        IndexedSubset<PlanNode> bad;
+                        IndexedSubset<Op> bad;
                         bad = components.get(i).createIntersection(components.get(j));
                         assert bad.isEmpty() : i+"-th and "+j+"-th components intersect: "+bad;
                     }

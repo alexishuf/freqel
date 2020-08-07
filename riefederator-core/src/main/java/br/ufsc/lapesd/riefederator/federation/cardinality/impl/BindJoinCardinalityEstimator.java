@@ -1,14 +1,14 @@
 package br.ufsc.lapesd.riefederator.federation.cardinality.impl;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -35,10 +35,10 @@ public class BindJoinCardinalityEstimator implements JoinCardinalityEstimator {
         return cardinalityEnsemble.estimate(union, null);
     }
 
-    private @Nonnull Collection<Triple> getTriples(@Nonnull PlanNode node) {
-        if (node instanceof QueryNode)
-            return ((QueryNode) node).getQuery();
-        if (node instanceof MultiQueryNode) {
+    private @Nonnull Collection<Triple> getTriples(@Nonnull Op node) {
+        if (node instanceof QueryOp)
+            return ((QueryOp) node).getQuery();
+        if (node instanceof UnionOp) {
             LinkedHashSet<Triple> set = new LinkedHashSet<>();
             node.getChildren().stream().flatMap(n -> getTriples(n).stream()).forEach(set::add);
             return set;

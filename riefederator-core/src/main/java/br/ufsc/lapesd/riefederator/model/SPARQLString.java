@@ -198,11 +198,7 @@ public class SPARQLString {
 
     static @Nonnull ImmutableSet<SPARQLFilter> getFilters(Collection<Triple> triples) {
         if (!(triples instanceof CQuery)) return ImmutableSet.of();
-        Set<SPARQLFilter> set = new HashSet<>();
-        for (Modifier modifier : ((CQuery) triples).getModifiers()) {
-            if (modifier instanceof SPARQLFilter) set.add((SPARQLFilter)modifier);
-        }
-        return ImmutableSet.copyOf(set);
+        return ImmutableSet.copyOf(((CQuery)triples).getModifiers().filters());
     }
 
     public static @Nonnull String term2SPARQL(@Nonnull Term t, @Nonnull PrefixDict dict) {

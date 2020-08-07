@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.cardinality;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import com.google.inject.ProvidedBy;
 
 import javax.annotation.Nonnull;

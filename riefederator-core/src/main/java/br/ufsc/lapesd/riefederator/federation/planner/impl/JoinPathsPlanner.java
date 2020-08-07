@@ -1,10 +1,17 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
+import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinComponent;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.SubPathAggregation;
-import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -32,10 +39,13 @@ public class JoinPathsPlanner implements Planner {
     private static final Logger logger = LoggerFactory.getLogger(JoinPathsPlanner.class);
     private static final int PATHS_PAR_THRESHOLD = 10;
     private final @Nonnull JoinOrderPlanner joinOrderPlanner;
+    private final @Nonnull InnerCardinalityComputer innerCardComputer;
 
     @Inject
-    public JoinPathsPlanner(@Nonnull JoinOrderPlanner joinOrderPlanner) {
+    public JoinPathsPlanner(@Nonnull JoinOrderPlanner joinOrderPlanner,
+                            @Nonnull InnerCardinalityComputer innerCardComputer) {
         this.joinOrderPlanner = joinOrderPlanner;
+        this.innerCardComputer = innerCardComputer;
     }
 
     @Override
@@ -49,12 +59,12 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @Override
-    public @Nonnull PlanNode plan(@Nonnull CQuery query, @Nonnull Collection<PlanNode> qns){
+    public @Nonnull Op plan(@Nonnull CQuery query, @Nonnull Collection<Op> qns){
         if (query.isEmpty()) //empty query
-            return new EmptyNode(query);
+            return new EmptyOp(query);
         if (qns.isEmpty()) {
             logger.info("No subqueries (lack of sources?). Query: \"\"\"{}\"\"\"", query);
-            return new EmptyNode(query);
+            return new EmptyOp(query);
         }
         IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.attr().matchedTriples());
         if (JoinPathsPlanner.class.desiredAssertionStatus()) {
@@ -62,38 +72,38 @@ public class JoinPathsPlanner implements Planner {
                           "Some QueryNodes match triples not in query");
         }
         if (!satisfiesAll(full, qns, query))
-            return new EmptyNode(query);
+            return new EmptyOp(query);
         /* throw instead of EmptyNode bcs allowJoinDisconnected(). Failing here means someone
            built a Federation using incompatible components. This is likely a bug in the
            Federation creator */
         if (!query.attr().isJoinConnected()) {
-            PlanNode plan = new NaiveOuterPlanner().plan(query);
+            Op plan = new NaiveOuterPlanner().plan(query);
             logger.warn("JoinPathsPlanner was designed for handling conjunctive queries, yet " +
                         "the given query requires Cartesian products or unions. Will try to " +
                         "continue, but planning may fail. Query: {}", query);
-            Map<PlanNode, PlanNode> replacements = new HashMap<>();
-            TreeUtils.streamPreOrder(plan).filter(ComponentNode.class::isInstance).forEach(n -> {
-                IndexedSet<Triple> component = ((ComponentNode) n).getQuery().attr().getSet();
-                List<PlanNode> relevant = qns.stream()
+            plan = TreeUtils.replaceNodes(plan, innerCardComputer, op -> {
+                if (!(op.getClass().equals(UnassignedQueryOp.class))) return op;
+                IndexedSet<Triple> component = ((UnassignedQueryOp) op).getQuery().attr().getSet();
+                List<Op> relevant = qns.stream()
                         .filter(qn -> component.containsAny(qn.getMatchedTriples()))
                         .collect(toList());
-                PlanNode subPlan = plan(relevant, component);
+                Op subPlan = plan(relevant, component);
                 if (subPlan == null)
-                    subPlan = new EmptyNode(n.getResultVars());
-                replacements.put(n, subPlan);
+                    subPlan = new EmptyOp(op.getResultVars());
+                return subPlan;
             });
-            if (replacements.values().stream().anyMatch(EmptyNode.class::isInstance)) {
+            if (plan.getCardinality().equals(Cardinality.EMPTY)) {
                 logger.info("A conjunctive query component is unsatisfiable. JoinPathsPlanner " +
                             "used NaiveOuterPlanner to identify components. Query: {}.", query);
-                return new EmptyNode(query);
+                return new EmptyOp(query);
             }
-            return TreeUtils.replaceNodes(plan, replacements);
+            return plan;
         } else {
-            PlanNode root = plan(qns, full);
+            Op root = plan(qns, full);
             if (root == null) {
                 logger.info("No join path across endpoints for join-connected query {}. " +
                             "Returning EmptyNode", query);
-                return new EmptyNode(query);
+                return new EmptyOp(query);
             }
             return root;
         }
@@ -104,9 +114,9 @@ public class JoinPathsPlanner implements Planner {
         if (!JoinPathsPlanner.class.desiredAssertionStatus())
             return;
         for (JoinComponent component : components) {
-            for (PlanNode i : component.getNodes()) {
+            for (Op i : component.getNodes()) {
                 Set<Triple> iMatched = i.getMatchedTriples();
-                for (PlanNode j : component.getNodes()) {
+                for (Op j : component.getNodes()) {
                     if (i == j) continue;
                     Set<Triple> jMatched = j.getMatchedTriples();
                     if (iMatched.containsAll(jMatched)) {
@@ -120,9 +130,9 @@ public class JoinPathsPlanner implements Planner {
         }
     }
 
-    private @Nullable PlanNode plan(@Nonnull Collection<PlanNode> qns,
-                                    @Nonnull IndexedSet<Triple> triples) {
-        IndexedSet<PlanNode> leaves = groupNodes(qns);
+    private @Nullable Op plan(@Nonnull Collection<Op> qns,
+                              @Nonnull IndexedSet<Triple> triples) {
+        IndexedSet<Op> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
         List<JoinComponent> pathsSet = getPaths(triples, g);
         assertValidJoinComponents(pathsSet, triples);
@@ -136,7 +146,7 @@ public class JoinPathsPlanner implements Planner {
         List<JoinComponent> aggregatedPaths = aggregation.getJoinComponents();
         assertValidJoinComponents(aggregatedPaths, triples);
         boolean parallel = pathsSet.size() > PATHS_PAR_THRESHOLD;
-        MultiQueryNode.Builder builder = MultiQueryNode.builder();
+        UnionOp.Builder builder = UnionOp.builder();
         builder.addAll((parallel ? aggregatedPaths.parallelStream() : aggregatedPaths.stream())
                 .map(p -> joinOrderPlanner.plan(g2, p.getNodes()))
                 .collect(toList()));
@@ -145,15 +155,15 @@ public class JoinPathsPlanner implements Planner {
 
     @VisibleForTesting
     void removeAlternativePaths(@Nonnull List<JoinComponent> paths) {
-        IndexedSet<PlanNode> set = getNodesIndexedSetFromPaths(paths);
+        IndexedSet<Op> set = getNodesIndexedSetFromPaths(paths);
         BitSet marked = new BitSet(paths.size());
         for (int i = 0; i < paths.size(); i++) {
-            IndexedSubset<PlanNode> outer = set.subset(paths.get(i).getNodes());
+            IndexedSubset<Op> outer = set.subset(paths.get(i).getNodes());
             assert outer.size() == paths.get(i).getNodes().size();
             for (int j = i+1; j < paths.size(); j++) {
                 if (marked.get(j))
                     continue;
-                IndexedSubset<PlanNode> inner = set.subset(paths.get(j).getNodes());
+                IndexedSubset<Op> inner = set.subset(paths.get(j).getNodes());
                 assert inner.size() == paths.get(j).getNodes().size();
                 if (outer.equals(inner))
                     marked.set(j);
@@ -165,17 +175,17 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @VisibleForTesting
-    @Nonnull IndexedSet<PlanNode> getNodesIndexedSetFromPaths(@Nonnull List<JoinComponent> paths) {
-        List<PlanNode> list = new ArrayList<>();
-        Map<PlanNode, Integer> n2idx = new HashMap<>();
-        Multimap<Set<Triple>, QueryNode> mm = MultimapBuilder.hashKeys().arrayListValues().build();
+    @Nonnull IndexedSet<Op> getNodesIndexedSetFromPaths(@Nonnull List<JoinComponent> paths) {
+        List<Op> list = new ArrayList<>();
+        Map<Op, Integer> n2idx = new HashMap<>();
+        Multimap<Set<Triple>, QueryOp> mm = MultimapBuilder.hashKeys().arrayListValues().build();
         for (JoinComponent path : paths) {
-            for (PlanNode node : path.getNodes()) {
-                if (node instanceof QueryNode && !n2idx.containsKey(node)) {
-                    QueryNode qn = (QueryNode) node;
+            for (Op node : path.getNodes()) {
+                if (node instanceof QueryOp && !n2idx.containsKey(node)) {
+                    QueryOp qn = (QueryOp) node;
                     TPEndpoint endpoint = qn.getEndpoint();
                     int canonIdx = -1;
-                    for (QueryNode candidate : mm.get(qn.getQuery().attr().getSet())) {
+                    for (QueryOp candidate : mm.get(qn.getQuery().attr().getSet())) {
                         if (candidate.getEndpoint().isAlternative(endpoint)) {
                             canonIdx = n2idx.get(candidate);
                             assert canonIdx >= 0 && canonIdx < list.size();
@@ -193,8 +203,8 @@ public class JoinPathsPlanner implements Planner {
             }
         }
         for (JoinComponent path : paths) {
-            for (PlanNode node : path.getNodes()) {
-                if (node instanceof QueryNode || n2idx.containsKey(node)) continue;
+            for (Op node : path.getNodes()) {
+                if (node instanceof QueryOp || n2idx.containsKey(node)) continue;
                 assert list.size() == n2idx.size();
                 n2idx.put(node, n2idx.size());
                 list.add(node);
@@ -204,10 +214,10 @@ public class JoinPathsPlanner implements Planner {
     }
 
     private boolean satisfiesAll(@Nonnull IndexedSet<Triple> all,
-                                 @Nonnull Collection<? extends PlanNode> nodes,
+                                 @Nonnull Collection<? extends Op> nodes,
                                  @Nullable CQuery query) {
         IndexedSubset<Triple> subset = all.emptySubset();
-        for (PlanNode node : nodes)
+        for (Op node : nodes)
             subset.union(node.getMatchedTriples());
         if (subset.size() != all.size()) {
             IndexedSubset<Triple> missing = all.fullSubset();
@@ -224,19 +234,19 @@ public class JoinPathsPlanner implements Planner {
     }
 
     @VisibleForTesting
-    @Nonnull IndexedSet<PlanNode> groupNodes(@Nonnull Collection<PlanNode> queryNodes) {
-        ListMultimap<JoinInterface, PlanNode> mm;
+    @Nonnull IndexedSet<Op> groupNodes(@Nonnull Collection<Op> queryNodes) {
+        ListMultimap<JoinInterface, Op> mm;
         mm = MultimapBuilder.hashKeys(queryNodes.size()).arrayListValues().build();
 
-        for (PlanNode node : queryNodes)
+        for (Op node : queryNodes)
             mm.put(new JoinInterface(node), node);
 
-        List<PlanNode> list = new ArrayList<>();
+        List<Op> list = new ArrayList<>();
         for (JoinInterface key : mm.keySet()) {
-            Collection<PlanNode> nodes = mm.get(key);
+            Collection<Op> nodes = mm.get(key);
             assert !nodes.isEmpty();
             if (nodes.size() > 1)
-                list.add(MultiQueryNode.builder().addAll(nodes).build());
+                list.add(UnionOp.builder().addAll(nodes).build());
             else
                 list.add(nodes.iterator().next());
         }
@@ -279,7 +289,7 @@ public class JoinPathsPlanner implements Planner {
             context.missingSmall.forEach(s -> b1.append("  ").append(s).append('\n'));
 
             StringBuilder b2 = new StringBuilder();
-            for (IndexedSubset<PlanNode> c : context.unresolvedInputsComponents) {
+            for (IndexedSubset<Op> c : context.unresolvedInputsComponents) {
                 b2.append("  {")
                         .append(c.stream().map(n -> String.valueOf(g.getNodes().indexOf(n)))
                                           .collect(joining(", ")))
@@ -313,14 +323,14 @@ public class JoinPathsPlanner implements Planner {
         private final @Nonnull Cache<State, Boolean> recent;
         private final @Nonnull IndexedSubset<Triple> globallyUnsatisfied;
         private final @Nonnull Set<IndexedSubset<Triple>> missingSmall;
-        private final @Nonnull Set<IndexedSubset<PlanNode>> unresolvedInputsComponents;
+        private final @Nonnull Set<IndexedSubset<Op>> unresolvedInputsComponents;
 
         private static final class State {
-            final @Nonnull ImmutableIndexedSubset<PlanNode> nodes;
+            final @Nonnull ImmutableIndexedSubset<Op> nodes;
             final @Nonnull ImmutableIndexedSubset<Triple> matched;
             final int[] tripleOccurrences;
 
-            private State(@Nonnull ImmutableIndexedSubset<PlanNode> nodes,
+            private State(@Nonnull ImmutableIndexedSubset<Op> nodes,
                           @Nonnull ImmutableIndexedSubset<Triple> matched,
                           int[] tripleOccurrences) {
                 this.nodes = nodes;
@@ -336,7 +346,7 @@ public class JoinPathsPlanner implements Planner {
                 return occurrences;
             }
 
-            public State(@Nonnull ImmutableIndexedSubset<PlanNode> nodes,
+            public State(@Nonnull ImmutableIndexedSubset<Op> nodes,
                          @Nonnull ImmutableIndexedSubset<Triple> matched) {
                 this(nodes, matched, initTripleOccurrences(matched));
             }
@@ -377,7 +387,7 @@ public class JoinPathsPlanner implements Planner {
                 IndexedSet<Triple> all = candidateMatched.getParent();
                 assert tripleOccurrences.length == all.size();
                 outer:
-                for (PlanNode old : nodes) {
+                for (Op old : nodes) {
                     for (Triple triple : old.getMatchedTriples()) {
                         int idx = all.indexOf(triple);
                         assert idx >= 0;
@@ -389,7 +399,7 @@ public class JoinPathsPlanner implements Planner {
                 return false; //every old node still contributes at least triple
             }
 
-            @Nullable State tryAdvance(@Nonnull PlanNode node) {
+            @Nullable State tryAdvance(@Nonnull Op node) {
                 IndexedSubset<Triple> nodeMatched;
                 nodeMatched = matched.getParent().subset(node.getMatchedTriples());
                 assert nodeMatched.size() == node.getMatchedTriples().size();
@@ -422,7 +432,7 @@ public class JoinPathsPlanner implements Planner {
         void run() {
             assert !g.isEmpty();
             assert queue.isEmpty();
-            for (PlanNode node : g.getNodes())
+            for (Op node : g.getNodes())
                 queue.add(createState(node));
             while (!queue.isEmpty()) {
                 State state = queue.remove();
@@ -446,7 +456,7 @@ public class JoinPathsPlanner implements Planner {
             assert result.stream().distinct().count() == result.size(); // no duplicates!
         }
 
-        private State createState(@Nonnull PlanNode node) {
+        private State createState(@Nonnull Op node) {
             ImmutableIndexedSubset<Triple> matched = full.immutableSubset(node.getMatchedTriples());
             globallyUnsatisfied.removeAll(matched);
             return new State(g.getNodes().immutableSubset(node), matched);
@@ -460,7 +470,7 @@ public class JoinPathsPlanner implements Planner {
         }
 
         private void advance(@Nonnull State state) {
-            for (PlanNode node : state.nodes) {
+            for (Op node : state.nodes) {
                 g.forEachNeighbor(node, (i, neighbor) -> {
                     if (state.nodes.contains(neighbor))
                         return; // do not add something it already has

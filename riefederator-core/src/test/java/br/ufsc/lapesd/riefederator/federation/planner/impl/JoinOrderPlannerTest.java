@@ -2,6 +2,10 @@ package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
@@ -11,10 +15,6 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivit
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
-import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -41,9 +41,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMultiJoinability;
-import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.*;
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.*;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -102,10 +100,10 @@ public class JoinOrderPlannerTest implements TestContext {
                         }).getInstance(GreedyJoinOrderPlanner.class))
             );
 
-    private void checkPlan(PlanNode root, Set<PlanNode> expectedLeaves) {
+    private void checkPlan(Op root, Set<Op> expectedLeaves) {
         assertTrue(isTree(root)); //stricter than acyclic
 
-        Set<Triple> allTriples = expectedLeaves.stream().map(PlanNode::getMatchedTriples)
+        Set<Triple> allTriples = expectedLeaves.stream().map(Op::getMatchedTriples)
                 .reduce(CollectionUtils::union).orElse(emptySet());
 
         // more general tests from PlannerTest
@@ -113,22 +111,22 @@ public class JoinOrderPlannerTest implements TestContext {
         PlannerTest.assertPlanAnswers(root, query);
 
         // no duplicate leaves (QueryNodes)
-        List<PlanNode> leaves = streamPreOrder(root)
-                .filter(n -> n instanceof QueryNode).collect(toList());
+        List<Op> leaves = streamPreOrder(root)
+                .filter(n -> n instanceof QueryOp).collect(toList());
         assertEquals(leaves.size(), new HashSet<>(leaves).size());
 
         // all leaf QueryNode was present in expectedLeaves
-        Set<PlanNode> expectedQNLeaves = expectedLeaves.stream()
+        Set<Op> expectedQNLeaves = expectedLeaves.stream()
                 .flatMap(n -> childrenIfMulti(n).stream()).collect(toSet());
         assertTrue(expectedQNLeaves.containsAll(leaves)); //no made-up QueryNodes
 
         // every QueryNode from expectedQNLeaves missing from leaves must be equivalent to another
-        List<PlanNode> missingLeaves = expectedQNLeaves.stream().filter(qn -> !leaves.contains(qn))
+        List<Op> missingLeaves = expectedQNLeaves.stream().filter(qn -> !leaves.contains(qn))
                 .filter(missing -> {
-                    Set<Triple> triples = ((QueryNode) missing).getQuery().attr().getSet();
-                    TPEndpoint ep = ((QueryNode) missing).getEndpoint();
-                    for (PlanNode leaf : leaves) {
-                        QueryNode leafQN = (QueryNode) leaf;
+                    Set<Triple> triples = ((QueryOp) missing).getQuery().attr().getSet();
+                    TPEndpoint ep = ((QueryOp) missing).getEndpoint();
+                    for (Op leaf : leaves) {
+                        QueryOp leafQN = (QueryOp) leaf;
                         TPEndpoint candidate = leafQN.getEndpoint();
                         if (leafQN.getQuery().attr().getSet().equals(triples) &&
                                 (candidate.isAlternative(ep) || ep.isAlternative(candidate))) {
@@ -140,14 +138,14 @@ public class JoinOrderPlannerTest implements TestContext {
         assertEquals(missingLeaves, emptyList());
 
         // nothing but JoinNodes should be introduced
-        Set<PlanNode> nonJoinInner = streamPreOrder(root).filter(n -> !leaves.contains(n))
-                .filter(n -> !(n instanceof JoinNode) && !expectedLeaves.contains(n))
+        Set<Op> nonJoinInner = streamPreOrder(root).filter(n -> !leaves.contains(n))
+                .filter(n -> !(n instanceof JoinOp) && !expectedLeaves.contains(n))
                 .collect(toSet());
         assertEquals(nonJoinInner, emptySet());
     }
 
-    private @Nonnull Set<PlanNode> getPlanNodes(List<JoinInfo> list) {
-        Set<PlanNode> expectedLeaves;
+    private @Nonnull Set<Op> getPlanNodes(List<JoinInfo> list) {
+        Set<Op> expectedLeaves;
         expectedLeaves = list.stream().flatMap(i -> i.getNodes().stream()).collect(toSet());
         return expectedLeaves;
     }
@@ -159,76 +157,76 @@ public class JoinOrderPlannerTest implements TestContext {
 
     @DataProvider
     public static Object[][] planData() {
-        QueryNode n1 = new QueryNode(e1, createQuery(Alice, p1, x));
-        QueryNode n2 = new QueryNode(e1, createQuery(x, p2, y));
-        QueryNode n3 = new QueryNode(e1, createQuery(y, p3, z));
-        QueryNode n4 = new QueryNode(e1, createQuery(z, p4, w));
-        QueryNode n5 = new QueryNode(e1, createQuery(w, p5, Bob));
-        QueryNode n6 = new QueryNode(e1, createQuery(w, p6, Bob));
-        QueryNode n7 = new QueryNode(e1, createQuery(z, p7, x));
+        QueryOp n1 = new QueryOp(e1, createQuery(Alice, p1, x));
+        QueryOp n2 = new QueryOp(e1, createQuery(x, p2, y));
+        QueryOp n3 = new QueryOp(e1, createQuery(y, p3, z));
+        QueryOp n4 = new QueryOp(e1, createQuery(z, p4, w));
+        QueryOp n5 = new QueryOp(e1, createQuery(w, p5, Bob));
+        QueryOp n6 = new QueryOp(e1, createQuery(w, p6, Bob));
+        QueryOp n7 = new QueryOp(e1, createQuery(z, p7, x));
 
-        QueryNode n2i = new QueryNode(e1, createQuery(x, AtomInputAnnotation.asRequired(Person, "Person").get(), p2, y));
-        QueryNode n3a = new QueryNode(e1a, createQuery(y, p3, z));
-        QueryNode n4b  = new QueryNode(e2, createQuery(z, p4, w));
+        QueryOp n2i = new QueryOp(e1, createQuery(x, AtomInputAnnotation.asRequired(Person, "Person").get(), p2, y));
+        QueryOp n3a = new QueryOp(e1a, createQuery(y, p3, z));
+        QueryOp n4b  = new QueryOp(e2, createQuery(z, p4, w));
 
-        MultiQueryNode m2 = MultiQueryNode.builder().add(n2).add(n2i).build();
-        MultiQueryNode m3 = MultiQueryNode.builder().add(n3).add(n3a).build();
-        MultiQueryNode m4 = MultiQueryNode.builder().add(n4).add(n4b).build();
+        UnionOp m2 = UnionOp.builder().add(n2).add(n2i).build();
+        UnionOp m3 = UnionOp.builder().add(n3).add(n3a).build();
+        UnionOp m4 = UnionOp.builder().add(n4).add(n4b).build();
 
         return suppliers.stream().flatMap(s -> Stream.of(
-                asList(s, singletonList(getPlainJoinability(n1, n2))),
-                asList(s, singletonList(getPlainJoinability(n2, n4))),
-                asList(s, asList(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3))),
-                asList(s, asList(getPlainJoinability(n4, n2), getPlainJoinability(n2, n1))),
-                asList(s, asList(getPlainJoinability(n2, n3), getPlainJoinability(n1, n2))),
-                asList(s, asList(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3), getPlainJoinability(n3, n4))),
-                asList(s, asList(getPlainJoinability(n4, n3), getPlainJoinability(n3, n2), getPlainJoinability(n2, n1))),
-                asList(s, asList(getPlainJoinability(n3, n4), getPlainJoinability(n2, n3), getPlainJoinability(n1, n2))),
-                asList(s, asList(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3), getPlainJoinability(n3, n4), getPlainJoinability(n4, n5))),
-                asList(s, asList(getPlainJoinability(n5, n4), getPlainJoinability(n4, n3), getPlainJoinability(n3, n2), getPlainJoinability(n2, n1))),
-                asList(s, asList(getPlainJoinability(n4, n5), getPlainJoinability(n3, n4), getPlainJoinability(n2, n3), getPlainJoinability(n1, n2))),
-                asList(s, asList(getPlainJoinability(n6, n5), getPlainJoinability(n4, n5), getPlainJoinability(n4, n7), getPlainJoinability(n3, n4), getPlainJoinability(n2, n3), getPlainJoinability(n1, n2))),
-                asList(s, asList(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3), getPlainJoinability(n3, n4), getPlainJoinability(n4, n7), getPlainJoinability(n4, n5), getPlainJoinability(n5, n6))),
+                asList(s, singletonList(JoinInfo.getJoinability(n1, n2))),
+                asList(s, singletonList(JoinInfo.getJoinability(n2, n4))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, n3))),
+                asList(s, asList(JoinInfo.getJoinability(n4, n2), JoinInfo.getJoinability(n2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n1, n2))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n3, n4))),
+                asList(s, asList(JoinInfo.getJoinability(n4, n3), JoinInfo.getJoinability(n3, n2), JoinInfo.getJoinability(n2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n3, n4), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n1, n2))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n3, n4), JoinInfo.getJoinability(n4, n5))),
+                asList(s, asList(JoinInfo.getJoinability(n5, n4), JoinInfo.getJoinability(n4, n3), JoinInfo.getJoinability(n3, n2), JoinInfo.getJoinability(n2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n4, n5), JoinInfo.getJoinability(n3, n4), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n1, n2))),
+                asList(s, asList(JoinInfo.getJoinability(n6, n5), JoinInfo.getJoinability(n4, n5), JoinInfo.getJoinability(n4, n7), JoinInfo.getJoinability(n3, n4), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n1, n2))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n3, n4), JoinInfo.getJoinability(n4, n7), JoinInfo.getJoinability(n4, n5), JoinInfo.getJoinability(n5, n6))),
                 /* test cases exploring removal of equivalent query nodes within MultiQueryNodes */
-                asList(s, singletonList(getMultiJoinability(n1, m2))),
-                asList(s, asList(getMultiJoinability(n1, m2), getMultiJoinability(m2, n3))),
-                asList(s, asList(getMultiJoinability(n1, n2), getMultiJoinability(n2, m3))),
-                asList(s, asList(getMultiJoinability(n1, n2), getMultiJoinability(n2, m3), getMultiJoinability(m3, n4))),
-                asList(s, asList(getMultiJoinability(n1, n2), getMultiJoinability(n2, n3), getMultiJoinability(n3, m4))),
-                asList(s, asList(getMultiJoinability(n1, n2), getMultiJoinability(n2, n3), getMultiJoinability(n3, m4), getMultiJoinability(m4, n5))),
+                asList(s, singletonList(JoinInfo.getJoinability(n1, m2))),
+                asList(s, asList(JoinInfo.getJoinability(n1, m2), JoinInfo.getJoinability(m2, n3))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, m3))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, m3), JoinInfo.getJoinability(m3, n4))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n3, m4))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n3, m4), JoinInfo.getJoinability(m4, n5))),
                 /* same as above, but in reversal join order (more tha Collections.reverse()) */
-                asList(s, singletonList(getMultiJoinability(m2, n1))),
-                asList(s, asList(getMultiJoinability(n3, m2), getMultiJoinability(m2, n1))),
-                asList(s, asList(getMultiJoinability(n3, n2), getMultiJoinability(n2, n1))),
-                asList(s, asList(getMultiJoinability(n4, m3), getMultiJoinability(m3, n2), getMultiJoinability(n2, n1))),
-                asList(s, asList(getMultiJoinability(m4, n3), getMultiJoinability(n3, n2), getMultiJoinability(n2, n1))),
-                asList(s, asList(getMultiJoinability(n5, m4), getMultiJoinability(m4, n3), getMultiJoinability(n3, n2), getMultiJoinability(n2, n1))),
+                asList(s, singletonList(JoinInfo.getJoinability(m2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n3, m2), JoinInfo.getJoinability(m2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n3, n2), JoinInfo.getJoinability(n2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n4, m3), JoinInfo.getJoinability(m3, n2), JoinInfo.getJoinability(n2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(m4, n3), JoinInfo.getJoinability(n3, n2), JoinInfo.getJoinability(n2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n5, m4), JoinInfo.getJoinability(m4, n3), JoinInfo.getJoinability(n3, n2), JoinInfo.getJoinability(n2, n1))),
                 /* Same as the two previous blocks, now using getPlainJoinability */
                 /*   - test cases exploring removal of equivalent query nodes within MultiQueryNodes */
-                asList(s, singletonList(getPlainJoinability(n1, m2))),
-                asList(s, asList(getPlainJoinability(n1, m2), getPlainJoinability(m2, n3))),
-                asList(s, asList(getPlainJoinability(n1, n2), getPlainJoinability(n2, m3))),
-                asList(s, asList(getPlainJoinability(n1, n2), getPlainJoinability(n2, m3), getPlainJoinability(m3, n4))),
-                asList(s, asList(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3), getPlainJoinability(n3, m4))),
-                asList(s, asList(getPlainJoinability(n1, n2), getPlainJoinability(n2, n3), getPlainJoinability(n3, m4), getPlainJoinability(m4, n5))),
+                asList(s, singletonList(JoinInfo.getJoinability(n1, m2))),
+                asList(s, asList(JoinInfo.getJoinability(n1, m2), JoinInfo.getJoinability(m2, n3))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, m3))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, m3), JoinInfo.getJoinability(m3, n4))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n3, m4))),
+                asList(s, asList(JoinInfo.getJoinability(n1, n2), JoinInfo.getJoinability(n2, n3), JoinInfo.getJoinability(n3, m4), JoinInfo.getJoinability(m4, n5))),
                 /*   - same as above, but in reversal join order (more tha Collections.reverse()) */
-                asList(s, singletonList(getPlainJoinability(m2, n1))),
-                asList(s, asList(getPlainJoinability(n3, m2), getPlainJoinability(m2, n1))),
-                asList(s, asList(getPlainJoinability(n3, n2), getPlainJoinability(n2, n1))),
-                asList(s, asList(getPlainJoinability(n4, m3), getPlainJoinability(m3, n2), getPlainJoinability(n2, n1))),
-                asList(s, asList(getPlainJoinability(m4, n3), getPlainJoinability(n3, n2), getPlainJoinability(n2, n1))),
-                asList(s, asList(getPlainJoinability(n5, m4), getPlainJoinability(m4, n3), getPlainJoinability(n3, n2), getPlainJoinability(n2, n1)))
+                asList(s, singletonList(JoinInfo.getJoinability(m2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n3, m2), JoinInfo.getJoinability(m2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n3, n2), JoinInfo.getJoinability(n2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n4, m3), JoinInfo.getJoinability(m3, n2), JoinInfo.getJoinability(n2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(m4, n3), JoinInfo.getJoinability(n3, n2), JoinInfo.getJoinability(n2, n1))),
+                asList(s, asList(JoinInfo.getJoinability(n5, m4), JoinInfo.getJoinability(m4, n3), JoinInfo.getJoinability(n3, n2), JoinInfo.getJoinability(n2, n1)))
                 )).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "planData")
     public void testPlanGivenNodes(Supplier<JoinOrderPlanner> supplier, List<JoinInfo> list) {
         JoinOrderPlanner planner = supplier.get();
-        Set<PlanNode> leavesSet = getPlanNodes(list);
+        Set<Op> leavesSet = getPlanNodes(list);
         JoinGraph joinGraph = new JoinGraph(IndexedSet.from(leavesSet));
         int rounds = 0;
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : Collections2.permutations(new ArrayList<>(leavesSet))) {
+        for (List<Op> permutation : Collections2.permutations(new ArrayList<>(leavesSet))) {
             if (isBadPath(list)) {
                 expectThrows(IllegalArgumentException.class,
                         () -> planner.plan(joinGraph, permutation));
@@ -248,29 +246,29 @@ public class JoinOrderPlannerTest implements TestContext {
 
     @Test(dataProvider = "suppliersData", groups = {"fast"})
     public void testPlanGivenNodesNonLinearPath(Supplier<JoinOrderPlanner> supplier) {
-        QueryNode orgByDesc = new QueryNode(e1, createQuery(o1, p1, t));
-        QueryNode contract = new QueryNode(e1, createQuery(
+        QueryOp orgByDesc = new QueryOp(e1, createQuery(o1, p1, t));
+        QueryOp contract = new QueryOp(e1, createQuery(
                 o2, p2, b,
                 o2, p3, c,
                 o2, p4, t, AtomInputAnnotation.asRequired(new Atom("A1"), "A1").get()));
-        QueryNode contractById = new QueryNode(e1, createQuery(
+        QueryOp contractById = new QueryOp(e1, createQuery(
                 b, AtomInputAnnotation.asRequired(new Atom("A2"), "A2").get(), p5, o3));
-        QueryNode contractorByName = new QueryNode(e1, createQuery(
+        QueryOp contractorByName = new QueryOp(e1, createQuery(
                 c, AtomInputAnnotation.asRequired(new Atom("A3"), "A3").get(), p6, s));
-        QueryNode procurementsOfContractor = new QueryNode(e1, createQuery(
+        QueryOp procurementsOfContractor = new QueryOp(e1, createQuery(
                 s, AtomInputAnnotation.asRequired(new Atom("A4"), "A4").get(), p7, a));
-        QueryNode procurementById = new QueryNode(e1, createQuery(
+        QueryOp procurementById = new QueryOp(e1, createQuery(
                 a, AtomInputAnnotation.asRequired(new Atom("A5"), "A5").get(), p8, d));
-        QueryNode modalities = new QueryNode(e1, createQuery(o4, p9, d));
+        QueryOp modalities = new QueryOp(e1, createQuery(o4, p9, d));
 
         JoinOrderPlanner planner = supplier.get();
-        IndexedSet<PlanNode> leaves = IndexedSet.from(asList(
+        IndexedSet<Op> leaves = IndexedSet.from(asList(
                 contractorByName, procurementsOfContractor, contractById, modalities,
                 procurementById, orgByDesc, contract));
         JoinGraph graph = new JoinGraph(leaves);
         assertEquals(graph.size(), 7);
 
-        PlanNode plan = planner.plan(graph, new ArrayList<>(leaves));
+        Op plan = planner.plan(graph, new ArrayList<>(leaves));
         checkPlan(plan, leaves);
     }
 

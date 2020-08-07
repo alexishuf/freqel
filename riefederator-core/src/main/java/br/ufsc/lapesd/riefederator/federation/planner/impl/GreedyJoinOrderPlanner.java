@@ -1,17 +1,17 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.CardinalityAdder;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
-import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.CardinalityAdder;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.WebApiEndpoint;
@@ -24,8 +24,8 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.*;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.cleanEquivalents;
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.*;
+import static br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability.*;
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.cleanEquivalents;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.Long.MAX_VALUE;
@@ -50,15 +50,15 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
     @VisibleForTesting
     class Data {
         private @Nonnull final JoinGraph graph;
-        public @Nonnull final IndexedSet<PlanNode> clean;
-        public @Nonnull final IndexedSubset<PlanNode> pending;
-        public @Nonnull final IndexedSubset<PlanNode> webApi;
+        public @Nonnull final IndexedSet<Op> clean;
+        public @Nonnull final IndexedSubset<Op> pending;
+        public @Nonnull final IndexedSubset<Op> webApi;
 
-        public Data(@Nonnull JoinGraph graph, @Nonnull Collection<PlanNode> nodesCollection) {
+        public Data(@Nonnull JoinGraph graph, @Nonnull Collection<Op> nodesCollection) {
             this.graph = graph;
-            List<PlanNode> cleanList = new ArrayList<>();
-            for (PlanNode node : nodesCollection) {
-                PlanNode c = cleanEquivalents(node, OrderTuple.NODE_COMPARATOR);
+            List<Op> cleanList = new ArrayList<>();
+            for (Op node : nodesCollection) {
+                Op c = cleanEquivalents(node, OrderTuple.NODE_COMPARATOR);
                 c.setCardinality(TreeUtils.estimate(c, cardEnsemble, cardAdder));
                 cleanList.add(c);
             }
@@ -68,14 +68,14 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
 
         }
 
-        @Nullable JoinInfo weight(@Nonnull PlanNode a, @Nonnull PlanNode b) {
-            IndexedSet<PlanNode> nodes = graph.getNodes();
+        @Nullable JoinInfo weight(@Nonnull Op a, @Nonnull Op b) {
+            IndexedSet<Op> nodes = graph.getNodes();
             if (nodes.contains(a) && nodes.contains(b))
                 return graph.getWeight(a, b);
-            return JoinInfo.getPlainJoinability(a, b);
+            return JoinInfo.getJoinability(a, b);
         }
 
-        @Nonnull PlanNode take(@Nonnull PlanNode node) {
+        @Nonnull Op take(@Nonnull Op node) {
             assert clean.contains(node);
             assert pending.contains(node);
             pending.remove(node);
@@ -88,36 +88,36 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
     }
 
     @Override
-    public @Nonnull PlanNode plan(@Nonnull JoinGraph joinGraph,
-                                  @Nonnull Collection<PlanNode> nodesCollection) {
+    public @Nonnull Op plan(@Nonnull JoinGraph joinGraph,
+                            @Nonnull Collection<Op> nodesCollection) {
         try (TimeSampler ignored = Metrics.OPT_MS.createThreadSampler(performance)) {
             checkArgument(!nodesCollection.isEmpty(),
                           "Cannot optimize joins without nodes to join!");
             Data d = new Data(joinGraph, nodesCollection);
             Weigher weigher = new Weigher(takeInitialJoin(d, joinCardinalityEstimator));
             while (!d.pending.isEmpty()) {
-                PlanNode best = d.pending.stream().min(weigher.comparator).orElse(null);
-                weigher.root = JoinNode.builder(weigher.root, d.take(best)).build();
+                Op best = d.pending.stream().min(weigher.comparator).orElse(null);
+                weigher.root = JoinOp.create(weigher.root, d.take(best));
             }
             return weigher.root;
         }
     }
 
-    static @Nonnull PlanNode takeInitialJoin(@Nonnull Data d,
-                                      @Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
+    static @Nonnull Op takeInitialJoin(@Nonnull Data d,
+                                       @Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
         assert d.pending.containsAll(d.clean) : "There are non-pending nodes!";
         int size = d.pending.size();
         checkArgument(size > 0, "No pending nodes, no join!");
         if (size == 1)
             return d.take(d.pending.iterator().next());
 
-        PlanNode bestOuter = null, bestInner = null;
+        Op bestOuter = null, bestInner = null;
         OrderTuple best = OrderTuple.MAX;
 
         for (int i = 0; i < size; i++) {
-            PlanNode outer = d.clean.get(i);
+            Op outer = d.clean.get(i);
             for (int j = i+1; j < size; j++) {
-                PlanNode inner = d.clean.get(j);
+                Op inner = d.clean.get(j);
                 JoinInfo info = d.weight(outer, inner);
                 if (info == null || !info.isValid())
                     continue;
@@ -143,28 +143,28 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
                       "Found no joins in JoinGraph (with "+size+" nodes)!");
         int diff = OrderTuple.NODE_COMPARATOR.compare(bestOuter, bestInner);
         if (diff > 0) { // swap so that the best node is the left node
-            PlanNode tmp = bestOuter;
+            Op tmp = bestOuter;
             bestOuter = bestInner;
             bestInner = tmp;
         }
-        return JoinNode.builder(d.take(bestOuter), d.take(bestInner)).build();
+        return JoinOp.create(d.take(bestOuter), d.take(bestInner));
     }
 
     @VisibleForTesting
-    private static class Weigher implements Function<PlanNode, OrderTuple> {
-        public @Nonnull PlanNode root;
-        public Comparator<PlanNode> comparator;
+    private static class Weigher implements Function<Op, OrderTuple> {
+        public @Nonnull Op root;
+        public Comparator<Op> comparator;
 
-        public Weigher(@Nonnull PlanNode root) {
+        public Weigher(@Nonnull Op root) {
             this.root = root;
             comparator = Comparator.comparing(this);
         }
 
         @Override
-        public @Nonnull OrderTuple apply(@Nullable PlanNode node) {
+        public @Nonnull OrderTuple apply(@Nullable Op node) {
             checkNotNull(node);
             boolean hasWebApi = OrderTuple.hasWebApi(node);
-            JoinInfo i = JoinInfo.getPlainJoinability(root, node);
+            JoinInfo i = JoinInfo.getJoinability(root, node);
             if (!i.isValid()) return OrderTuple.MAX;
 
             int pendingInputs = i.getPendingRequiredInputs().size();
@@ -184,7 +184,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
     static class OrderTuple implements Comparable<OrderTuple> {
         public static final @Nonnull OrderTuple MAX =
                 new OrderTuple(Cardinality.lowerBound(MAX_VALUE), Integer.MAX_VALUE, false);
-        public static final @Nonnull Comparator<PlanNode> NODE_COMPARATOR
+        public static final @Nonnull Comparator<Op> NODE_COMPARATOR
                 = Comparator.comparing(OrderTuple::new);
 
         private static final int SMALL = 8;
@@ -201,14 +201,14 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
             this.isWebApi = isWebApi;
         }
 
-        public OrderTuple(@Nonnull PlanNode node) {
+        public OrderTuple(@Nonnull Op node) {
             this(node.getCardinality(), 0, hasWebApi(node));
         }
 
-        public static boolean hasWebApi(@Nonnull PlanNode node) {
+        public static boolean hasWebApi(@Nonnull Op node) {
             return TreeUtils.childrenIfMulti(node).stream()
-                    .anyMatch(n -> n instanceof QueryNode &&
-                            ((QueryNode)n).getEndpoint() instanceof WebApiEndpoint);
+                    .anyMatch(n -> n instanceof QueryOp &&
+                            ((QueryOp)n).getEndpoint() instanceof WebApiEndpoint);
         }
 
         @Override

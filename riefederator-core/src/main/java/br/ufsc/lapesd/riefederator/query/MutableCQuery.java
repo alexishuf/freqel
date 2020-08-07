@@ -8,10 +8,8 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
-import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.impl.CQueryData;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
@@ -35,7 +33,6 @@ import static java.util.stream.Collectors.toSet;
 
 public class MutableCQuery extends CQuery {
     private static final Logger logger = LoggerFactory.getLogger(MutableCQuery.class);
-    private boolean locked = false;
 
     public MutableCQuery(@Nonnull CQuery query) {
         super(query.d, query.prefixDict);
@@ -70,11 +67,6 @@ public class MutableCQuery extends CQuery {
         return new CQueryCache(d);
     }
 
-    public @Nonnull CQuery makeImmutable() {
-        locked = true;
-        return this;
-    }
-
     /* --- --- --- Modifier & annotations mutability --- --- --- */
 
     public @Nullable PrefixDict setPrefixDict(@Nullable PrefixDict prefixDict) {
@@ -84,79 +76,11 @@ public class MutableCQuery extends CQuery {
     }
 
     /**
-     * Adds the modifier if not already present.
-     *
-     * If {@link Capability#isUniqueModifier()}, any previous modifier with the
-     * same {@link Capability} will be removed before adding the new modifier (unless the
-     * pre-existing modifier is already equal to the given modifier).
-     *
-     * @return true if the modifier was added, false otherwise (i.e., it was already present).
+     * Returns a modifiable {@link ModifiersSet}.
      */
-    public @CanIgnoreReturnValue boolean addModifier(@Nonnull Modifier modifier) {
-        Capability capability = modifier.getCapability();
-        if (capability.isUniqueModifier()) {
-            if (d.modifiers.contains(modifier)) {
-                return false; // modifier already present
-            } else {
-                makeExclusive();
-                d.modifiers.removeIf(o -> o.getCapability().equals(capability));
-            }
-        } else {
-            makeExclusive();
-        }
-        if (capability.equals(Capability.PROJECTION)) {
-            if (MutableCQuery.class.desiredAssertionStatus()) {
-                Set<String> projection = ((Projection) modifier).getVarNames();
-                Set<String> extra = new HashSet<>(projection);
-                extra.removeAll(d.cache.allVarNames());
-                if (!extra.isEmpty()) {
-                    logger.warn("Projection {} being added to query has extraneous vars {}. " +
-                                "Query: {}", projection, extra, this);
-                }
-                HashSet<String> filterInputs = new HashSet<>(projection);
-                filterInputs.retainAll(d.cache.allVarNames());
-                filterInputs.removeAll(d.cache.tripleVarNames());
-                if (d.cache.tripleVarNames().containsAll(filterInputs)) {
-                    logger.debug("Projection {} leaves filter inputs {} exposed on query {}",
-                                 projection, filterInputs, this);
-                }
-            }
-        }
-        boolean change = d.modifiers.add(modifier);
-        if (change)
-            d.cache.notifyModifierChange(modifier.getClass());
-        return change;
-    }
-
-    /**
-     * Remove the given modifier from this query, if present
-     * @return true iff this query was modified, false otherwise
-     */
-    public @CanIgnoreReturnValue boolean removeModifier(@Nonnull Modifier modifier) {
+    public @Nonnull ModifiersSet mutateModifiers() {
         makeExclusive();
-        boolean change = d.modifiers.remove(modifier);
-        if (change)
-            d.cache.notifyModifierChange(modifier.getClass());
-        return change;
-    }
-
-    /**
-     * Remove all modifiers that satisfy the given predicate.
-     * @return true if any removal did occur, false otherwise
-     */
-    public @CanIgnoreReturnValue boolean removeModifierIf(@Nonnull Predicate<Modifier> predicate) {
-        makeExclusive();
-        boolean change = false;
-        Iterator<Modifier> it = d.modifiers.iterator();
-        while (it.hasNext()) {
-            Modifier modifier = it.next();
-            if (predicate.test(modifier)) {
-                change = true;
-                it.remove();
-                d.cache.notifyModifierChange(modifier.getClass());
-            }
-        }
-        return change;
+        return d.modifiers;
     }
 
     /**
@@ -200,22 +124,6 @@ public class MutableCQuery extends CQuery {
      */
     public @CanIgnoreReturnValue @Nonnull Set<SPARQLFilter> sanitizeFiltersStrict() {
         return sanitizeFilters(true);
-    }
-
-
-
-
-    /**
-     * Adds the given modifiers and returns true if at least one modifier was new to this query.
-     */
-    public @CanIgnoreReturnValue boolean addModifiers(@Nonnull Collection<? extends Modifier> modifiers) {
-        boolean change = false;
-        for (Modifier modifier : modifiers)
-            change |= addModifier(modifier);
-        return change;
-    }
-    public @CanIgnoreReturnValue boolean addModifiers(@Nonnull Modifier... modifiers) {
-        return addModifiers(Arrays.asList(modifiers));
     }
 
     /**
@@ -488,7 +396,7 @@ public class MutableCQuery extends CQuery {
     public @CanIgnoreReturnValue boolean mergeWith(@Nonnull CQuery other) {
         boolean change = false, triplesChange = false;
         IndexedSet<String> oldPublicVars = attr().publicVarNames();
-        Projection oldProj = ModifierUtils.getFirst(Projection.class, getModifiers());
+        Projection oldProj = getModifiers().projection();
         IndexedSet<Triple> oldSet = attr().getSet();
         makeExclusive();
         for (Triple triple : other) {
@@ -513,20 +421,20 @@ public class MutableCQuery extends CQuery {
                 }
             }
         }
-        if (!change && other.getModifiers().stream().noneMatch(Projection.class::isInstance))
+        if (!change && other.getModifiers().projection() == null)
             return false; // ignore other's Projection modifier if it is the only thing
         for (Modifier modifier : other.getModifiers()) {
             if (!(modifier instanceof Projection))
-                change |= addModifier(modifier);
+                change |= d.modifiers.add(modifier);
         }
-        Projection otherProj = ModifierUtils.getFirst(Projection.class, other.getModifiers());
+        Projection otherProj = other.getModifiers().projection();
         if (oldProj != null || otherProj != null) {
             boolean req = (  oldProj != null &&   oldProj.isRequired())
                        || (otherProj != null && otherProj.isRequired());
             ImmutableSet.Builder<String> b = ImmutableSet.builder();
             b.addAll(oldPublicVars);
             b.addAll(other.attr().publicVarNames());
-            change |= addModifier(new Projection(b.build(), req));
+            change |= d.modifiers.add(new Projection(b.build(), req));
         }
         return change;
     }
@@ -771,7 +679,6 @@ public class MutableCQuery extends CQuery {
     /* --- --- --- Internals --- --- ---  */
 
     protected void makeExclusive() {
-        checkState(!locked, "Mutations are not allowed on this instance (asImmutable() called)");
         this.d = d.toExclusive().attach();
     }
 
@@ -780,20 +687,20 @@ public class MutableCQuery extends CQuery {
     }
 
     private boolean sanitizeProjection(boolean strict) {
-        Projection p = attr().projection();
+        Projection p = d.modifiers.projection();
         if (p == null) return false;
         IndexedSet<String> allowed = strict ? attr().tripleVarNames() : attr().allVarNames();
         Set<String> current = p.getVarNames();
         IndexedSubset<String> fixed = allowed.subset(current);
         if (fixed.size() == current.size())
             return false; // no change
-        boolean change = addModifier(new Projection(ImmutableSet.copyOf(fixed), p.isRequired()));
+        boolean change = d.modifiers.add(new Projection(fixed, p.isRequired()));
         assert change;
         return true;
     }
 
     private @Nonnull Set<SPARQLFilter> sanitizeFilters(boolean strict) {
-        Set<SPARQLFilter> filters = attr().filters();
+        Set<SPARQLFilter> filters = d.modifiers.filters();
         if (filters.isEmpty())
             return Collections.emptySet();
         Set<SPARQLFilter> set = Sets.newHashSetWithExpectedSize(filters.size());
@@ -838,7 +745,7 @@ public class MutableCQuery extends CQuery {
     private @Nullable Set<String> getFilterInputsIfAsserting() {
         if (MutableCQuery.class.desiredAssertionStatus()) {
             IndexedSet<String> tripleVars = d.cache.tripleVarNames();
-            return d.cache.filters().stream()
+            return d.modifiers.filters().stream()
                     .flatMap(f -> f.getVarTermNames().stream())
                     .filter(n -> !tripleVars.contains(n)).collect(toSet());
         }
@@ -846,7 +753,7 @@ public class MutableCQuery extends CQuery {
     }
 
     private boolean checkNewFilterInputs(@Nullable Set<String> oldFilterInputs,
-                                         @Nonnull String method, @Nonnull Object arg) {
+                                         @Nonnull String method, @Nullable Object arg) {
         if (!MutableCQuery.class.desiredAssertionStatus())
             return true; // only run if assertions are enabled
         Set<String> newInputs = getFilterInputsIfAsserting();

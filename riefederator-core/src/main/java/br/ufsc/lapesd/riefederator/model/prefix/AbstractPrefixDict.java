@@ -11,7 +11,7 @@ public abstract class AbstractPrefixDict implements PrefixDict {
 
     @Override
     @Contract("_, !null -> !null")
-    public @Nonnull String expand(@Nonnull String shortened, String fallback) {
+    public String expand(@Nonnull String shortened, String fallback) {
         List<String> pieces = prefixSplitter.splitToList(shortened);
         if (pieces.size() != 2) return fallback;
         String expanded = expandPrefix(pieces.get(0), null);

@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.rel.cql;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalTermWriter;
 import br.ufsc.lapesd.riefederator.rel.common.Selector;
 import br.ufsc.lapesd.riefederator.rel.common.StarVarIndex;
@@ -28,10 +28,9 @@ public class CqlGenerator {
 
     public @Nonnull RelationalRewriting transform(@Nonnull CQuery query) throws MultiStarException {
         checkArgument(query.attr().isJoinConnected());
-        boolean distinct = ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
-        Limit limit = ModifierUtils.getFirst(Limit.class, query.getModifiers());
-        if (ModifierUtils.getFirst(Ask.class, query.getModifiers()) != null)
-            limit = Limit.required(1);
+        boolean distinct = query.getModifiers().distinct() != null;
+        int limit = query.attr().limit();
+        if (query.attr().isAsk()) limit = 1;
         CqlSelectorFactory selectorFactory = new CqlSelectorFactory(termWriter);
         StarVarIndex index = new StarVarIndex(query, selectorFactory);
         if (index.getStarCount() > 1)
@@ -45,11 +44,11 @@ public class CqlGenerator {
         IndexedSubset<SPARQLFilter> doneFilters = index.getStar(0).getFilters().copy();
         doneFilters.removeAll(index.getPendingFilters(0));
         return new RelationalRewriting(cql, index.getOuterProjection(),
-                                       distinct, limit != null,
+                                       distinct, limit > 0,
                                        index.getPendingFilters(0), doneFilters, index);
     }
 
-    private @Nonnull String write(boolean distinct, Limit limit, StarVarIndex index, String table) {
+    private @Nonnull String write(boolean distinct, int limit, StarVarIndex index, String table) {
         StringBuilder b = new StringBuilder();
         b.append("SELECT ").append(distinct ? "DISTINCT " : "");
         for (String v : index.getOuterProjection())
@@ -64,8 +63,8 @@ public class CqlGenerator {
                 b.append('(').append(selector.getCondition()).append(")   AND  "); //space matters
         }
         b.setLength(b.length()-8); // "\n WHERE " and "   AND  " strings both have 6 chars
-        if (limit != null)
-            b.append("\n LIMIT ").append(limit.getValue());
+        if (limit > 0)
+            b.append("\n LIMIT ").append(limit);
         return b.append("\n  ALLOW FILTERING ;").toString();
     }
 }

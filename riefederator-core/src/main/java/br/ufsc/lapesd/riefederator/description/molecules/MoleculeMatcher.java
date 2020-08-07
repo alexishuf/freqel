@@ -594,7 +594,7 @@ public class MoleculeMatcher implements SemanticDescription {
                     SPARQLFilter.SubsumptionResult result;
                     result = filter.areResultsSubsumedBy(candidate.getSPARQLFilter());
                     if (result.getValue()) {
-                        mQuery.addModifier(filter);
+                        mQuery.mutateModifiers().add(filter);
                         subsumption2matched.put(result, candidate);
                         return true;
                     }
@@ -624,8 +624,7 @@ public class MoleculeMatcher implements SemanticDescription {
             }
 
             public void addParentModifiers() {
-                parentQuery.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
-                        .forEach(m -> tryAdd((SPARQLFilter)m));
+                parentQuery.getModifiers().filters().forEach(this::tryAdd);
             }
 
             public CQuery build() {

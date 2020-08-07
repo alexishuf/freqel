@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl.paths;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.UndirectedIrreflexiveArrayGraph;
 
@@ -9,8 +9,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 
-public class JoinGraph extends UndirectedIrreflexiveArrayGraph<PlanNode, JoinInfo> {
-    public JoinGraph(@Nonnull IndexedSet<PlanNode> nodes) {
+public class JoinGraph extends UndirectedIrreflexiveArrayGraph<Op, JoinInfo> {
+    public JoinGraph(@Nonnull IndexedSet<Op> nodes) {
         super(JoinInfo.class, null, nodes);
     }
 
@@ -19,13 +19,13 @@ public class JoinGraph extends UndirectedIrreflexiveArrayGraph<PlanNode, JoinInf
     }
 
     @Override
-    public @Nonnull IndexedSet<PlanNode> getNodes() {
-        return (IndexedSet<PlanNode>) super.getNodes();
+    public @Nonnull IndexedSet<Op> getNodes() {
+        return (IndexedSet<Op>) super.getNodes();
     }
 
     @Override
-    protected @Nullable JoinInfo weigh(@Nonnull PlanNode l, @Nonnull PlanNode r) {
-        JoinInfo info = JoinInfo.getPlainJoinability(l, r);
+    protected @Nullable JoinInfo weigh(@Nonnull Op l, @Nonnull Op r) {
+        JoinInfo info = JoinInfo.getJoinability(l, r);
         return info.isValid() ? info : null;
     }
 }

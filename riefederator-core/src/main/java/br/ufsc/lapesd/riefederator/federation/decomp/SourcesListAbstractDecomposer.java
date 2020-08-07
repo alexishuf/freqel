@@ -1,14 +1,13 @@
 package br.ufsc.lapesd.riefederator.federation.decomp;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -50,27 +49,27 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     }
 
     @Override
-    public @Nonnull PlanNode decompose(@Nonnull CQuery query) {
+    public @Nonnull Op decompose(@Nonnull CQuery query) {
         try (TimeSampler ignored = Metrics.PLAN_MS.createThreadSampler(performance)) {
             FilterAssigner p = new FilterAssigner(query);
-            Collection<PlanNode> leaves = decomposeIntoLeaves(query, p);
+            Collection<Op> leaves = decomposeIntoLeaves(query, p);
 
             performance.sample(Metrics.SOURCES_COUNT, countEndpoints(leaves));
-            PlanNode plan = planner.plan(query, leaves);
+            Op plan = planner.plan(query, leaves);
             p.placeBottommost(plan);
             return plan;
         }
     }
 
-    private int countEndpoints(@Nonnull Collection<PlanNode> leaves) {
+    private int countEndpoints(@Nonnull Collection<Op> leaves) {
         Set<TPEndpoint> endpoints = new HashSet<>(Math.max(10, leaves.size()));
-        for (PlanNode leaf : leaves) {
-            if (leaf instanceof QueryNode)
-                endpoints.add(((QueryNode) leaf).getEndpoint());
-            else if (leaf instanceof MultiQueryNode) {
-                for (PlanNode child : leaf.getChildren()) {
-                    if (child instanceof QueryNode)
-                        endpoints.add(((QueryNode) child).getEndpoint());
+        for (Op leaf : leaves) {
+            if (leaf instanceof QueryOp)
+                endpoints.add(((QueryOp) leaf).getEndpoint());
+            else if (leaf instanceof UnionOp) {
+                for (Op child : leaf.getChildren()) {
+                    if (child instanceof QueryOp)
+                        endpoints.add(((QueryOp) child).getEndpoint());
                     else
                         assert false : "Expected all leaves to be QueryNodes";
                 }
@@ -80,13 +79,13 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     }
 
     @Override
-    public @Nonnull List<PlanNode> decomposeIntoLeaves(@Nonnull CQuery query) {
+    public @Nonnull List<Op> decomposeIntoLeaves(@Nonnull CQuery query) {
         return decomposeIntoLeaves(query, new FilterAssigner(query));
     }
 
-    public @Nonnull List<PlanNode> decomposeIntoLeaves(@Nonnull CQuery query,
-                                                        @Nonnull FilterAssigner placement) {
-        List<ProtoQueryNode> list = decomposeIntoProtoQNs(query);
+    public @Nonnull List<Op> decomposeIntoLeaves(@Nonnull CQuery query,
+                                                 @Nonnull FilterAssigner placement) {
+        List<ProtoQueryOp> list = decomposeIntoProtoQNs(query);
         list = minimizeQueryNodes(query, list);
         return placement.placeFiltersOnLeaves(list);
     }
@@ -97,7 +96,7 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
         final @Nonnull BitSet inputs;
         int hash = 0;
 
-        public Signature(@Nonnull ProtoQueryNode qn, @Nonnull IndexedSet<Triple> allTriples,
+        public Signature(@Nonnull ProtoQueryOp qn, @Nonnull IndexedSet<Triple> allTriples,
                          @Nonnull IndexedSet<Var> allVars) {
             this.endpoint = qn.getEndpoint();
             this.triples = allTriples.subset(qn.getMatchedQuery()).getBitSet();
@@ -135,16 +134,16 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
         }
     }
 
-    protected @Nonnull SetMultimap<Signature, ProtoQueryNode>
-    groupAndDedup(@Nonnull CQuery query, @Nonnull Collection<ProtoQueryNode> in) {
-        SetMultimap<Signature, ProtoQueryNode> sig2pn = HashMultimap.create();
+    protected @Nonnull SetMultimap<Signature, ProtoQueryOp>
+    groupAndDedup(@Nonnull CQuery query, @Nonnull Collection<ProtoQueryOp> in) {
+        SetMultimap<Signature, ProtoQueryOp> sig2pn = HashMultimap.create();
         IndexedSet<Triple> triples = query.attr().getSet();
         IndexedSet<Var> vars = query.attr().allVars();
-        for (ProtoQueryNode pn : in) sig2pn.put(new Signature(pn, triples, vars), pn);
+        for (ProtoQueryOp pn : in) sig2pn.put(new Signature(pn, triples, vars), pn);
 
         Set<CQuery> tmp = new HashSet<>();
         for (Signature sig : sig2pn.keySet()) {
-            Set<ProtoQueryNode> set = sig2pn.get(sig);
+            Set<ProtoQueryOp> set = sig2pn.get(sig);
             if (set.size() > 1) {
                 tmp.clear();
                 set.removeIf(protoQueryNode -> !tmp.add(protoQueryNode.getMatchedQuery()));
@@ -153,10 +152,10 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
         return sig2pn;
     }
 
-    protected @Nonnull List<ProtoQueryNode>
-    minimizeQueryNodes(@Nonnull CQuery query, @Nonnull List<ProtoQueryNode> nodes) {
-        SetMultimap<Signature, ProtoQueryNode> sig2pn = groupAndDedup(query, nodes);
-        List<ProtoQueryNode> list = new ArrayList<>(sig2pn.values());
+    protected @Nonnull List<ProtoQueryOp>
+    minimizeQueryNodes(@Nonnull CQuery query, @Nonnull List<ProtoQueryOp> nodes) {
+        SetMultimap<Signature, ProtoQueryOp> sig2pn = groupAndDedup(query, nodes);
+        List<ProtoQueryOp> list = new ArrayList<>(sig2pn.values());
         if (list.size() < nodes.size()) {
             logger.debug("Discarded {} nodes due to duplicate  endpoint/triple/inputs signatures",
                          nodes.size() - list.size());
@@ -165,12 +164,12 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     }
 
     /**
-     * Decompose the query into a list of {@link ProtoQueryNode}.
+     * Decompose the query into a list of {@link ProtoQueryOp}.
      * The result of this method will undergo filter distribution at a later stage.
      *
      * @param query The query to decompose.
-     * @return a List of non-null {@link ProtoQueryNode} instances. All triples in query must
-     *         appear in at least one of the {@link ProtoQueryNode}s.
+     * @return a List of non-null {@link ProtoQueryOp} instances. All triples in query must
+     *         appear in at least one of the {@link ProtoQueryOp}s.
      */
-    protected abstract @Nonnull List<ProtoQueryNode> decomposeIntoProtoQNs(@Nonnull CQuery query);
+    protected abstract @Nonnull List<ProtoQueryOp> decomposeIntoProtoQNs(@Nonnull CQuery query);
 }

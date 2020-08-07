@@ -3,8 +3,6 @@ package br.ufsc.lapesd.riefederator.rel.common;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
@@ -65,7 +63,7 @@ public class StarSubQuery {
         return core.isVar() && core.asVar().getName().equals(varName);
     }
     public boolean isDistinct() {
-        return ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
+        return query.getModifiers().distinct() != null;
     }
 
     public @Nonnull Set<Column> getAllColumns(@Nonnull Term term) {

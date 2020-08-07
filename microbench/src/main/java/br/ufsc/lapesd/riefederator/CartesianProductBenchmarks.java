@@ -1,12 +1,12 @@
 package br.ufsc.lapesd.riefederator;
 
+import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.LazyCartesianNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.LazyCartesianOpExecutor;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
@@ -90,7 +90,7 @@ public class CartesianProductBenchmarks {
         }).with(new AbstractModule() {
             @Override
             protected void configure() {
-                bind(CartesianNodeExecutor.class).to(EagerCartesianNodeExecutor.class);
+                bind(CartesianOpExecutor.class).to(EagerCartesianOpExecutor.class);
             }
         })).getInstance(PlanExecutor.class);
         planExecutorLazy = Guice.createInjector(Modules.override(new SimpleFederationModule() {
@@ -101,7 +101,7 @@ public class CartesianProductBenchmarks {
         }).with(new AbstractModule() {
             @Override
             protected void configure() {
-                bind(CartesianNodeExecutor.class).to(LazyCartesianNodeExecutor.class);
+                bind(CartesianOpExecutor.class).to(LazyCartesianOpExecutor.class);
             }
         })).getInstance(PlanExecutor.class);
 
@@ -140,9 +140,9 @@ public class CartesianProductBenchmarks {
     }
 
     protected @Nonnull Set<Solution> runCartesian(@Nonnull PlanExecutor executor) {
-        QueryNode leftNode = new QueryNode(left, createQuery(x, fromJena(link1), y));
-        QueryNode rightNode = new QueryNode(right, createQuery(u, fromJena(link2), v));
-        CartesianNode node = new CartesianNode(Arrays.asList(leftNode, rightNode));
+        QueryOp leftNode = new QueryOp(left, createQuery(x, fromJena(link1), y));
+        QueryOp rightNode = new QueryOp(right, createQuery(u, fromJena(link2), v));
+        CartesianOp node = new CartesianOp(Arrays.asList(leftNode, rightNode));
         Results results = executor.executeNode(node);
         Set<Solution> set = new HashSet<>();
         results.forEachRemaining(set::add);

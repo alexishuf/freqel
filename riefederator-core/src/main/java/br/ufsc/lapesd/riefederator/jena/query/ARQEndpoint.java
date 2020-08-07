@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.riefederator.jena.query;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
@@ -197,7 +197,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     @Nonnull
     public Results doQuery(@Nonnull SPARQLString ss, @Nonnull CQuery cQuery) {
         Query query = QueryFactory.create(ss.getString());
-        Projection projection = ModifierUtils.getFirst(Projection.class, cQuery.getModifiers());
+        Projection projection = cQuery.getModifiers().projection();
         Set<String> vars = projection == null ? ss.getPublicVarNames() : projection.getVarNames();
         return doQuery(query, ss.getType(), vars);
     }

@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind;
 
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -18,10 +18,10 @@ public interface BindJoinResultsFactory {
      * @param resultVars Which {@link Var}s should be contained in the result.
      * @throws IllegalArgumentException if there are resultVars or joinVars not in the
      *                                  {@link Results#getVarNames()} from smaller nor in the
-     *                                  {@link PlanNode#getResultVars()} from rightTree.
+     *                                  {@link Op#getResultVars()} from rightTree.
      * @return A new {@link Results}
      */
-    @Nonnull Results createResults(@Nonnull Results smaller, @Nonnull PlanNode rightTree,
+    @Nonnull Results createResults(@Nonnull Results smaller, @Nonnull Op rightTree,
                                    @Nonnull Collection<String> joinVars,
                                    @Nonnull Collection<String> resultVars);
 }

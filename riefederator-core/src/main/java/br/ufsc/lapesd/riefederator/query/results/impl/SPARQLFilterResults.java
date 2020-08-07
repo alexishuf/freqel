@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.DelegatingResults;
@@ -11,10 +11,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.NoSuchElementException;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.stream.Collectors.toList;
 
 public class SPARQLFilterResults extends DelegatingResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(SPARQLFilterResults.class);
@@ -29,13 +31,11 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
     }
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
-        List<SPARQLFilter> list = query.getModifiers().stream()
-                .filter(SPARQLFilter.class::isInstance).map(m -> (SPARQLFilter)m).collect(toList());
-        return list.isEmpty() ? in : new SPARQLFilterResults(in, list);
+        return applyIf(in, query.getModifiers().filters());
     }
 
-    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull PlanNode node) {
-        ImmutableList<SPARQLFilter> list = ImmutableList.copyOf(node.getFilters());
+    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull Op node) {
+        ImmutableList<SPARQLFilter> list = ImmutableList.copyOf(node.modifiers().filters());
         return list.isEmpty() ? in : new SPARQLFilterResults(in, list);
     }
 

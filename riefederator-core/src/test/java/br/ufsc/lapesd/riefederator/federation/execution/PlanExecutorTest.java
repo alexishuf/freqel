@@ -1,28 +1,33 @@
 package br.ufsc.lapesd.riefederator.federation.execution;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleEmptyNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleQueryNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultHashJoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultJoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleEmptyOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleQueryOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultHashJoinOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultJoinOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
-import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.jena.model.term.JenaRes;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -89,11 +94,11 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         @Override
         protected void configure() {
             bind(ResultsExecutor.class).to(SequentialResultsExecutor.class);
-            bind(QueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
-            bind(MultiQueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
-            bind(SPARQLValuesTemplateNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
-            bind(CartesianNodeExecutor.class).to(EagerCartesianNodeExecutor.class);
-            bind(EmptyNodeExecutor.class).toInstance(SimpleEmptyNodeExecutor.INSTANCE);
+            bind(QueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
+            bind(MultiQueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
+            bind(SPARQLValuesTemplateOpExecutor.class).to(SimpleQueryOpExecutor.class);
+            bind(CartesianOpExecutor.class).to(EagerCartesianOpExecutor.class);
+            bind(EmptyOpExecutor.class).toInstance(SimpleEmptyOpExecutor.INSTANCE);
             bind(PlanExecutor.class).to(InjectedExecutor.class);
         }
     }
@@ -103,7 +108,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
                 @Override
                 protected void configure() { //Simple* implementations
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults.FACTORY);
                 }
                 @Override
@@ -115,7 +120,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults.FACTORY);
                 }
                 @Override
@@ -127,7 +132,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(DefaultHashJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(DefaultHashJoinOpExecutor.class);
                 }
                 @Override
                 public @Nonnull String toString() {
@@ -139,7 +144,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
                 protected void configure() {
                     super.configure();
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
-                    bind(JoinNodeExecutor.class).to(DefaultJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(DefaultJoinOpExecutor.class);
                 }
                 @Override
                 public @Nonnull String toString() {
@@ -150,7 +155,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(FixedBindJoinOpExecutor.class);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                 }
                 @Override
@@ -290,7 +295,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         assertTrue(model.isIsomorphicWith(expected));
     }
 
-    private void test(@Nonnull Module module, @Nonnull PlanNode root,
+    private void test(@Nonnull Module module, @Nonnull Op root,
                       @Nonnull Set<Solution> expected) {
         Set<Solution> all = new HashSet<>();
         PlanExecutor executor = Guice.createInjector(module).getInstance(PlanExecutor.class);
@@ -304,15 +309,15 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testSingleQueryNode(@Nonnull Module module) {
-        QueryNode node = new QueryNode(ep, createQuery(Alice, knows, x));
+        QueryOp node = new QueryOp(ep, createQuery(Alice, knows, x));
         test(module, node, Sets.newHashSet(MapSolution.build(x, Bob)));
     }
 
     @Test(dataProvider = "modulesData")
     public void testMultiQuery(@Nonnull Module module) {
-        QueryNode q1 = new QueryNode(ep, createQuery(Alice, knows, x));
-        QueryNode q2 = new QueryNode(ep, createQuery(x, knows, Bob));
-        MultiQueryNode node = MultiQueryNode.builder().add(q1).add(q2).build();
+        QueryOp q1 = new QueryOp(ep, createQuery(Alice, knows, x));
+        QueryOp q2 = new QueryOp(ep, createQuery(x, knows, Bob));
+        UnionOp node = UnionOp.builder().add(q1).add(q2).build();
         test(module, node, Sets.newHashSet(
                 MapSolution.build(x, Bob),
                 MapSolution.build(x, Alice)));
@@ -320,44 +325,26 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testMultiQueryDifferentVars(@Nonnull Module module) {
-        QueryNode q1 = new QueryNode(ep, createQuery(Alice, knows, x));
-        QueryNode q2 = new QueryNode(ep, createQuery(y, knows, Bob));
-        MultiQueryNode node = MultiQueryNode.builder().add(q1).add(q2).build();
+        QueryOp q1 = new QueryOp(ep, createQuery(Alice, knows, x));
+        QueryOp q2 = new QueryOp(ep, createQuery(y, knows, Bob));
+        UnionOp node = UnionOp.builder().add(q1).add(q2).build();
         test(module, node, Sets.newHashSet(
                 MapSolution.build(x, Bob),
                 MapSolution.build(y, Alice)));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testMultiQueryIntersecting(@Nonnull Module module) {
-        QueryNode q1 = new QueryNode(ep, createQuery(Alice, type, x));
-        QueryNode q2 = new QueryNode(ep, createQuery(Alice, knows, x, x, name, y));
-
-        MultiQueryNode node = MultiQueryNode.builder().add(q1).add(q2).build();
-        test(module, node, Sets.newHashSet(
-                MapSolution.build(x, Person),
-                MapSolution.builder().put("x", Bob).put("y", bob).build(),
-                MapSolution.builder().put("x", Bob).put("y", beto).build()));
-
-        // intersecting...
-        node = MultiQueryNode.builder().intersect().add(q1).add(q2).build();
-        test(module, node, Sets.newHashSet(
-                MapSolution.build(x, Person),
-                MapSolution.build(x, Bob)));
-    }
-
-    @Test(dataProvider = "modulesData")
     public void testCartesianProduct(@Nonnull Module module) {
-        QueryNode left = new QueryNode(ep, createQuery(x, knows, Bob));
-        QueryNode right = new QueryNode(ep, createQuery(Bob, name, y));
+        QueryOp left = new QueryOp(ep, createQuery(x, knows, Bob));
+        QueryOp right = new QueryOp(ep, createQuery(Bob, name, y));
 
-        CartesianNode node = new CartesianNode(asList(left, right));
+        CartesianOp node = new CartesianOp(asList(left, right));
         test(module, node, Sets.newHashSet(
                 MapSolution.builder().put("x", Alice).put("y", bob).build(),
                 MapSolution.builder().put("x", Alice).put("y", beto).build()
         ));
 
-        node = new CartesianNode(asList(left, right));
+        node = new CartesianOp(asList(left, right));
         test(module, node, Sets.newHashSet(
                 MapSolution.builder().put("y", bob ).put("x", Alice).build(),
                 MapSolution.builder().put("y", beto).put("x", Alice).build()
@@ -366,9 +353,9 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testSingleHopPathJoin(@Nonnull Module module) {
-        QueryNode l = new QueryNode(joinsEp, createQuery(ex("h1"), knows, x));
-        QueryNode r = new QueryNode(joinsEp, createQuery(x, knows, ex("h3")));
-        JoinNode node = JoinNode.builder(l, r).build();
+        QueryOp l = new QueryOp(joinsEp, createQuery(ex("h1"), knows, x));
+        QueryOp r = new QueryOp(joinsEp, createQuery(x, knows, ex("h3")));
+        JoinOp node = JoinOp.create(l, r);
         test(module, node, Sets.newHashSet(
                 MapSolution.build(x, ex("h2"))
         ));
@@ -376,11 +363,11 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testTwoHopsPathJoin(@Nonnull Module module) {
-        QueryNode l  = new QueryNode(joinsEp, createQuery(ex("h1"), knows, x));
-        QueryNode r  = new QueryNode(joinsEp, createQuery(x, knows, y));
-        QueryNode rr = new QueryNode(joinsEp, createQuery(y, knows, ex("h4")));
-        JoinNode lRoot = JoinNode.builder(l, r).build();
-        JoinNode  root = JoinNode.builder(lRoot, rr).build();
+        QueryOp l  = new QueryOp(joinsEp, createQuery(ex("h1"), knows, x));
+        QueryOp r  = new QueryOp(joinsEp, createQuery(x, knows, y));
+        QueryOp rr = new QueryOp(joinsEp, createQuery(y, knows, ex("h4")));
+        JoinOp lRoot = JoinOp.create(l, r);
+        JoinOp root = JoinOp.create(lRoot, rr);
         test(module, root, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("h2")).put("y", ex("h3")).build()
         ));
@@ -388,17 +375,17 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testFiveHopsPathJoinLeftDeep(@Nonnull Module module) {
-        QueryNode[] leafs = {
-          /*0*/ new QueryNode(joinsEp, createQuery(ex("h1"), knows, x)),
-          /*1*/ new QueryNode(joinsEp, createQuery(x, knows, y)),
-          /*2*/ new QueryNode(joinsEp, createQuery(y, knows, z)),
-          /*3*/ new QueryNode(joinsEp, createQuery(z, knows, w)),
-          /*4*/ new QueryNode(joinsEp, createQuery(w, knows, ex("h6"))),
+        QueryOp[] leafs = {
+          /*0*/ new QueryOp(joinsEp, createQuery(ex("h1"), knows, x)),
+          /*1*/ new QueryOp(joinsEp, createQuery(x, knows, y)),
+          /*2*/ new QueryOp(joinsEp, createQuery(y, knows, z)),
+          /*3*/ new QueryOp(joinsEp, createQuery(z, knows, w)),
+          /*4*/ new QueryOp(joinsEp, createQuery(w, knows, ex("h6"))),
         };
-        JoinNode j0 = JoinNode.builder(leafs[0], leafs[1]).build();
-        JoinNode j1 = JoinNode.builder(j0, leafs[2]).build();
-        JoinNode j2 = JoinNode.builder(j1, leafs[3]).build();
-        JoinNode j3 = JoinNode.builder(j2, leafs[4]).build();
+        JoinOp j0 = JoinOp.create(leafs[0], leafs[1]);
+        JoinOp j1 = JoinOp.create(j0, leafs[2]);
+        JoinOp j2 = JoinOp.create(j1, leafs[3]);
+        JoinOp j3 = JoinOp.create(j2, leafs[4]);
         test(module, j3, singleton(MapSolution.builder().put(x, ex("h2"))
                                                         .put(y, ex("h3"))
                                                         .put(z, ex("h4"))
@@ -407,17 +394,17 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testFiveHopsPathJoinRightDeep(@Nonnull Module module) {
-        QueryNode[] leafs = {
-                /*0*/ new QueryNode(joinsEp, createQuery(ex("h1"), knows, x)),
-                /*1*/ new QueryNode(joinsEp, createQuery(x, knows, y)),
-                /*2*/ new QueryNode(joinsEp, createQuery(y, knows, z)),
-                /*3*/ new QueryNode(joinsEp, createQuery(z, knows, w)),
-                /*4*/ new QueryNode(joinsEp, createQuery(w, knows, ex("h6"))),
+        QueryOp[] leafs = {
+                /*0*/ new QueryOp(joinsEp, createQuery(ex("h1"), knows, x)),
+                /*1*/ new QueryOp(joinsEp, createQuery(x, knows, y)),
+                /*2*/ new QueryOp(joinsEp, createQuery(y, knows, z)),
+                /*3*/ new QueryOp(joinsEp, createQuery(z, knows, w)),
+                /*4*/ new QueryOp(joinsEp, createQuery(w, knows, ex("h6"))),
         };
-        JoinNode j0 = JoinNode.builder(leafs[4], leafs[3]).build();
-        JoinNode j1 = JoinNode.builder(j0, leafs[2]).build();
-        JoinNode j2 = JoinNode.builder(j1, leafs[1]).build();
-        JoinNode j3 = JoinNode.builder(j2, leafs[0]).build();
+        JoinOp j0 = JoinOp.create(leafs[4], leafs[3]);
+        JoinOp j1 = JoinOp.create(j0, leafs[2]);
+        JoinOp j2 = JoinOp.create(j1, leafs[1]);
+        JoinOp j3 = JoinOp.create(j2, leafs[0]);
         test(module, j3, singleton(MapSolution.builder().put(x, ex("h2"))
                 .put(y, ex("h3"))
                 .put(z, ex("h4"))
@@ -426,17 +413,17 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testFiveHopsPathJoinBalanced(@Nonnull Module module) {
-        QueryNode[] leafs = {
-                /*0*/ new QueryNode(joinsEp, createQuery(ex("h1"), knows, x)),
-                /*1*/ new QueryNode(joinsEp, createQuery(x, knows, y)),
-                /*2*/ new QueryNode(joinsEp, createQuery(y, knows, z)),
-                /*3*/ new QueryNode(joinsEp, createQuery(z, knows, w)),
-                /*4*/ new QueryNode(joinsEp, createQuery(w, knows, ex("h6"))),
+        QueryOp[] leafs = {
+                /*0*/ new QueryOp(joinsEp, createQuery(ex("h1"), knows, x)),
+                /*1*/ new QueryOp(joinsEp, createQuery(x, knows, y)),
+                /*2*/ new QueryOp(joinsEp, createQuery(y, knows, z)),
+                /*3*/ new QueryOp(joinsEp, createQuery(z, knows, w)),
+                /*4*/ new QueryOp(joinsEp, createQuery(w, knows, ex("h6"))),
         };
-        JoinNode j0 = JoinNode.builder(leafs[0], leafs[1]).build();
-        JoinNode j1 = JoinNode.builder(leafs[2], j0).build();
-        JoinNode j2 = JoinNode.builder(leafs[3], leafs[4]).build();
-        JoinNode j3 = JoinNode.builder(j1, j2).build();
+        JoinOp j0 = JoinOp.create(leafs[0], leafs[1]);
+        JoinOp j1 = JoinOp.create(leafs[2], j0);
+        JoinOp j2 = JoinOp.create(leafs[3], leafs[4]);
+        JoinOp j3 = JoinOp.create(j1, j2);
 
         test(module, j3, singleton(MapSolution.builder().put(x, ex("h2"))
                                                         .put(y, ex("h3"))
@@ -446,15 +433,15 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testThreeHopsMultiPathsLeftDeep(@Nonnull Module module) {
-        QueryNode[] leafs = {
-                /*0*/ new QueryNode(joinsEp, createQuery(ex("src"), knows, x)),
-                /*1*/ new QueryNode(joinsEp, createQuery(x, knows, y)),
-                /*2*/ new QueryNode(joinsEp, createQuery(y, knows, z)),
-                /*3*/ new QueryNode(joinsEp, createQuery(z, knows, ex("dst"))),
+        QueryOp[] leafs = {
+                /*0*/ new QueryOp(joinsEp, createQuery(ex("src"), knows, x)),
+                /*1*/ new QueryOp(joinsEp, createQuery(x, knows, y)),
+                /*2*/ new QueryOp(joinsEp, createQuery(y, knows, z)),
+                /*3*/ new QueryOp(joinsEp, createQuery(z, knows, ex("dst"))),
         };
-        JoinNode j0 = JoinNode.builder(leafs[0], leafs[1]).build();
-        JoinNode j1 = JoinNode.builder(j0, leafs[2]).build();
-        JoinNode j2 = JoinNode.builder(j1, leafs[3]).build();
+        JoinOp j0 = JoinOp.create(leafs[0], leafs[1]);
+        JoinOp j1 = JoinOp.create(j0, leafs[2]);
+        JoinOp j2 = JoinOp.create(j1, leafs[3]);
 
         test(module, j2, Sets.newHashSet(
                 MapSolution.builder().put(x, ex("i1")).put(y, ex("i2")).put(z, ex("i3")).build(),
@@ -465,15 +452,15 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testThreeHopsMultiPathsRightDeep(@Nonnull Module module) {
-        QueryNode[] leafs = {
-                /*0*/ new QueryNode(joinsEp, createQuery(ex("src"), knows, x)),
-                /*1*/ new QueryNode(joinsEp, createQuery(x, knows, y)),
-                /*2*/ new QueryNode(joinsEp, createQuery(y, knows, z)),
-                /*3*/ new QueryNode(joinsEp, createQuery(z, knows, ex("dst"))),
+        QueryOp[] leafs = {
+                /*0*/ new QueryOp(joinsEp, createQuery(ex("src"), knows, x)),
+                /*1*/ new QueryOp(joinsEp, createQuery(x, knows, y)),
+                /*2*/ new QueryOp(joinsEp, createQuery(y, knows, z)),
+                /*3*/ new QueryOp(joinsEp, createQuery(z, knows, ex("dst"))),
         };
-        JoinNode j0 = JoinNode.builder(leafs[2], leafs[3]).build();
-        JoinNode j1 = JoinNode.builder(leafs[1], j0).build();
-        JoinNode j2 = JoinNode.builder(leafs[0], j1).build();
+        JoinOp j0 = JoinOp.create(leafs[2], leafs[3]);
+        JoinOp j1 = JoinOp.create(leafs[1], j0);
+        JoinOp j2 = JoinOp.create(leafs[0], j1);
 
         test(module, j2, Sets.newHashSet(
                 MapSolution.builder().put(x, ex("i1")).put(y, ex("i2")).put(z, ex("i3")).build(),
@@ -484,15 +471,15 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testThreeHopsMultiPathsBalanced(@Nonnull Module module) {
-        QueryNode[] leafs = {
-                /*0*/ new QueryNode(joinsEp, createQuery(ex("src"), knows, x)),
-                /*1*/ new QueryNode(joinsEp, createQuery(x, knows, y)),
-                /*2*/ new QueryNode(joinsEp, createQuery(y, knows, z)),
-                /*3*/ new QueryNode(joinsEp, createQuery(z, knows, ex("dst"))),
+        QueryOp[] leafs = {
+                /*0*/ new QueryOp(joinsEp, createQuery(ex("src"), knows, x)),
+                /*1*/ new QueryOp(joinsEp, createQuery(x, knows, y)),
+                /*2*/ new QueryOp(joinsEp, createQuery(y, knows, z)),
+                /*3*/ new QueryOp(joinsEp, createQuery(z, knows, ex("dst"))),
         };
-        JoinNode j0 = JoinNode.builder(leafs[0], leafs[1]).build();
-        JoinNode j1 = JoinNode.builder(leafs[2], leafs[3]).build();
-        JoinNode j2 = JoinNode.builder(j0, j1).build();
+        JoinOp j0 = JoinOp.create(leafs[0], leafs[1]);
+        JoinOp j1 = JoinOp.create(leafs[2], leafs[3]);
+        JoinOp j2 = JoinOp.create(j0, j1);
 
         test(module, j2, Sets.newHashSet(
                 MapSolution.builder().put(x, ex("i1")).put(y, ex("i2")).put(z, ex("i3")).build(),
@@ -503,9 +490,9 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testGetOrderAndConsumer(@Nonnull Module module) {
-        QueryNode l = new QueryNode(joinsEp, createQuery(x, type, ex("Order")));
-        QueryNode r = new QueryNode(joinsEp, createQuery(x, ex("hasConsumer"), y));
-        JoinNode join = JoinNode.builder(l, r).build();
+        QueryOp l = new QueryOp(joinsEp, createQuery(x, type, ex("Order")));
+        QueryOp r = new QueryOp(joinsEp, createQuery(x, ex("hasConsumer"), y));
+        JoinOp join = JoinOp.create(l, r);
         test(module, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("order/1")).put("y", ex("consumer/1")).build(),
                 MapSolution.builder().put("x", ex("order/2")).put("y", ex("consumer/2")).build(),
@@ -521,11 +508,11 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testGetOrderAndPremiumConsumer(@Nonnull Module module) {
-        QueryNode l = new QueryNode(joinsEp, createQuery(x, type, ex("Order")));
-        QueryNode r = new QueryNode(joinsEp, createQuery(x, ex("hasConsumer"), y));
-        QueryNode rr = new QueryNode(joinsEp, createQuery(y, type, ex("PremiumConsumer")));
-        JoinNode rightRoot = JoinNode.builder(r, rr).build();
-        JoinNode join = JoinNode.builder(l, rightRoot).build();
+        QueryOp l = new QueryOp(joinsEp, createQuery(x, type, ex("Order")));
+        QueryOp r = new QueryOp(joinsEp, createQuery(x, ex("hasConsumer"), y));
+        QueryOp rr = new QueryOp(joinsEp, createQuery(y, type, ex("PremiumConsumer")));
+        JoinOp rightRoot = JoinOp.create(r, rr);
+        JoinOp join = JoinOp.create(l, rightRoot);
         test(module, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("order/2")).put("y", ex("consumer/2")).build(),
                 MapSolution.builder().put("x", ex("order/3")).put("y", ex("consumer/3")).build(),
@@ -535,11 +522,12 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testGetOrderAndConsumerTypeWithProjection(@Nonnull Module module) {
-        QueryNode a = new QueryNode(joinsEp, createQuery(x, type, ex("Order")));
-        QueryNode b = new QueryNode(joinsEp, createQuery(x, ex("hasConsumer"), y));
-        QueryNode c = new QueryNode(joinsEp, createQuery(y, type, z));
-        JoinNode leftBuilder = JoinNode.builder(a, b).build();
-        JoinNode root = JoinNode.builder(leftBuilder, c).addResultVars(asList("x", "z")).build();
+        QueryOp a = new QueryOp(joinsEp, createQuery(x, type, ex("Order")));
+        QueryOp b = new QueryOp(joinsEp, createQuery(x, ex("hasConsumer"), y));
+        QueryOp c = new QueryOp(joinsEp, createQuery(y, type, z));
+        JoinOp leftBuilder = JoinOp.create(a, b);
+        JoinOp root = JoinOp.create(leftBuilder, c);
+        root.modifiers().add(Projection.advised("x", "z"));
         test(module, root, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("order/1")).put("z", ex("Consumer")).build(),
                 MapSolution.builder().put("x", ex("order/2")).put("z", ex("Consumer")).build(),
@@ -558,9 +546,9 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testGetQuotesAndClients(@Nonnull Module module) {
-        QueryNode l = new QueryNode(joinsEp, createQuery(x, type, ex("Quote")));
-        QueryNode r = new QueryNode(joinsEp, createQuery(x, ex("hasClient"), y));
-        JoinNode join = JoinNode.builder(l, r).build();
+        QueryOp l = new QueryOp(joinsEp, createQuery(x, type, ex("Quote")));
+        QueryOp r = new QueryOp(joinsEp, createQuery(x, ex("hasClient"), y));
+        JoinOp join = JoinOp.create(l, r);
         test(module, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("quote/1")).put("y", ex("client/1")).build(),
                 MapSolution.builder().put("x", ex("quote/2")).put("y", ex("client/1")).build(),
@@ -576,16 +564,16 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testProductAndCostumer(@Nonnull Module module) {
-        QueryNode l = new QueryNode(joinsEp, createQuery(x, ex("soldTo"), y));
-        QueryNode r = new QueryNode(joinsEp, createQuery(y, type, ex("Costumer")));
-        JoinNode join = JoinNode.builder(l, r).build();
+        QueryOp l = new QueryOp(joinsEp, createQuery(x, ex("soldTo"), y));
+        QueryOp r = new QueryOp(joinsEp, createQuery(y, type, ex("Costumer")));
+        JoinOp join = JoinOp.create(l, r);
         test(module, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("product/3")).put("y", ex("costumer/1")).build(),
                 MapSolution.builder().put("x", ex("product/4")).put("y", ex("costumer/2")).build(),
                 MapSolution.builder().put("x", ex("product/5")).put("y", ex("costumer/3")).build()
         ));
 
-        join = JoinNode.builder(r, l).build();
+        join = JoinOp.create(r, l);
         test(module, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("product/3")).put("y", ex("costumer/1")).build(),
                 MapSolution.builder().put("x", ex("product/4")).put("y", ex("costumer/2")).build(),
@@ -595,16 +583,18 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testProductAndCostumerProjectingProduct(@Nonnull Module module) {
-        QueryNode l = new QueryNode(joinsEp, createQuery(x, ex("soldTo"), y));
-        QueryNode r = new QueryNode(joinsEp, createQuery(y, type, ex("Costumer")));
-        JoinNode join = JoinNode.builder(l, r).addResultVar("x").build();
+        QueryOp l = new QueryOp(joinsEp, createQuery(x, ex("soldTo"), y));
+        QueryOp r = new QueryOp(joinsEp, createQuery(y, type, ex("Costumer")));
+        JoinOp join = JoinOp.create(l, r);
+        join.modifiers().add(Projection.advised("x"));
         test(module, join, Sets.newHashSet(
                 MapSolution.build(x, ex("product/3")),
                 MapSolution.build(x, ex("product/4")),
                 MapSolution.build(x, ex("product/5"))
         ));
 
-        join = JoinNode.builder(r, l).addResultVar("x").build();
+        join = JoinOp.create(r, l);
+        join.modifiers().add(Projection.advised("x"));
         test(module, join, Sets.newHashSet(
                 MapSolution.build(x, ex("product/3")),
                 MapSolution.build(x, ex("product/4")),
@@ -614,16 +604,18 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "modulesData")
     public void testProductAndCostumerProjecting(@Nonnull Module module) {
-        QueryNode l = new QueryNode(joinsEp, createQuery(x, ex("soldTo"), y));
-        QueryNode r = new QueryNode(joinsEp, createQuery(y, type, ex("Costumer")));
-        JoinNode join = JoinNode.builder(l, r).addResultVar("y").build();
+        QueryOp l = new QueryOp(joinsEp, createQuery(x, ex("soldTo"), y));
+        QueryOp r = new QueryOp(joinsEp, createQuery(y, type, ex("Costumer")));
+        JoinOp join = JoinOp.create(l, r);
+        join.modifiers().add(Projection.advised("y"));
         test(module, join, Sets.newHashSet(
                 MapSolution.build(y, ex("costumer/1")),
                 MapSolution.build(y, ex("costumer/2")),
                 MapSolution.build(y, ex("costumer/3"))
         ));
 
-        join = JoinNode.builder(r, l).addResultVar("y").build();
+        join = JoinOp.create(r, l);
+        join.modifiers().add(Projection.advised("y"));
         test(module, join, Sets.newHashSet(
                 MapSolution.build(y, ex("costumer/1")),
                 MapSolution.build(y, ex("costumer/2")),
@@ -634,7 +626,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     @Test(dataProvider = "modulesData") //no joins, so any module will do
     public void testQueryApi(@Nonnull Module module) {
         StdURI consumer1 = ex("consumer/1");
-        QueryNode node = new QueryNode(typeEp,
+        QueryOp node = new QueryOp(typeEp,
                 createQuery(consumer1, AtomInputAnnotation.asRequired(typedThing, "uri").get(),
                             type, x, AtomAnnotation.of(typeAtom)));
         test(module, node, singleton(MapSolution.build(x, ex("Consumer"))));
@@ -642,49 +634,51 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
     @Test(dataProvider = "bindJoinModulesData")
     public void testBindJoinServiceAndTriple(@Nonnull Module module) {
-        QueryNode q1 = new QueryNode(joinsEp, createQuery(ex("order/1"), ex("hasConsumer"), x));
-        QueryNode q2 = new QueryNode(typeEp,
+        QueryOp q1 = new QueryOp(joinsEp, createQuery(ex("order/1"), ex("hasConsumer"), x));
+        QueryOp q2 = new QueryOp(typeEp,
                 createQuery(x, AtomInputAnnotation.asRequired(typedThing, "uri").get(), type, y, AtomAnnotation.of(typeAtom)));
-        test(module, JoinNode.builder(q1, q2).build(), singleton(
+        test(module, JoinOp.create(q1, q2), singleton(
                 MapSolution.builder().put(x, ex("consumer/1")).put(y, ex("Consumer")).build()
         ));
         // order under the JoinNode should be irrelevant
-        test(module, JoinNode.builder(q2, q1).build(), singleton(
+        test(module, JoinOp.create(q2, q1), singleton(
                 MapSolution.builder().put(x, ex("consumer/1")).put(y, ex("Consumer")).build()
         ));
     }
 
     @Test(dataProvider = "bindJoinModulesData")
     public void testSinglePathQueryWithThreeServices(@Nonnull Module module) {
-        QueryNode n1 = new QueryNode(poEP, createQuery(
+        QueryOp n1 = new QueryOp(poEP, createQuery(
                 ex("h1"), AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, x, AtomAnnotation.of(knowsAtom)));
-        QueryNode n2 = new QueryNode(poEP,
+        QueryOp n2 = new QueryOp(poEP,
                 createQuery(x, AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, y, AtomAnnotation.of(knowsAtom)));
-        QueryNode n3 = new QueryNode(poEP, createQuery(
+        QueryOp n3 = new QueryOp(poEP, createQuery(
                 y, AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, z, AtomAnnotation.of(knowsAtom)));
-        JoinNode j1 = JoinNode.builder(n1, n2).build();
-        JoinNode j2 = JoinNode.builder(j1, n3).build();
+        JoinOp j1 = JoinOp.create(n1, n2);
+        JoinOp j2 = JoinOp.create(j1, n3);
         test(module, j2, singleton(
                 MapSolution.builder().put(x, ex("h2")).put(y, ex("h3")).put(z, ex("h4")).build()));
 
         // project at root
-        JoinNode j3 = JoinNode.builder(j1, n3).addResultVar("z").build();
+        JoinOp j3 = JoinOp.create(j1, n3);
+        j3.modifiers().add(Projection.advised("z"));
         test(module, j3, singleton(MapSolution.build(z, ex("h4"))));
     }
 
     @Test(dataProvider = "bindJoinModulesData")
     public void testMultiPathQueryWithFourServices(@Nonnull Module module) {
-        QueryNode n1 = new QueryNode(poEP, createQuery(
+        QueryOp n1 = new QueryOp(poEP, createQuery(
                 ex("src"), AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, x, AtomAnnotation.of(knowsAtom)));
-        QueryNode n2 = new QueryNode(poEP, createQuery(
+        QueryOp n2 = new QueryOp(poEP, createQuery(
                 x, AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, y, AtomAnnotation.of(knowsAtom)));
-        QueryNode n3 = new QueryNode(poEP, createQuery(
+        QueryOp n3 = new QueryOp(poEP, createQuery(
                 y, AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, z, AtomAnnotation.of(knowsAtom)));
-        QueryNode n4 = new QueryNode(poEP, createQuery(
+        QueryOp n4 = new QueryOp(poEP, createQuery(
                 z, AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, w, AtomAnnotation.of(knowsAtom)));
-        JoinNode j1 = JoinNode.builder(n1, n2).build();
-        JoinNode j2 = JoinNode.builder(n3, n4).build();
-        JoinNode j3 = JoinNode.builder(j1, j2).addResultVars(asList("x", "w")).build();
+        JoinOp j1 = JoinOp.create(n1, n2);
+        JoinOp j2 = JoinOp.create(n3, n4);
+        JoinOp j3 = JoinOp.create(j1, j2);
+        j3.modifiers().add(Projection.advised("x", "w"));
         test(module, j3, Sets.newHashSet(
                 MapSolution.builder().put(x, ex("i1")).put(w, ex("dst")).build(),
                 MapSolution.builder().put(x, ex("j1")).put(w, ex("dst")).build(),

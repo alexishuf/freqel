@@ -1,15 +1,16 @@
 package br.ufsc.lapesd.riefederator.rel.common;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.tags.AtomTag;
 import br.ufsc.lapesd.riefederator.description.molecules.tags.MoleculeLinkTag;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
+import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
-import br.ufsc.lapesd.riefederator.federation.tree.ComponentNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -71,23 +72,22 @@ public class StarsHelper {
         checkArgument(!query.attr().isJoinConnected(), "Query should not be join-connected");
 
         Injector injector = getInjector();
+        InnerCardinalityComputer cardComputer = injector.getInstance(InnerCardinalityComputer.class);
         PlanExecutor planExecutor = injector.getInstance(PlanExecutor.class);
-        PlanNode plan = injector.getInstance(OuterPlanner.class).plan(query);
-        Map<PlanNode, PlanNode> replacements = new HashMap<>();
-        TreeUtils.streamPreOrder(plan).filter(ComponentNode.class::isInstance).forEach(n -> {
-            CQuery componentQuery = ((ComponentNode) n).getQuery();
-            replacements.put(n, new QueryNode(target, componentQuery));
+        Op plan = injector.getInstance(OuterPlanner.class).plan(query);
+        plan = TreeUtils.replaceNodes(plan, cardComputer, op -> {
+            if (op.getClass().equals(UnassignedQueryOp.class))
+                return new QueryOp(target, ((UnassignedQueryOp) op).getQuery());
+            return op;
         });
-        plan = TreeUtils.replaceNodes(plan, replacements);
+
         FilterAssigner assigner = new FilterAssigner(query);
         assigner.placeBottommost(plan);
         return planExecutor.executePlan(plan);
     }
 
     public static @Nonnull IndexedSet<SPARQLFilter> getFilters(@Nonnull CQuery query) {
-        return IndexedSet.fromDistinct(query.getModifiers().stream()
-                .filter(f->f instanceof SPARQLFilter)
-                .map(f -> (SPARQLFilter)f).iterator());
+        return IndexedSet.fromDistinctCopy(query.getModifiers().filters());
     }
 
     public static @Nonnull List<StarSubQuery> findStars(@Nonnull CQuery query) {

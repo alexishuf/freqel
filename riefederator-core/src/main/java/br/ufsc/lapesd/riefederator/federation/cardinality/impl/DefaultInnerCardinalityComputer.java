@@ -1,21 +1,21 @@
 package br.ufsc.lapesd.riefederator.federation.cardinality.impl;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.util.CardinalityAdder;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
-import br.ufsc.lapesd.riefederator.federation.tree.CartesianNode;
-import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.Cardinality.Reliability;
-import br.ufsc.lapesd.riefederator.query.CardinalityAdder;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.math.BigInteger;
 
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.*;
+import static br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability.*;
 
 public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer {
     private final @Nonnull CardinalityComparator comparator;
@@ -29,7 +29,7 @@ public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer
     }
 
     @Override
-    public @Nonnull Cardinality compute(JoinNode n) {
+    public @Nonnull Cardinality compute(JoinOp n) {
         Cardinality lc = n.getLeft().getCardinality(), rc = n.getRight().getCardinality();
         if (lc.equals(Cardinality.EMPTY) || rc.equals(Cardinality.EMPTY))
             return Cardinality.EMPTY;
@@ -37,7 +37,7 @@ public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer
     }
 
     @Override
-    public @Nonnull Cardinality compute(CartesianNode n) {
+    public @Nonnull Cardinality compute(CartesianOp n) {
         // special cases
         if (n.getChildren().isEmpty()) return Cardinality.EMPTY;
         if (n.getChildren().stream().anyMatch(m -> m.getCardinality().equals(Cardinality.EMPTY)))
@@ -46,7 +46,7 @@ public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer
         // general case:
         Reliability r = null;
         long v = 0;
-        for (PlanNode child : n.getChildren()) {
+        for (Op child : n.getChildren()) {
             Cardinality c = child.getCardinality();
             if (r == null) {
                 r = c.getReliability();
@@ -57,9 +57,10 @@ public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer
                 // get best reliability limited to LOWER_BOUND
                 if (c.getReliability().isAtMost(LOWER_BOUND))
                     r = r.isAtLeast(c.getReliability()) ? r : c.getReliability();
-                assert c.getValue(-1) >= 0;
-                BigInteger ov = BigInteger.valueOf(c.getValue(v)); // if unsupported, square
-                BigInteger m = BigInteger.valueOf(v).multiply(ov);
+                BigInteger v1 = BigInteger.valueOf(c.getValue(v));  // if unsupported, square
+                BigInteger v2 = v < 0 ? v1 : BigInteger.valueOf(v); // if old v is -1, square
+                assert v >= 0 || c.getReliability() != UNSUPPORTED; // we have at least one value
+                BigInteger m = v1.multiply(v2);
                 v = m.bitLength() <= 63 ? m.longValue() : Long.MAX_VALUE;
             } else {
                 assert r.isAtLeast(UPPER_BOUND);
@@ -76,8 +77,8 @@ public class DefaultInnerCardinalityComputer implements InnerCardinalityComputer
     }
 
     @Override
-    public @Nonnull Cardinality compute(MultiQueryNode n) {
-        return n.getChildren().stream().map(PlanNode::getCardinality)
+    public @Nonnull Cardinality compute(UnionOp n) {
+        return n.getChildren().stream().map(Op::getCardinality)
                               .reduce(adder).orElse(Cardinality.UNSUPPORTED);
     }
 }

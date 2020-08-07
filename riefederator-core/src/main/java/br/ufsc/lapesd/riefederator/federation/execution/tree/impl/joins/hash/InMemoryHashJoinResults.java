@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultHashJoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultHashJoinOpExecutor;
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -22,7 +22,7 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toSet;
 
 public class InMemoryHashJoinResults extends AbstractResults implements Results {
-    private static final @Nonnull Logger logger = LoggerFactory.getLogger(DefaultHashJoinNodeExecutor.class);
+    private static final @Nonnull Logger logger = LoggerFactory.getLogger(DefaultHashJoinOpExecutor.class);
 
     private final @Nonnull Results smaller, larger;
     private final @Nonnull CrudeSolutionHashTable hashTable;

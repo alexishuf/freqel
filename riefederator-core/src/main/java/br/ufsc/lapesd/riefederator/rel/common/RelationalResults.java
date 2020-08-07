@@ -72,14 +72,14 @@ public abstract class RelationalResults extends AbstractResults {
         Set<String> projection = getVarNames();
         for (int i = 0, size = rw.getStarsCount(); i < size; i++) {
             MutableCQuery b = MutableCQuery.from(index.getPendingTriples(i));
-            index.getPendingFilters(i).forEach(b::addModifier);
+            b.mutateModifiers().addAll(index.getPendingFilters(i));
             if (b.isEmpty()) {
                 assert index.getPendingFilters(i).isEmpty();
                 Term core = rw.getStar(i).getCore();
                 if (core.isVar() && projection.contains(core.asVar().getName())) {
                     b.add(new Triple(core, p, o));
-                    b.addModifier(Projection.required(core.asVar().getName()));
-                    b.addModifier(Distinct.REQUIRED);
+                    b.mutateModifiers().add(Projection.required(core.asVar().getName()));
+                    b.mutateModifiers().add(Distinct.REQUIRED);
                 } else { // no work on our side, skip it
                     jenaStars.add(null);
                     jenaVars.add(Collections.emptySet());

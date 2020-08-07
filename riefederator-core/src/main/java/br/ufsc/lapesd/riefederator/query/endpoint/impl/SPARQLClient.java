@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.endpoint.impl;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
@@ -8,13 +9,12 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -59,7 +59,7 @@ import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
-import static br.ufsc.lapesd.riefederator.query.Cardinality.*;
+import static br.ufsc.lapesd.riefederator.algebra.Cardinality.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Boolean.parseBoolean;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -280,10 +280,10 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         if (query.isEmpty()) return EMPTY;
 
         if (EstimatePolicy.canQueryRemote(policy) || EstimatePolicy.canAskRemote(policy)) {
-            Set<Modifier> mods = query.getModifiers();
-            if (!query.attr().isAsk())
-                (mods = new HashSet<>(query.getModifiers())).add(Ask.REQUIRED);
-            try (Results results = query(query.withModifiers(mods))) {
+            MutableCQuery askQuery = new MutableCQuery(query);
+            if (askQuery.getModifiers().ask() == null)
+                askQuery.mutateModifiers().add(Ask.REQUIRED);
+            try (Results results = query(askQuery)) {
                 return results.hasNext() ? NON_EMPTY : EMPTY;
             } catch (QueryExecutionException e) { return EMPTY; }
         }

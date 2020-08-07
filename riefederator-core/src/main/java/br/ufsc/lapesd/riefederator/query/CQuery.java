@@ -9,8 +9,8 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
-import br.ufsc.lapesd.riefederator.query.impl.CQueryData;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
@@ -102,9 +102,6 @@ public class CQuery implements  List<Triple> {
         return new CQuery(d, dict);
     }
 
-    public @Nonnull CQuery withModifiers(@Nonnull CQuery other) {
-        return withModifiers(other.getModifiers());
-    }
     public @Nonnull CQuery withModifiers(@Nonnull Collection<Modifier> modifiers) {
         CQueryData d2 = d.toExclusive().attach();
         d2.modifiers.addAll(modifiers);
@@ -135,7 +132,7 @@ public class CQuery implements  List<Triple> {
     }
 
     /** Gets the modifiers of this query. */
-    public @Nonnull Set<Modifier> getModifiers() { return d.cache.unmodifiableModifiers(); }
+    public @Nonnull ModifiersSet getModifiers() { return d.modifiersView; }
 
     /** Indicates if there is any triple annotation. */
     public boolean hasQueryAnnotations() { return !d.queryAnnotations.isEmpty(); }
@@ -257,7 +254,7 @@ public class CQuery implements  List<Triple> {
             triples.addAll(d.cache.triplesWithTermAt(term, position));
 
         MutableCQuery other = MutableCQuery.from(triples);
-        other.addModifiers(getModifiers());
+        other.mutateModifiers().addAll(getModifiers());
         other.sanitizeFiltersStrict();
         other.copyTripleAnnotations(this);
         other.copyTermAnnotations(this);

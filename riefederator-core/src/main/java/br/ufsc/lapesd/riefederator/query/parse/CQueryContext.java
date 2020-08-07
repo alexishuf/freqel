@@ -138,7 +138,7 @@ public abstract class CQueryContext {
                     processed = true;
                 }
                 if (next instanceof Modifier) {
-                    query.addModifier((Modifier) next);
+                    query.mutateModifiers().add((Modifier) next);
                     processed = true;
                 }
                 if (next instanceof PrefixDict) {

@@ -8,7 +8,6 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
@@ -292,7 +291,7 @@ public class StarVarIndex {
             assert !stars.isEmpty();
 
             Set<String> sparqlVars;
-            Projection projection = ModifierUtils.getFirst(Projection.class, query.getModifiers());
+            Projection projection = query.getModifiers().projection();
             if (projection != null) {
                 sparqlVars = new HashSet<>(projection.getVarNames());
                 for (IndexedSubset<SPARQLFilter> filters : star2pendingFilters) {

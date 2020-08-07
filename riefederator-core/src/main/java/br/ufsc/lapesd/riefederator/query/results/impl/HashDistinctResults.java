@@ -1,8 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +25,7 @@ public class HashDistinctResults extends DelegatingResults implements BufferedRe
     }
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
-        if (ModifierUtils.getFirst(Capability.DISTINCT, query.getModifiers()) != null)
+        if (query.getModifiers().distinct() != null)
             return new HashDistinctResults(in);
         return in;
     }

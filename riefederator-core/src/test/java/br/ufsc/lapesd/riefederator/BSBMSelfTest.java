@@ -93,7 +93,7 @@ public class BSBMSelfTest {
     public static @Nonnull CQuery loadQuery(@Nonnull String queryName) throws
             IOException, SPARQLParseException {
         MutableCQuery query = loadQueryWithLimit(queryName);
-        query.removeModifierIf(Limit.class::isInstance);
+        query.mutateModifiers().removeIf(Limit.class::isInstance);
         return query;
     }
 

@@ -22,8 +22,8 @@ public class Projection implements Modifier {
 
     /* ~~~ Constructor & builder ~~~ */
 
-    public Projection(@Nonnull ImmutableSet<String> varNames, boolean required) {
-        this.varNames = varNames;
+    public Projection(@Nonnull Set<String> varNames, boolean required) {
+        this.varNames = ImmutableSet.copyOf(varNames);
         this.required = required;
     }
 
@@ -52,7 +52,7 @@ public class Projection implements Modifier {
         }
 
         public @Contract("-> new") @Nonnull Projection build() {
-            return new Projection(ImmutableSet.copyOf(set), required);
+            return new Projection(set, required);
         }
     }
 
@@ -111,7 +111,6 @@ public class Projection implements Modifier {
         if (!(o instanceof Projection)) return false;
         Projection that = (Projection) o;
         return isRequired() == that.isRequired() &&
-                hash == that.hash &&
                 getVarNames().equals(that.getVarNames());
     }
 

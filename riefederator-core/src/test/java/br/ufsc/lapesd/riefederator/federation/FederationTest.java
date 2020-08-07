@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.BSBMSelfTest;
 import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.description.AskDescription;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
@@ -18,12 +19,12 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinal
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.EvenDecomposer;
 import br.ufsc.lapesd.riefederator.federation.decomp.StandardDecomposer;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
@@ -36,7 +37,6 @@ import br.ufsc.lapesd.riefederator.federation.planner.OuterPlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.linkedator.Linkedator;
 import br.ufsc.lapesd.riefederator.linkedator.LinkedatorResult;
@@ -668,7 +668,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
 //                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
@@ -680,17 +680,17 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(CartesianNodeExecutor.class).to(EagerCartesianNodeExecutor.class);
+                    bind(CartesianOpExecutor.class).to(EagerCartesianOpExecutor.class);
                     configureCardinalityEstimation(binder(), 0);
                 }
                 @Override
-                public String toString() { return asString(EagerCartesianNodeExecutor.class); }
+                public String toString() { return asString(EagerCartesianOpExecutor.class); }
             },
             (op, ip, opt, dec, pl) -> new TestModule(false, op, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
 //                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
@@ -702,7 +702,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(FixedHashJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
                     bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults::new);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
 //                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
@@ -714,7 +714,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(FixedBindJoinOpExecutor.class);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
 //                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
@@ -726,7 +726,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 protected void configure() {
                     super.configure();
-                    bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
+                    bind(JoinOpExecutor.class).to(FixedBindJoinOpExecutor.class);
                     bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
                     configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
 //                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
@@ -1007,7 +1007,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         Set<Solution> actual = new HashSet<>();
         federation.initAllSources(5, TimeUnit.MINUTES);
 //        Stopwatch sw = Stopwatch.createStarted();
-        PlanNode plan = federation.plan(query);
+        Op plan = federation.plan(query);
 //        if (sw.elapsed(TimeUnit.MILLISECONDS) > 20)
 //            System.out.printf("Slow plan: %f\n", sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
         PlannerTest.assertPlanAnswers(plan, query);
@@ -1059,7 +1059,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         setup.accept(federation, target().getUri().toString());
 
         federation.initAllSources(5, TimeUnit.MINUTES);
-        PlanNode plan = federation.plan(query);
+        Op plan = federation.plan(query);
         PerformanceListener perf = federation.getPerformanceListener();
         perf.sync();
 
@@ -1224,7 +1224,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         Federation federation = Guice.createInjector(effectiveModule).getInstance(Federation.class);
         setup.accept(federation, target().getUri().toString());
         federation.initAllSources(5, TimeUnit.MINUTES);
-        PlanNode plan = federation.plan(query);
+        Op plan = federation.plan(query);
         PlannerTest.assertPlanAnswers(plan, query);
 
         Set<Solution> actual = new HashSet<>();

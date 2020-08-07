@@ -1,13 +1,13 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl.paths;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.ArbitraryJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinOrderPlannerTest;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -27,7 +27,7 @@ import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.OBJ;
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.SUBJ;
 import static com.google.common.collect.Sets.newHashSet;
@@ -44,13 +44,13 @@ public class SubPathAggregationTest implements TestContext {
 
     public static final Atom A1 = new Atom("Atom1"), A2 = new Atom("Atom2");
 
-    public static @Nonnull QueryNode
+    public static @Nonnull QueryOp
     node(@Nonnull CQEndpoint endpoint, @Nonnull Term s, @Nonnull Term p, @Nonnull Term o) {
-        return new QueryNode(endpoint, CQuery.from(new Triple(s, p, o)));
+        return new QueryOp(endpoint, CQuery.from(new Triple(s, p, o)));
     }
     public static @Nonnull
-    QueryNode node(@Nonnull CQEndpoint endpoint, @Nonnull Term s, @Nonnull Term p, @Nonnull Term o,
-                   @Nonnull Triple.Position input) {
+    QueryOp node(@Nonnull CQEndpoint endpoint, @Nonnull Term s, @Nonnull Term p, @Nonnull Term o,
+                 @Nonnull Triple.Position input) {
         MutableCQuery query = MutableCQuery.from(new Triple(s, p, o));
         if (input == SUBJ) {
             query.annotate(s, AtomInputAnnotation.asRequired(A1, "A1").get());
@@ -59,16 +59,16 @@ public class SubPathAggregationTest implements TestContext {
             query.annotate(s, AtomAnnotation.of(A1));
             query.annotate(o, AtomInputAnnotation.asRequired(A2, "A2").get());
         }
-        return new QueryNode(endpoint, query);
+        return new QueryOp(endpoint, query);
     }
 
-    public static QueryNode n1 = node(e1, Alice, p1, x), n2 = node(e1, x, p2, y),
+    public static QueryOp n1 = node(e1, Alice, p1, x), n2 = node(e1, x, p2, y),
                             n3 = node(e1, y, p3, z),     n4 = node(e1, z, p4, Bob);
-    public static QueryNode o1 = node(e2, Alice, p1, x, SUBJ), o2 = node(e2, x, p2, y, SUBJ),
+    public static QueryOp o1 = node(e2, Alice, p1, x, SUBJ), o2 = node(e2, x, p2, y, SUBJ),
                             o3 = node(e2, y, p3, z, SUBJ),     o4 = node(e2, z, p4, Bob, SUBJ);
-    public static QueryNode l1 = node(e2, Alice, p1, x, OBJ), l2 = node(e2, x, p2, y, OBJ),
+    public static QueryOp l1 = node(e2, Alice, p1, x, OBJ), l2 = node(e2, x, p2, y, OBJ),
                             l3 = node(e2, y, p3, z, OBJ),     l4 = node(e2, z, p4, Bob, OBJ);
-    public static IndexedSet<PlanNode> allNodes = IndexedSet.fromDistinct(
+    public static IndexedSet<Op> allNodes = IndexedSet.fromDistinct(
             asList(n1, n2, n3, n4, o1, o2, o3, o4, l1, l2, l3, l4));
 
     @DataProvider
@@ -91,9 +91,9 @@ public class SubPathAggregationTest implements TestContext {
     }
 
     @Test(dataProvider = "stateStoreData")
-    public void testStateStore(@Nonnull Collection<Collection<PlanNode>> components,
-                               @Nonnull Collection<PlanNode> component,
-                               @Nullable Collection<Collection<PlanNode>> expected) {
+    public void testStateStore(@Nonnull Collection<Collection<Op>> components,
+                               @Nonnull Collection<Op> component,
+                               @Nullable Collection<Collection<Op>> expected) {
         //sanity
         assertTrue(components.stream().flatMap(Collection::stream).allMatch(allNodes::contains));
         if (expected != null) {
@@ -103,7 +103,7 @@ public class SubPathAggregationTest implements TestContext {
         }
 
         for (int i = 0; i < 256; i++) {
-            ArrayList<PlanNode> permutation = new ArrayList<>(allNodes);
+            ArrayList<Op> permutation = new ArrayList<>(allNodes);
             Collections.shuffle(permutation);
 
             //setup
@@ -120,7 +120,7 @@ public class SubPathAggregationTest implements TestContext {
                 state.store(allNodes.subset(component));
 
                 //check
-                Set<IndexedSubset<PlanNode>> expectedSet;
+                Set<IndexedSubset<Op>> expectedSet;
                 expectedSet = expected.stream().map(allNodes::subset).collect(toSet());
                 assertEquals(new HashSet<>(state.getComponents()), expectedSet);
             }
@@ -150,22 +150,22 @@ public class SubPathAggregationTest implements TestContext {
 
     @Test(dataProvider = "stateProcessPairData")
     public void testStateProcessPair(JoinComponent left, JoinComponent right,
-                                     Collection<Collection<PlanNode>> expected) {
+                                     Collection<Collection<Op>> expected) {
         for (int i = 0; i < 256; i++) {
-            ArrayList<PlanNode> permutation = new ArrayList<>(allNodes);
+            ArrayList<Op> permutation = new ArrayList<>(allNodes);
             Collections.shuffle(permutation);
             JoinGraph graph = new JoinGraph(IndexedSet.fromDistinct(permutation));
-            Set<IndexedSubset<PlanNode>> stored = new HashSet<>();
+            Set<IndexedSubset<Op>> stored = new HashSet<>();
             SubPathAggregation.State state = new SubPathAggregation.State(graph) {
                 @Override
-                public void store(@Nonnull IndexedSubset<PlanNode> component) {
+                public void store(@Nonnull IndexedSubset<Op> component) {
                     stored.add(component);
                 }
             };
 
             state.processPair(left, right);
 
-            Set<IndexedSubset<PlanNode>> expectedSet;
+            Set<IndexedSubset<Op>> expectedSet;
             expectedSet = expected.stream().map(allNodes::subset).collect(toSet());
             assertEquals(stored, expectedSet);
         }
@@ -220,7 +220,7 @@ public class SubPathAggregationTest implements TestContext {
         state.getComponents().add(allNodes.subset(o4));             // 3
         state.getComponents().add(allNodes.subset(l4));             // 4
         state.planComponents(new ArbitraryJoinOrderPlanner());
-        List<PlanNode> planned = state.getPlanned().stream().map(pc -> pc.node).collect(toList());
+        List<Op> planned = state.getPlanned().stream().map(pc -> pc.node).collect(toList());
         assertEquals(planned.size(), 5);
         assertTrue(planned.stream().allMatch(TreeUtils::isTree));
 
@@ -253,7 +253,7 @@ public class SubPathAggregationTest implements TestContext {
         state.getComponents().add(allNodes.subset(asList(n1, n2))); // 1
         state.getComponents().add(allNodes.subset(asList(o1, o2))); // 2
         state.planComponents(new ArbitraryJoinOrderPlanner());
-        List<PlanNode> planned = state.getPlanned().stream().map(pc -> pc.node).collect(toList());
+        List<Op> planned = state.getPlanned().stream().map(pc -> pc.node).collect(toList());
         assertEquals(planned.size(), 3);
         assertTrue(planned.stream().allMatch(TreeUtils::isTree));
 
@@ -314,10 +314,10 @@ public class SubPathAggregationTest implements TestContext {
         assertTrue(a.getGraph().getNodes().containsAll(asList(n3, n4, o3, o4)));
         assertFalse(a.getGraph().getNodes().containsAll(asList(n1, n2)));
 
-        IndexedSubset<PlanNode> novel;
+        IndexedSubset<Op> novel;
         novel = a.getJoinComponents().get(0).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
-        PlanNode common = novel.iterator().next();
+        Op common = novel.iterator().next();
         assertTrue(streamPreOrder(common).collect(toSet()).containsAll(newHashSet(n1, n2)));
 
         assertEquals(a.getJoinComponents().stream().map(JoinComponent::getNodes).collect(toList()),
@@ -341,15 +341,15 @@ public class SubPathAggregationTest implements TestContext {
         assertEquals(a.getJoinComponents().stream().map(p -> p.getNodes().size()).collect(toList()),
                      asList(3, 3, 3, 3));
 
-        IndexedSubset<PlanNode> novel;
+        IndexedSubset<Op> novel;
         novel = a.getJoinComponents().get(0).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
-        PlanNode common0 = novel.iterator().next();
+        Op common0 = novel.iterator().next();
         assertTrue(streamPreOrder(common0).collect(toSet()).containsAll(newHashSet(l1, l2)));
 
         novel = a.getJoinComponents().get(2).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
-        PlanNode common2 = novel.iterator().next();
+        Op common2 = novel.iterator().next();
         assertTrue(streamPreOrder(common2).collect(toSet()).containsAll(newHashSet(o1, o2)));
 
         assertEquals(a.getJoinComponents().stream().map(JoinComponent::getNodes).collect(toList()),
@@ -375,15 +375,15 @@ public class SubPathAggregationTest implements TestContext {
         assertEquals(a.getJoinComponents().stream().map(p -> p.getNodes().size()).collect(toList()),
                      asList(3, 3, 3, 3));
 
-        IndexedSubset<PlanNode> novel;
+        IndexedSubset<Op> novel;
         novel = a.getJoinComponents().get(0).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
-        PlanNode common0 = novel.iterator().next();
+        Op common0 = novel.iterator().next();
         assertTrue(streamPreOrder(common0).collect(toSet()).containsAll(newHashSet(l3, l4)));
 
         novel = a.getJoinComponents().get(1).getNodes().createDifference(allNodes);
         assertEquals(novel.size(), 1);
-        PlanNode common1 = novel.iterator().next();
+        Op common1 = novel.iterator().next();
         assertTrue(streamPreOrder(common1).collect(toSet()).containsAll(newHashSet(o3, o4)));
 
         assertEquals(a.getJoinComponents().stream().map(JoinComponent::getNodes).collect(toList()),

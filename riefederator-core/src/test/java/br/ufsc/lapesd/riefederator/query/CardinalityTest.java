@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

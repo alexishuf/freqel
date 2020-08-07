@@ -16,7 +16,9 @@ public enum  Capability {
         switch (this) {
             case ASK:
             case LIMIT:
+            case DISTINCT:
             case PROJECTION:
+            case VALUES:
                 return true;
             default:
                 return false;

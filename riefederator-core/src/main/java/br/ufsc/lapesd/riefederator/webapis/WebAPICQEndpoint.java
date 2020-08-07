@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.webapis;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.Source;
@@ -10,7 +11,6 @@ import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinPathsPlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
@@ -131,7 +131,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
             CQuery subQuery = match.getKnownExclusiveGroups().get(0);
             if (subQuery.size() != query.size())
                 return reportFailure(query, throwOnFailedMatch, varNames);
-            return query(subQuery.withModifiers(query)); // no loop, since it has AtomAnnotations
+            return query(subQuery.withModifiers(query.getModifiers())); // no loop, since it has AtomAnnotations
         } else {
             Set<Triple> allTriples = match.getKnownExclusiveGroups().stream()
                     .flatMap(CQuery::stream).collect(toSet());

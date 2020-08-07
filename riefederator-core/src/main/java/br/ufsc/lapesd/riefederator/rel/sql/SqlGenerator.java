@@ -1,7 +1,9 @@
 package br.ufsc.lapesd.riefederator.rel.sql;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalTermWriter;
 import br.ufsc.lapesd.riefederator.rel.common.StarJoin;
 import br.ufsc.lapesd.riefederator.rel.common.StarVarIndex;
@@ -73,12 +75,10 @@ public class SqlGenerator {
         Preconditions.checkArgument(query.attr().isJoinConnected());
         boolean distinct = canDistinct() &&
                 ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
-        Limit limit = null;
+        int limit = 0;
         if (canLimit()) {
-            if (ModifierUtils.getFirst(Ask.class, query.getModifiers()) != null)
-                limit = Limit.required(1);
-            else
-                limit = ModifierUtils.getFirst(Limit.class, query.getModifiers());
+            if (query.attr().isAsk()) limit = 1;
+            else                      limit = query.attr().limit();
         }
         SqlSelectorFactory selectorFactory = new SqlSelectorFactory(termWriter);
         StarVarIndex vars = new StarVarIndex(query, selectorFactory);
@@ -101,8 +101,8 @@ public class SqlGenerator {
             b.append(starSqls.get(i));
             writeJoin(b.append("\n    ON "), vars, i, simpleStars).append('\n');
         }
-        if (limit != null) // SQL standard syntax, there are non-standard alternatives
-            b.append("FETCH NEXT ").append(limit.getValue()).append(" ROWS ONLY ");
+        if (limit > 0) // SQL standard syntax, there are non-standard alternatives
+            b.append("FETCH NEXT ").append(limit).append(" ROWS ONLY ");
         String sql = b.append(';').toString();
 
 
@@ -114,8 +114,8 @@ public class SqlGenerator {
 
         doneFilters = vars.getAllFilters().fullSubset();
         doneFilters.removeAll(pendingFilters);
-        return new RelationalRewriting(sql, resultVars, distinct, limit != null,
-                pendingFilters, doneFilters, vars);
+        return new RelationalRewriting(sql, resultVars, distinct, limit > 0,
+                                       pendingFilters, doneFilters, vars);
     }
 
     @VisibleForTesting

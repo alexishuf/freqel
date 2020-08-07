@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.riefederator.webapis;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
@@ -43,7 +43,7 @@ public class TransparencyServicesLiveTest implements TransparencyServiceTestCont
     public void testProcurementsOfContractsPlan() throws Exception {
         Federation federation = getBudgetFederation();
         CQuery query = loadQuery("live/procurements-of-contract.sparql");
-        PlanNode plan = federation.plan(query);
+        Op plan = federation.plan(query);
         PlannerTest.assertPlanAnswers(plan, query);
     }
 

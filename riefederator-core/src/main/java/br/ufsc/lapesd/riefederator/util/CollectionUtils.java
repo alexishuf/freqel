@@ -1,11 +1,10 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import org.apache.commons.collections4.set.UnmodifiableSet;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
@@ -76,5 +75,13 @@ public class CollectionUtils {
         HashSet<T> set = new HashSet<>(left);
         set.removeAll(right);
         return set;
+    }
+
+    public static @Nonnull <T> Set<T> unmodifiableSet(@Nonnull Collection<T> collection) {
+        if (collection instanceof UnmodifiableSet)
+            return (UnmodifiableSet<T>)collection;
+        if (collection instanceof Set)
+            return Collections.unmodifiableSet((Set<T>)collection);
+        return Collections.unmodifiableSet(new HashSet<>(collection));
     }
 }

@@ -144,7 +144,7 @@ public class SPARQLQueryParser {
                 @Override
                 public void visitSelectResultForm(Query query) {
                     if (query.isDistinct())
-                        cQuery.addModifier(Distinct.REQUIRED);
+                        cQuery.mutateModifiers().add(Distinct.REQUIRED);
                     query.getProjectVars().stream().map(Var::getVarName).forEach(projection::add);
                 }
                 @Override
@@ -157,7 +157,7 @@ public class SPARQLQueryParser {
                 }
                 @Override
                 public void visitAskResultForm(Query query) {
-                    cQuery.addModifier(Ask.ADVISED);
+                    cQuery.mutateModifiers().add(Ask.ADVISED);
                 }
                 @Override
                 public void visitJsonResultForm(Query query) {}
@@ -194,7 +194,7 @@ public class SPARQLQueryParser {
                                 throw new FeatureException("FILTER EXISTS is not supported");
                             if (expr instanceof E_NotExists)
                                 throw new FeatureException("FILTER NOT EXISTS is not supported");
-                            cQuery.addModifier(SPARQLFilter.build(expr));
+                            cQuery.mutateModifiers().add(SPARQLFilter.build(expr));
                         }
 
                         @Override
@@ -386,7 +386,7 @@ public class SPARQLQueryParser {
                 @Override
                 public void visitLimit(Query query) {
                     if (query.hasLimit())
-                        cQuery.addModifier(Limit.advised((int)query.getLimit()));
+                        cQuery.mutateModifiers().add(Limit.advised((int)query.getLimit()));
                 }
                 @Override
                 public void visitOffset(Query query) {
@@ -402,7 +402,7 @@ public class SPARQLQueryParser {
                 public void finishVisit(Query query) {}
             });
             if (!q.isAskType() && !projection.containsAll(allResultVars)) {
-                cQuery.addModifier(Projection.required(projection));
+                cQuery.mutateModifiers().add(Projection.required(projection));
                 if (!allowExtraProjections && cQuery.sanitizeProjectionStrict()) {
                     throw new IllegalArgumentException("There projected variables that cannot " +
                                                        "be bound from any triple pattern");

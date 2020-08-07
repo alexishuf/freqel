@@ -1,9 +1,15 @@
 package br.ufsc.lapesd.riefederator.federation.planner;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.*;
-import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
@@ -39,10 +45,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.function.Supplier;
 
-import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMultiJoinability;
-import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.isAcyclic;
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.isAcyclic;
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static com.google.common.collect.Collections2.permutations;
 import static java.util.Arrays.asList;
@@ -109,10 +113,10 @@ public class PlannerTest implements TransparencyServiceTestContext {
         empty3b.addAlternative(empty3a);
     }
 
-    public static void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query) {
+    public static void assertPlanAnswers(@Nonnull Op root, @Nonnull CQuery query) {
         assertPlanAnswers(root, query, false, false);
     }
-    public static void assertPlanAnswers(@Nonnull PlanNode root, @Nonnull CQuery query,
+    public static void assertPlanAnswers(@Nonnull Op root, @Nonnull CQuery query,
                                          boolean allowEmptyNode, boolean forgiveFilters) {
         IndexedSet<Triple> triples = IndexedSet.from(query.attr().matchedTriples());
 
@@ -120,14 +124,14 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertTrue(isAcyclic(root));
 
         if (!allowEmptyNode) {
-            assertFalse(root instanceof EmptyNode, "EmptyNode is not an answer!");
-            assertEquals(streamPreOrder(root).filter(EmptyNode.class::isInstance).count(),
+            assertFalse(root instanceof EmptyOp, "EmptyNode is not an answer!");
+            assertEquals(streamPreOrder(root).filter(EmptyOp.class::isInstance).count(),
                          0, "There are EmptyNodes in the plan as leaves");
         }
 
         // any query node should only match triples in the query
-        List<PlanNode> bad = streamPreOrder(root)
-                .filter(n -> n instanceof QueryNode
+        List<Op> bad = streamPreOrder(root)
+                .filter(n -> n instanceof QueryOp
                         && !triples.containsAll(n.getMatchedTriples()))
                 .collect(toList());
         assertEquals(bad, emptyList());
@@ -143,9 +147,9 @@ public class PlannerTest implements TransparencyServiceTestContext {
 
         // all nodes in a MQNode must match the exact same triples in query
         // this allows us to consider the MQNode as a unit in the plan
-        bad = streamPreOrder(root).filter(n -> n instanceof MultiQueryNode)
-                .map(n -> (MultiQueryNode) n)
-                .filter(n -> n.getChildren().stream().map(PlanNode::getMatchedTriples)
+        bad = streamPreOrder(root).filter(n -> n instanceof UnionOp)
+                .map(n -> (UnionOp) n)
+                .filter(n -> n.getChildren().stream().map(Op::getMatchedTriples)
                         .distinct().count() != 1)
                 .collect(toList());
         assertEquals(bad, emptyList());
@@ -155,21 +159,21 @@ public class PlannerTest implements TransparencyServiceTestContext {
         // equivalent as this would be wasteful. Comparison must use the CQuery instead of
         // Set<Triple> since it may make sense to send the same triples with distinct
         // QueryRelevantTermAnnotations (e.g., WebAPICQEndpoint and JDBCCQEndpoint)
-        List<Set<QueryNode>> equivSets = streamPreOrder(root)
-                .filter(n -> n instanceof MultiQueryNode)
+        List<Set<QueryOp>> equivSets = streamPreOrder(root)
+                .filter(n -> n instanceof UnionOp)
                 .map(n -> {
-                    Set<QueryNode> equiv = new HashSet<>();
-                    ListMultimap<CQuery, QueryNode> mm;
+                    Set<QueryOp> equiv = new HashSet<>();
+                    ListMultimap<CQuery, QueryOp> mm;
                     mm = MultimapBuilder.hashKeys().arrayListValues().build();
-                    for (PlanNode child : n.getChildren()) {
-                        if (child instanceof QueryNode)
-                            mm.put(((QueryNode) child).getQuery(), (QueryNode) child);
+                    for (Op child : n.getChildren()) {
+                        if (child instanceof QueryOp)
+                            mm.put(((QueryOp) child).getQuery(), (QueryOp) child);
                     }
                     for (CQuery key : mm.keySet()) {
                         for (int i = 0; i < mm.get(key).size(); i++) {
-                            QueryNode outer = mm.get(key).get(i);
+                            QueryOp outer = mm.get(key).get(i);
                             for (int j = i + 1; j < mm.get(key).size(); j++) {
-                                QueryNode inner = mm.get(key).get(j);
+                                QueryOp inner = mm.get(key).get(j);
                                 if (outer.getEndpoint().isAlternative(inner.getEndpoint()) ||
                                         inner.getEndpoint().isAlternative(outer.getEndpoint())) {
                                     equiv.add(outer);
@@ -184,53 +188,47 @@ public class PlannerTest implements TransparencyServiceTestContext {
 
         // no single-child MQ nodes
         bad = streamPreOrder(root)
-                .filter(n -> n instanceof MultiQueryNode && n.getChildren().size() < 2)
+                .filter(n -> n instanceof UnionOp && n.getChildren().size() < 2)
                 .collect(toList());
         assertEquals(bad, emptyList());
 
         // MQ nodes should not be directly nested (that is not elegant)
         bad = streamPreOrder(root)
-                .filter(n -> n instanceof MultiQueryNode
-                          && n.getChildren().stream().anyMatch(n2 -> n2 instanceof MultiQueryNode))
+                .filter(n -> n instanceof UnionOp
+                          && n.getChildren().stream().anyMatch(n2 -> n2 instanceof UnionOp))
                 .collect(toList());
         assertEquals(bad, emptyList());
 
         // all join nodes are valid joins
-        bad = streamPreOrder(root).filter(n -> n instanceof JoinNode).map(n -> (JoinNode) n)
-                .filter(n -> !getPlainJoinability(n.getLeft(), n.getRight()).isValid())
-                .collect(toList());
-        assertEquals(bad, emptyList());
-
-        // all join nodes with MQ operands are valid
-        bad = streamPreOrder(root).filter(n -> n instanceof JoinNode).map(n -> (JoinNode) n)
-                .filter(n -> !getMultiJoinability(n.getLeft(), n.getRight()).isValid())
+        bad = streamPreOrder(root).filter(n -> n instanceof JoinOp).map(n -> (JoinOp) n)
+                .filter(n -> !JoinInfo.getJoinability(n.getLeft(), n.getRight()).isValid())
                 .collect(toList());
         assertEquals(bad, emptyList());
 
         // no single-child cartesian nodes
         bad = streamPreOrder(root)
-                .filter(n -> n instanceof CartesianNode && n.getChildren().size() < 2)
+                .filter(n -> n instanceof CartesianOp && n.getChildren().size() < 2)
                 .collect(toList());
         assertEquals(bad, emptyList());
 
         // cartesian nodes should not be directly nested (that is not elegant)
         bad = streamPreOrder(root)
-                .filter(n -> n instanceof CartesianNode
-                        && n.getChildren().stream().anyMatch(n2 -> n2 instanceof CartesianNode))
+                .filter(n -> n instanceof CartesianOp
+                        && n.getChildren().stream().anyMatch(n2 -> n2 instanceof CartesianOp))
                 .collect(toList());
         assertEquals(bad, emptyList());
 
         // no cartesian nodes where a join is applicable between two of its operands
-        bad = streamPreOrder(root).filter(n -> n instanceof CartesianNode)
+        bad = streamPreOrder(root).filter(n -> n instanceof CartesianOp)
                 .filter(n -> {
-                    HashSet<PlanNode> children = new HashSet<>(n.getChildren());
+                    HashSet<Op> children = new HashSet<>(n.getChildren());
                     //noinspection UnstableApiUsage
-                    for (Set<PlanNode> pair : Sets.combinations(children, 2)) {
-                        Iterator<PlanNode> it = pair.iterator();
-                        PlanNode l = it.next();
+                    for (Set<Op> pair : Sets.combinations(children, 2)) {
+                        Iterator<Op> it = pair.iterator();
+                        Op l = it.next();
                         assert it.hasNext();
-                        PlanNode r = it.next();
-                        if (getMultiJoinability(l, r).isValid())
+                        Op r = it.next();
+                        if (JoinInfo.getJoinability(l, r).isValid())
                             return true; // found a violation
                     }
                     return false;
@@ -251,11 +249,11 @@ public class PlannerTest implements TransparencyServiceTestContext {
             //all filters are placed somewhere
             List<SPARQLFilter> missingFilters = allFilters.stream()
                     .filter(f -> streamPreOrder(root).noneMatch(n -> {
-                        if (n instanceof ComponentNode) {
-                            if (((ComponentNode)n).getQuery().getModifiers().contains(f))
+                        if (n instanceof UnassignedQueryOp) {
+                            if (((UnassignedQueryOp)n).getQuery().getModifiers().contains(f))
                                 return true;
                         }
-                        return n.getFilters().contains(f);
+                        return n.modifiers().contains(f);
                     }))
                     .collect(toList());
             assertEquals(missingFilters, emptyList());
@@ -263,17 +261,17 @@ public class PlannerTest implements TransparencyServiceTestContext {
             // forgive unassignable filters
 
             // all filters are placed somewhere valid (with all required vars)
-            List<ImmutablePair<? extends PlanNode, SPARQLFilter>> badFilterAssignments;
+            List<ImmutablePair<? extends Op, SPARQLFilter>> badFilterAssignments;
             badFilterAssignments = streamPreOrder(root)
-                    .flatMap(n -> n.getFilters().stream().map(f -> ImmutablePair.of(n, f)))
+                    .flatMap(n -> n.modifiers().filters().stream().map(f -> ImmutablePair.of(n, f)))
                     .filter(p -> !p.left.getAllVars().containsAll(p.right.getVarTermNames()))
                     .collect(toList());
             assertEquals(badFilterAssignments, emptyList());
 
             // same as previous, but checks filters within CQuery instances
             badFilterAssignments = streamPreOrder(root)
-                    .filter(ComponentNode.class::isInstance)
-                    .map(n -> (ComponentNode)n)
+                    .filter(UnassignedQueryOp.class::isInstance)
+                    .map(n -> (UnassignedQueryOp)n)
                     .flatMap(n -> n.getQuery().getModifiers().stream()
                                               .filter(SPARQLFilter.class::isInstance)
                                               .map(f -> ImmutablePair.of(n, (SPARQLFilter)f)))
@@ -294,9 +292,9 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testSingleQuery(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
-        QueryNode queryNode = new QueryNode(empty1, query);
-        PlanNode node = planner.plan(query, singleton(queryNode));
-        assertSame(node, queryNode);
+        QueryOp queryOp = new QueryOp(empty1, query);
+        Op node = planner.plan(query, singleton(queryOp));
+        assertSame(node, queryOp);
         assertPlanAnswers(node, query);
     }
 
@@ -304,11 +302,11 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testDuplicateQuery(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
-        QueryNode node1 = new QueryNode(empty1, query);
-        QueryNode node2 = new QueryNode(empty2, query);
-        PlanNode root = planner.plan(query, asList(node1, node2));
+        QueryOp node1 = new QueryOp(empty1, query);
+        QueryOp node2 = new QueryOp(empty2, query);
+        Op root = planner.plan(query, asList(node1, node2));
         assertEquals(root.getResultVars(), singleton("x"));
-        assertFalse(root.isProjecting());
+        assertFalse(root.isProjected());
 
         // no good reason for more than 3 nodes
         assertTrue(streamPreOrder(root).count() <= 3);
@@ -322,15 +320,15 @@ public class PlannerTest implements TransparencyServiceTestContext {
                                    new Triple(x, knows, y));
         CQuery q1 = CQuery.from(query.get(0));
         CQuery q2 = CQuery.from(query.get(1));
-        QueryNode node1 = new QueryNode(empty1, q1);
-        QueryNode node2 = new QueryNode(empty1, q2);
-        PlanNode root = planner.plan(query, asList(node1, node2));
+        QueryOp node1 = new QueryOp(empty1, q1);
+        QueryOp node2 = new QueryOp(empty1, q2);
+        Op root = planner.plan(query, asList(node1, node2));
         assertEquals(root.getResultVars(), asList("x", "y"));
 
         // a reasonable plan would just add a join node over the query nodes
         assertTrue(streamPreOrder(root).count() <= 5);
-        List<JoinNode> joins = streamPreOrder(root).filter(n -> n instanceof JoinNode)
-                                         .map(n -> (JoinNode)n).collect(toList());
+        List<JoinOp> joins = streamPreOrder(root).filter(n -> n instanceof JoinOp)
+                                         .map(n -> (JoinOp)n).collect(toList());
         assertEquals(joins.size(), 1);
         assertEquals(joins.get(0).getJoinVars(), singleton("x"));
 
@@ -345,12 +343,12 @@ public class PlannerTest implements TransparencyServiceTestContext {
         );
         CQuery q1 = CQuery.from(query.get(0), query.get(1));
         CQuery q2 = CQuery.from(query.get(2));
-        PlanNode root = planner.plan(query, asList(new QueryNode(empty1, q1),
-                                                   new QueryNode(empty2, q2)));
+        Op root = planner.plan(query, asList(new QueryOp(empty1, q1),
+                                                   new QueryOp(empty2, q2)));
 
-        assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 1);
+        assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinOp).count(), 1);
         assertEquals(streamPreOrder(root)
-                              .filter(n -> n instanceof MultiQueryNode).count(), 0);
+                              .filter(n -> n instanceof UnionOp).count(), 0);
         // a sane count is 3: MultiQuery(q1, q2)
         assertTrue(streamPreOrder(root).count() <= 4);
         assertPlanAnswers(root, query);
@@ -362,14 +360,14 @@ public class PlannerTest implements TransparencyServiceTestContext {
         CQuery query = CQuery.from(new Triple(Alice, knows, x), new Triple(y, knows, Bob));
         CQuery q1 = CQuery.from(query.get(0));
         CQuery q2 = CQuery.from(query.get(1));
-        QueryNode node1 = new QueryNode(empty1, q1), node2 = new QueryNode(empty1, q2);
-        PlanNode root = planner.plan(query, asList(node1, node2));
+        QueryOp node1 = new QueryOp(empty1, q1), node2 = new QueryOp(empty1, q2);
+        Op root = planner.plan(query, asList(node1, node2));
         assertEquals(root.getResultVars(), Sets.newHashSet("x", "y"));
 
         assertTrue(streamPreOrder(root).count() <= 5);
-        List<CartesianNode> nodes = streamPreOrder(root)
-                                             .filter(n -> n instanceof CartesianNode)
-                                             .map(n -> (CartesianNode) n).collect(toList());
+        List<CartesianOp> nodes = streamPreOrder(root)
+                                             .filter(n -> n instanceof CartesianOp)
+                                             .map(n -> (CartesianOp) n).collect(toList());
         assertEquals(nodes.size(), 1);
         assertEquals(nodes.get(0).getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(nodes.get(0).getChildren().size(), 2);
@@ -391,46 +389,46 @@ public class PlannerTest implements TransparencyServiceTestContext {
         CQuery q3 = CQuery.from(query.get(2));
         CQuery q4 = CQuery.from(query.get(3));
 
-        List<QueryNode> leaves = asList(new QueryNode(empty1, q1), new QueryNode(empty2, q1),
-                                        new QueryNode(empty1, q2),
-                                        new QueryNode(empty1, q3),
-                                        new QueryNode(empty1, q4), new QueryNode(empty2, q4));
+        List<QueryOp> leaves = asList(new QueryOp(empty1, q1), new QueryOp(empty2, q1),
+                                        new QueryOp(empty1, q2),
+                                        new QueryOp(empty1, q3),
+                                        new QueryOp(empty1, q4), new QueryOp(empty2, q4));
         Random random = new Random(79812531);
         for (int i = 0; i < 16; i++) {
-            ArrayList<PlanNode> shuffled = new ArrayList<>(leaves);
+            ArrayList<Op> shuffled = new ArrayList<>(leaves);
             Collections.shuffle(shuffled, random);
-            PlanNode root = planner.plan(query, shuffled);
+            Op root = planner.plan(query, shuffled);
 
-            Set<QueryNode> observed = streamPreOrder(root)
-                                               .filter(n -> n instanceof QueryNode)
-                                               .map(n -> (QueryNode) n).collect(toSet());
+            Set<QueryOp> observed = streamPreOrder(root)
+                                               .filter(n -> n instanceof QueryOp)
+                                               .map(n -> (QueryOp) n).collect(toSet());
             assertEquals(observed, new HashSet<>(shuffled));
-            List<JoinNode> joinNodes = streamPreOrder(root)
-                                                .filter(n -> n instanceof JoinNode)
-                                                .map(n -> (JoinNode) n).collect(toList());
-            assertEquals(joinNodes.size(), 2);
+            List<JoinOp> joinOps = streamPreOrder(root)
+                                                .filter(n -> n instanceof JoinOp)
+                                                .map(n -> (JoinOp) n).collect(toList());
+            assertEquals(joinOps.size(), 2);
 
-            Set<Set<String>> actualSets = joinNodes.stream().map(PlanNode::getResultVars)
+            Set<Set<String>> actualSets = joinOps.stream().map(Op::getResultVars)
                                                             .collect(toSet());
             Set<Set<String>> exSets = new HashSet<>();
             exSets.add(Sets.newHashSet("x", "y"));
             exSets.add(Sets.newHashSet("u", "v"));
             assertEquals(actualSets, exSets);
 
-            actualSets = joinNodes.stream().map(JoinNode::getJoinVars).collect(toSet());
+            actualSets = joinOps.stream().map(JoinOp::getJoinVars).collect(toSet());
             exSets.clear();
             exSets.add(singleton("x"));
             exSets.add(singleton("u"));
             assertEquals(actualSets, exSets);
 
-            List<CartesianNode> cartesianNodes = streamPreOrder(root)
-                                                          .filter(n -> n instanceof CartesianNode)
-                                                          .map(n -> (CartesianNode) n)
+            List<CartesianOp> cartesianOps = streamPreOrder(root)
+                                                          .filter(n -> n instanceof CartesianOp)
+                                                          .map(n -> (CartesianOp) n)
                                                           .collect(toList());
-            assertEquals(cartesianNodes.size(), 1);
-            assertEquals(cartesianNodes.get(0).getResultVars(),
+            assertEquals(cartesianOps.size(), 1);
+            assertEquals(cartesianOps.get(0).getResultVars(),
                          Sets.newHashSet("x", "y", "u", "v"));
-            assertEquals(cartesianNodes.get(0).getChildren().size(), 2);
+            assertEquals(cartesianOps.get(0).getChildren().size(), 2);
 
             assertPlanAnswers(root, query);
         }
@@ -443,16 +441,16 @@ public class PlannerTest implements TransparencyServiceTestContext {
         CQuery query = CQuery.from(new Triple(x, title, title1),
                                    new Triple(x, genre, y),
                                    new Triple(y, genreName, z));
-        QueryNode q1 = new QueryNode(empty1, CQuery.from(query.get(0)));
-        QueryNode q2 = new QueryNode(empty1, CQuery.from(query.get(1)));
-        QueryNode q3 = new QueryNode(empty2, CQuery.from(query.get(2)));
-        PlanNode root = planner.plan(query, asList(q1, q2, q3));
+        QueryOp q1 = new QueryOp(empty1, CQuery.from(query.get(0)));
+        QueryOp q2 = new QueryOp(empty1, CQuery.from(query.get(1)));
+        QueryOp q3 = new QueryOp(empty2, CQuery.from(query.get(2)));
+        Op root = planner.plan(query, asList(q1, q2, q3));
 
-        assertEquals(streamPreOrder(root).filter(n -> n instanceof CartesianNode).count(), 0);
-        assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 2);
+        assertEquals(streamPreOrder(root).filter(n -> n instanceof CartesianOp).count(), 0);
+        assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinOp).count(), 2);
 
-        Set<CQuery> queries = streamPreOrder(root).filter(n -> n instanceof QueryNode)
-                .map(n -> ((QueryNode) n).getQuery()).collect(toSet());
+        Set<CQuery> queries = streamPreOrder(root).filter(n -> n instanceof QueryOp)
+                .map(n -> ((QueryOp) n).getQuery()).collect(toSet());
         HashSet<CQuery> expectedQueries = Sets.newHashSet(
                 createQuery(x, title, title1),
                 createQuery(x, genre, y),
@@ -466,15 +464,15 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testSameQuerySameEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
-        QueryNode q1 = new QueryNode(empty1, CQuery.from(query.get(0)));
-        QueryNode q2 = new QueryNode(empty1, CQuery.from(query.get(0)));
-        QueryNode q3 = new QueryNode(empty1, CQuery.from(query.get(1)));
+        QueryOp q1 = new QueryOp(empty1, CQuery.from(query.get(0)));
+        QueryOp q2 = new QueryOp(empty1, CQuery.from(query.get(0)));
+        QueryOp q3 = new QueryOp(empty1, CQuery.from(query.get(1)));
 
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : permutations(asList((PlanNode)q1, q2, q3))) {
-            PlanNode plan = planner.plan(query, permutation);
-            Set<PlanNode> qns = streamPreOrder(plan)
-                    .filter(QueryNode.class::isInstance).collect(toSet());
+        for (List<Op> permutation : permutations(asList((Op)q1, q2, q3))) {
+            Op plan = planner.plan(query, permutation);
+            Set<Op> qns = streamPreOrder(plan)
+                    .filter(QueryOp.class::isInstance).collect(toSet());
             assertTrue(qns.contains(q3));
             assertEquals(qns.size(), 2);
             assertPlanAnswers(plan, query);
@@ -485,14 +483,14 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testSameQueryEquivalentEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
-        QueryNode q1 = new QueryNode(empty3a, CQuery.from(query.get(0)));
-        QueryNode q2 = new QueryNode(empty3b, CQuery.from(query.get(0)));
-        QueryNode q3 = new QueryNode(empty1 , CQuery.from(query.get(1)));
+        QueryOp q1 = new QueryOp(empty3a, CQuery.from(query.get(0)));
+        QueryOp q2 = new QueryOp(empty3b, CQuery.from(query.get(0)));
+        QueryOp q3 = new QueryOp(empty1 , CQuery.from(query.get(1)));
 
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : permutations(asList((PlanNode)q1, q2, q3))) {
-            PlanNode plan = planner.plan(query, permutation);
-            Set<PlanNode> qns = streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet());
+        for (List<Op> permutation : permutations(asList((Op)q1, q2, q3))) {
+            Op plan = planner.plan(query, permutation);
+            Set<Op> qns = streamPreOrder(plan).filter(QueryOp.class::isInstance).collect(toSet());
             assertTrue(qns.contains(q3));
             assertEquals(qns.size(), 2);
         }
@@ -501,15 +499,15 @@ public class PlannerTest implements TransparencyServiceTestContext {
     @Test(dataProvider = "suppliersData", groups={"fast"})
     public void booksByAuthorWithIncompatibleService(Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
-        QueryNode q2 = new QueryNode(empty2,
+        QueryOp q1 = new QueryOp(empty1, createQuery(y, name, author1));
+        QueryOp q2 = new QueryOp(empty2,
                 createQuery(x, AtomInputAnnotation.asRequired(Book, "Book").get(),
                                 author, y, AtomAnnotation.of(Person)));
         CQuery query = CQuery.from(new Triple(y, name, author1), new Triple(x, author, y));
 
-        for (List<PlanNode> nodes : asList(asList((PlanNode)q1, q2), asList((PlanNode)q2, q1))) {
-            PlanNode plan = planner.plan(query, nodes);
-            assertTrue(plan instanceof EmptyNode);
+        for (List<Op> nodes : asList(asList((Op)q1, q2), asList((Op)q2, q1))) {
+            Op plan = planner.plan(query, nodes);
+            assertTrue(plan instanceof EmptyOp);
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertEquals(plan.getRequiredInputVars(), emptySet());
             assertPlanAnswers(plan, query, true, true);
@@ -521,25 +519,25 @@ public class PlannerTest implements TransparencyServiceTestContext {
         CQEndpoint e2 = markAsAlternatives ? empty3a : empty2;
         CQEndpoint e3 = markAsAlternatives ? empty3b : empty4;
 
-        QueryNode q1 = new QueryNode(empty1, createQuery(y, name, author1));
+        QueryOp q1 = new QueryOp(empty1, createQuery(y, name, author1));
         assertEquals(q1.getStrictResultVars(), singleton("y"));
-        QueryNode q2 = new QueryNode(e2,
+        QueryOp q2 = new QueryOp(e2,
                 createQuery(x, AtomInputAnnotation.asRequired(Book, "Book").get(),
                                 author, y, AtomAnnotation.of(Person)));
-        QueryNode q3 = new QueryNode(e3,
+        QueryOp q3 = new QueryOp(e3,
                 createQuery(x, AtomAnnotation.of(Book),
                                 author, y, AtomInputAnnotation.asRequired(Person, "Person").get()));
-        List<PlanNode> nodes = addFromSubject ? asList(q1, q2, q3) : asList(q1, q3);
+        List<Op> nodes = addFromSubject ? asList(q1, q2, q3) : asList(q1, q3);
         CQuery query = CQuery.from(new Triple(y, name, author1),
                                    new Triple(x, author, y));
 
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : permutations(nodes)) {
-            PlanNode root = planner.plan(query, permutation);
-            Set<PlanNode> leaves = streamPreOrder(root)
-                    .filter(n -> n instanceof QueryNode).collect(toSet());
+        for (List<Op> permutation : permutations(nodes)) {
+            Op root = planner.plan(query, permutation);
+            Set<Op> leaves = streamPreOrder(root)
+                    .filter(n -> n instanceof QueryOp).collect(toSet());
             assertEquals(leaves, Sets.newHashSet(q1, q3));
-            assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinNode).count(), 1);
+            assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinOp).count(), 1);
             assertTrue(streamPreOrder(root).count() <= 4);
             assertPlanAnswers(root, query);
         }
@@ -561,9 +559,9 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     private static class TwoServicePathsNodes {
-        QueryNode q1, q2, q3, p1, p2, p3;
-        List<PlanNode> all, fromAlice, fromBob, fromAlice2, fromBob2;
-        Set<Set<PlanNode>> allowedAnswers;
+        QueryOp q1, q2, q3, p1, p2, p3;
+        List<Op> all, fromAlice, fromBob, fromAlice2, fromBob2;
+        Set<Set<Op>> allowedAnswers;
         CQuery query;
 
         public TwoServicePathsNodes(@Nonnull CQEndpoint epFromAlice,
@@ -571,20 +569,20 @@ public class PlannerTest implements TransparencyServiceTestContext {
             query = CQuery.from(new Triple(Alice, knows, x),
                                 new Triple(x, knows, y),
                                 new Triple(y, knows, Bob));
-            q1 = new QueryNode(epFromAlice, createQuery(
+            q1 = new QueryOp(epFromAlice, createQuery(
                     Alice, AtomInputAnnotation.asRequired(Person, "Person").get(),
                             knows, x, AtomAnnotation.of(KnownPerson)));
-            q2 = new QueryNode(epFromAlice, createQuery(
+            q2 = new QueryOp(epFromAlice, createQuery(
                     x, AtomInputAnnotation.asRequired(Person, "Person").get(),
                             knows, y, AtomAnnotation.of(KnownPerson)));
-            q3 = new QueryNode(epFromAlice, createQuery(y, AtomInputAnnotation.asRequired(Person, "Person").get(),
+            q3 = new QueryOp(epFromAlice, createQuery(y, AtomInputAnnotation.asRequired(Person, "Person").get(),
                             knows, Bob, AtomAnnotation.of(KnownPerson)));
 
-            p1 = new QueryNode(epFromBob, createQuery(Alice, AtomAnnotation.of(Person),
+            p1 = new QueryOp(epFromBob, createQuery(Alice, AtomAnnotation.of(Person),
                             knows, x, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()));
-            p2 = new QueryNode(epFromBob, createQuery(x, AtomAnnotation.of(Person),
+            p2 = new QueryOp(epFromBob, createQuery(x, AtomAnnotation.of(Person),
                             knows, y, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()));
-            p3 = new QueryNode(epFromBob, createQuery(y, AtomAnnotation.of(Person), knows, Bob,
+            p3 = new QueryOp(epFromBob, createQuery(y, AtomAnnotation.of(Person), knows, Bob,
                     AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()));
             all = asList(q1, q2, q3, p1, p2, p3);
             fromAlice  = asList(q1, q2, q3);
@@ -606,12 +604,12 @@ public class PlannerTest implements TransparencyServiceTestContext {
         TwoServicePathsNodes f = new TwoServicePathsNodes(ep1, ep2);
 
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : permutations(f.all)) {
-            PlanNode plan = planner.plan(f.query, permutation);
-            Set<QueryNode> qns = streamPreOrder(plan).filter(QueryNode.class::isInstance)
-                    .map(n -> (QueryNode)n).collect(toSet());
+        for (List<Op> permutation : permutations(f.all)) {
+            Op plan = planner.plan(f.query, permutation);
+            Set<QueryOp> qns = streamPreOrder(plan).filter(QueryOp.class::isInstance)
+                    .map(n -> (QueryOp)n).collect(toSet());
             assertTrue(f.allowedAnswers.contains(qns), "qns="+qns);
-            assertEquals(streamPreOrder(plan).filter(JoinNode.class::isInstance).count(), 2);
+            assertEquals(streamPreOrder(plan).filter(JoinOp.class::isInstance).count(), 2);
             assertPlanAnswers(plan, f.query);
         }
     }
@@ -631,9 +629,9 @@ public class PlannerTest implements TransparencyServiceTestContext {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : permutations(f.all)) {
-            PlanNode plan = planner.plan(f.query, permutation);
-            assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
+        for (List<Op> permutation : permutations(f.all)) {
+            Op plan = planner.plan(f.query, permutation);
+            assertEquals(streamPreOrder(plan).filter(QueryOp.class::isInstance).collect(toSet()),
                          new HashSet<>(f.all));
             assertTrue(streamPreOrder(plan).filter(n -> n == f.q1).count() <= 3);
             assertTrue(streamPreOrder(plan).filter(n -> n == f.p1).count() <= 1);
@@ -647,13 +645,13 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testDiscardMiddleNodeInPath(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
-        List<PlanNode> nodes = asList(f.q1, f.q2, f.q3, f.p2);
+        List<Op> nodes = asList(f.q1, f.q2, f.q3, f.p2);
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : permutations(nodes)) {
-            PlanNode plan = planner.plan(f.query, permutation);
-            assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).collect(toSet()),
+        for (List<Op> permutation : permutations(nodes)) {
+            Op plan = planner.plan(f.query, permutation);
+            assertEquals(streamPreOrder(plan).filter(QueryOp.class::isInstance).collect(toSet()),
                          Sets.newHashSet(f.fromAlice));
-            assertEquals(streamPreOrder(plan).filter(QueryNode.class::isInstance).count(), 3);
+            assertEquals(streamPreOrder(plan).filter(QueryOp.class::isInstance).count(), 3);
             assertPlanAnswers(plan, f.query);
         }
     }
@@ -662,11 +660,11 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testUnsatisfiablePlan(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty1);
-        List<PlanNode> nodes = asList(f.q1, f.p2, f.q3);
+        List<Op> nodes = asList(f.q1, f.p2, f.q3);
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : permutations(nodes)) {
-            PlanNode plan = planner.plan(f.query, permutation);
-            assertTrue(plan instanceof EmptyNode);
+        for (List<Op> permutation : permutations(nodes)) {
+            Op plan = planner.plan(f.query, permutation);
+            assertTrue(plan instanceof EmptyOp);
             assertEquals(plan.getRequiredInputVars(), emptySet());
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertPlanAnswers(plan, f.query, true, true);
@@ -675,22 +673,22 @@ public class PlannerTest implements TransparencyServiceTestContext {
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testNonLinearPath(@Nonnull Supplier<Planner> supplier) {
-        QueryNode orgByDesc = new QueryNode(empty1, CQuery.from(
+        QueryOp orgByDesc = new QueryOp(empty1, CQuery.from(
                 new Triple(x, p1, t)
         ));
-        QueryNode contract = new QueryNode(empty1, createQuery(
+        QueryOp contract = new QueryOp(empty1, createQuery(
                 y, p2, b,
                 y, p3, c,
                 y, p4, t, AtomInputAnnotation.asRequired(new Atom("A1"), "A1").get()));
-        QueryNode contractById = new QueryNode(empty1, createQuery(
+        QueryOp contractById = new QueryOp(empty1, createQuery(
                 b, AtomInputAnnotation.asRequired(new Atom("A2"), "A2").get(), p5, o3));
-        QueryNode contractorByName = new QueryNode(empty1, createQuery(
+        QueryOp contractorByName = new QueryOp(empty1, createQuery(
                 c, AtomInputAnnotation.asRequired(new Atom("A3"), "A3").get(), p6, s));
-        QueryNode procurementsOfContractor = new QueryNode(empty1, createQuery(
+        QueryOp procurementsOfContractor = new QueryOp(empty1, createQuery(
                 s, AtomInputAnnotation.asRequired(new Atom("A4"), "A4").get(), p7, a));
-        QueryNode procurementById = new QueryNode(empty1, createQuery(
+        QueryOp procurementById = new QueryOp(empty1, createQuery(
                 a, AtomInputAnnotation.asRequired(new Atom("A5"), "A5").get(), p8, d));
-        QueryNode modalities = new QueryNode(empty1, createQuery(z, p9, d));
+        QueryOp modalities = new QueryOp(empty1, createQuery(z, p9, d));
 
         CQuery query = createQuery(
                 x, p1, t,
@@ -705,11 +703,11 @@ public class PlannerTest implements TransparencyServiceTestContext {
         );
 
         Planner planner = supplier.get();
-        List<PlanNode> nodes = asList(contractorByName, procurementsOfContractor,
+        List<Op> nodes = asList(contractorByName, procurementsOfContractor,
                 contractById, modalities, procurementById, orgByDesc, contract);
         assertTrue(nodes.stream().allMatch(n -> query.attr().getSet().containsAll(n.getMatchedTriples())));
 
-        PlanNode plan = planner.plan(query, nodes);
+        Op plan = planner.plan(query, nodes);
         assertPlanAnswers(plan, query);
     }
 
@@ -748,15 +746,15 @@ public class PlannerTest implements TransparencyServiceTestContext {
         WebAPICQEndpoint webEp = TransparencyService.getProcurementsOptClient(fakeTarget);
 
         CQuery arqQuery = createQuery(x, p1, v);
-        QueryNode n1 = new QueryNode(arqEp, arqQuery);
-        QueryNode n2 = new QueryNode(webEp, webQuery);
+        QueryOp n1 = new QueryOp(arqEp, arqQuery);
+        QueryOp n2 = new QueryOp(webEp, webQuery);
 
-        JoinInfo info = getPlainJoinability(n1, n2);
+        JoinInfo info = JoinInfo.getJoinability(n1, n2);
         assertTrue(info.isValid());
 
         Planner planner = supplier.get();
         CQuery wholeQuery = CQuery.merge(arqQuery, webQuery);
-        PlanNode plan = planner.plan(wholeQuery, asList(n1, n2));
+        Op plan = planner.plan(wholeQuery, asList(n1, n2));
         assertPlanAnswers(plan, wholeQuery, false, true);
     }
 }

@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
@@ -20,7 +20,7 @@ public class JoinInterface {
     @SuppressWarnings("Immutable")
     private final @Nonnull Set<Triple> matchedTriples;
 
-    public JoinInterface(@Nonnull PlanNode node) {
+    public JoinInterface(@Nonnull Op node) {
         Preconditions.checkArgument(!node.getMatchedTriples().isEmpty());
         this.resultVars = node.getResultVars();
         this.inputVars = node.getRequiredInputVars();

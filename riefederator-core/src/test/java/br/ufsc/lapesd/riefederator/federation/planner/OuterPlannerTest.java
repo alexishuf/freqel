@@ -3,11 +3,11 @@ package br.ufsc.lapesd.riefederator.federation.planner;
 import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.NaiveOuterPlanner;
-import br.ufsc.lapesd.riefederator.federation.tree.ComponentNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
@@ -113,14 +113,14 @@ public class OuterPlannerTest implements TestContext {
     public void testPlan(Supplier<OuterPlanner> supplier,
                          CQuery query, Collection<CQuery> expectedComponents) {
         OuterPlanner planner = supplier.get();
-        PlanNode plan = planner.plan(query);
-        Set<PlanNode> leaves = TreeUtils.streamPreOrder(plan)
-                .filter(ComponentNode.class::isInstance).collect(toSet());
-        assertTrue(leaves.stream().allMatch(ComponentNode.class::isInstance));
-        assertTrue(leaves.stream().noneMatch(QueryNode.class::isInstance));
+        Op plan = planner.plan(query);
+        Set<Op> leaves = TreeUtils.streamPreOrder(plan)
+                .filter(UnassignedQueryOp.class::isInstance).collect(toSet());
+        assertTrue(leaves.stream().allMatch(UnassignedQueryOp.class::isInstance));
+        assertTrue(leaves.stream().noneMatch(QueryOp.class::isInstance));
         PlannerTest.assertPlanAnswers(plan, query);
 
-        Set<CQuery> actual = leaves.stream().map(n -> ((ComponentNode) n).getQuery()).collect(toSet());
+        Set<CQuery> actual = leaves.stream().map(n -> ((UnassignedQueryOp) n).getQuery()).collect(toSet());
         HashSet<CQuery> expected = new HashSet<>(expectedComponents);
 
         assertTrue(expected.stream().allMatch(e -> actual.stream()

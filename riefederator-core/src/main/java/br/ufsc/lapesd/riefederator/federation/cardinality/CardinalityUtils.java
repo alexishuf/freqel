@@ -1,15 +1,15 @@
 package br.ufsc.lapesd.riefederator.federation.cardinality;
 
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
-import br.ufsc.lapesd.riefederator.query.Cardinality.Reliability;
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
 import java.util.Comparator;
 
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.GUESS;
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.NON_EMPTY;
+import static br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability.GUESS;
+import static br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability.NON_EMPTY;
 
 public class CardinalityUtils {
     public static @Nonnull Cardinality worstAvg(@Nonnull Comparator<Cardinality> comparator,
@@ -34,13 +34,13 @@ public class CardinalityUtils {
         return new Cardinality(c.getReliability(), (int)Math.ceil(value *factor));
     }
 
-    public static @Nonnull PlanNode min(@Nonnull CardinalityComparator comparator,
-                                        @Nonnull PlanNode l, @Nonnull PlanNode r) {
+    public static @Nonnull Op min(@Nonnull CardinalityComparator comparator,
+                                  @Nonnull Op l, @Nonnull Op r) {
         int diff = comparator.compare(l.getCardinality(), r.getCardinality());
         return diff <= 0 ? l : r;
     }
-    public static @Nonnull PlanNode max(@Nonnull CardinalityComparator comparator,
-                                        @Nonnull PlanNode l, @Nonnull PlanNode r) {
+    public static @Nonnull Op max(@Nonnull CardinalityComparator comparator,
+                                  @Nonnull Op l, @Nonnull Op r) {
         int diff = comparator.compare(l.getCardinality(), r.getCardinality());
         return diff >= 0 ? l : r;
     }

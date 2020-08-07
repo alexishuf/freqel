@@ -1,12 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation.performance.metrics;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.benchmark.BenchmarkUtils;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.impl.SimpleMetric;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.impl.SimpleTimeMetric;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -64,7 +64,7 @@ public class Metrics {
 
     /**
      * Double with the number of milliseconds spent converting a {@link CQuery} into a
-     * {@link PlanNode}. This metric <b>includes</b> any other metric.
+     * {@link Op}. This metric <b>includes</b> any other metric.
      */
     public static @Nonnull SimpleTimeMetric FULL_PLAN_MS
             = SimpleTimeMetric.builder("FULL_PLAN_MS").containsAnything().create();
@@ -79,7 +79,7 @@ public class Metrics {
 
     /**
      * Time within EXEC_MS until the first result is received by the outer iterator
-     * returned by {@link Federation#execute(CQuery, PlanNode)}
+     * returned by {@link Federation#execute(CQuery, Op)}
      *
      * This metric is measured in milliseconds and is contained by {@link Metrics#EXEC_MS}.
      */

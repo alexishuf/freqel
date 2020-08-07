@@ -3,8 +3,8 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree.impl;
 import br.ufsc.lapesd.riefederator.federation.execution.InjectedExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultJoinNodeExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinNodeExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.DefaultJoinOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
@@ -26,16 +26,16 @@ public class SimpleExecutionModule extends AbstractModule {
     @Override
     protected void configure() {
         configureResultsExecutor();
-        bind(QueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
-        bind(MultiQueryNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
-        bind(CartesianNodeExecutor.class).to(LazyCartesianNodeExecutor.class);
+        bind(QueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
+        bind(MultiQueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
+        bind(CartesianOpExecutor.class).to(LazyCartesianOpExecutor.class);
         bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
         if (allowHashJoins)
-            bind(JoinNodeExecutor.class).to(DefaultJoinNodeExecutor.class);
+            bind(JoinOpExecutor.class).to(DefaultJoinOpExecutor.class);
         else
-            bind(JoinNodeExecutor.class).to(FixedBindJoinNodeExecutor.class);
-        bind(EmptyNodeExecutor.class).toInstance(SimpleEmptyNodeExecutor.INSTANCE);
-        bind(SPARQLValuesTemplateNodeExecutor.class).to(SimpleQueryNodeExecutor.class);
+            bind(JoinOpExecutor.class).to(FixedBindJoinOpExecutor.class);
+        bind(EmptyOpExecutor.class).toInstance(SimpleEmptyOpExecutor.INSTANCE);
+        bind(SPARQLValuesTemplateOpExecutor.class).to(SimpleQueryOpExecutor.class);
         bind(PlanExecutor.class).to(InjectedExecutor.class);
     }
 

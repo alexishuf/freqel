@@ -1,8 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.DelegatingResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -35,7 +33,7 @@ public class WindowDistinctResults extends DelegatingResults {
     }
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
-        if (ModifierUtils.getFirst(Capability.DISTINCT, query.getModifiers()) != null)
+        if (query.getModifiers().distinct() != null)
             return new WindowDistinctResults(in);
         return in;
     }

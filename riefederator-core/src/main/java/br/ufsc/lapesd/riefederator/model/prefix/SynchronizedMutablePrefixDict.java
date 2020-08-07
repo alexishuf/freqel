@@ -87,7 +87,7 @@ public class SynchronizedMutablePrefixDict implements MutablePrefixDict {
 
     @Override
     @Contract("_, !null -> !null")
-    public synchronized @Nonnull String expand(@Nonnull String shortened, String fallback) {
+    public synchronized String expand(@Nonnull String shortened, String fallback) {
         return delegate.expand(shortened, fallback);
     }
 }

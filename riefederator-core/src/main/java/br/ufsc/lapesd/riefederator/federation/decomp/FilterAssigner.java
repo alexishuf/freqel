@@ -1,13 +1,11 @@
 package br.ufsc.lapesd.riefederator.federation.decomp;
 
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
@@ -26,18 +24,14 @@ import java.util.Set;
 public class FilterAssigner {
     private static final Logger logger = LoggerFactory.getLogger(FilterAssigner.class);
 
-    private final @Nonnull Set<SPARQLFilter> filters = new HashSet<>();
+    private final @Nonnull Set<SPARQLFilter> filters;
     private final @Nonnull SetMultimap<Term, SPARQLFilter> term2filter;
 
     public FilterAssigner(@Nonnull CQuery query) {
         term2filter = HashMultimap.create();
-        for (Modifier modifier : query.getModifiers()) {
-            if (modifier instanceof SPARQLFilter) {
-                SPARQLFilter filter = (SPARQLFilter) modifier;
-                filters.add(filter);
-                filter.getVarTerms().forEach(t -> term2filter.put(t, filter));
-            }
-        }
+        filters = query.getModifiers().filters();
+        for (SPARQLFilter filter : filters)
+            filter.getVarTerms().forEach(t -> term2filter.put(t, filter));
     }
 
     public boolean isEmpty() {
@@ -45,17 +39,17 @@ public class FilterAssigner {
     }
 
     /**
-     * Tries to place as many {@link SPARQLFilter} as possible in each {@link QueryNode}.
+     * Tries to place as many {@link SPARQLFilter} as possible in each {@link QueryOp}.
      *
      * Insertions will be registered on the placement map.
      *
-     * @param list list of {@link ProtoQueryNode}s, without nulls
-     * @return List of {@link QueryNode}s or {@link MultiQueryNode}s, without nulls
+     * @param list list of {@link ProtoQueryOp}s, without nulls
+     * @return List of {@link QueryOp}s or {@link UnionOp}s, without nulls
      */
-    public @Nonnull List<PlanNode> placeFiltersOnLeaves(@Nonnull List<ProtoQueryNode> list) {
-        List<PlanNode> result = new ArrayList<>(list.size());
-        for (ProtoQueryNode proto : list) {
-            PlanNode leafNode = proto.toNode(); //QueryNode or MultiQueryNode
+    public @Nonnull List<Op> placeFiltersOnLeaves(@Nonnull List<ProtoQueryOp> list) {
+        List<Op> result = new ArrayList<>(list.size());
+        for (ProtoQueryOp proto : list) {
+            Op leafNode = proto.toOp(); //QueryNode or MultiQueryNode
             Set<Var> vars = proto.getMatchedQuery().attr().allVars();
             vars.stream()
                     .flatMap(v -> term2filter.get(v).stream())
@@ -66,27 +60,27 @@ public class FilterAssigner {
         return result;
     }
 
-    private static void addFilter(@Nonnull PlanNode node, @Nonnull SPARQLFilter filter) {
-        if (node instanceof QueryNode) {
-            node.addFilter(filter);
-        } else if (node instanceof MultiQueryNode) {
-            for (PlanNode child : node.getChildren()) {
-                assert child instanceof QueryNode : "Expected MultiNode of QueryNodes";
+    private static void addFilter(@Nonnull Op node, @Nonnull SPARQLFilter filter) {
+        if (node instanceof QueryOp) {
+            node.modifiers().add(filter);
+        } else if (node instanceof UnionOp) {
+            for (Op child : node.getChildren()) {
+                assert child instanceof QueryOp : "Expected MultiNode of QueryNodes";
                 assert canFilter(child, filter)
                         : "Filter has variables which do not occur in the alternative node";
-                child.addFilter(filter);
+                child.modifiers().add(filter);
             }
         } else {
             assert false : "Only QueryNodes and MultiQueryNodes should be here!";
-            node.addFilter(filter);
+            node.modifiers().add(filter);
         }
     }
 
-    private static boolean canFilter(@Nonnull PlanNode node, @Nonnull SPARQLFilter filter) {
+    private static boolean canFilter(@Nonnull Op node, @Nonnull SPARQLFilter filter) {
         return node.getAllVars().containsAll(filter.getVarTermNames());
     }
 
-    public void placeBottommost(@Nonnull PlanNode plan) {
+    public void placeBottommost(@Nonnull Op plan) {
         for (SPARQLFilter filter : filters) {
             if (!placeBottommost(plan, filter)) {
                 HashSet<String> missing = new HashSet<>(filter.getVarTermNames());
@@ -102,28 +96,28 @@ public class FilterAssigner {
         }
     }
 
-    public boolean placeBottommost(@Nonnull PlanNode node,
+    public boolean placeBottommost(@Nonnull Op node,
                                    @Nonnull SPARQLFilter annotation) {
         if (!canFilter(node, annotation))
             return false; // do not recurse into this subtree
-        if (node.getFilters().contains(annotation))
+        if (node.modifiers().filters().contains(annotation))
             return true; // already added
-        if (node instanceof MultiQueryNode) {
+        if (node instanceof UnionOp) {
             int count = 0;
-            for (PlanNode child : node.getChildren())
+            for (Op child : node.getChildren())
                 count += placeBottommost(child, annotation) ? 1 : 0;
             assert count > 0
                     : "MultiQueryNode as whole accepts "+annotation+" but no child accepts!";
             assert count == node.getChildren().size()
                     : "Not all children of a MultiQueryNode could receive "+annotation;
-        } else if (node instanceof QueryNode) {
-            node.addFilter(annotation);
+        } else if (node instanceof QueryOp) {
+            node.modifiers().add(annotation);
         } else {
             boolean done = false;
-            for (PlanNode child : node.getChildren())
+            for (Op child : node.getChildren())
                 done |= placeBottommost(child, annotation);
             if (!done)
-                node.addFilter(annotation);
+                node.modifiers().add(annotation);
         }
         return true;
     }

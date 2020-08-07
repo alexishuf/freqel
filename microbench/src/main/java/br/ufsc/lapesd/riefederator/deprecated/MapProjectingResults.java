@@ -2,8 +2,6 @@ package br.ufsc.lapesd.riefederator.deprecated;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -21,15 +19,12 @@ public class MapProjectingResults implements Results {
     private @Nullable String nodeName;
 
     public MapProjectingResults(@Nonnull Results delegate, @Nonnull Set<String> varNames) {
-//        Preconditions.checkArgument(delegate.getVarNames().containsAll(varNames),
-//                "Some variables of the projection are not present in the delegate");
         this.delegate = delegate;
         this.varNames = varNames;
     }
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
-        Projection projection = (Projection) ModifierUtils.getFirst(Capability.PROJECTION,
-                query.getModifiers());
+        Projection projection = query.getModifiers().projection();
         if (projection != null)
             return new ProjectingResults(in, projection.getVarNames());
         return in;

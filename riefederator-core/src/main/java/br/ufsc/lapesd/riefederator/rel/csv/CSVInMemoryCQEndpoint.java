@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.rel.csv;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Source;
@@ -15,12 +16,9 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -290,7 +288,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
      * Process this as a join between stars (join-connectivity among stars assumed)
      */
     private @Nonnull Results queryConnected(@Nonnull CQuery query) {
-        boolean distinct = ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
+        boolean distinct = query.getModifiers().distinct() != null;
         IndexedSet<SPARQLFilter> allFilters = null;
         IndexedSubset<SPARQLFilter> pendingFilters = null;
         CollectionResults working = null;

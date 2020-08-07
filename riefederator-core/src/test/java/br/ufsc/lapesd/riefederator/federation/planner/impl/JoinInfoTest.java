@@ -1,11 +1,11 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -27,8 +27,7 @@ import javax.annotation.Nullable;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getMultiJoinability;
-import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getPlainJoinability;
+import static br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo.getJoinability;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -50,15 +49,19 @@ public class JoinInfoTest implements TestContext {
 
     private static final CQuery xpyi = createQuery(x, AtomAnnotation.of(X),
             p1, y, AtomInputAnnotation.asRequired(Y, "Y").get());
+    private static final CQuery xpyio = createQuery(x, AtomAnnotation.of(X),
+            p1, y, AtomInputAnnotation.asOptional(Y, "Y").get());
     private static final CQuery yipz = createQuery(y, AtomInputAnnotation.asRequired(Y, "Y").get(),
+            p1, z, AtomAnnotation.of(Z));
+    private static final CQuery yiopz = createQuery(y, AtomInputAnnotation.asOptional(Y, "Y").get(),
             p1, z, AtomAnnotation.of(Z));
 
 
-    private static @Nonnull PlanNode node(@Nonnull CQuery... queries) {
+    private static @Nonnull Op node(@Nonnull CQuery... queries) {
         return node(1, queries);
     }
 
-    private static @Nonnull QueryNode node(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
+    private static @Nonnull QueryOp node(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
         int oldModifiersCount = query.getModifiers().size();
         Set<Var> termVars = query.attr().tripleVars();
         Set<Var> filterVars = query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
@@ -75,13 +78,10 @@ public class JoinInfoTest implements TestContext {
             query = mQuery;
             assert query.getModifiers().size() == oldModifiersCount : "Lost modifiers";
         }
-        QueryNode node = new QueryNode(endpoint, query);
-        query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
-                .forEach(m -> node.addFilter((SPARQLFilter)m));
-        return node;
+        return new QueryOp(endpoint, query);
     }
 
-    private static @Nonnull PlanNode node(int endpoints, @Nonnull CQuery... queries) {
+    private static @Nonnull Op node(int endpoints, @Nonnull CQuery... queries) {
         Preconditions.checkArgument(queries.length > 0);
         Preconditions.checkArgument(endpoints > 0);
         List<EmptyEndpoint> endpointList = new ArrayList<>(endpoints);
@@ -90,7 +90,7 @@ public class JoinInfoTest implements TestContext {
         }
         if (queries.length == 1 && endpoints == 1)
             return  node(endpointList.get(0), queries[0]);
-        MultiQueryNode.Builder builder = MultiQueryNode.builder();
+        UnionOp.Builder builder = UnionOp.builder();
         for (int i = 0; i < endpoints; i++) {
             for (CQuery query : queries)
                 builder.add(node(endpointList.get(i), query));
@@ -116,33 +116,38 @@ public class JoinInfoTest implements TestContext {
                 asList(node(3, xpyi), node(3, ypz), singleton("y"), emptySet(), false),
                 asList(node(3, xpyi), node(3, zpx), singleton("x"), singleton("y"), false),
 
-                asList(JoinNode.builder(node(xpy), node(ypz)).build(), node(zpw),
+                asList(JoinOp.create(node(xpy), node(ypz)), node(zpw),
                         singleton("z"), emptySet(), false),
-                asList(JoinNode.builder(node(xpy), node(ypz)).build(), node(xpy),
+                asList(JoinOp.create(node(xpy), node(ypz)), node(xpy),
                         emptySet(), emptySet(), true),
-                asList(JoinNode.builder(node(xpy), node(ypz)).build(), node(ypz),
+                asList(JoinOp.create(node(xpy), node(ypz)), node(ypz),
                         emptySet(), emptySet(), true),
-                asList(JoinNode.builder(node(xpy), node(zpx)).build(), node(ypz),
+                asList(JoinOp.create(node(xpy), node(zpx)), node(ypz),
                         asList("y", "z"), emptySet(), false),
 
                 //ignore MultiQueryNodes at leafs
-                asList(JoinNode.builder(node(3, xpy), node(3, ypz)).build(), node(3, zpw),
+                asList(JoinOp.create(node(3, xpy), node(3, ypz)), node(3, zpw),
                         singleton("z"), emptySet(), false),
-                asList(JoinNode.builder(node(3, xpy), node(3, ypz)).build(), node(3, xpy),
+                asList(JoinOp.create(node(3, xpy), node(3, ypz)), node(3, xpy),
                         emptySet(), emptySet(), true),
 
-                //ignore MultiQueryNodes that have bad child joins
-                asList(node(ypz, yipz), node(xpy, xpyi), singleton("y"), emptySet(), false),
-                asList(node(ypz, yipz), node(xpyi), singleton("y"), emptySet(), false)
+                // both joins are invalid as plain joins because the union takes y as an input var
+                // such joins should never occur in actual plans
+                asList(node(ypz, yipz), node(xpy, xpyi), emptySet(), singleton("y"), false),
+                asList(node(ypz, yipz), node(xpyi), emptySet(), singleton("y"), false),
+
+                // the following two joins are valid because y is an optional input
+                asList(node(ypz, yiopz), node(xpy, xpyio), singleton("y"), emptySet(), false),
+                asList(node(ypz, yiopz), node(xpyio), singleton("y"), emptySet(), false)
         );
         return data.stream().map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "plainData")
-    public void testPlain(@Nonnull PlanNode l, @Nonnull PlanNode r,
+    public void testPlain(@Nonnull Op l, @Nonnull Op r,
                           @Nonnull Collection<String> joinVars,
                           @Nonnull Collection<String> pendingInputs, boolean subsumed) {
-        for (JoinInfo j : asList(getPlainJoinability(l, r), getPlainJoinability(r, l))) {
+        for (JoinInfo j : asList(JoinInfo.getJoinability(l, r), JoinInfo.getJoinability(r, l))) {
             assertEquals(j.isValid(), !joinVars.isEmpty());
             assertEquals(j.getJoinVars(), new HashSet<>(joinVars));
             assertEquals(j.getPendingRequiredInputs(), new HashSet<>(pendingInputs));
@@ -159,131 +164,69 @@ public class JoinInfoTest implements TestContext {
 
     @Test
     public void testPlainSubJoin() {
-        PlanNode n1 = node(createQuery(x, p1, y, y, p1, z));
-        PlanNode n2 = node(createQuery(x, p2, z));
-        assertEquals(JoinInfo.getPlainJoinability(n1, n2).getJoinVars(), Sets.newHashSet("x", "z"));
+        Op n1 = node(createQuery(x, p1, y, y, p1, z));
+        Op n2 = node(createQuery(x, p2, z));
+        assertEquals(JoinInfo.getJoinability(n1, n2).getJoinVars(), Sets.newHashSet("x", "z"));
 
-        JoinInfo info = getPlainJoinability(n1, n2, singleton("x"));
+        JoinInfo info = getJoinability(n1, n2, singleton("x"));
         assertTrue(info.isValid());
         assertEquals(info.getJoinVars(), singleton("x"));
         assertEquals(info.getPendingRequiredInputs(), emptySet());
 
-        info = getPlainJoinability(n1, n2, Sets.newHashSet("x", "z"));
+        info = getJoinability(n1, n2, Sets.newHashSet("x", "z"));
         assertTrue(info.isValid());
         assertEquals(info.getJoinVars(), Sets.newHashSet("x", "z"));
         assertEquals(info.getPendingRequiredInputs(), emptySet());
 
-        info = getPlainJoinability(n1, n2, Sets.newHashSet("x", "y"));
+        info = getJoinability(n1, n2, Sets.newHashSet("x", "y"));
         assertFalse(info.isValid());
     }
 
     @Test
     public void testPlainSubJoinWithInput() {
-        PlanNode n1 = node(createQuery(x, p2, y, y, p2, z));
-        PlanNode n2 = node(xpyi);
-        JoinInfo info = getPlainJoinability(n1, n2);
+        Op n1 = node(createQuery(x, p2, y, y, p2, z));
+        Op n2 = node(xpyi);
+        JoinInfo info = JoinInfo.getJoinability(n1, n2);
         assertTrue(info.isValid());
 
-        info = getPlainJoinability(n1, n2, singleton("y"));
+        info = getJoinability(n1, n2, singleton("y"));
         assertTrue(info.isValid());
         assertEquals(info.getJoinVars(), singleton("y"));
         assertEquals(info.getPendingRequiredInputs(), emptySet());
 
-        info = getPlainJoinability(n1, n2, singleton("x"));
+        info = getJoinability(n1, n2, singleton("x"));
         assertTrue(info.isValid());
         assertEquals(info.getJoinVars(), singleton("x"));
         assertEquals(info.getPendingRequiredInputs(), singleton("y"));
     }
 
-    @Test(dataProvider = "plainData")
-    public void testPlainReflexive(@Nonnull PlanNode l, @Nonnull PlanNode r,
+    @Test(dataProvider = "plainData") @SuppressWarnings("unused")
+    public void testPlainReflexive(@Nonnull Op l, @Nonnull Op r,
                                    @Nonnull Collection<String> joinVars,
                                    @Nonnull Collection<String> pendingInputs, boolean subsumed) {
-        JoinInfo from = getPlainJoinability(l, r);
-        JoinInfo to = getPlainJoinability(r, l);
+        JoinInfo from = JoinInfo.getJoinability(l, r);
+        JoinInfo to = JoinInfo.getJoinability(r, l);
         assertEquals(from, from);
         assertEquals(to, to);
         assertEquals(from.isValid(), to.isValid());
         assertEquals(from.getJoinVars(), to.getJoinVars());
         assertEquals(from.getPendingRequiredInputs(), to.getPendingRequiredInputs());
         assertEquals(from.isSubsumed(), to.isSubsumed());
-        assertEquals(from.getChildJoins(), to.getChildJoins());
         assertEquals(from.getLeftNodes(), to.getRightNodes());
         assertEquals(from.getRightNodes(), to.getLeftNodes());
         assertEquals(from, to);
     }
 
-    @DataProvider
-    public static Object[][] multiData() {
-        PlanNode nxpy = node(xpy);
-        PlanNode nypz = node(ypz);
-        PlanNode nyipz = node(yipz);
-        PlanNode nxpyi = node(xpyi);
-        PlanNode mxpyi = MultiQueryNode.builder().add(nxpy).add(nxpyi).build();
-        PlanNode myipz = MultiQueryNode.builder().add(nypz).add(nyipz).build();
-
-        return Stream.of(
-                asList(nxpy, nypz, singletonList("y"), emptySet(), false,
-                        singletonList(ImmutablePair.of(nxpy, nypz))),
-                asList(nxpy, node(xpy), emptySet(), emptySet(), true, emptyList()),
-                asList(nxpy, node(xpyi), emptySet(), emptySet(), true, emptyList()),
-                asList(nxpy, node(xpy, xpyi), emptySet(), emptySet(), true, emptyList()),
-                asList(mxpyi, nypz, singletonList("y"), emptySet(), false,
-                       asList(ImmutablePair.of(nxpy, nypz), ImmutablePair.of(nxpyi, nypz))),
-                asList(mxpyi, nyipz, singletonList("y"), emptySet(), false,
-                       singletonList(ImmutablePair.of(nxpy, nyipz))),
-                asList(mxpyi, myipz, singletonList("y"), emptySet(), false,
-                       asList(ImmutablePair.of(nxpy, nypz), ImmutablePair.of(nxpy, nyipz),
-                              ImmutablePair.of(nxpyi, nypz)))
-        ).map(List::toArray).toArray(Object[][]::new);
-    }
-
-    @Test(dataProvider = "multiData")
-    public void testMultiJoinability(@Nonnull PlanNode l, @Nonnull PlanNode r,
-                                     @Nonnull Collection<String> joinVars,
-                                     @Nonnull Collection<String> pendingInputs, boolean subsumed,
-                                     @Nonnull List<ImmutablePair<PlanNode, PlanNode>> pairs) {
-        for (JoinInfo j : asList(getMultiJoinability(l, r), getMultiJoinability(r, l))) {
-            assertEquals(j.isValid(), !joinVars.isEmpty());
-            assertEquals(j.getJoinVars(), new HashSet<>(joinVars));
-            assertEquals(j.getPendingRequiredInputs(), new HashSet<>(pendingInputs));
-            assertEquals(j.isSubsumed(), subsumed);
-
-            List<PlanNode> lns = l instanceof MultiQueryNode ? l.getChildren() : singletonList(l);
-            List<PlanNode> rns = r instanceof MultiQueryNode ? r.getChildren() : singletonList(r);
-            if (j.getLeft() == l) {
-                assertEquals(j.getLeftNodes(), lns);
-                assertEquals(j.getRightNodes(), rns);
-            } else {
-                assertEquals(j.getLeftNodes(), rns);
-                assertEquals(j.getRightNodes(), lns);
-
-                //invert pairs, since we are on the second iteration
-                List<ImmutablePair<PlanNode, PlanNode>> tmp = new ArrayList<>();
-                for (ImmutablePair<PlanNode, PlanNode> pair : pairs)
-                    tmp.add(ImmutablePair.of(pair.right, pair.left));
-                pairs = tmp;
-            }
-
-            assertEquals(j.getChildJoins().keySet(), new HashSet<>(pairs));
-            for (ImmutablePair<PlanNode, PlanNode> pair : pairs) {
-                JoinInfo j2 = j.getChildJoins().get(pair);
-                assertTrue(j2.isValid());
-                assertEquals(j2, getPlainJoinability(pair.left, pair.right));
-            }
-        }
-    }
-
     @Test
     public void testJoinInfoGraph() {
-        List<PlanNode> nodes =
+        List<Op> nodes =
                 //     0          1          2          3          4           5
                 asList(node(xpy), node(ypz), node(zpw), node(zpx), node(xpyi), node(yipz));
-        UndirectedIrreflexiveArrayGraph<PlanNode, JoinInfo> g;
-        g = new UndirectedIrreflexiveArrayGraph<PlanNode, JoinInfo>(JoinInfo.class, nodes) {
+        UndirectedIrreflexiveArrayGraph<Op, JoinInfo> g;
+        g = new UndirectedIrreflexiveArrayGraph<Op, JoinInfo>(JoinInfo.class, nodes) {
             @Override
-            protected @Nullable JoinInfo weigh(@Nonnull PlanNode l, @Nonnull PlanNode r) {
-                JoinInfo info = getPlainJoinability(l, r);
+            protected @Nullable JoinInfo weigh(@Nonnull Op l, @Nonnull Op r) {
+                JoinInfo info = JoinInfo.getJoinability(l, r);
                 return info.isValid() ? info : null;
             }
         };
@@ -301,7 +244,7 @@ public class JoinInfoTest implements TestContext {
         assertEquals(g.getWeight(3, 4).getJoinVars(), singleton("x"));
         assertEquals(g.getWeight(3, 4).getPendingRequiredInputs(), singleton("y"));
 
-        List<ImmutablePair<JoinInfo, PlanNode>> actual = new ArrayList<>();
+        List<ImmutablePair<JoinInfo, Op>> actual = new ArrayList<>();
         g.forEachNeighbor(0, (w, n) -> actual.add(ImmutablePair.of(w, n)));
         assertEquals(actual, asList(
                 ImmutablePair.of(g.getWeight(0, 1), nodes.get(1)),
@@ -322,20 +265,16 @@ public class JoinInfoTest implements TestContext {
 
     @DataProvider
     public static Object[][] isLinkedToData() {
-        PlanNode nxpy = node(xpy), nypz = node(ypz), nyipz = node(yipz), nzpw = node(zpw);
-        MultiQueryNode mypz = MultiQueryNode.builder().add(nyipz).add(nypz).build();
+        Op nxpy = node(xpy), nypz = node(ypz), nyipz = node(yipz), nzpw = node(zpw);
+        UnionOp mypz = UnionOp.builder().add(nyipz).add(nypz).build();
         return Stream.of(
-                asList(getPlainJoinability(nxpy, nypz), getPlainJoinability(nypz,  nzpw), true),
-                asList(getPlainJoinability(nypz, nxpy), getPlainJoinability(nzpw,  nypz), true),
-                asList(getPlainJoinability(nxpy, nypz), getPlainJoinability(nyipz, nzpw), false),
+                asList(JoinInfo.getJoinability(nxpy, nypz), JoinInfo.getJoinability(nypz,  nzpw), true),
+                asList(JoinInfo.getJoinability(nypz, nxpy), JoinInfo.getJoinability(nzpw,  nypz), true),
+                asList(JoinInfo.getJoinability(nxpy, nypz), JoinInfo.getJoinability(nyipz, nzpw), false),
 
-                asList(getPlainJoinability(nxpy, mypz), getPlainJoinability(mypz, nzpw), true),
-                asList(getPlainJoinability(nxpy, mypz), getPlainJoinability(nypz, nzpw), false),
-                asList(getPlainJoinability(mypz, nxpy), getPlainJoinability(nzpw, mypz), true),
-
-                asList(getMultiJoinability(nxpy, mypz), getMultiJoinability(mypz, nzpw), true),
-                asList(getMultiJoinability(nxpy, mypz), getMultiJoinability(nypz, nzpw), false),
-                asList(getMultiJoinability(mypz, nxpy), getMultiJoinability(nzpw, mypz), true)
+                asList(JoinInfo.getJoinability(nxpy, mypz), JoinInfo.getJoinability(mypz, nzpw), true),
+                asList(JoinInfo.getJoinability(nxpy, mypz), JoinInfo.getJoinability(nypz, nzpw), false),
+                asList(JoinInfo.getJoinability(mypz, nxpy), JoinInfo.getJoinability(nzpw, mypz), true)
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
@@ -347,54 +286,40 @@ public class JoinInfoTest implements TestContext {
 
     @Test
     public void testGetByPosition() {
-        PlanNode n1 = node(xpy), n2 = node(ypz);
-        JoinInfo info1 = getPlainJoinability(n1, n2);
+        Op n1 = node(xpy), n2 = node(ypz);
+        JoinInfo info1 = JoinInfo.getJoinability(n1, n2);
         assertSame(info1.get(JoinInfo.Position.LEFT), n1);
         assertSame(info1.get(JoinInfo.Position.RIGHT), n2);
         assertEquals(info1.getNodes(JoinInfo.Position.LEFT), singleton(n1));
         assertEquals(info1.getNodes(JoinInfo.Position.RIGHT), singleton(n2));
-
-
-        PlanNode m1 = node(xpy, xpyi), m2 = node(ypz, yipz);
-        JoinInfo info2 = getMultiJoinability(m1, m2);
-        assertSame(info2.get(JoinInfo.Position.LEFT), m1);
-        assertSame(info2.get(JoinInfo.Position.RIGHT), m2);
-        assertEquals(info2.getNodes(JoinInfo.Position.LEFT), m1.getChildren());
-        assertEquals(info2.getNodes(JoinInfo.Position.RIGHT), m2.getChildren());
     }
 
 
     @DataProvider
     public static Object[][] oppositeToLinkedData() {
-        PlanNode nxpy = node(xpy), nypz = node(ypz), nyipz = node(yipz), nzpw = node(zpw);
-        PlanNode mxpy = node(xpy, xpyi);
-        MultiQueryNode mypz = MultiQueryNode.builder().add(nyipz).add(nypz).build();
+        Op nxpy = node(xpy), nypz = node(ypz), nyipz = node(yipz), nzpw = node(zpw);
+        UnionOp mypz = UnionOp.builder().add(nyipz).add(nypz).build();
         return Stream.of(
-                asList(getPlainJoinability(nxpy, nypz), getPlainJoinability(nypz, nzpw), nxpy),
-                asList(getPlainJoinability(nypz, nzpw), getPlainJoinability(nxpy, nypz), nzpw),
-                asList(getPlainJoinability(nypz, nxpy), getPlainJoinability(nzpw, nypz), nxpy),
-                asList(getPlainJoinability(nzpw, nypz), getPlainJoinability(nypz, nxpy), nzpw),
+                asList(JoinInfo.getJoinability(nxpy, nypz), JoinInfo.getJoinability(nypz, nzpw), nxpy),
+                asList(JoinInfo.getJoinability(nypz, nzpw), JoinInfo.getJoinability(nxpy, nypz), nzpw),
+                asList(JoinInfo.getJoinability(nypz, nxpy), JoinInfo.getJoinability(nzpw, nypz), nxpy),
+                asList(JoinInfo.getJoinability(nzpw, nypz), JoinInfo.getJoinability(nypz, nxpy), nzpw),
 
-                asList(getPlainJoinability(nypz, nxpy), getPlainJoinability(nypz, nzpw), nxpy),
-                asList(getPlainJoinability(nypz, nzpw), getPlainJoinability(nypz, nxpy), nzpw),
+                asList(JoinInfo.getJoinability(nypz, nxpy), JoinInfo.getJoinability(nypz, nzpw), nxpy),
+                asList(JoinInfo.getJoinability(nypz, nzpw), JoinInfo.getJoinability(nypz, nxpy), nzpw),
 
-                asList(getPlainJoinability(nxpy, nypz), getPlainJoinability(nzpw, nypz), nxpy),
-                asList(getPlainJoinability(nzpw, nypz), getPlainJoinability(nxpy, nypz), nzpw),
+                asList(JoinInfo.getJoinability(nxpy, nypz), JoinInfo.getJoinability(nzpw, nypz), nxpy),
+                asList(JoinInfo.getJoinability(nzpw, nypz), JoinInfo.getJoinability(nxpy, nypz), nzpw),
 
-                asList(getPlainJoinability(nxpy, mypz), getPlainJoinability(mypz, nzpw), nxpy),
-                asList(getPlainJoinability(mypz, nzpw), getPlainJoinability(nxpy, mypz), nzpw),
-                asList(getPlainJoinability(mypz, nxpy), getPlainJoinability(nzpw, mypz), nxpy),
-                asList(getPlainJoinability(nzpw, mypz), getPlainJoinability(mypz, nxpy), nzpw),
-
-                asList(getMultiJoinability(mxpy, nypz), getMultiJoinability(nypz, nzpw), mxpy),
-                asList(getMultiJoinability(nypz, nzpw), getMultiJoinability(mxpy, nypz), nzpw),
-                asList(getMultiJoinability(nypz, mxpy), getMultiJoinability(nzpw, nypz), mxpy),
-                asList(getMultiJoinability(nzpw, nypz), getMultiJoinability(nypz, mxpy), nzpw)
+                asList(JoinInfo.getJoinability(nxpy, mypz), JoinInfo.getJoinability(mypz, nzpw), nxpy),
+                asList(JoinInfo.getJoinability(mypz, nzpw), JoinInfo.getJoinability(nxpy, mypz), nzpw),
+                asList(JoinInfo.getJoinability(mypz, nxpy), JoinInfo.getJoinability(nzpw, mypz), nxpy),
+                asList(JoinInfo.getJoinability(nzpw, mypz), JoinInfo.getJoinability(mypz, nxpy), nzpw)
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "oppositeToLinkedData")
-    public void testOppositeToLinked(JoinInfo info, JoinInfo other, PlanNode expected) {
+    public void testOppositeToLinked(JoinInfo info, JoinInfo other, Op expected) {
         assertTrue(info.isLinkedTo(other));
         assertTrue(other.isLinkedTo(info));
         assertSame(info.getOppositeToLinked(other), expected);

@@ -7,7 +7,6 @@ import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
-import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import org.slf4j.Logger;
@@ -29,7 +28,7 @@ public class EvenDecomposer extends SourcesListAbstractDecomposer {
     }
 
     @Override
-    protected @Nonnull List<ProtoQueryNode> decomposeIntoProtoQNs(@Nonnull CQuery query) {
+    protected @Nonnull List<ProtoQueryOp> decomposeIntoProtoQNs(@Nonnull CQuery query) {
         if (sources.stream().anyMatch(s -> s.getDescription() instanceof SemanticDescription)) {
             logger.warn("EvenDecomposer does not support semantic matches (yet!). " +
                         "Rewritings will be ignored");
@@ -42,13 +41,13 @@ public class EvenDecomposer extends SourcesListAbstractDecomposer {
         }
     }
 
-    private @Nonnull Stream<ProtoQueryNode> streamQueryNodes(@Nonnull Source source,
-                                                             @Nonnull CQueryMatch m) {
+    private @Nonnull Stream<ProtoQueryOp> streamQueryNodes(@Nonnull Source source,
+                                                           @Nonnull CQueryMatch m) {
         TPEndpoint ep = source.getEndpoint();
         return Stream.concat(
-                m.getKnownExclusiveGroups().stream().map(g -> new ProtoQueryNode(ep, g)),
+                m.getKnownExclusiveGroups().stream().map(g -> new ProtoQueryOp(ep, g)),
                 m.getNonExclusiveRelevant().stream()
-                        .map(t -> new ProtoQueryNode(ep, CQuery.from(t))));
+                        .map(t -> new ProtoQueryOp(ep, CQuery.from(t))));
     }
 
     @Override

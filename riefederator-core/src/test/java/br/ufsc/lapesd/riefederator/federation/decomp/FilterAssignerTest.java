@@ -1,11 +1,10 @@
 package br.ufsc.lapesd.riefederator.federation.decomp;
 
 import br.ufsc.lapesd.riefederator.TestContext;
-import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.proto.ProtoQueryNode;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
@@ -28,24 +27,25 @@ import static org.testng.Assert.assertTrue;
 public class FilterAssignerTest implements TestContext {
     private @Nonnull CQEndpoint ep1 = new EmptyEndpoint(), ep2 = new EmptyEndpoint();
 
-    private void checkAllFilters(@Nonnull CQuery query, @Nonnull PlanNode root) {
+    private void checkAllFilters(@Nonnull CQuery query, @Nonnull Op root) {
         Set<SPARQLFilter> modifiers = new HashSet<>();
         query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
                 .forEach(m -> modifiers.add((SPARQLFilter)m));
 
-        ArrayDeque<List<PlanNode>> stack = new ArrayDeque<>();
+        ArrayDeque<List<Op>> stack = new ArrayDeque<>();
         stack.push(Collections.singletonList(root));
         while (!stack.isEmpty()) {
-            List<PlanNode> path = stack.pop();
-            PlanNode node = path.get(path.size() - 1);
-            modifiers.removeAll(node.getFilters());
+            List<Op> path = stack.pop();
+            Op node = path.get(path.size() - 1);
+            modifiers.removeAll(node.modifiers().filters());
             // no filter is present in any ancestor
-            for (PlanNode ancestor : path.subList(0, path.size() - 1)) {
-                assertEquals(intersect(node.getFilters(), ancestor.getFilters()), emptySet());
+            for (Op ancestor : path.subList(0, path.size() - 1)) {
+                assertEquals(intersect(node.modifiers().filters(), ancestor.modifiers().filters()),
+                             emptySet());
             }
             // queue one path for each child
-            for (PlanNode child : node.getChildren()) {
-                ArrayList<PlanNode> list = new ArrayList<>(path);
+            for (Op child : node.getChildren()) {
+                ArrayList<Op> list = new ArrayList<>(path);
                 list.add(child);
                 stack.push(list);
             }
@@ -56,26 +56,26 @@ public class FilterAssignerTest implements TestContext {
 
     @Test
     public void testNoFilter() {
-        QueryNode q1 = new QueryNode(ep1, createQuery(Alice, knows, x));
-        QueryNode q2 = new QueryNode(ep1, createQuery(x, knows, y));
-        QueryNode q3 = new QueryNode(ep1, createQuery(y, age, u));
-        JoinNode j1 = JoinNode.builder(q1, q2).build();
-        JoinNode root = JoinNode.builder(j1, q3).build();
+        QueryOp q1 = new QueryOp(ep1, createQuery(Alice, knows, x));
+        QueryOp q2 = new QueryOp(ep1, createQuery(x, knows, y));
+        QueryOp q3 = new QueryOp(ep1, createQuery(y, age, u));
+        JoinOp j1 = JoinOp.create(q1, q2);
+        JoinOp root = JoinOp.create(j1, q3);
 
         CQuery fullQuery = createQuery(Alice, knows, x, x, knows, y, y, age, u);
         FilterAssigner assigner = new FilterAssigner(fullQuery);
 
         // place on leaves
-        List<QueryNode> queryNodes = asList(q1, q2, q3);
-        List<ProtoQueryNode> prototypes;
-        prototypes = queryNodes.stream().map(ProtoQueryNode::new).collect(toList());
+        List<QueryOp> queryOps = asList(q1, q2, q3);
+        List<ProtoQueryOp> prototypes;
+        prototypes = queryOps.stream().map(ProtoQueryOp::new).collect(toList());
 
-        List<QueryNode> annotated = assigner.placeFiltersOnLeaves(prototypes).stream()
-                .map(n -> (QueryNode)n).collect(toList());
+        List<QueryOp> annotated = assigner.placeFiltersOnLeaves(prototypes).stream()
+                .map(n -> (QueryOp)n).collect(toList());
         assertEquals(annotated.size(), 3);
         assertTrue(annotated.stream().noneMatch(Objects::isNull));
         for (int i = 0; i < annotated.size(); i++)
-            assertEquals(annotated.get(i).getQuery(), queryNodes.get(i).getQuery());
+            assertEquals(annotated.get(i).getQuery(), queryOps.get(i).getQuery());
 
         assigner.placeBottommost(root);
         checkAllFilters(fullQuery, root);
@@ -87,9 +87,9 @@ public class FilterAssignerTest implements TestContext {
                 Alice, knows, x,
                 x,     age,   u,
                 SPARQLFilter.build("?u > 23"));
-        MultiQueryNode node = MultiQueryNode.builder()
-                .add(new QueryNode(ep1, query))
-                .add(new QueryNode(ep2, query))
+        UnionOp node = UnionOp.builder()
+                .add(new QueryOp(ep1, query))
+                .add(new QueryOp(ep2, query))
                 .build();
         FilterAssigner assigner = new FilterAssigner(query);
         assigner.placeBottommost(node);
@@ -102,18 +102,18 @@ public class FilterAssignerTest implements TestContext {
                 Alice, knows, x,
                 x,     age,   u,
                 SPARQLFilter.build("?u > 23"));
-        List<ProtoQueryNode> prototypes = asList(
-                new ProtoQueryNode(ep1, query),
-                new ProtoQueryNode(ep2, query)
+        List<ProtoQueryOp> prototypes = asList(
+                new ProtoQueryOp(ep1, query),
+                new ProtoQueryOp(ep2, query)
         );
 
         FilterAssigner assigner = new FilterAssigner(query);
-        List<QueryNode> queryNodes = assigner.placeFiltersOnLeaves(prototypes).stream()
-                .map(n -> (QueryNode)n).collect(toList());
-        for (QueryNode queryNode : queryNodes)
-            checkAllFilters(query, queryNode);
+        List<QueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
+                .map(n -> (QueryOp)n).collect(toList());
+        for (QueryOp queryOp : queryOps)
+            checkAllFilters(query, queryOp);
 
-        MultiQueryNode multi = MultiQueryNode.builder().addAll(queryNodes).build();
+        UnionOp multi = UnionOp.builder().addAll(queryOps).build();
         assigner.placeBottommost(multi);
         checkAllFilters(query, multi);
     }
@@ -128,34 +128,34 @@ public class FilterAssignerTest implements TestContext {
                 x,     manages, y, annEquals,
                 x,     age,     u,
                 y,     age,     v, annGreater);
-        List<ProtoQueryNode> prototypes = asList(
-                new ProtoQueryNode(ep1, createQuery(Alice, knows, x)),
-                new ProtoQueryNode(ep1, createQuery(x, manages, y, x, age, u)),
-                new ProtoQueryNode(ep2, createQuery(x, manages, y, y, age, v))
+        List<ProtoQueryOp> prototypes = asList(
+                new ProtoQueryOp(ep1, createQuery(Alice, knows, x)),
+                new ProtoQueryOp(ep1, createQuery(x, manages, y, x, age, u)),
+                new ProtoQueryOp(ep2, createQuery(x, manages, y, y, age, v))
         );
 
         FilterAssigner assigner = new FilterAssigner(fullQuery);
-        List<QueryNode> queryNodes = assigner.placeFiltersOnLeaves(prototypes).stream()
-                .map(n -> (QueryNode)n).collect(toList());
+        List<QueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
+                .map(n -> (QueryOp)n).collect(toList());
 
-        assertEquals(queryNodes.size(), prototypes.size());
-        assertTrue(queryNodes.stream().noneMatch(Objects::isNull));
-        for (int i = 0; i < queryNodes.size(); i++)
-            assertEquals(prototypes.get(i).getMatchedQuery(), queryNodes.get(i).getQuery());
-        assertEquals(queryNodes.get(0).getFilters(), emptySet());
-        assertEquals(queryNodes.get(1).getFilters(), singleton(annEquals));
-        assertEquals(queryNodes.get(2).getFilters(), singleton(annEquals));
+        assertEquals(queryOps.size(), prototypes.size());
+        assertTrue(queryOps.stream().noneMatch(Objects::isNull));
+        for (int i = 0; i < queryOps.size(); i++)
+            assertEquals(prototypes.get(i).getMatchedQuery(), queryOps.get(i).getQuery());
+        assertEquals(queryOps.get(0).modifiers().filters(), emptySet());
+        assertEquals(queryOps.get(1).modifiers().filters(), singleton(annEquals));
+        assertEquals(queryOps.get(2).modifiers().filters(), singleton(annEquals));
 
-        JoinNode joinLeft  = JoinNode.builder(queryNodes.get(1), queryNodes.get(2)).build();
-        JoinNode joinRight = JoinNode.builder(queryNodes.get(1), queryNodes.get(2)).build();
-        JoinNode leftDeep  = JoinNode.builder(joinLeft,          queryNodes.get(0)).build();
-        JoinNode rightDeep = JoinNode.builder(queryNodes.get(0), joinRight        ).build();
+        JoinOp joinLeft  = JoinOp.create(queryOps.get(1), queryOps.get(2));
+        JoinOp joinRight = JoinOp.create(queryOps.get(1), queryOps.get(2));
+        JoinOp leftDeep  = JoinOp.create(joinLeft,          queryOps.get(0));
+        JoinOp rightDeep = JoinOp.create(queryOps.get(0), joinRight        );
 
         assigner.placeBottommost(leftDeep);
         assigner.placeBottommost(rightDeep);
 
-        assertEquals(joinLeft.getFilters(), singleton(annGreater));
-        assertEquals(joinRight.getFilters(), singleton(annGreater));
+        assertEquals(joinLeft.modifiers().filters(), singleton(annGreater));
+        assertEquals(joinRight.modifiers().filters(), singleton(annGreater));
         checkAllFilters(fullQuery, rightDeep);
         checkAllFilters(fullQuery, leftDeep);
     }

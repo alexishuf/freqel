@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.webapis.description;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import com.google.common.collect.ImmutableMap;
 import com.google.errorprone.annotations.Immutable;

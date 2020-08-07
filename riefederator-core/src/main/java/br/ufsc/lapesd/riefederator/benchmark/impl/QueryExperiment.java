@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.benchmark.impl;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.benchmark.BenchmarkUtils;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
@@ -8,7 +9,6 @@ import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -300,7 +300,7 @@ public class QueryExperiment {
         try (Federation federation = loader.load(federationConfig)) {
             federation.initAllSources(5, TimeUnit.MINUTES);
             sw = Stopwatch.createStarted();
-            PlanNode plan = federation.plan(query);
+            Op plan = federation.plan(query);
             if (!isOnlyPlan()) {
                 List<Solution> resultsList = new ArrayList<>(10000);
                 try (TimeSampler ignored = Metrics.COOLDOWN_MS.createThreadSampler(perf)) {

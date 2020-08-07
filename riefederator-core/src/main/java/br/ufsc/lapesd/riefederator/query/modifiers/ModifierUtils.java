@@ -6,8 +6,29 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ModifierUtils {
+    private static final Map<Class<? extends Modifier>, Capability> cls2cap;
+
+    static {
+        Map<Class<? extends Modifier>, Capability> map = new HashMap<>();
+        map.put(Ask.class, Capability.ASK);
+        map.put(Projection.class, Capability.PROJECTION);
+        map.put(Distinct.class, Capability.DISTINCT);
+        map.put(Limit.class, Capability.LIMIT);
+        map.put(SPARQLFilter.class, Capability.SPARQL_FILTER);
+        map.put(ValuesModifier.class, Capability.VALUES);
+        cls2cap = map;
+    }
+
+    public static @Nonnull Capability getCapability(@Nonnull Class<? extends Modifier> modClass) {
+        Capability capability = cls2cap.get(modClass);
+        if (capability == null) throw new IllegalArgumentException("No Capability for "+modClass);
+        return capability;
+    }
+
     public static @Nullable Modifier getFirst(@Nonnull Capability capability,
                                               @Nonnull Collection<? extends Modifier> coll) {
         for (Modifier mod : coll) {

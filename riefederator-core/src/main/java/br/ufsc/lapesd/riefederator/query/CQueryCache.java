@@ -8,29 +8,27 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
-import br.ufsc.lapesd.riefederator.query.impl.CQueryData;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.SetMultimap;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.util.Collections.singleton;
 import static java.util.Collections.unmodifiableSet;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 
 public class CQueryCache {
     private @Nonnull final CQueryData d;
     private List<Triple> unmodifiableList;
-    private Set<Modifier> unmodifiableModifiers;
     private Set<QueryAnnotation> unmodifiableQueryAnnotations;
 
     private IndexedSet<Triple> set;
@@ -42,15 +40,14 @@ public class CQueryCache {
     private IndexedSet<String> allVarNames;
     private IndexedSet<String> publicTripleVarNames;
     private IndexedSet<String> publicVarNames;
+    private ImmutableIndexedSubset<String> inputVarNames, reqInputVarNames, optInputVarNames;
 
     private final AtomicInteger indexTriplesState = new AtomicInteger(0);
     private List<ImmutableIndexedSubset<Triple>> t2triple,  s2triple, p2triple, o2triple;
     private SetMultimap<Term, Atom> t2atom;
     private IndexedSet<Triple> matchedTriples;
-    private Set<SPARQLFilter> filters;
-    private Set<Projection> projection;
 
-    private Boolean joinConnected, ask, distinct;
+    private Boolean joinConnected, ask;
     private int limit = -1;
     private int queryHash = 0;
 
@@ -62,7 +59,6 @@ public class CQueryCache {
         this.d = data;
         set = other.set;
         unmodifiableList = other.unmodifiableList;
-        unmodifiableModifiers = other.unmodifiableModifiers;
         unmodifiableQueryAnnotations = other.unmodifiableQueryAnnotations;
         tripleTerms = other.tripleTerms;
         allTerms = other.allTerms;
@@ -70,6 +66,9 @@ public class CQueryCache {
         allVars = other.allVars;
         tripleVarNames = other.tripleVarNames;
         allVarNames = other.allVarNames;
+        inputVarNames = other.inputVarNames;
+        reqInputVarNames = other.reqInputVarNames;
+        optInputVarNames = other.optInputVarNames;
         publicTripleVarNames = other.publicTripleVarNames;
         publicVarNames = other.publicVarNames;
         indexTriplesState.set(other.indexTriplesState.get());
@@ -79,11 +78,8 @@ public class CQueryCache {
         o2triple = other.o2triple;
         t2atom = other.t2atom;
         matchedTriples = other.matchedTriples;
-        filters = other.filters;
-        projection = other.projection;
         joinConnected = other.joinConnected;
         ask = other.ask;
-        distinct = other.distinct;
         limit = other.limit;
         queryHash = other.queryHash;
     }
@@ -95,6 +91,9 @@ public class CQueryCache {
         allTerms = null;
         tripleVars = allVars = null;
         tripleVarNames = allVarNames = null;
+        inputVarNames = null;
+        reqInputVarNames = null;
+        optInputVarNames = null;
         publicTripleVarNames = publicVarNames = null;
         indexTriplesState.set(0);
         t2triple = null;
@@ -112,13 +111,20 @@ public class CQueryCache {
     }
 
     void notifyTermAnnotationChange(Class<? extends TermAnnotation> annClass) {
-        if (AtomAnnotation.class.isAssignableFrom(annClass))
+        if (AtomAnnotation.class.isAssignableFrom(annClass)) {
             t2atom = null;
+            inputVarNames = null;
+            reqInputVarNames = null;
+            optInputVarNames = null;
+        }
         queryHash = 0;
     }
 
     void invalidateTermAnnotations() {
         t2atom = null;
+        inputVarNames = null;
+        reqInputVarNames = null;
+        optInputVarNames = null;
         queryHash = 0;
     }
 
@@ -135,7 +141,6 @@ public class CQueryCache {
 
     void notifyModifierChange(Class<? extends Modifier> modClass) {
         if (SPARQLFilter.class.isAssignableFrom(modClass)) {
-            filters = null;
             allVars = null;
             allVarNames = null;
             allTerms = null;
@@ -145,14 +150,10 @@ public class CQueryCache {
             ask = null;
             publicVarNames = null;
             publicTripleVarNames = null;
-        } else if (Distinct.class.isAssignableFrom(modClass)) {
-            distinct = null;
         } else if (Projection.class.isAssignableFrom(modClass)) {
             publicVarNames = null;
             publicTripleVarNames = null;
-            projection = null;
         }
-        unmodifiableModifiers = null;
         queryHash = 0;
     }
 
@@ -162,22 +163,10 @@ public class CQueryCache {
         return set;
     }
 
-    void setSet(@Nonnull IndexedSet<Triple> set) {
-        assert this.set == null || this.set.equals(set);
-        assert this.set != null || IndexedSet.from(d.list).equals(set);
-        this.set = set;
-    }
-
     public @Nonnull List<Triple> unmodifiableList() {
         if (unmodifiableList == null)
             unmodifiableList = Collections.unmodifiableList(d.list);
         return unmodifiableList;
-    }
-
-    public @Nonnull Set<Modifier> unmodifiableModifiers() {
-        if (unmodifiableModifiers == null)
-            unmodifiableModifiers = unmodifiableSet(d.modifiers);
-        return unmodifiableModifiers;
     }
 
     public @Nonnull Set<QueryAnnotation> unmodifiableQueryAnnotations() {
@@ -213,7 +202,7 @@ public class CQueryCache {
     public @Nonnull IndexedSet<Term> allTerms() {
         if (allTerms != null)
             return allTerms;
-        Set<SPARQLFilter> filters = filters();
+        Set<SPARQLFilter> filters = d.modifiers.filters();
         IndexedSet<Term> tripleTerms = tripleTerms();
         int capacity = tripleTerms.size() + 2*filters.size();
         ArrayList<Term> list = new ArrayList<>(capacity);
@@ -232,7 +221,7 @@ public class CQueryCache {
     public @Nonnull IndexedSet<Var> allVars() {
         if (allVars != null)
             return allVars;
-        Set<SPARQLFilter> filters = filters();
+        Set<SPARQLFilter> filters = d.modifiers.filters();
         IndexedSet<Var> tripleVars = tripleVars();
         int capacity = tripleVars.size() + filters.size();
         List<Var> list = new ArrayList<>(capacity);
@@ -269,7 +258,7 @@ public class CQueryCache {
             return publicVarNames;
         if (isAsk())
             return publicVarNames = IndexedSet.empty();
-        Projection projection = projection();
+        Projection projection = d.modifiers.projection();
         if (projection == null)
             return publicVarNames = allVarNames();
         return publicVarNames = IndexedSet.fromDistinct(projection.getVarNames());
@@ -294,23 +283,41 @@ public class CQueryCache {
         return publicTripleVarNames = IndexedSet.fromMap(map, list);
     }
 
-    public @Nullable Projection projection() {
-        if (this.projection == null)
-            this.projection = singleton(ModifierUtils.getFirst(Projection.class, d.modifiers));
-        return projection.iterator().next();
-    }
-
-    public @Nonnull Set<SPARQLFilter> filters() {
-        if (filters != null)
-            return filters;
-        Set<SPARQLFilter> set = new HashSet<>();
-        for (Modifier modifier : d.modifiers) {
-            if (modifier instanceof SPARQLFilter)
-                set.add((SPARQLFilter) modifier);
+    private @Nonnull ImmutableIndexedSubset<String> scanInputs(boolean required) {
+        IndexedSubset<String> set = allVarNames().emptySubset();
+        for (Var v : allVars()) {
+            for (TermAnnotation a : d.termAnnotations.get(v)) {
+                if (!(a instanceof AtomInputAnnotation))
+                    continue;
+                AtomInputAnnotation ia = (AtomInputAnnotation) a;
+                if (ia.isOverride() && requireNonNull(ia.getOverrideValue()).isGround())
+                    continue; //not a input anymore
+                if (ia.isRequired() == required)
+                    set.add(v.getName());
+            }
         }
-        return filters = set;
+        return ImmutableIndexedSubset.copyOf(set);
     }
 
+    public @Nonnull ImmutableIndexedSubset<String> inputVarNames() {
+        if (inputVarNames == null) {
+            IndexedSubset<String> set = allVarNames().emptySubset();
+            set.addAll(reqInputVarNames());
+            set.addAll(optInputVarNames());
+            inputVarNames = ImmutableIndexedSubset.copyOf(set);
+        }
+        return inputVarNames;
+    }
+    public @Nonnull ImmutableIndexedSubset<String> reqInputVarNames() {
+        if (reqInputVarNames == null)
+            reqInputVarNames = scanInputs(true);
+        return reqInputVarNames;
+    }
+    public @Nonnull ImmutableIndexedSubset<String> optInputVarNames() {
+        if (optInputVarNames == null)
+            optInputVarNames = scanInputs(false);
+        return optInputVarNames;
+    }
 
     public @Nonnull IndexedSet<Triple> matchedTriples() {
         if (matchedTriples != null)
@@ -466,14 +473,8 @@ public class CQueryCache {
     public boolean isAsk() {
         if (ask != null)
             return ask;
-        return ask = d.modifiers.stream().anyMatch(Ask.class::isInstance)
+        return ask = d.modifiers.ask() != null
                 || (!d.list.isEmpty() && d.list.stream().allMatch(Triple::isBound));
-    }
-
-    public boolean isDistinct() {
-        if (distinct == null)
-            distinct = ModifierUtils.getFirst(Distinct.class, d.modifiers) != null;
-        return distinct;
     }
 
     /** All terms are bound, either because <code>isAsk()</code> or because it is empty. */

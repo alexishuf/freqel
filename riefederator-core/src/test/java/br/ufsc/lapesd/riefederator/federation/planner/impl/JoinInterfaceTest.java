@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
@@ -34,37 +34,37 @@ public class JoinInterfaceTest implements TestContext {
 
     private static final EmptyEndpoint e1 = new EmptyEndpoint();
 
-    private static @Nonnull QueryNode node(Consumer<MutableCQuery> annotator, Term... terms) {
+    private static @Nonnull QueryOp node(Consumer<MutableCQuery> annotator, Term... terms) {
         MutableCQuery q = new MutableCQuery();
         for (int i = 0; i < terms.length; i += 3)
             q.add(new Triple(terms[i], terms[i + 1], terms[i + 2]));
         annotator.accept(q);
-        return new QueryNode(e1, q);
+        return new QueryOp(e1, q);
     }
 
-    private static @Nonnull QueryNode node(Term... terms) {
+    private static @Nonnull QueryOp node(Term... terms) {
         return node(b -> {}, terms);
     }
 
-    private static final QueryNode n1 = node(Alice, p1, x  ), n2 = node(x, p1, y),
+    private static final QueryOp n1 = node(Alice, p1, x  ), n2 = node(x, p1, y),
                                    n3 = node(y,     p2, Bob);
-    private static final QueryNode n4 = node(Alice, p1, x, x, p2, y);
-    private static final QueryNode n1i = node(b -> {
+    private static final QueryOp n4 = node(Alice, p1, x, x, p2, y);
+    private static final QueryOp n1i = node(b -> {
                 b.annotate(Alice, AtomInputAnnotation.asRequired(Person, "Person").get());
                 b.annotate(x, AtomAnnotation.of(Atom1));
             },
             Alice, p1, x);
-    private static final QueryNode n2i = node(b -> {
+    private static final QueryOp n2i = node(b -> {
                 b.annotate(x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get());
                 b.annotate(y, AtomAnnotation.of(Atom1));
             },
             x, p1, y);
-    private static final QueryNode n4i = node(b -> {
+    private static final QueryOp n4i = node(b -> {
                 b.annotate(x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get());
                 b.annotate(y, AtomAnnotation.of(Atom1));
             },
             Alice, p1, x, x, p2, y);
-    private static final JoinNode n4j = JoinNode.builder(
+    private static final JoinOp n4j = JoinOp.create(
             node(b -> {
                         b.annotate(Alice, AtomAnnotation.of(Person));
                         b.annotate(x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get());
@@ -74,9 +74,9 @@ public class JoinInterfaceTest implements TestContext {
                         b.annotate(x, AtomAnnotation.of(Atom1));
                         b.annotate(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get());
                     },
-                 x, p2, y)).build();
-    private static final JoinNode n12j = JoinNode.builder(n1, n2).build();
-    private static final JoinNode n12ij = JoinNode.builder(n1, n2).build();
+                 x, p2, y));
+    private static final JoinOp n12j = JoinOp.create(n1, n2);
+    private static final JoinOp n12ij = JoinOp.create(n1, n2);
 
 
     @DataProvider
@@ -95,7 +95,7 @@ public class JoinInterfaceTest implements TestContext {
     }
 
     @Test(dataProvider = "gettersData")
-    public void testGetters(PlanNode node, Collection<String> results, Collection<String> inputs,
+    public void testGetters(Op node, Collection<String> results, Collection<String> inputs,
                             Collection<Triple> triples) {
         JoinInterface joinInterface = new JoinInterface(node);
         assertEquals(joinInterface.getResultVars(), new HashSet<>(results));
@@ -124,7 +124,7 @@ public class JoinInterfaceTest implements TestContext {
     }
 
     @Test(dataProvider = "equalsData")
-    public void testEquals(PlanNode left, PlanNode right, boolean expected) {
+    public void testEquals(Op left, Op right, boolean expected) {
         JoinInterface leftInterface = new JoinInterface(left);
         JoinInterface rightInterface = new JoinInterface(right);
         if (expected)

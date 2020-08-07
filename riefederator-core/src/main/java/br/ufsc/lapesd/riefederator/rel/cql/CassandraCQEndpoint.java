@@ -1,17 +1,17 @@
 package br.ufsc.lapesd.riefederator.rel.cql;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
@@ -19,7 +19,6 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.*;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
@@ -480,18 +479,18 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
     private @Nonnull Results decomposeMultiStar(@Nonnull StarVarIndex index) {
         assert index.getStarCount() > 1;
         CQuery query = index.getQuery();
-        boolean distinct = ModifierUtils.getFirst(Distinct.class, query.getModifiers()) != null;
-        List<PlanNode> leaves = new ArrayList<>();
+        boolean distinct = query.getModifiers().distinct() != null;
+        List<Op> leaves = new ArrayList<>();
         for (int i = 0, size = index.getStarCount(); i < size; i++) {
             StarSubQuery star = index.getStar(i);
             MutableCQuery cQuery = MutableCQuery.from(star.getTriples());
-            star.getFilters().forEach(cQuery::addModifier);
+            cQuery.mutateModifiers().addAll(star.getFilters());
             if (distinct)
-                cQuery.addModifier(Distinct.ADVISED);
-            leaves.add(new QueryNode(this, cQuery));
+                cQuery.mutateModifiers().add(Distinct.ADVISED);
+            leaves.add(new QueryOp(this, cQuery));
         }
         // optimize as usual, then execute under the inner federation
-        PlanNode plan = getPlanner().plan(query, leaves);
+        Op plan = getPlanner().plan(query, leaves);
         return getFederation().execute(query, plan);
     }
 

@@ -1,12 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation.cardinality.impl;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityComparator;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 
 import javax.annotation.Nonnull;
 import javax.inject.Provider;
 
-import static br.ufsc.lapesd.riefederator.query.Cardinality.Reliability.*;
+import static br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability.*;
 
 public class ThresholdCardinalityComparator implements CardinalityComparator {
     private final int large;

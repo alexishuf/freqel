@@ -6,7 +6,6 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -45,20 +44,17 @@ public class FastSPARQLString {
     public FastSPARQLString(@Nonnull CQuery query) {
         assert canWrite(query);
         ask = query.attr().isAsk();
-        distinct = query.attr().isDistinct();
+        distinct = query.getModifiers().distinct() != null;
         limit = query.attr().limit();
         varNames = query.attr().publicTripleVarNames();
 
         StringBuilder b = new StringBuilder(query.size()*60);
         writeHeader(b, ask, distinct, varNames);
         writeTriples(b, query);
-        writeFilters(b, query.attr().filters());
-        for (Modifier modifier : query.getModifiers()) {
-            if (modifier instanceof ValuesModifier) {
-                ValuesModifier values = (ValuesModifier) modifier;
-                writeValues(b, values.getVarNames(), values.getAssignments());
-            }
-        }
+        writeFilters(b, query.getModifiers().filters());
+        ValuesModifier values = query.getModifiers().valueModifier();
+        if (values != null)
+            writeValues(b, values.getVarNames(), values.getAssignments());
         b.append('}'); // ends SELECT/ASK
         if (limit > 0)
             b.append(" LIMIT ").append(limit);

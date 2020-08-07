@@ -1,5 +1,10 @@
 package br.ufsc.lapesd.riefederator.federation;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
@@ -7,12 +12,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
-import br.ufsc.lapesd.riefederator.federation.tree.ComponentNode;
-import br.ufsc.lapesd.riefederator.federation.tree.EmptyNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.TreeUtils;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.TemplateExpander;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics.INIT_SOURCES_MS;
@@ -143,7 +141,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         Stopwatch sw = Stopwatch.createStarted();
-        PlanNode plan = plan(expandTemplates(query));
+        Op plan = plan(expandTemplates(query));
         double planMs = sw.elapsed(MICROSECONDS)/1000.0;
         sw.reset().start();
         Results results = execute(query, plan);
@@ -154,7 +152,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return results;
     }
 
-    public @Nonnull Results execute(@Nonnull CQuery query, PlanNode plan) {
+    public @Nonnull Results execute(@Nonnull CQuery query, Op plan) {
         assert plan.getMatchedTriples().equals(query.attr().getSet())
                 : "This plan does not correspond to this query!";
         Results results = executor.executePlan(plan);
@@ -171,30 +169,30 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return templateExpander.apply(query);
     }
 
-    public @Nonnull PlanNode plan(@Nonnull CQuery query) {
+    private @Nonnull Op planComponents(@Nonnull Op root, @Nonnull CQuery query,
+                                @Nonnull InnerCardinalityComputer cardinalityComputer) {
+        return TreeUtils.replaceNodes(root, cardinalityComputer, op -> {
+            if (op.getClass().equals(UnassignedQueryOp.class)) {
+                UnassignedQueryOp component = (UnassignedQueryOp) op;
+                Op componentPlan = strategy.decompose(component.getQuery());
+                if (componentPlan instanceof EmptyOp) {
+                    logger.info("Query is unsatisfiable because one component extracted by " +
+                                "the OuterPlanner is unsatisfiable. Query: {}. Component: {}",
+                                query, component.getQuery());
+                }
+                return componentPlan;
+            }
+            return op;
+        });
+    }
+
+    public @Nonnull Op plan(@Nonnull CQuery query) {
         try (TimeSampler ignored = Metrics.FULL_PLAN_MS.createThreadSampler(performanceListener)) {
             Stopwatch sw = Stopwatch.createStarted();
             ModifierUtils.check(this, query.getModifiers());
-            PlanNode root = outerPlanner.plan(query);
-
-            Map<PlanNode, PlanNode> map = new HashMap<>();
-            TreeUtils.streamPreOrder(root)
-                    .filter(ComponentNode.class::isInstance).forEach(n -> {
-                ComponentNode componentNode = (ComponentNode) n;
-                PlanNode componentPlan = strategy.decompose(componentNode.getQuery());
-                if (componentPlan instanceof EmptyNode) {
-                    logger.info("Query is unsatisfiable because one component extracted by the " +
-                                    "OuterPlanner is unsatisfiable. Query: {}. Component: {}",
-                            query, componentNode.getQuery());
-                }
-                map.put(componentNode, componentPlan);
-            });
-
-            if (map.values().stream().anyMatch(EmptyNode.class::isInstance))
-                root = new EmptyNode(query); //unsatisfiable
-            root = TreeUtils.replaceNodes(root, map, cardinalityComputer);
+            Op root = outerPlanner.plan(query);
+            root = planComponents(root, query, cardinalityComputer);
             TreeUtils.nameNodes(root);
-
             if (logger.isDebugEnabled()) {
                 logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",
                         sw.elapsed(MICROSECONDS) / 1000.0, LogUtils.toString(query),

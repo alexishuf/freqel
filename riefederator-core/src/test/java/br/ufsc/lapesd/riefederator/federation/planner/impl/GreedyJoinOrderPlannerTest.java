@@ -1,25 +1,25 @@
 package br.ufsc.lapesd.riefederator.federation.planner.impl;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.RelativeCardinalityAdder;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.*;
 import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.paths.JoinGraph;
-import br.ufsc.lapesd.riefederator.federation.tree.JoinNode;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
-import br.ufsc.lapesd.riefederator.query.Cardinality;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
-import br.ufsc.lapesd.riefederator.query.impl.RelativeCardinalityAdder;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.EmptyWebApiEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
@@ -35,8 +35,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.federation.tree.TreeUtils.streamPreOrder;
-import static br.ufsc.lapesd.riefederator.query.Cardinality.*;
+import static br.ufsc.lapesd.riefederator.algebra.Cardinality.*;
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
@@ -76,23 +76,25 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
         ).map(e -> new Object[] {e}).toArray(Object[][]::new);
     }
 
-    private static @Nonnull QueryNode n(@Nonnull CQEndpoint ep, Cardinality cardinality,
-                                        List<Var> inputs, Term... terms) {
+    private static @Nonnull QueryOp n(@Nonnull CQEndpoint ep, Cardinality cardinality,
+                                      List<Var> inputs, Term... terms) {
         MutableCQuery q = new MutableCQuery();
         for (int i = 0; i < terms.length; i +=3)
             q.add(new Triple(terms[i], terms[i+1], terms[i+2]));
         int i = 0;
         for (Var input : inputs)
             q.annotate(input, AtomInputAnnotation.asRequired(new Atom("Atom-" + i), "Atom-" + i).get());
-        return new QueryNode(ep, q, cardinality);
+        QueryOp op = new QueryOp(ep, q);
+        op.setCardinality(cardinality);
+        return op;
     }
-    private static @Nonnull QueryNode n(@Nonnull CQEndpoint ep, Cardinality cardinality,
-                                        Term... terms) {
+    private static @Nonnull QueryOp n(@Nonnull CQEndpoint ep, Cardinality cardinality,
+                                      Term... terms) {
         return n(ep, cardinality, emptyList(), terms);
     }
-    private static @Nonnull MultiQueryNode m(QueryNode... nodes) {
-        MultiQueryNode.Builder b = MultiQueryNode.builder();
-        for (QueryNode node : nodes) b.add(node);
+    private static @Nonnull UnionOp m(QueryOp... nodes) {
+        UnionOp.Builder b = UnionOp.builder();
+        for (QueryOp node : nodes) b.add(node);
         return b.build();
     }
 
@@ -242,7 +244,7 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
                 n(ep1, NON_EMPTY, Alice, p1, x))
         ));
         GreedyJoinOrderPlanner.Data data = createData(graph);
-        PlanNode node = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
+        Op node = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
         assertSame(node, graph.get(0));
         assertTrue(data.pending.isEmpty());
     }
@@ -253,7 +255,7 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
                 m(n(ep1, NON_EMPTY, Alice, p1, x), n(ep2, NON_EMPTY, Alice, p1, x))
         )));
         GreedyJoinOrderPlanner.Data data = createData(graph);
-        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
+        Op root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
         assertTrue(data.pending.isEmpty());
 
         assertNotSame(root, graph.get(0));
@@ -263,7 +265,7 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
 
     @Test(dataProvider = "joinCardinalityEstimatorData")
     public void testTakeInitialJoinCleansEquivalents(@Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
-        List<QueryNode> best = asList(
+        List<QueryOp> best = asList(
                 n(ep2, guess(16), Alice, p1, x),
                 n(ep2, exact(3), x, p1, y)
         );
@@ -273,7 +275,7 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
                 n(ep1, NON_EMPTY, y, p1, Bob)
         )));
         GreedyJoinOrderPlanner.Data data = createData(graph);
-        PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
+        Op root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
         assertEquals(data.pending, singleton(graph.get(2)));
         assertEquals(new HashSet<>(root.getChildren()), new HashSet<>(best));
     }
@@ -282,41 +284,41 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
         static final StdLit name = StdLit.fromUnescaped("name");
         static final StdLit date1 = StdLit.fromUnescaped("date1");
         static final StdLit date2 = StdLit.fromUnescaped("date2");
-        static final QueryNode organizationByName = n(wep, upperBound(1),
+        static final QueryOp organizationByName = n(wep, upperBound(1),
                 z, p1, name,
                 z, p1, t);
-        static final QueryNode contracts = n(wep, guess(2), singletonList(t),
+        static final QueryOp contracts = n(wep, guess(2), singletonList(t),
                 x, p1, date1,
                 x, p1, date2,
                 x, p1, t,
                 x, p1, b,
                 x, p1, u,
                 x, p1, k);
-        static final QueryNode contractById = n(wep, upperBound(1), singletonList(b),
+        static final QueryOp contractById = n(wep, upperBound(1), singletonList(b),
                 w, p1, b,
                 w, p1, d);
-        static final QueryNode modalities = n(ep1, lowerBound(10),
+        static final QueryOp modalities = n(ep1, lowerBound(10),
                 m, p1, c,
                 m, p1, d);
-        static final QueryNode procurementByUMN = n(wep, upperBound(1), asList(c, u, k),
+        static final QueryOp procurementByUMN = n(wep, upperBound(1), asList(c, u, k),
                 y, p1, c,
                 y, p1, u,
                 y, p1, k,
                 y, p1, e);
-        static final ImmutableList<PlanNode> nodes = ImmutableList.of(organizationByName, contracts, contractById,
+        static final ImmutableList<Op> nodes = ImmutableList.of(organizationByName, contracts, contractById,
                 modalities, procurementByUMN);
     }
 
     @Test(dataProvider = "joinCardinalityEstimatorData")
     public void testTakeInitialJoin(@Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
-        HashSet<QueryNode> expected = Sets.newHashSet(Scenario1.organizationByName,
+        HashSet<QueryOp> expected = Sets.newHashSet(Scenario1.organizationByName,
                                                       Scenario1.contracts);
         int i = 0;
         //noinspection UnstableApiUsage
-        for (List<PlanNode> permutation : Collections2.permutations(Scenario1.nodes)) {
+        for (List<Op> permutation : Collections2.permutations(Scenario1.nodes)) {
             JoinGraph graph = new JoinGraph(IndexedSet.from(permutation));
             GreedyJoinOrderPlanner.Data data = createData(graph);
-            PlanNode root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
+            Op root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
 
             assertEquals(new HashSet<>(root.getChildren()), expected, "i="+i);
             assertTrue(expected.stream().noneMatch(data.pending::contains), "i="+i);
@@ -330,23 +332,23 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
                                              NoCardinalityEnsemble.INSTANCE,
                                              RelativeCardinalityAdder.DEFAULT, joinCardinalityEstimator);
         JoinGraph graph = new JoinGraph(IndexedSet.from(Scenario1.nodes));
-        PlanNode root = planner.plan(graph, Scenario1.nodes);
+        Op root = planner.plan(graph, Scenario1.nodes);
 
-        assertEquals(streamPreOrder(root).filter(n -> !(n instanceof JoinNode)).collect(toSet()),
+        assertEquals(streamPreOrder(root).filter(n -> !(n instanceof JoinOp)).collect(toSet()),
                      new HashSet<>(Scenario1.nodes));
-        assertEquals(streamPreOrder(root).filter(n -> !(n instanceof JoinNode)).count(),
+        assertEquals(streamPreOrder(root).filter(n -> !(n instanceof JoinOp)).count(),
                      Scenario1.nodes.size(), "There are duplicate leaves in the plan");
 
-        assertTrue(root instanceof JoinNode);
-        JoinNode j1 = (JoinNode)((JoinNode) root).getLeft();
-        JoinNode j2 = (JoinNode) j1.getLeft();
-        JoinNode j3 = (JoinNode) j2.getLeft();
+        assertTrue(root instanceof JoinOp);
+        JoinOp j1 = (JoinOp)((JoinOp) root).getLeft();
+        JoinOp j2 = (JoinOp) j1.getLeft();
+        JoinOp j3 = (JoinOp) j2.getLeft();
 
         assertEquals(new HashSet<>(j3.getChildren()),
                      Sets.newHashSet(Scenario1.organizationByName, Scenario1.contracts));
         assertSame(j2.getRight(), Scenario1.contractById);
 
-        assertSame(((JoinNode) root).getRight(), Scenario1.procurementByUMN);
+        assertSame(((JoinOp) root).getRight(), Scenario1.procurementByUMN);
         assertSame(j1.getRight(), Scenario1.modalities);
     }
 

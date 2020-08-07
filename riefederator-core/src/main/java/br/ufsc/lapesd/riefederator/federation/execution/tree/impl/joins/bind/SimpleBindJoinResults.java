@@ -1,17 +1,15 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.CrudeSolutionHashTable;
-import br.ufsc.lapesd.riefederator.federation.tree.MultiQueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.PlanNode;
-import br.ufsc.lapesd.riefederator.federation.tree.QueryNode;
-import br.ufsc.lapesd.riefederator.federation.tree.SPARQLValuesTemplateNode;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.*;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
@@ -34,7 +32,6 @@ import java.util.stream.Stream;
 import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.stream.Collectors.toList;
 
 public class SimpleBindJoinResults extends AbstractResults implements Results {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(SimpleBindJoinResults.class);
@@ -45,7 +42,7 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
 
     private final @Nonnull PlanExecutor planExecutor;
     private final @Nonnull Results smaller;
-    private final @Nonnull PlanNode rightTree;
+    private final @Nonnull Op rightTree;
     private Results currentResults = null;
     private final @Nonnull Collection<String> joinVars;
     private Solution next = null;
@@ -79,7 +76,7 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
         }
 
         @Override
-        public @Nonnull Results createResults(@Nonnull Results smaller, @Nonnull PlanNode rightTree,
+        public @Nonnull Results createResults(@Nonnull Results smaller, @Nonnull Op rightTree,
                                               @Nonnull Collection<String> joinVars,
                                               @Nonnull Collection<String> resultVars) {
             PlanExecutor executor = planExecutorProvider.get();
@@ -90,7 +87,7 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
 
 
     public SimpleBindJoinResults(@Nonnull PlanExecutor planExecutor, @Nonnull Results smaller,
-                                 @Nonnull PlanNode rightTree, @Nonnull Collection<String> joinVars,
+                                 @Nonnull Op rightTree, @Nonnull Collection<String> joinVars,
                                  @Nonnull Collection<String> resultVars,
                                  @Nullable ResultsExecutor resultsExecutor, int valuesRows) {
         super(resultVars);
@@ -148,13 +145,13 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
         public Results get() {
             leftSolution = smaller.next();
             Stopwatch sw = Stopwatch.createStarted();
-            PlanNode bound = bind(rightTree, leftSolution);
+            Op bound = bind(rightTree, leftSolution);
             callBindMs += sw.elapsed(MICROSECONDS)/1000.0;
             Results rightResults = planExecutor.executeNode(bound);
             return new TransformedResults(rightResults, varNames, this::reassemble);
         }
 
-        private @Nonnull PlanNode bind(@Nonnull PlanNode node, @Nonnull Solution values) {
+        private @Nonnull Op bind(@Nonnull Op node, @Nonnull Solution values) {
             return node.createBound(bindSolutionFactory.fromFunction(values::get));
         }
 
@@ -164,27 +161,27 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
         }
     }
 
-    private static Stream<QueryNode> streamQNs(PlanNode node) {
-        return node instanceof QueryNode ? Stream.of((QueryNode) node)
-                : node.getChildren().stream().map(n -> (QueryNode)n);
+    private static Stream<QueryOp> streamQNs(Op node) {
+        return node instanceof QueryOp ? Stream.of((QueryOp) node)
+                : node.getChildren().stream().map(n -> (QueryOp)n);
     }
 
-    private static boolean canValuesBind(PlanNode node) {
+    private static boolean canValuesBind(Op node) {
         // require a QN or a MQ of QN
-        boolean ok = node instanceof QueryNode ||
-                ( node instanceof MultiQueryNode
-                        && node.getChildren().stream().allMatch(QueryNode.class::isInstance) );
+        boolean ok = node instanceof QueryOp ||
+                ( node instanceof UnionOp
+                        && node.getChildren().stream().allMatch(QueryOp.class::isInstance) );
         if (!ok) return false;
         // require that all endpoints support VALUES
-        Stream<QueryNode> qns = node instanceof QueryNode ? Stream.of((QueryNode) node)
-                : node.getChildren().stream().map(n -> (QueryNode)n);
-        return qns.map(QueryNode::getEndpoint).allMatch(e -> e.hasCapability(Capability.VALUES));
+        Stream<QueryOp> qns = node instanceof QueryOp ? Stream.of((QueryOp) node)
+                : node.getChildren().stream().map(n -> (QueryOp)n);
+        return qns.map(QueryOp::getEndpoint).allMatch(e -> e.hasCapability(Capability.VALUES));
     }
 
     private class ValuesBind implements Supplier<Results> {
         CrudeSolutionHashTable table = new CrudeSolutionHashTable(joinVars, valuesRows*10);
         Set<Solution> bindValues = new HashSet<>(valuesRows);
-        SPARQLValuesTemplateNode template = null;
+        SPARQLValuesTemplateOp template = null;
 
         @Override
         public Results get() {
@@ -197,7 +194,7 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
                 shortcut = getShortcut();
             }
             Stopwatch sw = Stopwatch.createStarted();
-            PlanNode rewritten = bind(joinVars, bindValues);
+            Op rewritten = bind(joinVars, bindValues);
             callBindMs += sw.elapsed(MICROSECONDS)/1000.0;
             Results rightResults = planExecutor.executeNode(rewritten);
             return new FlatMapResults(rightResults, varNames, this::expand);
@@ -227,42 +224,41 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
         private void initTemplate() {
             if (template != null) return;
 
-            QueryNode qn;
-            if (rightTree instanceof QueryNode)
-                qn = (QueryNode) SimpleBindJoinResults.this.rightTree;
+            QueryOp qn;
+            if (rightTree instanceof QueryOp)
+                qn = (QueryOp) SimpleBindJoinResults.this.rightTree;
             else
-                qn = (QueryNode) rightTree.getChildren().iterator().next();
+                qn = (QueryOp) rightTree.getChildren().iterator().next();
             TPEndpoint ep = qn.getEndpoint();
-            CQuery query = qn.getQuery();
-            List<SPARQLFilter> filters = qn.getFilters().stream()
-                            .filter(f -> !query.getModifiers().contains(f)).collect(toList());
-            template = new SPARQLValuesTemplateNode(ep, query, filters);
+            template = new SPARQLValuesTemplateOp(ep, qn.getQuery());
         }
 
-        private @Nonnull PlanNode bind(@Nonnull Collection<String> varNames,
-                                       @Nonnull Collection<Solution> assignments) {
-            if (rightTree instanceof QueryNode) {
-                CQEndpoint ep = (CQEndpoint) ((QueryNode) rightTree).getEndpoint();
+        private @Nonnull Op bind(@Nonnull Collection<String> varNames,
+                                 @Nonnull Collection<Solution> assignments) {
+            if (rightTree instanceof QueryOp) {
+                CQEndpoint ep = (CQEndpoint) ((QueryOp) rightTree).getEndpoint();
                 if (ep.canQuerySPARQL()) {
                     template.setValues(varNames, assignments);
                     return template;
                 } else {
                     ValuesModifier modifier = new ValuesModifier(varNames, assignments);
-                    return  ((QueryNode) rightTree).createWithModifier(modifier);
+                    rightTree.modifiers().add(modifier);
+                    return rightTree;
                 }
             } else {
-                MultiQueryNode.Builder b = MultiQueryNode.builder();
+                UnionOp.Builder b = UnionOp.builder();
                 ValuesModifier modifier = null;
-                for (PlanNode child : rightTree.getChildren()) {
-                    CQEndpoint endpoint = (CQEndpoint) ((QueryNode) child).getEndpoint();
+                for (Op child : rightTree.getChildren()) {
+                    CQEndpoint endpoint = (CQEndpoint) ((QueryOp) child).getEndpoint();
                     if (endpoint.canQuerySPARQL()) {
-                        SPARQLValuesTemplateNode node = template.withEndpoint(endpoint);
+                        SPARQLValuesTemplateOp node = template.withEndpoint(endpoint);
                         node.setValues(varNames, assignments);
                         b.add(node);
                     } else {
                         if (modifier == null)
                             modifier = new ValuesModifier(varNames, assignments);
-                        b.add(((QueryNode)child).createWithModifier(modifier));
+                        child.modifiers().add(modifier);
+                        b.add(child);
                     }
                 }
                 return b.build();

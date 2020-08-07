@@ -1,27 +1,34 @@
 package br.ufsc.lapesd.riefederator.federation.execution;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
-import br.ufsc.lapesd.riefederator.federation.tree.*;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 
 public class InjectedExecutor implements PlanExecutor {
-    private final @Nonnull QueryNodeExecutor queryNodeExecutor;
-    private final @Nonnull MultiQueryNodeExecutor multiQueryNodeExecutor;
-    private final @Nonnull JoinNodeExecutor joinNodeExecutor;
-    private final @Nonnull CartesianNodeExecutor cartesianNodeExecutor;
-    private final @Nonnull EmptyNodeExecutor emptyNodeExecutor;
-    private final @Nonnull SPARQLValuesTemplateNodeExecutor sparqlValuesTemplateNodeExecutor;
+    private final @Nonnull QueryOpExecutor queryNodeExecutor;
+    private final @Nonnull MultiQueryOpExecutor multiQueryNodeExecutor;
+    private final @Nonnull JoinOpExecutor joinNodeExecutor;
+    private final @Nonnull CartesianOpExecutor cartesianNodeExecutor;
+    private final @Nonnull EmptyOpExecutor emptyNodeExecutor;
+    private final @Nonnull SPARQLValuesTemplateOpExecutor sparqlValuesTemplateNodeExecutor;
 
     @Inject
-    public InjectedExecutor(@Nonnull QueryNodeExecutor queryNodeExecutor,
-                            @Nonnull MultiQueryNodeExecutor multiQueryNodeExecutor,
-                            @Nonnull JoinNodeExecutor joinNodeExecutor,
-                            @Nonnull CartesianNodeExecutor cartesianNodeExecutor,
-                            @Nonnull EmptyNodeExecutor emptyNodeExecutor,
-                            @Nonnull SPARQLValuesTemplateNodeExecutor sparqlValuesTemplateNodeExecutor) {
+    public InjectedExecutor(@Nonnull QueryOpExecutor queryNodeExecutor,
+                            @Nonnull MultiQueryOpExecutor multiQueryNodeExecutor,
+                            @Nonnull JoinOpExecutor joinNodeExecutor,
+                            @Nonnull CartesianOpExecutor cartesianNodeExecutor,
+                            @Nonnull EmptyOpExecutor emptyNodeExecutor,
+                            @Nonnull SPARQLValuesTemplateOpExecutor sparqlValuesTemplateNodeExecutor) {
         this.queryNodeExecutor = queryNodeExecutor;
         this.multiQueryNodeExecutor = multiQueryNodeExecutor;
         this.joinNodeExecutor = joinNodeExecutor;
@@ -31,27 +38,27 @@ public class InjectedExecutor implements PlanExecutor {
     }
 
     @Override
-    public @Nonnull  Results executePlan(@Nonnull PlanNode plan) {
+    public @Nonnull  Results executePlan(@Nonnull Op plan) {
         return executeNode(plan);
     }
 
     @Override
-    public @Nonnull Results executeNode(@Nonnull PlanNode node) {
+    public @Nonnull Results executeNode(@Nonnull Op node) {
         assert TreeUtils.isAcyclic(node) : "Node is not a tree";
         assert node.getRequiredInputVars().isEmpty() : "Node needs inputs";
-        Class<? extends PlanNode> cls = node.getClass();
+        Class<? extends Op> cls = node.getClass();
         Results results;
-        if (QueryNode.class.isAssignableFrom(cls))
+        if (QueryOp.class.isAssignableFrom(cls))
             results = queryNodeExecutor.execute(node);
-        else if (MultiQueryNode.class.isAssignableFrom(cls))
+        else if (UnionOp.class.isAssignableFrom(cls))
             results = multiQueryNodeExecutor.execute(node);
-        else if (JoinNode.class.isAssignableFrom(cls))
+        else if (JoinOp.class.isAssignableFrom(cls))
             results = joinNodeExecutor.execute(node);
-        else if (CartesianNode.class.isAssignableFrom(cls))
+        else if (CartesianOp.class.isAssignableFrom(cls))
             results = cartesianNodeExecutor.execute(node);
-        else if (EmptyNode.class.isAssignableFrom(cls))
+        else if (EmptyOp.class.isAssignableFrom(cls))
             results = emptyNodeExecutor.execute(node);
-        else if (SPARQLValuesTemplateNode.class.isAssignableFrom(cls))
+        else if (SPARQLValuesTemplateOp.class.isAssignableFrom(cls))
             results = sparqlValuesTemplateNodeExecutor.execute(node);
         else
             throw new UnsupportedOperationException("No executor for "+cls);

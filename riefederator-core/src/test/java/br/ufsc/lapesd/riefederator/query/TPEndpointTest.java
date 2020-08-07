@@ -152,7 +152,7 @@ public class TPEndpointTest extends EndpointTestBase {
             Set<Solution> ac = new HashSet<>();
             if (modifiers.length > 0) {
                 MutableCQuery cQuery = MutableCQuery.from(query);
-                cQuery.addModifiers(modifiers);
+                cQuery.mutateModifiers().addAll(Arrays.asList(modifiers));
                 boolean repeated = false;
                 if (poll) {
                     try (Results results = fixture.endpoint.query(cQuery)) {
