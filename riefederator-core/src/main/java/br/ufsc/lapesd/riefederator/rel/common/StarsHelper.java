@@ -1,26 +1,13 @@
 package br.ufsc.lapesd.riefederator.rel.common;
 
-import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
-import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.tags.AtomTag;
 import br.ufsc.lapesd.riefederator.description.molecules.tags.MoleculeLinkTag;
-import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
-import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
-import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
-import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
-import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
-import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
-import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.PostRelationalTag;
@@ -29,8 +16,6 @@ import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.MoleculeLinkAnnotation;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,52 +24,10 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.SUBJ;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
 public class StarsHelper {
     private static final Logger logger = LoggerFactory.getLogger(StarsHelper.class);
-    private static Injector sharedInjector;
-
-    private static  @Nonnull Injector getInjector() {
-        if (sharedInjector == null) {
-            sharedInjector = Guice.createInjector(new SimpleFederationModule() {
-                @Override
-                protected void configureResultsExecutor() {
-                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-            });
-        }
-        return sharedInjector;
-    }
-
-    /**
-     * Decompose the join-disconnected query into join-connected components and executes it.
-     * FILTERs are executed at the components where possible, else thei are executed
-     * after the cartesian products.
-     *
-     * @param query the join-disconnected query
-     * @param target Endpoint that will receive all component queries. There is no source selection
-     * @throws IllegalArgumentException if query is join-connected
-     */
-    public static @Nonnull
-    Results executeJoinDisconnected(@Nonnull CQuery query, @Nonnull CQEndpoint target) {
-        checkArgument(!query.attr().isJoinConnected(), "Query should not be join-connected");
-
-        Injector injector = getInjector();
-        InnerCardinalityComputer cardComputer = injector.getInstance(InnerCardinalityComputer.class);
-        PlanExecutor planExecutor = injector.getInstance(PlanExecutor.class);
-        Op plan = injector.getInstance(OuterPlanner.class).plan(query);
-        plan = TreeUtils.replaceNodes(plan, cardComputer, op -> {
-            if (op.getClass().equals(UnassignedQueryOp.class))
-                return new QueryOp(target, ((UnassignedQueryOp) op).getQuery());
-            return op;
-        });
-
-        FilterAssigner assigner = new FilterAssigner(query);
-        assigner.placeBottommost(plan);
-        return planExecutor.executePlan(plan);
-    }
 
     public static @Nonnull IndexedSet<SPARQLFilter> getFilters(@Nonnull CQuery query) {
         return IndexedSet.fromDistinctCopy(query.getModifiers().filters());

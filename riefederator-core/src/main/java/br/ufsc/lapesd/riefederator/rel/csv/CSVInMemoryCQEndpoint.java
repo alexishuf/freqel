@@ -1,10 +1,14 @@
 package br.ufsc.lapesd.riefederator.rel.csv;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
+import br.ufsc.lapesd.riefederator.federation.Federation;
+import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
+import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.model.term.node.JenaNodeTermFactory;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
@@ -16,14 +20,18 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.riefederator.rel.common.AnnotationStatus;
+import br.ufsc.lapesd.riefederator.rel.common.RelationalMoleculeMatcher;
 import br.ufsc.lapesd.riefederator.rel.common.StarSubQuery;
 import br.ufsc.lapesd.riefederator.rel.common.StarsHelper;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
@@ -33,6 +41,8 @@ import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.base.Preconditions;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -52,7 +62,6 @@ import java.util.function.Function;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJenaNode;
 import static br.ufsc.lapesd.riefederator.rel.mappings.RelationalMappingUtils.predicate2column;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 
@@ -74,6 +83,9 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
     private @Nonnull final RelationalMapping mapping;
     private @Nonnull final Molecule molecule;
     private @Nonnull final MoleculeMatcher moleculeMatcher;
+    private @Nullable Injector injector;
+    private @Nullable Federation federation;
+    private @Nullable Planner planner;
 
     /* --- --- --- Constructor & loader/parser --- --- --- */
 
@@ -98,7 +110,9 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
                                                                      .collect(toList()));
 
         this.molecule = mapping.createMolecule(columnObjects);
-        this.moleculeMatcher = new MoleculeMatcher(molecule, new TransitiveClosureTBoxReasoner());
+        NoMergePolicyAnnotation policy = new NoMergePolicyAnnotation();
+        TransitiveClosureTBoxReasoner empty = new TransitiveClosureTBoxReasoner();
+        this.moleculeMatcher = new RelationalMoleculeMatcher(this.molecule, empty, policy);
     }
 
     /**
@@ -270,56 +284,56 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
-        if (query.isEmpty())
-            return CollectionResults.empty(emptyList());
-        Results results;
-        if (!query.attr().isJoinConnected()) { // code after this if cannot deal with cartesians
-            results = StarsHelper.executeJoinDisconnected(query, this);
-        } else {
-            results = queryConnected(query);
-            results = SPARQLFilterResults.applyIf(results, query);
+        AnnotationStatus st = new AnnotationStatus(query);
+        if (!st.isValid()) {
+            if (st.isEmpty()) return getFederation().query(query);
+            else              st.checkNotPartiallyAnnotated(); //throws IllegalArgumentException
+        }
+        List<StarSubQuery> stars = StarsHelper.findStars(query);
+        if (stars.size() == 1) {
+            //noinspection AssertWithSideEffects
+            assert query.attr().isJoinConnected();
+            assert stars.get(0).getFilters().containsAll(query.getModifiers().filters());
+            boolean distinct = query.getModifiers().distinct() != null;
+            Results results = queryStar(stars.get(0), distinct);
             results = ProjectingResults.applyIf(results, query);
-        }
-        results = LimitResults.applyIf(results, query);
-        return results;
-    }
-
-    /**
-     * Process this as a join between stars (join-connectivity among stars assumed)
-     */
-    private @Nonnull Results queryConnected(@Nonnull CQuery query) {
-        boolean distinct = query.getModifiers().distinct() != null;
-        IndexedSet<SPARQLFilter> allFilters = null;
-        IndexedSubset<SPARQLFilter> pendingFilters = null;
-        CollectionResults working = null;
-        for (StarSubQuery star : StarsHelper.findStars(query)) {
-            if (allFilters == null) {
-                allFilters = star.getAllQueryFilters();
-                pendingFilters = allFilters.fullSubset();
-            } else {
-                assert allFilters.equals(star.getAllQueryFilters());
-                pendingFilters.removeAll(star.getFilters());
+            return LimitResults.applyIf(results, query);
+        } else {
+            List<Op> leaves = new ArrayList<>();
+            for (StarSubQuery star : stars) {
+                MutableCQuery q = MutableCQuery.from(star.getTriples());
+                q.mutateModifiers().addAll(star.getFilters());
+                leaves.add(new QueryOp(this, q));
             }
-            CollectionResults right = queryStar(star, distinct);
-            working = working != null ? hashJoin(working, right) : right;
+            return getFederation().execute(query, getPlanner().plan(query, leaves));
         }
-        assert working != null;
-        return SPARQLFilterResults.applyIf(working, pendingFilters);
     }
 
-    private @Nonnull CollectionResults hashJoin(@Nonnull CollectionResults a,
-                                                @Nonnull CollectionResults b) {
-        if (b.getCollection().size() < a.getCollection().size()) {
-            CollectionResults tmp = b;
-            b = a;
-            a = tmp;
+    private @Nonnull Injector getInjector() {
+        if (injector == null) {
+            SimpleFederationModule m = new SimpleFederationModule() {
+                @Override
+                protected void configureResultsExecutor() {
+                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
+                }
+            };
+            injector = Guice.createInjector(m);
         }
-        Set<String> av = a.getVarNames();
-        Set<String> bv = b.getVarNames();
-        Set<String> all = CollectionUtils.union(av, bv);
-        Set<String> jv = CollectionUtils.intersect(av, bv);
-        assert !jv.isEmpty();
-        return CollectionResults.greedy(new InMemoryHashJoinResults(a, b, jv, all, false));
+        return injector;
+    }
+
+    private @Nonnull Federation getFederation() {
+        if (federation == null) {
+            federation = getInjector().getInstance(Federation.class);
+            federation.addSource(asSource());
+        }
+        return federation;
+    }
+
+    private @Nonnull Planner getPlanner() {
+        if (planner == null)
+            planner = getInjector().getInstance(Planner.class);
+        return planner;
     }
 
     private @Nonnull CollectionResults queryStar(@Nonnull StarSubQuery star, boolean distinct) {
@@ -336,6 +350,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
 
         rows_loop:
         for (int i = 0; i < rows; i++) {
+            sb.reset();
             for (Selector selector : selectors) {
                 Term term = selector.match(i);
                 if (term == null)
@@ -350,7 +365,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             } else if (!JenaWrappers.toJenaNode(subj).matches(coreNode)) {
                 continue;
             }
-            Solution solution = sb.takeSolution();
+            Solution solution = sb.getSolution();
             if (solution != null) //may be null if filters reject
                 solutions.add(solution);
         }
@@ -405,9 +420,8 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             }
         }
 
-        public @Nullable Solution takeSolution() {
+        public @Nullable Solution getSolution() {
             ArraySolution solution = factory.fromValues(values);
-            reset();
             boolean ok = star.getFilters().stream().allMatch(f -> f.evaluate(solution));
             return ok ? solution : null;
         }
@@ -469,6 +483,14 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
                 return true;
             default: // ASK & SPARQL_FILTER are not efficient, others are not supported
                 return false;
+        }
+    }
+
+    @Override
+    public void close() {
+        if (federation != null) {
+            this.federation.close();
+            federation = null;
         }
     }
 
