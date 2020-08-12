@@ -5,6 +5,8 @@ import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.AskDescription;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
@@ -50,7 +52,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -554,7 +556,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         private Class<? extends DecompositionStrategy> ds;
         private Class<? extends PerformanceListener> pl;
 
-        public TestModule(boolean canBindJoin,
+        protected TestModule(boolean canBindJoin,
                           Class<? extends OuterPlanner> op,
                           Class<? extends Planner> ip,
                           Class<? extends JoinOrderPlanner> jo,
@@ -900,12 +902,12 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         return asList(
                 /* match only against getContracts() */
                 asList(new SetupTransparency(),
-                        SPARQLQueryParser.strict().parse(sparql[0]),
+                        SPARQLParser.strict().parse(sparql[0]),
                         newHashSet(MapSolution.build("id", s267291791),
                                    MapSolution.build("id", s278614622))),
                 /* match only against getProcurements() */
                 asList(new SetupTransparency(),
-                       SPARQLQueryParser.strict().parse(sparql[1]),
+                       SPARQLParser.strict().parse(sparql[1]),
                        newHashSet(MapSolution.builder()
                                        .put("id", s70507179)
                                        .put("startDate", d20191202)
@@ -918,7 +920,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                                        .put("modDescr", pregao).build())),
                 /* Get procurement of a contract */
                 asList(new SetupTransparency(),
-                       SPARQLQueryParser.strict().parse(sparql[2]),
+                       SPARQLParser.strict().parse(sparql[2]),
                        newHashSet(MapSolution.builder()
                                        .put("id", s70507179)
                                        .put("startDate", d20191202)
@@ -998,7 +1000,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
     @Test(dataProvider = "queryData")
     public void testQuery(@Nonnull Module module, @Nonnull Setup setup,
-                          @Nonnull CQuery query,  @Nullable Set<Solution> expected) {
+                          @Nonnull Object queryObject,  @Nullable Set<Solution> expected) {
         Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
                                                         .with(module));
         federation = injector.getInstance(Federation.class);
@@ -1007,7 +1009,16 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         Set<Solution> actual = new HashSet<>();
         federation.initAllSources(5, TimeUnit.MINUTES);
 //        Stopwatch sw = Stopwatch.createStarted();
+        Op query = queryObject instanceof Op ? (Op)queryObject
+                                             : new FreeQueryOp((CQuery) queryObject);
+        Op oldQuery = TreeUtils.deepCopy(query);
+        int oldQueryHash = query.hashCode();
+        assertEquals(oldQuery, query);
+        assertEquals(oldQuery.hashCode(), oldQueryHash);
+
         Op plan = federation.plan(query);
+        assertEquals(query.hashCode(), oldQueryHash); //should not be modified
+        assertEquals(query, oldQuery);
 //        if (sw.elapsed(TimeUnit.MILLISECONDS) > 20)
 //            System.out.printf("Slow plan: %f\n", sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
         PlannerTest.assertPlanAnswers(plan, query);
@@ -1114,7 +1125,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         federation.initAllSources(20, TimeUnit.SECONDS);
         assertTrue(sw.elapsed(TimeUnit.SECONDS) < 15); // no reason to block
 
-        CQuery cQuery = LargeRDFBenchSelfTest.loadQuery("S2");
+        Op cQuery = LargeRDFBenchSelfTest.loadQuery("S2");
         try (Results results = federation.query(cQuery)) {
             assertFalse(results.hasNext());
         }
@@ -1135,7 +1146,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         federation.addSource(nyt);
 
         federation.initAllSources(10, TimeUnit.SECONDS);
-        CQuery query = LargeRDFBenchSelfTest.loadQuery("S2");
+        Op query = LargeRDFBenchSelfTest.loadQuery("S2");
         try (Results results = federation.query(query)) {
             assertFalse(results.hasNext());
         }
@@ -1198,9 +1209,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         }
     }
 
-    private static CQuery loadQuery(@Nonnull String filename) throws Exception {
+    private static Op loadQuery(@Nonnull String filename) throws Exception {
         try (InputStream in = FederationTest.class.getResourceAsStream(filename)) {
-            return SPARQLQueryParser.strict().parse(in);
+            return SPARQLParser.strict().parse(in);
         }
     }
 
@@ -1219,7 +1230,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
     @Test(dataProvider = "reasoningQueriesData")
     public void testReasoningQueries(@Nonnull Module module, @Nonnull Setup setup,
-                                     @Nonnull CQuery query, @Nonnull Set<Solution> expected) {
+                                     @Nonnull Op query, @Nonnull Set<Solution> expected) {
         Module effectiveModule = Modules.override(new SimpleFederationModule()).with(module);
         Federation federation = Guice.createInjector(effectiveModule).getInstance(Federation.class);
         setup.accept(federation, target().getUri().toString());

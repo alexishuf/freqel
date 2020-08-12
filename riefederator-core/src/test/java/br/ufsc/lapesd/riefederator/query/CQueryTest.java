@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
@@ -422,7 +423,9 @@ public class CQueryTest implements TestContext {
     }
 
     @Test(dataProvider = "isJoinConnectedData")
-    public void testIsJoinConnected(@Nonnull CQuery query, boolean expected) {
+    public void testIsJoinConnected(@Nonnull Object queryObj, boolean expected) {
+        CQuery query = queryObj instanceof CQuery ? (CQuery)queryObj
+                                                  : ((FreeQueryOp)queryObj).getQuery();
         assertEquals(query.attr().isJoinConnected(), expected);
     }
 

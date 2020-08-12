@@ -40,14 +40,14 @@ public class QueryOpTest implements TestContext {
 
     @DataProvider
     public static @Nonnull Object[][] factoryData() {
-        BiFunction<CQuery, Set<String>, UnassignedQueryOp> f1 =
+        BiFunction<CQuery, Set<String>, FreeQueryOp> f1 =
                 (q, p) -> {
-                    UnassignedQueryOp op = new UnassignedQueryOp(q);
+                    FreeQueryOp op = new FreeQueryOp(q);
                     if (p != null)
                         op.modifiers().add(Projection.advised(p));
                     return op;
                 };
-        BiFunction<CQuery, Set<String>, UnassignedQueryOp> f2 =
+        BiFunction<CQuery, Set<String>, FreeQueryOp> f2 =
                 (q, p) -> {
                     QueryOp op = new QueryOp(empty, q);
                     if (p != null)
@@ -58,9 +58,9 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testNoVars(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testNoVars(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = CQuery.from(new Triple(Alice, knows, Bob));
-        UnassignedQueryOp node = fac.apply(query, null);
+        FreeQueryOp node = fac.apply(query, null);
         if (node instanceof QueryOp)
             assertSame(((QueryOp)node).getEndpoint(), empty);
         assertEquals(node.getQuery(), query);
@@ -69,8 +69,8 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testVarsInTriple(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
-        UnassignedQueryOp node = fac.apply(CQuery.from(new Triple(Alice, knows, x)), null);
+    public void testVarsInTriple(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
+        FreeQueryOp node = fac.apply(CQuery.from(new Triple(Alice, knows, x)), null);
         assertEquals(node.getResultVars(), singleton("x"));
         assertEquals(node.getRequiredInputVars(), emptySet());
         assertEquals(node.getOptionalInputVars(), emptySet());
@@ -81,12 +81,12 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testVarInFilter(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testVarInFilter(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, SPARQLFilter.build("?y < ?z")
         );
-        UnassignedQueryOp node = fac.apply(query, null);
+        FreeQueryOp node = fac.apply(query, null);
         assertFalse(node.isProjected());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getAllVars(), Sets.newHashSet("x", "y", "z"));
@@ -98,13 +98,13 @@ public class QueryOpTest implements TestContext {
 
 
     @Test(dataProvider = "factoryData")
-    public void testRequiredInputInFilter(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testRequiredInputInFilter(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asRequired(atom1, "a1").get())
         );
-        UnassignedQueryOp node = fac.apply(query, null);
+        FreeQueryOp node = fac.apply(query, null);
         assertFalse(node.isProjected());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getStrictResultVars(), Sets.newHashSet("x", "y"));
@@ -115,13 +115,13 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testOptionalInputInFilter(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testOptionalInputInFilter(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asOptional(atom1, "a1").get())
         );
-        UnassignedQueryOp node = fac.apply(query, null);
+        FreeQueryOp node = fac.apply(query, null);
         assertFalse(node.isProjected());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getStrictResultVars(), Sets.newHashSet("x", "y"));
@@ -132,14 +132,14 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testStrictResultVars(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testStrictResultVars(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, AtomInputAnnotation.asRequired(atom1, "a2").get(),
                 SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asOptional(atom2, "a2").get())
         );
-        UnassignedQueryOp node = fac.apply(query, null);
+        FreeQueryOp node = fac.apply(query, null);
         assertFalse(node.isProjected());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getStrictResultVars(), singleton("x"));
@@ -151,14 +151,14 @@ public class QueryOpTest implements TestContext {
 
 
     @Test(dataProvider = "factoryData")
-    public void testProject(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testProject(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y, AtomInputAnnotation.asRequired(atom1, "a2").get(),
                 SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asOptional(atom2, "a2").get())
         );
-        UnassignedQueryOp node = fac.apply(query, singleton("x"));
+        FreeQueryOp node = fac.apply(query, singleton("x"));
         assertTrue(node.isProjected());
         assertEquals(node.getResultVars(), Sets.newHashSet("x"));
         assertEquals(node.getStrictResultVars(), singleton("x"));
@@ -169,14 +169,14 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testProjectFilterInput(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testProjectFilterInput(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, y,
                 SPARQLFilter.build("?y < ?z"),
                 annotateTerm(z, AtomInputAnnotation.asOptional(atom2, "a2").get())
         );
-        UnassignedQueryOp node = fac.apply(query, singleton("x"));
+        FreeQueryOp node = fac.apply(query, singleton("x"));
         assertEquals(node.getPublicVars(), Sets.newHashSet("x", "z"));
         assertEquals(node.getResultVars(), singleton("x"));
         assertEquals(node.getInputVars(), singleton("z"));
@@ -185,10 +185,10 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testVarsInConjunctive(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testVarsInConjunctive(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = CQuery.from(asList(new Triple(Alice, knows, x),
                                           new Triple(x, knows, y)));
-        UnassignedQueryOp node = fac.apply(query, null);
+        FreeQueryOp node = fac.apply(query, null);
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertFalse(node.isProjected());
         assertFalse(node.toString().startsWith("π"));
@@ -196,17 +196,17 @@ public class QueryOpTest implements TestContext {
 
 
     @Test(dataProvider = "factoryData")
-    public void testVarsInProjection(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testVarsInProjection(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = CQuery.from(asList(new Triple(Alice, knows, x),
                                           new Triple(x, knows, y)));
-        UnassignedQueryOp node = fac.apply(query, singleton("x"));
+        FreeQueryOp node = fac.apply(query, singleton("x"));
         assertEquals(node.getResultVars(), singleton("x"));
         assertTrue(node.isProjected());
         assertTrue(node.toString().startsWith("π[x]("));
     }
 
     @Test(dataProvider = "factoryData")
-    public void testVarsInOverriddenInputAnnotation(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testVarsInOverriddenInputAnnotation(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 x, knows, y,
                 x, age, u, AtomInputAnnotation.asRequired(atom1, "a1").get(),
@@ -217,7 +217,7 @@ public class QueryOpTest implements TestContext {
                 AtomInputAnnotation.asRequired(atom3, "a3").override(lit("Bob")).get(),
                 SPARQLFilter.build("regex(str(?y1), \"Bob.*\")")
         );
-        UnassignedQueryOp node = fac.apply(query, null);
+        FreeQueryOp node = fac.apply(query, null);
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y", "u", "x1", "y1"));
         assertEquals(node.getOptionalInputVars(), emptySet());
         assertEquals(node.getRequiredInputVars(), singleton("u"));
@@ -226,10 +226,10 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testCreateBoundNoOp(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testCreateBoundNoOp(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(Alice, knows, x, x, knows, Bob, Distinct.REQUIRED);
-        UnassignedQueryOp node = fac.apply(query, null);
-        UnassignedQueryOp bound = node.createBound(MapSolution.build("y", Charlie));
+        FreeQueryOp node = fac.apply(query, null);
+        FreeQueryOp bound = node.createBound(MapSolution.build("y", Charlie));
         if (node instanceof QueryOp) {
             assertTrue(bound instanceof QueryOp);
             assertSame(((QueryOp) bound).getEndpoint(), ((QueryOp) node).getEndpoint());
@@ -243,10 +243,10 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testCreateBoundBindingOneVar(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testCreateBoundBindingOneVar(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(x, knows, Alice, y, knows, x, Ask.ADVISED);
-        UnassignedQueryOp node = fac.apply(query, null);
-        UnassignedQueryOp bound = node.createBound(MapSolution.build("x", Bob));
+        FreeQueryOp node = fac.apply(query, null);
+        FreeQueryOp bound = node.createBound(MapSolution.build("x", Bob));
 
         assertEquals(bound.getQuery(),
                      createQuery(Bob, knows, Alice, y, knows, Bob, Ask.ADVISED));
@@ -256,11 +256,11 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testCreateBoundBindingOnlyVar(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testCreateBoundBindingOnlyVar(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = CQuery.from(asList(new Triple(x, knows, Alice),
                                           new Triple(x, age, i23)));
-        UnassignedQueryOp node = fac.apply(query, null);
-        UnassignedQueryOp bound = node.createBound(MapSolution.build("x", Bob));
+        FreeQueryOp node = fac.apply(query, null);
+        FreeQueryOp bound = node.createBound(MapSolution.build("x", Bob));
 
         CQuery expected = CQuery.from(asList(new Triple(Bob, knows, Alice),
                                              new Triple(Bob, age,   i23)));
@@ -269,10 +269,10 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testBindingRemovesProjectedVar(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testBindingRemovesProjectedVar(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = CQuery.from(new Triple(x, knows, y));
-        UnassignedQueryOp node = fac.apply(query, singleton("x"));
-        UnassignedQueryOp bound = node.createBound(MapSolution.build(x, Alice));
+        FreeQueryOp node = fac.apply(query, singleton("x"));
+        FreeQueryOp bound = node.createBound(MapSolution.build(x, Alice));
 
         CQuery actual = bound.getQuery();
         assertEquals(actual, CQuery.from(new Triple(Alice, knows, y)));
@@ -282,10 +282,10 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testBindingRemovesResultVar(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testBindingRemovesResultVar(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = CQuery.from(new Triple(x, knows, y));
-        UnassignedQueryOp node = fac.apply(query, null);
-        UnassignedQueryOp bound = node.createBound(MapSolution.build(y, Bob));
+        FreeQueryOp node = fac.apply(query, null);
+        FreeQueryOp bound = node.createBound(MapSolution.build(y, Bob));
 
         assertEquals(bound.getQuery(), CQuery.from(new Triple(x, knows, Bob)));
         assertEquals(bound.getResultVars(), singleton("x"));
@@ -294,11 +294,11 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testBindingNoChangePreservesAnnotations(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testBindingNoChangePreservesAnnotations(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(Alice, AtomAnnotation.of(atom1),
                 knows, y, AtomInputAnnotation.asRequired(atom2, "atom2").get());
-        UnassignedQueryOp node = fac.apply(query, null);
-        UnassignedQueryOp bound = node.createBound(MapSolution.build(x, Bob));
+        FreeQueryOp node = fac.apply(query, null);
+        FreeQueryOp bound = node.createBound(MapSolution.build(x, Bob));
 
         assertEquals(bound.getResultVars(), singleton("y"));
         assertTrue(bound.hasInputs());
@@ -309,13 +309,13 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testBindingPreservesAnnotations(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testBindingPreservesAnnotations(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 x, AtomInputAnnotation.asRequired(atom1, "atom1").get(),
                         knows, y, AtomInputAnnotation.asRequired(atom2, "atom2").get(),
                 Alice, AtomAnnotation.of(atom3), knows, x);
-        UnassignedQueryOp node = fac.apply(query, null);
-        UnassignedQueryOp bound = node.createBound(MapSolution.build(x, Bob));
+        FreeQueryOp node = fac.apply(query, null);
+        FreeQueryOp bound = node.createBound(MapSolution.build(x, Bob));
 
         assertEquals(bound.getResultVars(), singleton("y"));
         assertTrue(bound.hasInputs());
@@ -332,18 +332,18 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testBindInputInFilterOfQuery(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testBindInputInFilterOfQuery(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 x, age, y,
                 SPARQLFilter.build("?y < ?u"),
                 annotateTerm(u, AtomInputAnnotation.asRequired(atom1, "a1").get())
         );
-        UnassignedQueryOp node = fac.apply(query, null);
+        FreeQueryOp node = fac.apply(query, null);
         assertEquals(node.getInputVars(), singleton("u"));
         assertEquals(node.getPublicVars(), Sets.newHashSet("x", "y", "u"));
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
 
-        UnassignedQueryOp bound = node.createBound(MapSolution.build(u, lit(23)));
+        FreeQueryOp bound = node.createBound(MapSolution.build(u, lit(23)));
 
         assertEquals(bound.getPublicVars(), Sets.newHashSet("x", "y"));
         assertEquals(bound.getInputVars(), emptySet());
@@ -354,21 +354,21 @@ public class QueryOpTest implements TestContext {
     }
 
     @Test(dataProvider = "factoryData")
-    public void testBindInputInFilter(BiFunction<CQuery, Set<String>, UnassignedQueryOp> fac) {
+    public void testBindInputInFilter(BiFunction<CQuery, Set<String>, FreeQueryOp> fac) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 Alice, age, y, SPARQLFilter.build("?y < ?u"),
                 x, age, z, SPARQLFilter.build("?z < ?y"),
                 annotateTerm(u, AtomInputAnnotation.asRequired(atom1, "a1").get())
         );
-        UnassignedQueryOp node = fac.apply(query, null);
+        FreeQueryOp node = fac.apply(query, null);
         assertEquals(node.getInputVars(), singleton("u"));
         assertEquals(node.getPublicVars(), Sets.newHashSet("x", "y", "y", "z", "u"));
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y", "y", "z"));
 
         assertEquals(node.modifiers(), query.getModifiers());
 
-        UnassignedQueryOp bound = node.createBound(MapSolution.build(u, lit(23)));
+        FreeQueryOp bound = node.createBound(MapSolution.build(u, lit(23)));
         assertEquals(bound.getInputVars(), emptySet());
         assertEquals(bound.getPublicVars(), Sets.newHashSet("x", "y", "y", "z"));
 

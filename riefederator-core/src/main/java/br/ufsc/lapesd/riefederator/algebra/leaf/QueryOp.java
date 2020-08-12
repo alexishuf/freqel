@@ -2,11 +2,10 @@ package br.ufsc.lapesd.riefederator.algebra.leaf;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.query.results.Solution;
 
 import javax.annotation.Nonnull;
 
-public class QueryOp extends UnassignedQueryOp {
+public class QueryOp extends FreeQueryOp {
     private final @Nonnull TPEndpoint endpoint;
 
     public QueryOp(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
@@ -20,8 +19,13 @@ public class QueryOp extends UnassignedQueryOp {
     }
 
     @Override
-    public @Nonnull UnassignedQueryOp createBound(@Nonnull Solution s) {
-        return new QueryOp(endpoint, bindQuery(s));
+    public @Nonnull FreeQueryOp withQuery(@Nonnull CQuery query) {
+        return new QueryOp(endpoint, query);
+    }
+
+    @Override
+    protected @Nonnull FreeQueryOp createWith(@Nonnull CQuery query) {
+        return new QueryOp(getEndpoint(), query);
     }
 
     @Override
@@ -34,19 +38,17 @@ public class QueryOp extends UnassignedQueryOp {
         return builder;
     }
 
+    @Nonnull @Override protected StringBuilder prettyPrintQArgs(@Nonnull StringBuilder b) {
+        return b.append(' ').append(getEndpoint());
+    }
+
     @Override
-    public  @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
-                                               @Nonnull String indent) {
-        String indent2 = indent + "  ";
-        builder.append(indent);
-        if (isProjected())
-            builder.append(getPiWithNames()).append('(');
-        builder.append("Q(").append(getCardinality()).append(' ').append(getEndpoint())
-                .append(isProjected() ? "))" : ")"+getVarNamesString())
-                .append(' ').append(getName()).append('\n')
-                .append(indent2)
-                .append(getQuery().toString().replace("\n", "\n"+indent2));
-        printFilters(builder, indent2);
-        return builder;
+    public boolean equals(Object obj) {
+        return super.equals(obj) && getEndpoint().equals(((QueryOp)obj).getEndpoint());
+    }
+
+    @Override
+    public int hashCode() {
+        return 37*super.hashCode() + getEndpoint().hashCode();
     }
 }

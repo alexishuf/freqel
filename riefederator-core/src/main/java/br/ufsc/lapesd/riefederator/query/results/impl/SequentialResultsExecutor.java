@@ -10,8 +10,6 @@ import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
-import static java.util.stream.Collectors.toSet;
-
 public class SequentialResultsExecutor implements ResultsExecutor {
     private boolean closed = false;
 
@@ -20,9 +18,7 @@ public class SequentialResultsExecutor implements ResultsExecutor {
                                   @Nullable Collection<String> namesHint) {
         if (coll.size() == 1)
             return coll.iterator().next();
-        Collection<String> names = namesHint != null ? namesHint
-                : coll.stream().flatMap(r -> r.getVarNames().stream()).collect(toSet());
-        return new SequentialResults(ResultsList.of(coll), names);
+        return new SequentialResults(ResultsList.of(coll), namesHint);
     }
 
     @Override

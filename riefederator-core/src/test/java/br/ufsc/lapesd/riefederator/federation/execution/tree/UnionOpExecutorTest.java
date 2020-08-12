@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
@@ -96,7 +97,7 @@ public class UnionOpExecutorTest implements TestContext {
         MultiQueryOpExecutor executor = supplier.get();
         QueryOp qn1 = new QueryOp(rdf1, createQuery(x, age, y));
         QueryOp qn2 = new QueryOp(rdf2, createQuery(x, age, y));
-        UnionOp node = UnionOp.builder().add(qn1).add(qn2).build();
+        Op node = UnionOp.builder().add(qn1).add(qn2).build();
         node.modifiers().add(Projection.advised("x"));
         node.modifiers().add(SPARQLFilter.builder("?y > 23").build());
 

@@ -133,11 +133,6 @@ public abstract class AbstractOp implements Op {
     }
 
     @Override
-    public @Nonnull Op setChild(int index, @NotNull Op replacement) {
-        throw new UnsupportedOperationException("setChild() not supported");
-    }
-
-    @Override
     public void attachListener(@NotNull OpChangeListener listener) {
         listeners.add(listener);
     }
@@ -189,12 +184,6 @@ public abstract class AbstractOp implements Op {
         return (isProjected() ? "π" : "") + "["+getVarNamesStringContent()+"]";
     }
 
-    protected @Nonnull StringBuilder printFilters(@Nonnull StringBuilder builder,
-                                                  @Nonnull String indent) {
-        modifiers().filters().forEach(f -> builder.append(indent).append(f.getSparqlFilter()).append('\n'));
-        return builder;
-    }
-
     @Override
     public @Nonnull String toString() {
         return toString(new StringBuilder()).toString();
@@ -205,4 +194,17 @@ public abstract class AbstractOp implements Op {
         return prettyPrint(new StringBuilder(), "").toString();
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Op) ) return false;
+        Op rhs = (Op) obj;
+        return getClass().equals(rhs.getClass())
+                && modifiers().equals(rhs.modifiers())
+                && getChildren().equals(rhs.getChildren());
+    }
+
+    @Override
+    public int hashCode() {
+        return 37*(37*getClass().hashCode() + modifiers().hashCode()) + getChildren().hashCode();
+    }
 }

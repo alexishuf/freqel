@@ -10,14 +10,24 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collections;
 
 import static java.util.stream.Collectors.toSet;
 
 public class EmptyEndpoint extends AbstractTPEndpoint implements CQEndpoint {
+    private @Nullable String name;
+
+    public EmptyEndpoint() {
+        this.name = null;
+    }
+
+    public EmptyEndpoint(@Nonnull String name) {
+        this.name = name;
+    }
+
     @Override
-    public @Nonnull
-    Results query(@Nonnull CQuery query) {
+    public @Nonnull Results query(@Nonnull CQuery query) {
         return new CollectionResults(Collections.emptyList(),
                 query.streamTerms(Var.class).map(Var::getName).collect(toSet()));
     }
@@ -34,6 +44,8 @@ public class EmptyEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull String toString() {
+        if (name != null)
+            return "EmptyEndpoint@"+name;
         return String.format("EmptyEndpoint@%x", System.identityHashCode(this));
     }
 }

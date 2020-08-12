@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
-import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
+import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
@@ -19,11 +19,13 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.results.*;
+import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.LimitResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.rel.common.*;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
@@ -36,8 +38,6 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.common.collect.Sets;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +61,6 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
     private @Nonnull final RelationalMoleculeMatcher moleculeMatcher;
     private @Nonnull final RelationalMapping mapping;
     private @Nonnull final CqlGenerator cqlGenerator;
-    private @Nullable Injector injector;
     private @Nullable Federation federation;
     private @Nullable Planner planner;
 
@@ -449,31 +448,10 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
         }
     }
 
-    private @Nonnull Injector getInjector() {
-        if (injector == null) {
-            SimpleFederationModule m = new SimpleFederationModule() {
-                @Override
-                protected void configureResultsExecutor() {
-                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-            };
-            injector = Guice.createInjector(m);
-        }
-        return injector;
-    }
-
     private @Nonnull Federation getFederation() {
-        if (federation == null) {
-            federation = getInjector().getInstance(Federation.class);
-            federation.addSource(asSource());
-        }
+        if (federation == null)
+            federation = SingletonSourceFederation.createFederation(asSource());
         return federation;
-    }
-
-    private @Nonnull Planner getPlanner() {
-        if (planner == null)
-            planner = getInjector().getInstance(Planner.class);
-        return planner;
     }
 
     private @Nonnull Results decomposeMultiStar(@Nonnull StarVarIndex index) {
@@ -490,7 +468,8 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
             leaves.add(new QueryOp(this, cQuery));
         }
         // optimize as usual, then execute under the inner federation
-        Op plan = getPlanner().plan(query, leaves);
+        Planner planner = SingletonSourceFederation.getInjector().getInstance(Planner.class);
+        Op plan = planner.plan(query, leaves);
         return getFederation().execute(query, plan);
     }
 

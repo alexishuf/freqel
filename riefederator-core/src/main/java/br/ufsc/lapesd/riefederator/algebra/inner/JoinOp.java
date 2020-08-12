@@ -2,11 +2,11 @@ package br.ufsc.lapesd.riefederator.algebra.inner;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import javax.annotation.Nullable;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -65,10 +65,40 @@ public class JoinOp extends AbstractInnerOp {
         return getChildren().get(1);
     }
 
+
     @Override
-    protected @Nonnull Op createWith(@Nonnull List<Op> children) {
+    public @Nonnull Op setChild(int index, @Nonnull Op replacement) {
+        Op left  = index == 0 ? replacement : getChildren().get(0);
+        Op right = index == 1 ? replacement : getChildren().get(1);
+        JoinInfo info = JoinInfo.getJoinability(left, right);
+        checkArgument(info.isValid(), "Given replacement node is not joinable");
+        Op old = super.setChild(index, replacement);
+        this.joinInfo = info;
+        return old;
+    }
+
+    @Override
+    public @Nonnull List<Op> setChildren(@Nonnull List<Op> children) {
+        checkArgument(children.size() == 2, "JoinOp must have exactly 2 children");
+        JoinInfo info = JoinInfo.getJoinability(children.get(0), children.get(1));
+        checkArgument(info.isValid(), "Given children are not joinable!");
+        List<Op> old = super.setChildren(children);
+        this.joinInfo = info;
+        return old;
+    }
+
+    @Override
+    public void addChild(@Nonnull Op child) {
+        throw new UnsupportedOperationException("JoinOp does not allow addChild()");
+    }
+
+    @Override
+    public @Nonnull Op createWith(@Nonnull List<Op> children, @Nullable Collection<Modifier> mods) {
         checkArgument(children.size() == 2, "A JoinOp requires EXACTLY 2 children");
-        return create(children.get(0), children.get(1));
+        JoinOp op = create(children.get(0), children.get(1));
+        op.setCardinality(getCardinality());
+        if (mods != null) op.modifiers().addAll(mods);
+        return op;
     }
 
     @Override
@@ -76,7 +106,20 @@ public class JoinOp extends AbstractInnerOp {
         return " ⋈ ";
     }
 
-    @Nonnull @Override protected StringBuilder prettyPrintNodeType(@Nonnull StringBuilder builder) {
+    @Override protected @Nonnull StringBuilder prettyPrintNodeType(@Nonnull StringBuilder builder) {
         return builder.append("⋈{").append(String.join(", ", getJoinVars())).append("} ");
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof JoinOp)) return false;
+        if (!super.equals(o)) return false;
+        return joinInfo.equals(((JoinOp) o).joinInfo);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), joinInfo);
     }
 }

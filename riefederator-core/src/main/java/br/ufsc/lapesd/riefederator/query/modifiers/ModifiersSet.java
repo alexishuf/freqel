@@ -1,6 +1,9 @@
 package br.ufsc.lapesd.riefederator.query.modifiers;
 
+import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.impl.LazyCartesianResults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,8 +11,11 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.intersect;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableSet;
 
@@ -205,6 +211,77 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         if (change) {
             --d.size;
             removed(m);
+        }
+        return change;
+    }
+
+    /**
+     * Merge all given modifiers with this set, assuming both this and the given
+     * collection apply to query fragments that are being combined by conjunction or
+     * by a cartesian product. When merging {@link Capability#isUniqueModifier()} modifiers,
+     * the resulting modifier will be required if any of the input modifiers is required.
+     *
+     * The following rules are applied during the merge:
+     * - filters: simply added (if not already present)
+     * - projection: union of projected vars (or fallbackProjection)
+     * - values: join (if there are shared variables) or cartesian product of bindings
+     * - limit: minimum value among existing modifiers
+     * - ask: only the required flag rules apply
+     *
+     * @param collection the collection of modifiers to add
+     * @param fallbackProjection if this set has no projection, consider this to be the
+     *                           Projection, with non-required status
+     * @param collectionFallbackProjection if this set has a projection and collection does
+     *                                     not contain a Projection, consider this as the
+     *                                     Projection of collection with non-required status.
+     * @return true if this set was modified, false otherwise
+     */
+    public boolean mergeWith(@Nonnull Collection<Modifier> collection,
+                             @Nonnull Collection<String> fallbackProjection,
+                             @Nonnull Collection<String> collectionFallbackProjection) {
+        boolean change = false, gotProjection = false;
+        for (Modifier modifier : collection) {
+            if (modifier instanceof Projection) {
+                gotProjection = true;
+                Projection theirs = (Projection)modifier;
+                Projection mine = projection();
+                Set<String> union = union(mine == null ? fallbackProjection : mine.getVarNames(),
+                                          theirs.getVarNames());
+                boolean required = (mine != null && mine.isRequired()) || theirs.isRequired();
+                change |= add(new Projection(union, required));
+            } else if (modifier instanceof ValuesModifier) {
+                ValuesModifier theirs = (ValuesModifier) modifier;
+                ValuesModifier mine = valueModifier();
+                if (mine != null) {
+                    Set<String> all = union(mine.getVarNames(), theirs.getVarNames());
+                    Set<String> shared = intersect(mine.getVarNames(), theirs.getVarNames());
+                    Results mergeResults, mr = mine.createResults(), tr = theirs.createResults();
+                    if (shared.isEmpty())
+                        mergeResults = new LazyCartesianResults(asList(mr, tr), all);
+                    else
+                        mergeResults = new InMemoryHashJoinResults(mr, tr, shared, all);
+                    change |= add(ValuesModifier.fromResults(mergeResults));
+                } else {
+                    change |= add(theirs);
+                }
+            } else if (modifier instanceof Limit) {
+                int theirs = ((Limit) modifier).getValue();
+                Limit mine = limit();
+                boolean required = (mine != null && mine.isRequired()) || modifier.isRequired();
+                int value = Math.min(mine == null ? Integer.MAX_VALUE : mine.getValue(), theirs);
+                change |= add(new Limit(value, required));
+            } else if (modifier instanceof Ask) {
+                Ask mine = ask();
+                boolean mineRequired = mine != null && mine.isRequired();
+                change |= add(new Ask(mineRequired || modifier.isRequired()));
+            } else {
+                change |= add(modifier);
+            }
+        }
+        Projection p = projection();
+        if (!gotProjection && p != null && !collectionFallbackProjection.isEmpty()) {
+            Set<String> vars = union(p.getVarNames(), collectionFallbackProjection);
+            change |= add(new Projection(vars, p.isRequired()));
         }
         return change;
     }

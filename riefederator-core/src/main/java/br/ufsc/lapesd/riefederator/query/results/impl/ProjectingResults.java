@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.DelegatingResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -18,15 +18,15 @@ public class ProjectingResults extends DelegatingResults implements Results {
         this.factory = ArraySolution.forVars(varNames);
     }
 
-    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
-        Projection projection = query.getModifiers().projection();
+    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull ModifiersSet modifiers) {
+        Projection projection = modifiers.projection();
         if (projection != null && !projection.getVarNames().equals(in.getVarNames()))
             return new ProjectingResults(in, projection.getVarNames());
         return in;
     }
 
-    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull Op op) {
-        return op.isProjected() ? new ProjectingResults(in, op.getResultVars()) : in;
+    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
+        return applyIf(in, query.getModifiers());
     }
 
     @Override

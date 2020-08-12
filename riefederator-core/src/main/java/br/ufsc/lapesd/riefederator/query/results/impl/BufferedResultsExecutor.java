@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.results.*;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +64,13 @@ public class BufferedResultsExecutor implements ResultsExecutor {
         }
         if (closed)
             logger.error("Race: close() called during async()! Will discard solutions");
-        return new ConsumingResults(list, queue, names);
+        boolean projecting = false;
+        if (namesHint != null) {
+            Set<String> set = names instanceof Set ? (Set<String>)names : IndexedSet.from(names);
+            projecting = coll.stream().anyMatch(r -> !r.getVarNames().equals(set));
+            names = set;
+        }
+        return new ConsumingResults(list, queue, names, projecting);
     }
 
     private boolean closed;
@@ -118,16 +125,18 @@ public class BufferedResultsExecutor implements ResultsExecutor {
         private @Nonnull final BitSet activeTasks;
         private boolean exhausted = false;
         private @Nonnull final BlockingQueue<FeedTask.Message> queue;
+        private @Nullable ArraySolution.ValueFactory projector;
         private @Nullable Solution next = null;
 
         public ConsumingResults(@Nonnull List<FeedTask> tasks,
                                 @Nonnull BlockingQueue<FeedTask.Message> queue,
-                                @Nonnull Collection<String> varNames) {
+                                @Nonnull Collection<String> varNames, boolean projecting) {
             super(varNames);
             this.tasks = tasks;
             this.activeTasks = new BitSet(tasks.size());
             this.activeTasks.flip(0, tasks.size());
             this.queue = queue;
+            this.projector = projecting ? ArraySolution.forVars(varNames) : null;
         }
 
         @Override
@@ -141,7 +150,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
                                  - (tasks.size() - activeTasks.cardinality());
             int ready = queue.size() - pendingExhausted;
             assert ready >= 0 : "Race between getReadyCount() & hasNext()";
-            return Math.max(ready, 0);
+            return ready;
         }
 
         @Override
@@ -185,8 +194,8 @@ public class BufferedResultsExecutor implements ResultsExecutor {
         @Override
         public @Nonnull Solution next() {
             if (!hasNext()) throw new NoSuchElementException();
-            Solution next = this.next;
-            assert next != null;
+            assert this.next != null;
+            Solution next = projector == null ? this.next : projector.fromSolution(this.next);
             this.next = null;
             return next;
         }

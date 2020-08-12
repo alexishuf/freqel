@@ -32,7 +32,7 @@ public class UnionOpTest implements TestContext {
 
     @Test
     public void testSimple() {
-        UnionOp node = UnionOp.builder().add(aliceKnowsX).add(bobKnowsX).build();
+        Op node = UnionOp.builder().add(aliceKnowsX).add(bobKnowsX).build();
         assertFalse(node.isProjected());
         assertEquals(node.getResultVars(), singleton("x"));
         assertEquals(node.getChildren(), asList(aliceKnowsX, bobKnowsX));
@@ -40,7 +40,7 @@ public class UnionOpTest implements TestContext {
 
     @Test
     public void testAllVars() {
-        UnionOp node = UnionOp.builder().add(aliceKnowsX).add(xKnowsY).build();
+        Op node = UnionOp.builder().add(aliceKnowsX).add(xKnowsY).build();
         assertFalse(node.isProjected());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getChildren(), asList(aliceKnowsX, xKnowsY));

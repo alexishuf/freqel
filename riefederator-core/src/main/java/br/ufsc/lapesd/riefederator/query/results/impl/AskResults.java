@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.results.DelegatingResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -18,6 +19,12 @@ public class AskResults extends DelegatingResults implements Results {
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
         if (query.attr().isAsk())
+            return new AskResults(in);
+        return in;
+    }
+
+    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull ModifiersSet modifiers) {
+        if (modifiers.ask() != null)
             return new AskResults(in);
         return in;
     }

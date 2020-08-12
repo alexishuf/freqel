@@ -1,0 +1,11 @@
+predicate<===>object
+http://www.w3.org/1999/02/22-rdf-syntax-ns#type<===>http://www.w3.org/2002/07/owl#Thing
+http://www.w3.org/1999/02/22-rdf-syntax-ns#type<===>http://dbpedia.org/ontology/ChemicalCompound
+http://www.w3.org/2000/01/rdf-schema#label<===>"Caffeine"@en
+http://dbpedia.org/ontology/thumbnail<===>http://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Caffeine.svg/200px-Caffeine.svg.png
+http://xmlns.com/foaf/0.1/depiction<===>http://upload.wikimedia.org/wikipedia/commons/d/d8/Caffeine.svg
+http://www.w3.org/2004/02/skos/core#subject<===>http://dbpedia.org/resource/Category:Anxiogenics
+http://www.w3.org/2004/02/skos/core#subject<===>http://dbpedia.org/resource/Category:Bitter_compounds
+http://www.w3.org/2004/02/skos/core#subject<===>http://dbpedia.org/resource/Category:Caffeine
+http://www.w3.org/2004/02/skos/core#subject<===>http://dbpedia.org/resource/Category:Coffee
+http://www.w3.org/2004/02/skos/core#subject<===>http://dbpedia.org/resource/Category:IARC_Group_3_carcinogens

@@ -6,9 +6,8 @@ import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import org.testng.annotations.Test;
@@ -26,11 +25,11 @@ import static org.testng.Assert.*;
 @Test
 public class TransparencyServicesLiveTest implements TransparencyServiceTestContext {
 
-    private @Nonnull CQuery loadQuery(@Nonnull String filename)
+    private @Nonnull Op loadQuery(@Nonnull String filename)
             throws IOException, SPARQLParseException {
         try (InputStream in = getClass().getResourceAsStream(filename)) {
             assertNotNull(in);
-            return SPARQLQueryParser.tolerant().parse(in);
+            return SPARQLParser.tolerant().parse(in);
         }
     }
     private @Nonnull Federation getBudgetFederation() throws IOException, FederationSpecException {
@@ -42,7 +41,7 @@ public class TransparencyServicesLiveTest implements TransparencyServiceTestCont
     @Test(enabled = false)
     public void testProcurementsOfContractsPlan() throws Exception {
         Federation federation = getBudgetFederation();
-        CQuery query = loadQuery("live/procurements-of-contract.sparql");
+        Op query = loadQuery("live/procurements-of-contract.sparql");
         Op plan = federation.plan(query);
         PlannerTest.assertPlanAnswers(plan, query);
     }
@@ -50,7 +49,7 @@ public class TransparencyServicesLiveTest implements TransparencyServiceTestCont
     @Test(enabled = false)
     public void testProcurementsOfContracts() throws Exception {
         Federation federation = getBudgetFederation();
-        CQuery query = loadQuery("live/procurements-of-contract.sparql");
+        Op query = loadQuery("live/procurements-of-contract.sparql");
         Set<Term> ids = new HashSet<>();
         try (Results results = federation.query(query)) {
             assertTrue(results.hasNext());

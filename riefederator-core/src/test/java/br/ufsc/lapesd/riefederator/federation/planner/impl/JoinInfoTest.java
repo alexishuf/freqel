@@ -266,7 +266,7 @@ public class JoinInfoTest implements TestContext {
     @DataProvider
     public static Object[][] isLinkedToData() {
         Op nxpy = node(xpy), nypz = node(ypz), nyipz = node(yipz), nzpw = node(zpw);
-        UnionOp mypz = UnionOp.builder().add(nyipz).add(nypz).build();
+        Op mypz = UnionOp.builder().add(nyipz).add(nypz).build();
         return Stream.of(
                 asList(JoinInfo.getJoinability(nxpy, nypz), JoinInfo.getJoinability(nypz,  nzpw), true),
                 asList(JoinInfo.getJoinability(nypz, nxpy), JoinInfo.getJoinability(nzpw,  nypz), true),
@@ -298,7 +298,7 @@ public class JoinInfoTest implements TestContext {
     @DataProvider
     public static Object[][] oppositeToLinkedData() {
         Op nxpy = node(xpy), nypz = node(ypz), nyipz = node(yipz), nzpw = node(zpw);
-        UnionOp mypz = UnionOp.builder().add(nyipz).add(nypz).build();
+        Op mypz = UnionOp.builder().add(nyipz).add(nypz).build();
         return Stream.of(
                 asList(JoinInfo.getJoinability(nxpy, nypz), JoinInfo.getJoinability(nypz, nzpw), nxpy),
                 asList(JoinInfo.getJoinability(nypz, nzpw), JoinInfo.getJoinability(nxpy, nypz), nzpw),

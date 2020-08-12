@@ -1,5 +1,8 @@
 package br.ufsc.lapesd.riefederator.testgen;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
@@ -7,9 +10,8 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
@@ -23,6 +25,13 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.graph.Node;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.system.StreamRDFBase;
 import org.apache.jena.vocabulary.RDF;
 import org.glassfish.jersey.client.ClientProperties;
@@ -50,6 +59,7 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
 import static br.ufsc.lapesd.riefederator.model.RDFUtils.toNT;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -255,11 +265,15 @@ public class LargeRDFBenchTestResourcesGenerator {
             if (resultsZip != null && !resultsZip.exists())
                 throw new IOException("--results-zip " + resultsZip + " does not exist");
 
+            List<BenchmarkQuery> unionQueries = new ArrayList<>();
             for (Iterator<BenchmarkQuery> it = listPairs(); it.hasNext(); ) {
                 BenchmarkQuery query = it.next();
                 try {
                     query.parse();
                     addQuery(query);
+                    assert query.queryRoot != null;
+                    if (streamPreOrder(query.queryRoot).anyMatch(UnionOp.class::isInstance))
+                        unionQueries.add(query);
                 } catch (SPARQLParseException e) {
                     logger.warn("Query {} is not supported: {}", query.queryName, e.getMessage());
                 }
@@ -268,9 +282,51 @@ public class LargeRDFBenchTestResourcesGenerator {
             assert dataFiles != null;
             for (File dataFile : dataFiles)
                 removeDuplicates(dataFile);
+            addUnionResults(unionQueries, dataFiles);
         } finally {
             if (deleteResultsZip && resultsZip != null && !resultsZip.delete())
                 logger.error("Failed to delete downloaded temp file {}", resultsZip);
+        }
+    }
+
+    private void addUnionResults(List<BenchmarkQuery> queries, File[] dataFiles)
+            throws IOException {
+        Model model = ModelFactory.createDefaultModel();
+        for (File dataFile : dataFiles) {
+            try (FileInputStream in = new FileInputStream(dataFile)) {
+                RDFDataMgr.read(model, in, Lang.TTL);
+            }
+        }
+
+        for (BenchmarkQuery query : queries) {
+            String sparql = IOUtils.toString(query.getQueryReader());
+            File outFile = new File(outDir, "results/" + query.queryName + ".union");
+            try (PrintStream out = new PrintStream(new FileOutputStream(outFile));
+                 QueryExecution exec = QueryExecutionFactory.create(sparql, model)) {
+                ResultSet rs = exec.execSelect();
+                assert !rs.getResultVars().isEmpty();
+                StringBuilder b =  new StringBuilder();
+                for (String var : rs.getResultVars())
+                    b.append(var).append("<===>");
+                b.setLength(b.length()-5);
+                out.println(b.toString());
+
+                while (rs.hasNext()) {
+                    JenaSolution sol = new JenaSolution(rs.next());
+                    b.setLength(0);
+                    for (String var : rs.getResultVars()) {
+                        Term term = sol.get(var);
+                        if (term != null) {
+                            if (term.isURI()) b.append(term.asURI().getURI());
+                            else if (term.isLiteral()) b.append(RDFUtils.toNT(term));
+                            else assert false : "term is neither URI nor literal!";
+                        }
+                        b.append("<===>");
+                    }
+                    b.setLength(b.length()-5);
+                    out.println(b.toString());
+                }
+            }
         }
     }
 
@@ -533,7 +589,7 @@ public class LargeRDFBenchTestResourcesGenerator {
         extractFile(query.getQueryReader(), "queries/"+query.queryName);
         extractFile(query.getResultsReader(), "results/"+query.queryName,
                     maxResultsPerQuery+1);
-        assert query.cQuery != null;
+        assert query.queryRoot != null;
         Results results = query.parseResults();
         while (results.hasNext()) {
             Solution solution = results.next();
@@ -542,6 +598,12 @@ public class LargeRDFBenchTestResourcesGenerator {
                     // satisfy FILTER(?weight <= 55), since ?weight is not in results
                     solution = MapSolution.builder(solution)
                             .put("weight", fromJena(createTypedLiteral(55)))
+                            .build();
+                    break;
+                case "B3":
+                    // satisfy FILTER(?age <= 51), since ?age is not in results
+                    solution = MapSolution.builder(solution)
+                            .put("age", fromJena(createTypedLiteral(50)))
                             .build();
                     break;
                 case "B5":
@@ -566,7 +628,7 @@ public class LargeRDFBenchTestResourcesGenerator {
                     break;
             }
 
-            List<Triple> graph = rebuildGraph(query.cQuery, solution);
+            List<Triple> graph = rebuildGraph(query.queryRoot, solution);
             storeTriples(graph);
         }
     }
@@ -637,10 +699,10 @@ public class LargeRDFBenchTestResourcesGenerator {
         }
     }
 
-    private List<Triple> rebuildGraph(CQuery cQuery, Solution solution) {
-        List<Triple> list = new ArrayList<>(cQuery.size());
+    private List<Triple> rebuildGraph(Op root, Solution solution) {
+        List<Triple> list = new ArrayList<>();
         Skolemizer skolemizer = new Skolemizer(solution);
-        for (Triple triple : cQuery) {
+        for (Triple triple : root.getMatchedTriples()) {
             Term s = skolemizer.getTerm(triple.getSubject());
             Term p = skolemizer.getTerm(triple.getPredicate());
             Term o = skolemizer.getTerm(triple.getObject());
@@ -679,7 +741,7 @@ public class LargeRDFBenchTestResourcesGenerator {
     private final class BenchmarkQuery {
         private final @Nonnull String queryName;
         private final Supplier<InputStream> queryStreamSupplier, resultsStreamSupplier;
-        private @Nullable CQuery cQuery;
+        private @Nullable Op queryRoot;
 
         public BenchmarkQuery(@Nonnull String queryName,
                               @Nonnull Supplier<InputStream> queryStreamSupplier,
@@ -709,14 +771,14 @@ public class LargeRDFBenchTestResourcesGenerator {
             return new BufferedReader(new InputStreamReader(getResultsStream(), UTF_8));
         }
 
-        private @CanIgnoreReturnValue @Nonnull
-        CQuery parse() throws SPARQLParseException, IOException {
-            if (cQuery == null) {
+        private @CanIgnoreReturnValue @Nonnull Op
+        parse() throws SPARQLParseException, IOException {
+            if (queryRoot == null) {
                 try (BufferedReader reader = getQueryReader()) {
-                    cQuery = SPARQLQueryParser.tolerant().parse(reader);
+                    queryRoot = SPARQLParser.tolerant().parse(reader);
                 }
             }
-            return cQuery;
+            return queryRoot;
         }
 
         public @Nonnull CollectionResults parseResults() throws IOException {

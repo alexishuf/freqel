@@ -1,6 +1,11 @@
 package br.ufsc.lapesd.riefederator.query.parse;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import org.apache.jena.sparql.vocabulary.FOAF;
@@ -13,16 +18,18 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createTolerantQuery;
-import static br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser.hidden;
+import static br.ufsc.lapesd.riefederator.query.parse.SPARQLParser.hidden;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
-public class SPARQLQueryParserTest implements TestContext {
+public class SPARQLParserTest implements TestContext {
 
     @DataProvider
     public static @Nonnull Object[][] parseData() {
@@ -136,27 +143,125 @@ public class SPARQLQueryParserTest implements TestContext {
                 asList(prolog+"SELECT ?x ?z WHERE {\n?x foaf:name ?y}", true,
                        null, SPARQLParseException.class),
                 asList(prolog+"SELECT ?x ?z WHERE {\n?x foaf:name ?y}", false,
-                       createTolerantQuery(x, name, y, Projection.required("x", "z")), null)
+                       createTolerantQuery(x, name, y, Projection.required("x", "z")), null),
+                // simple union
+                asList(prolog+"SELECT * WHERE {\n" +
+                        "  { ?x foaf:knows ex:Alice . } UNION \n"+
+                        "  { ?x foaf:knows ex:Bob. }\n" +
+                        "}", true,
+                        UnionOp.builder()
+                                .add(new FreeQueryOp(createQuery(x, knows, Alice)))
+                                .add(new FreeQueryOp(createQuery(x, knows, Bob)))
+                                .add(Distinct.ADVISED)
+                                .build(), null),
+                // filter placement in nodes
+                asList(prolog+"SELECT * WHERE {\n" +
+                                "  FILTER(REGEX(str(?x), \"^http:\")) \n" +
+                                "  { ?x foaf:knows ex:Alice; \n" +
+                                "       foaf:age ?y   FILTER(?y > 27) . } UNION \n"+
+                                "  { ?x foaf:knows ex:Bob ; \n" +
+                                "       foaf:age ?y . FILTER(?y > 23)   }\n" +
+                                "  FILTER(?y < 40) .\n" +
+                                "}", true,
+                        UnionOp.builder()
+                                .add(new FreeQueryOp(
+                                        createQuery(x, knows, Alice,
+                                                    x, age,   y,
+                                                    SPARQLFilter.build("?y > 27"))))
+                                .add(new FreeQueryOp(
+                                        createQuery(x, knows, Bob,
+                                                    x, age,   y,
+                                                    SPARQLFilter.build("?y > 23")
+                                        )))
+                                .add(Distinct.ADVISED)
+                                .add(SPARQLFilter.build("REGEX(str(?x), \"^http:\")"))
+                                .add(SPARQLFilter.build("?y < 40"))
+                                .build(), null),
+                // create a conjunction between a triple pattern and a UNION
+                asList(prolog+"SELECT * WHERE {\n" +
+                        "  ?x foaf:age ?u .\n" +
+                        "  { ?x foaf:knows ex:Alice . } UNION { ?x foaf:knows ex:Bob }" +
+                        "}", true,
+                        ConjunctionOp.builder()
+                                .add(new FreeQueryOp(createQuery(x, age, u)))
+                                .add(UnionOp.builder()
+                                        .add(new FreeQueryOp(createQuery(x, knows, Alice)))
+                                        .add(new FreeQueryOp(createQuery(x, knows, Bob)))
+                                        .add(Distinct.ADVISED)
+                                        .build())
+                                .build(), null),
+                // create a conjunction between a union and a triple block with a path expression
+                asList(prolog+"SELECT * WHERE {\n" +
+                                "  { \n" +
+                                "    {\n" +
+                                "      ?x foaf:knows ex:Alice .\n" +
+                                "      ?x foaf:age ?u . FILTER(?u < ?y)\n" +
+                                "    } UNION \n" +
+                                "    {?x foaf:knows ex:Bob \n" +
+                                "     FILTER(REGEX(str(?x), \"^http\")) .} \n" +
+                                "  } .\n" +
+                                "  ?x foaf:knows/foaf:age ?y FILTER (?y > 23)." +
+                                "}", true,
+                        ConjunctionOp.builder()
+                                .add(UnionOp.builder()
+                                        .add(new FreeQueryOp(
+                                                createQuery(x, knows, Alice,
+                                                            x, age,   u,
+                                                            SPARQLFilter.build("?u < ?y"))))
+                                        .add(new FreeQueryOp(createQuery(
+                                                x, knows, Bob,
+                                                SPARQLFilter.build("REGEX(str(?x), \"^http\")"))))
+                                        .add(Distinct.ADVISED)
+                                        .build())
+                                .add(new FreeQueryOp(
+                                        createQuery(x,         knows, spHidden0,
+                                                    spHidden0,   age, y)))
+                                .add(SPARQLFilter.build("?y > 23"))
+                                .add(Projection.required("x", "u", "y"))
+                                .build(), null)
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "parseData")
-    public void testParse(@Nonnull String sparql, boolean strict, @Nullable CQuery expected,
+    public void testParse(@Nonnull String sparql, boolean strict, @Nullable Object expectedObj,
                           Class<? extends Throwable> exception) throws Exception {
-        SPARQLQueryParser parser = strict ? SPARQLQueryParser.strict()
-                                          : SPARQLQueryParser.tolerant();
+        SPARQLParser parser = strict ? SPARQLParser.strict()
+                                          : SPARQLParser.tolerant();
         if (exception == null) {
-            CQuery query = parser.parse(sparql);
+            Op query = parser.parse(sparql);
+            Op expected = null;
+            if (expectedObj instanceof CQuery)
+                expected = new FreeQueryOp((CQuery) expectedObj);
+            else if (expectedObj instanceof Op)
+                expected = (Op)expectedObj;
+            else
+                fail("Neither a CQuery nor an Op: expectedObj="+expectedObj);
             assertNotNull(expected); // bad test data
-            assertEquals(query.attr().getSet(), expected.attr().getSet());
-            assertEquals(query.getModifiers(), expected.getModifiers());
+            assertEquals(query.getMatchedTriples(), expected.getMatchedTriples());
+            assertEquals(query.modifiers(), expected.modifiers());
+
+            //compare modifiers
+            Set<Modifier> expectedModifiers = TreeUtils.streamPreOrder(expected)
+                    .flatMap(o -> o.modifiers().stream()).collect(toSet());
+            Set<Modifier> actualModifiers = TreeUtils.streamPreOrder(query)
+                    .flatMap(o -> o.modifiers().stream()).collect(toSet());
+            assertEquals(actualModifiers, expectedModifiers);
+
+            //compare variables in root
+            assertEquals(query.getResultVars(), expected.getResultVars());
+            assertEquals(query.getStrictResultVars(), expected.getStrictResultVars());
+            assertEquals(query.getInputVars(), expected.getInputVars());
+            assertEquals(query.getRequiredInputVars(), expected.getRequiredInputVars());
+            assertEquals(query.getOptionalInputVars(), expected.getOptionalInputVars());
+
+            // compare whole tree (including variables and modifiers)
             //noinspection SimplifiedTestNGAssertion
             assertTrue(query.equals(expected));
 
             if (strict) // if strict was OK, tolerant should also be ok with it
-                testParse(sparql, false, expected, exception);
+                testParse(sparql, false, expected, null);
         } else {
-            assertNull(expected); //bad test data
+            assertNull(expectedObj); //bad test data
             expectThrows(exception, () -> parser.parse(sparql));
         }
     }

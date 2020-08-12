@@ -1,12 +1,16 @@
 package br.ufsc.lapesd.riefederator;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.description.SelectDescription;
+import br.ufsc.lapesd.riefederator.federation.Federation;
+import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.TPEndpointTest;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
@@ -36,6 +40,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
+import static br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation.createFederation;
 import static br.ufsc.lapesd.riefederator.testgen.LargeRDFBenchTestResourcesGenerator.parseResults;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toSet;
@@ -63,33 +68,46 @@ public class LargeRDFBenchSelfTest {
             "SWDFood.nt",
             "tcga-orphan.nt");
     public static final List<String> QUERY_FILENAMES = Arrays.asList(
+            "B1", //UNION
             "B2",
+            "B3", //ORDER BY
+            "B4", //UNION
             "B5",
             "B6",
             "B7",
+            "B8", //UNION
+            // "C2", //OPTIONAL
+            // "C3", //OPTIONAL + DISTINCT
+            // "C6", //ORDER BY
+            // "C7", //OPTIONAL + DISTINCT
+            // "C8", //OPTIONAL
             "C10",
+            "S1", //UNION
             "S2",
             "S3",
             "S4",
             "S5",
             "S6",
             "S7",
+            "S8", //UNION
+            "S9", //UNION
             "S10",
             "S11",
             "S12",
             "S13"
+            // "S14"  //OPTIONAL
     );
     public static final String RESOURCE_DIR =
             "br/ufsc/lapesd/riefederator/LargeRDFBench-reassembled/";
 
 
-    public static @Nonnull CQuery loadQuery(@Nonnull String queryName)
+    public static @Nonnull Op loadQuery(@Nonnull String queryName)
             throws IOException, SPARQLParseException {
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
         String queryPath = RESOURCE_DIR + "/queries/" + queryName;
         try (InputStream stream = cl.getResourceAsStream(queryPath)) {
             assertNotNull(stream);
-            return SPARQLQueryParser.tolerant().parse(stream);
+            return SPARQLParser.tolerant().parse(stream);
         }
     }
 
@@ -116,20 +134,21 @@ public class LargeRDFBenchSelfTest {
             actualVars = query.getProjectVars().stream().map(Var::getVarName)
                                       .collect(toSet());
         }
-        try (InputStream stream = cl.getResourceAsStream(resultsPath)) {
-            assertNotNull(stream);
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, UTF_8))) {
-                List<Solution> clean = new ArrayList<>();
-                for (Solution solution : parseResults(queryName, reader).getCollection()) {
-                    MapSolution.Builder builder = MapSolution.builder(solution);
-                    solution.getVarNames().stream().filter(v -> !actualVars.contains(v))
-                                          .forEach(builder::remove);
-                    actualVars.stream().filter(v -> !solution.getVarNames().contains(v))
-                              .forEach(v -> builder.put(v, null));
-                    clean.add(builder.build());
-                }
-                return new CollectionResults(clean, actualVars);
+        InputStream stream = cl.getResourceAsStream(resultsPath+".union");
+        if (stream == null)
+            stream = cl.getResourceAsStream(resultsPath);
+        assertNotNull(stream);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, UTF_8))) {
+            List<Solution> clean = new ArrayList<>();
+            for (Solution solution : parseResults(queryName, reader).getCollection()) {
+                MapSolution.Builder builder = MapSolution.builder(solution);
+                solution.getVarNames().stream().filter(v -> !actualVars.contains(v))
+                                      .forEach(builder::remove);
+                actualVars.stream().filter(v -> !solution.getVarNames().contains(v))
+                          .forEach(v -> builder.put(v, null));
+                clean.add(builder.build());
             }
+            return new CollectionResults(clean, actualVars);
         }
     }
 
@@ -205,8 +224,8 @@ public class LargeRDFBenchSelfTest {
         String path = RESOURCE_DIR + "/queries/" + queryName;
         try (InputStream stream = getClass().getClassLoader().getResourceAsStream(path)) {
             assertNotNull(stream);
-            CQuery query = SPARQLQueryParser.tolerant().parse(stream);
-            assertFalse(query.isEmpty());
+            Op query = SPARQLParser.tolerant().parse(stream);
+            assertFalse(query.getMatchedTriples().isEmpty());
         }
     }
 
@@ -242,8 +261,16 @@ public class LargeRDFBenchSelfTest {
             assertNotNull(stream);
             CollectionResults expected = loadResults(queryName);
 
-            CQuery query = SPARQLQueryParser.tolerant().parse(stream);
-            Results actual = ARQEndpoint.forModel(allData).query(query);
+            Op root = SPARQLParser.tolerant().parse(stream);
+            ARQEndpoint ep = ARQEndpoint.forModel(allData);
+            Results actual;
+            if (root instanceof FreeQueryOp) {
+                actual = ep.query(((FreeQueryOp) root).getQuery());
+            } else {
+                try (Federation federation = createFederation(ep.asSource())) {
+                    actual = federation.query(root);
+                }
+            }
             List<Solution> actualList = new ArrayList<>();
             actual.forEachRemainingThenClose(actualList::add);
             assertTrue(actualList.containsAll(expected.getCollection()), "Missing solutions");
@@ -263,8 +290,16 @@ public class LargeRDFBenchSelfTest {
             assertNotNull(stream);
             CollectionResults expected = loadResults(queryName);
 
-            CQuery query = SPARQLQueryParser.tolerant().parse(stream);
-            Results actual = client.query(query);
+            Op root = SPARQLParser.tolerant().parse(stream);
+            Results actual;
+            if (root instanceof FreeQueryOp) {
+                actual = client.query(((FreeQueryOp) root).getQuery());
+            } else {
+                Source source = new Source(new SelectDescription(client), client);
+                try (Federation federation = createFederation(source)) {
+                    actual = federation.query(root);
+                }
+            }
             List<Solution> actualList = new ArrayList<>();
             actual.forEachRemainingThenClose(actualList::add);
             assertTrue(actualList.containsAll(expected.getCollection()), "Missing solutions");

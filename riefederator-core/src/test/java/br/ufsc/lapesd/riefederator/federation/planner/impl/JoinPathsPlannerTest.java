@@ -48,8 +48,8 @@ import static org.testng.Assert.*;
 public class JoinPathsPlannerTest implements TestContext {
     private static final Atom Person = new Atom("Person"), Atom1 = new Atom("Atom1");
 
-    private static final EmptyEndpoint e1 = new EmptyEndpoint(), e1a = new EmptyEndpoint(),
-                                       e2 = new EmptyEndpoint(), e3  = new EmptyEndpoint();
+    private static final EmptyEndpoint e1 = new EmptyEndpoint("e1"), e1a = new EmptyEndpoint("e1a"),
+                                       e2 = new EmptyEndpoint("e2"), e3  = new EmptyEndpoint("e3");
 
     static {
         e1.addAlternative(e1a);
@@ -66,7 +66,7 @@ public class JoinPathsPlannerTest implements TestContext {
     private static  @Nonnull QueryOp node(CQEndpoint ep, @Nonnull Term... terms) {
         return node(ep, b -> {}, terms);
     }
-    private static @Nonnull UnionOp m(@Nonnull QueryOp... nodes) {
+    private static @Nonnull Op m(@Nonnull QueryOp... nodes) {
         Preconditions.checkArgument(nodes.length > 1);
         Preconditions.checkArgument(Arrays.stream(nodes).allMatch(Objects::nonNull));
         return UnionOp.builder().addAll(stream(nodes).collect(toList())).build();
@@ -281,7 +281,7 @@ public class JoinPathsPlannerTest implements TestContext {
                         p2, Bob, AtomInputAnnotation.asRequired(Person, "Person").get()));
 
         // mXi == M(nX, nXi)
-        UnionOp m1i = m(n1, n1i);
+        Op m1i = m(n1, n1i);
 
         IndexedSet<Op> nodes = IndexedSet.fromDistinct(
                 asList(n1, n2, n3, n4, n5, n6, n1i, n2i, n4i, n5i, n1j, n2j, n5j, m1i));
@@ -493,7 +493,7 @@ public class JoinPathsPlannerTest implements TestContext {
 
         QueryOp n2   = node(e1,  x, knows, y);
         QueryOp n2a  = node(e1a, x, knows, y);
-        QueryOp n2i  = node(e1a, b -> b.annotate(x, AtomInputAnnotation.asRequired(Person, "Person").get()),
+        QueryOp n2i  = node(e1, b -> b.annotate(x, AtomInputAnnotation.asRequired(Person, "Person").get()),
                                    x, knows, y);
         QueryOp n2ai = node(e1a, b -> b.annotate(x, AtomInputAnnotation.asRequired(Person, "Person").get()),
                                    x, knows, y);

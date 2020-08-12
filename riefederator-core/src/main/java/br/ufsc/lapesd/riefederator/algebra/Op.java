@@ -92,15 +92,6 @@ public interface Op {
     @Nonnull List<Op> getChildren();
 
     /**
-     * Replaces the child at the given index with the new given Op.
-     *
-     * @param index index of the child to replace in {@link Op#getChildren()}
-     * @param replacement new child node
-     * @return the old child node
-     */
-    @Nonnull Op setChild(int index, @Nonnull Op replacement);
-
-    /**
      * Send change notifications to the given listener when they occur.
      *
      * This is an idempotent operation: multiple attachments will not cause multiple
@@ -130,6 +121,15 @@ public interface Op {
      * @return new plan tree
      */
     @Nonnull Op createBound(@Nonnull Solution solution);
+
+    /**
+     * Creates a copy of this node that points to the same children instances and has
+     * the same modifiers.
+     *
+     * Although the copy is identical, replacing its children or changing its modifiers will
+     * not affect this instance.
+     */
+    @Nonnull Op flatCopy();
 
     @Contract("_ -> param1") @CanIgnoreReturnValue
     @Nonnull StringBuilder toString(@Nonnull StringBuilder builder);

@@ -169,9 +169,9 @@ public class JoinOrderPlannerTest implements TestContext {
         QueryOp n3a = new QueryOp(e1a, createQuery(y, p3, z));
         QueryOp n4b  = new QueryOp(e2, createQuery(z, p4, w));
 
-        UnionOp m2 = UnionOp.builder().add(n2).add(n2i).build();
-        UnionOp m3 = UnionOp.builder().add(n3).add(n3a).build();
-        UnionOp m4 = UnionOp.builder().add(n4).add(n4b).build();
+        Op m2 = UnionOp.builder().add(n2).add(n2i).build();
+        Op m3 = UnionOp.builder().add(n3).add(n3a).build();
+        Op m4 = UnionOp.builder().add(n4).add(n4b).build();
 
         return suppliers.stream().flatMap(s -> Stream.of(
                 asList(s, singletonList(JoinInfo.getJoinability(n1, n2))),

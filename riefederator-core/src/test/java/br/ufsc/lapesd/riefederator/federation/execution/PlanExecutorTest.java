@@ -317,7 +317,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     public void testMultiQuery(@Nonnull Module module) {
         QueryOp q1 = new QueryOp(ep, createQuery(Alice, knows, x));
         QueryOp q2 = new QueryOp(ep, createQuery(x, knows, Bob));
-        UnionOp node = UnionOp.builder().add(q1).add(q2).build();
+        Op node = UnionOp.builder().add(q1).add(q2).build();
         test(module, node, Sets.newHashSet(
                 MapSolution.build(x, Bob),
                 MapSolution.build(x, Alice)));
@@ -327,7 +327,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     public void testMultiQueryDifferentVars(@Nonnull Module module) {
         QueryOp q1 = new QueryOp(ep, createQuery(Alice, knows, x));
         QueryOp q2 = new QueryOp(ep, createQuery(y, knows, Bob));
-        UnionOp node = UnionOp.builder().add(q1).add(q2).build();
+        Op node = UnionOp.builder().add(q1).add(q2).build();
         test(module, node, Sets.newHashSet(
                 MapSolution.build(x, Bob),
                 MapSolution.build(y, Alice)));

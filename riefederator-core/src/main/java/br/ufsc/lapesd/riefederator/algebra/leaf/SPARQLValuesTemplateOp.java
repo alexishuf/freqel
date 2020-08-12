@@ -14,6 +14,7 @@ import br.ufsc.lapesd.riefederator.query.results.Solution;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -135,6 +136,11 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
     }
 
     @Override
+    public @Nonnull Op flatCopy() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public @Nonnull StringBuilder toString(@Nonnull StringBuilder builder) {
         return builder.append("VTPL(").append(template).append(')');
     }
@@ -143,5 +149,26 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
     public @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder, @Nonnull String indent) {
         String indent2 = indent + "  ";
         return builder.append(indent).append("VTPL\n").append(template.replace("\n", "\n"+indent2));
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!super.equals(obj)) return false;
+        SPARQLValuesTemplateOp rhs = (SPARQLValuesTemplateOp) obj;
+        return getEndpoint().equals(rhs.getEndpoint())
+                && template.equals(rhs.template)
+                && Objects.equals(values, rhs.values)
+                && Objects.equals(varNames, rhs.varNames)
+                && Objects.equals(assignments, rhs.assignments);
+    }
+
+    @Override
+    public int hashCode() {
+        int code = super.hashCode();
+        code = 37*code + getEndpoint().hashCode();
+        code = 37*code + template.hashCode();
+        code = 37*code + Objects.hashCode(values);
+        code = 37*code + Objects.hashCode(varNames);
+        return 37*code + Objects.hashCode(assignments);
     }
 }

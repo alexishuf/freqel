@@ -29,6 +29,7 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
@@ -142,12 +143,19 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
             return new CollectionResults(Collections.emptyList(), node.getResultVars());
         ArrayList<Results> resultList = new ArrayList<>(node.getChildren().size());
         PlanExecutor executor = getPlanExecutor();
-        for (Op child : node.getChildren()) {
-            node.modifiers().filters().forEach(f -> child.modifiers().add(f));
-            resultList.add(executor.executeNode(child));
-        }
-        Results r = resultsExecutor.async(resultList, node.getResultVars());
-        return ProjectingResults.applyIf(r, node);
+        Set<SPARQLFilter> unionFilters = node.modifiers().filters();
+        for (Op child : node.getChildren())
+            resultList.add(executor.executeNode(pushingFilters(child, unionFilters)));
+        return resultsExecutor.async(resultList, node.getResultVars());
+    }
+
+    private @Nonnull Op pushingFilters(@Nonnull Op original,
+                                       @Nonnull Collection<SPARQLFilter> filters) {
+        if (original.modifiers().filters().containsAll(filters))
+            return original;
+        Op copy = original.flatCopy();
+        copy.modifiers().addAll(filters);
+        return copy;
     }
 
     @Override

@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.query.results.Solution;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.Set;
 
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.unmodifiableSet;
@@ -56,6 +57,11 @@ public class EmptyOp extends AbstractOp {
     }
 
     @Override
+    @Nonnull  public Op flatCopy() {
+        return query != null ? new EmptyOp(query) : new EmptyOp(resultVars);
+    }
+
+    @Override
     public @Nonnull StringBuilder toString(@Nonnull StringBuilder builder) {
         return builder.append("EMPTY").append(getVarNamesString());
     }
@@ -63,5 +69,20 @@ public class EmptyOp extends AbstractOp {
     @Override
     public @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder, @Nonnull String indent) {
         return builder.append(indent).append(toString()).append(' ').append(getName());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof EmptyOp)) return false;
+        if (!super.equals(o)) return false;
+        EmptyOp emptyOp = (EmptyOp) o;
+        return Objects.equals(query, emptyOp.query) &&
+                getResultVars().equals(emptyOp.getResultVars());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), query, getResultVars());
     }
 }

@@ -11,6 +11,12 @@ import java.util.function.Function;
 import static java.util.Collections.emptySet;
 
 public class CollectionUtils {
+    public static @Nonnull <T, R, K> Function<T, R>
+    memoize(@Nonnull Function<T, R> function, @Nonnull Function<T, K> keyFactory) {
+        Map<K, R> memory = new HashMap<>();
+        return t -> memory.computeIfAbsent(keyFactory.apply(t), k -> function.apply(t));
+    }
+
     public static @Nonnull <T, I>
     Set<T> intersect(@Nonnull Collection<I> input,
                      @Nonnull Function<I, ? extends Collection<T>> getter,
@@ -29,24 +35,49 @@ public class CollectionUtils {
     }
 
     public static @Nonnull <T, I>
-    Set<T> union(@Nonnull Collection<I> input,
+    Set<T> union(@Nullable Collection<I> input,
                  @Nonnull Function<I, ? extends Collection<T>> getter) {
         Set<T> set = new HashSet<>();
-        for (I i : input) set.addAll(getter.apply(i));
+        if (input != null) {
+            for (I i : input) set.addAll(getter.apply(i));
+        }
         return set;
     }
 
-    public static @Nonnull <T> Set<T> union(@Nonnull Collection<T> a, @Nonnull Collection<T> b) {
+    public static @Nonnull <T> Set<T> union(@Nullable Collection<T> a, @Nullable Collection<T> b) {
+        a = a == null ? emptySet() : a;
+        b = b == null ? emptySet() : b;
         HashSet<T> set = new HashSet<>(a.size() + b.size());
         set.addAll(a);
         set.addAll(b);
         return set;
     }
 
-    public static @Nonnull <T> Set<T> intersect(@Nonnull Collection<T> left, Collection<T> right) {
+    public static @Nonnull <T> Set<T> intersect(@Nullable Collection<T> left,
+                                                @Nullable Collection<T> right) {
+        left  = left  == null ? emptySet() :  left;
+        right = right == null ? emptySet() : right;
         Set<T> result = new HashSet<>(left.size() < right.size() ? left : right);
         result.retainAll(left.size() < right.size() ? right : left);
         return result;
+    }
+
+    public static <T> boolean hasIntersect(@Nullable Collection<T> left,
+                                           @Nullable Collection<T> right) {
+        left = left == null ? emptySet() : left;
+        right = right == null ? emptySet() : right;
+        Collection<T> smaller, set;
+        if (left.size() < right.size() || !(left instanceof Set)) {
+            smaller = left;
+            set = right;
+        } else {
+            smaller = right;
+            set = left;
+        }
+        for (T t : smaller) {
+            if (set.contains(t)) return true;
+        }
+        return false;
     }
 
     public static @Nonnull <T> Set<T> intersect(@Nonnull Collection<T> a,
@@ -59,9 +90,9 @@ public class CollectionUtils {
     }
 
     public static @Nonnull <T, I>
-    Set<T> intersect(@Nonnull Collection<I> input,
+    Set<T> intersect(@Nullable Collection<I> input,
                      @Nonnull Function<I, ? extends Collection<T>> getter) {
-        if (input.isEmpty())
+        if (input == null || input.isEmpty())
             return emptySet();
         Iterator<I> it = input.iterator();
         Set<T> set = new HashSet<>(getter.apply(it.next()));
@@ -70,8 +101,10 @@ public class CollectionUtils {
         return set;
     }
 
-    public static @Nonnull <T> Set<T> setMinus(@Nonnull Collection<T> left,
-                                               @Nonnull Collection<T> right) {
+    public static @Nonnull <T> Set<T> setMinus(@Nullable Collection<T> left,
+                                               @Nullable Collection<T> right) {
+        left  = left  == null ? emptySet() :  left;
+        right = right == null ? emptySet() : right;
         HashSet<T> set = new HashSet<>(left);
         set.removeAll(right);
         return set;

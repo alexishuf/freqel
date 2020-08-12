@@ -831,11 +831,16 @@ public class SPARQLFilter implements Modifier {
     @Override
     public String toString() {
         StringBuilder b = new StringBuilder();
-        b.append("FILTER(").append(filter).append(")@{");
-        for (Map.Entry<String, Term> e : var2term.entrySet())
-            b.append(e.getKey()).append('=').append(e.getValue()).append(", ");
-        if (!var2term.isEmpty())
+        b.append("FILTER(").append(filter).append(")");
+        boolean trivial = var2term.entrySet().stream().allMatch(e ->
+                e.getValue().isVar() && e.getKey().equals(e.getValue().asVar().getName()));
+        if (!trivial) {
+            b.append("@{");
+            for (Map.Entry<String, Term> e : var2term.entrySet())
+                b.append(e.getKey()).append('=').append(e.getValue()).append(", ");
             b.setLength(b.length()-2);
-        return b.append(')').toString();
+            b.append(')');
+        }
+        return b.toString();
     }
 }

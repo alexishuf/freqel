@@ -15,7 +15,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
@@ -146,7 +146,7 @@ public class SPARQLStringTest implements TestContext {
         assertEquals(string.getVarNames(), Sets.newHashSet("x", "y"));
         assertEquals(string.getFilters(), emptySet());
 
-        CQuery parsed = SPARQLQueryParser.strict().parse(string.getString());
+        CQuery parsed = SPARQLParser.strict().parseConjunctive(string.getString());
         assertEquals(parsed.attr().getSet(), Sets.newHashSet(
                 new Triple(Alice, knows, x),
                 new Triple(x, age, y)));

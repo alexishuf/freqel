@@ -9,7 +9,6 @@ import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
@@ -45,14 +44,14 @@ public class QueryExperiment {
             "execMs", "firstResultMs", "queryMs", "resultsBasename");
 
     private final @Nonnull String name;
-    private final @Nonnull CQuery query;
+    private final @Nonnull Op query;
     private final @Nonnull File federationConfig;
     private final int preheat;
     private final int runs;
     private final boolean onlyPlan;
     private final @Nullable File queryResultsDir;
 
-    public QueryExperiment(@Nonnull String name, @Nonnull CQuery query,
+    public QueryExperiment(@Nonnull String name, @Nonnull Op query,
                            @Nonnull File federationConfig, int preheat, int runs,
                            boolean onlyPlan, @Nullable File queryResultsDir) {
         this.name = name;

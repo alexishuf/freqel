@@ -1,7 +1,9 @@
 package br.ufsc.lapesd.riefederator.algebra.util;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.InnerOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
@@ -15,6 +17,8 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.CollectionUtils;
+import br.ufsc.lapesd.riefederator.util.RefEquals;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
@@ -52,13 +56,28 @@ public class TreeUtils {
     }
 
     /**
+     * Creates a copy of the whole given {@link Op} tree.
+     */
+    public static @Nonnull Op deepCopy(@Nonnull Op root) {
+        Op copy = root.flatCopy();
+        if (copy instanceof InnerOp) {
+            try (TakenChildren children = ((InnerOp) copy).takeChildren()) {
+                for (ListIterator<Op> it = children.listIterator(); it.hasNext(); ) {
+                    it.set(deepCopy(it.next()));
+                }
+            }
+        }
+        return copy;
+    }
+
+    /**
      * Replace nodes in the tree spanning from the given root whenever map returns
      * a non-null {@link Op} different from the {@link Op} given as argument.
      *
      * For inner nodes, a node that has children replaced remains in the tree, only its
      * children are replaced. Note that the map function may receive as arguments {@link Op}
-     * instances previously output by the function itself, as a replaced node will be visited
-     * in place of the replaced node.
+     * instances previously output by the function itself, as a the replacement node will be
+     * visited in place of the replaced node.
      *
      * If the root {@link Op} happens to be replaced, the replacement will be returned by
      * this call, otherwise the root {@link Op} (possibly with changed children) is returned.
@@ -75,29 +94,30 @@ public class TreeUtils {
     public static @Nonnull Op replaceNodes(@Nonnull Op root,
                                            @Nullable InnerCardinalityComputer cardinality,
                                            @Nonnull Function<Op, Op> map) {
-        List<Op> temp = new ArrayList<>();
+        Function<Op, Op> memoized = CollectionUtils.memoize(n -> {
+            Op replacement = map.apply(n);
+            return replacement == null ? n : replacement;
+        }, RefEquals::of);
         ArrayDeque<Op> stack = new ArrayDeque<>();
-        Op rootReplacement = map.apply(root);
-        root = rootReplacement == null ? root : rootReplacement;
-        stack.push(root);
+        root = memoized.apply(root);
+        if (root instanceof InnerOp)
+            stack.push(root);
         while (!stack.isEmpty()) {
-            Op op = stack.pop();
-            boolean nodeChanged = false;
-            temp.clear();
-            for (Op child : op.getChildren()) {
-                stack.push(child);
-                Op replacement = map.apply(child);
-                if (replacement == null) replacement = child;
-                temp.add(replacement);
-                stack.push(replacement);
-                nodeChanged |= !replacement.equals(child);
+            InnerOp op = (InnerOp)stack.pop();
+            boolean change = false;
+            try (TakenChildren children = op.takeChildren()) {
+                for (ListIterator<Op> it = children.listIterator(); it.hasNext(); ) {
+                    Op child = it.next();
+                    Op replacement = memoized.apply(child);
+                    change |= replacement != child;
+                    it.set(replacement);
+                    if (replacement instanceof InnerOp)
+                        stack.push(replacement);
+                }
+                children.setHasChanges(change);
             }
-            if (nodeChanged) {
-                for (int i = 0, size = temp.size(); i < size; i++)
-                    op.setChild(i, temp.get(i));
-                if (cardinality != null)
-                    op.setCardinality(cardinality.compute(op));
-            }
+            if (change && cardinality != null)
+                op.setCardinality(cardinality.compute(op));
         }
         return root;
     }
@@ -197,6 +217,20 @@ public class TreeUtils {
                 DISTINCT | NONNULL), false);
     }
 
+    public static @Nonnull Set<RefEquals<Op>> findSharedNodes(@Nonnull Op tree) {
+        ArrayDeque<Op> queue = new ArrayDeque<>();
+        queue.add(tree);
+        Map<RefEquals<Op>, Integer> map = new HashMap<>();
+        while (!queue.isEmpty()) {
+            Op op = queue.remove();
+            RefEquals<Op> key = new RefEquals<>(op);
+            if (map.put(key, map.getOrDefault(key, 0) + 1) == null)
+                queue.addAll(op.getChildren());
+        }
+        map.entrySet().removeIf(e -> e.getValue() <= 1);
+        return map.keySet();
+    }
+
     public static @Nonnull List<Op> childrenIfMulti(@Nonnull Op node) {
         return node instanceof UnionOp ? Collections.unmodifiableList(node.getChildren())
                                               : singletonList(node);
@@ -242,7 +276,7 @@ public class TreeUtils {
             UnionOp.Builder builder = UnionOp.builder();
             for (int i = mkd.nextSetBit(0); i >= 0; i = mkd.nextSetBit(i+1))
                 builder.add(children.get(i));
-            return builder.buildIfMulti();
+            return builder.build();
         } else {
             return node;
         }
@@ -271,7 +305,7 @@ public class TreeUtils {
         } else if (node.getChildren().stream().anyMatch(UnionOp.class::isInstance)) {
             UnionOp.Builder builder = UnionOp.builder();
             node.getChildren().forEach(c -> flattenMultiQuery(c, builder));
-            return builder.buildIfMulti();
+            return builder.build();
         } else {
             return node;
         }

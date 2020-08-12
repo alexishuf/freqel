@@ -92,7 +92,7 @@ public class GreedyJoinOrderPlannerTest implements TestContext {
                                       Term... terms) {
         return n(ep, cardinality, emptyList(), terms);
     }
-    private static @Nonnull UnionOp m(QueryOp... nodes) {
+    private static @Nonnull Op m(QueryOp... nodes) {
         UnionOp.Builder b = UnionOp.builder();
         for (QueryOp node : nodes) b.add(node);
         return b.build();

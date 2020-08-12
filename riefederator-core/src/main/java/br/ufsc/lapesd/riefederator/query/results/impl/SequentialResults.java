@@ -3,21 +3,30 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 import br.ufsc.lapesd.riefederator.query.results.*;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.NoSuchElementException;
 
+import static java.util.stream.Collectors.toSet;
+
 public class SequentialResults extends AbstractResults implements Results {
     private final @Nonnull ResultsList<? extends Results> results;
+    private final @Nullable ArraySolution.ValueFactory projector;
     private int idx = 0;
 
-    public SequentialResults(@Nonnull Collection<? extends Results> results, @Nonnull Collection<String> varNames) {
-        super(varNames);
-        this.results = ResultsList.of(results);
+
+    private static @Nonnull Collection<String>
+    getVarNames(@Nonnull Collection<? extends Results> results,
+                @Nullable Collection<String> names) {
+        return names != null ? names
+                : results.stream().flatMap(r -> r.getVarNames().stream()).collect(toSet());
     }
 
-    @Override
-    public boolean isAsync() {
-        return false;
+    public SequentialResults(@Nonnull Collection<? extends Results> results,
+                             @Nullable Collection<String> varNames) {
+        super(getVarNames(results, varNames));
+        this.results = ResultsList.of(results);
+        this.projector = varNames == null ? null : ArraySolution.forVars(getVarNames());
     }
 
     @Override
@@ -41,7 +50,8 @@ public class SequentialResults extends AbstractResults implements Results {
     public @Nonnull Solution next() {
         if (!hasNext())
             throw new NoSuchElementException();
-        return results.get(idx).next();
+        Solution next = results.get(idx).next();
+        return projector == null ? next : projector.fromSolution(next);
     }
 
     @Override

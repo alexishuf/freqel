@@ -4,7 +4,7 @@ import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
-import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
+import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
@@ -14,16 +14,13 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.LimitResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.rel.common.AnnotationStatus;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalMoleculeMatcher;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalResults;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
-import com.google.inject.Guice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,13 +33,13 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(JDBCCQEndpoint.class);
     private static final Var s = new StdVar("s"), p = new StdVar("p"), o = new StdVar("o");
 
-
     private @Nonnull final RelationalMapping mapping;
     private @Nonnull final SqlGenerator sqlGenerator;
     private @Nonnull final Molecule molecule;
     private @Nonnull final MoleculeMatcher moleculeMatcher;
     private @Nonnull final String name;
     private @Nonnull final ConnectionSupplier connectionSupplier;
+    private @Nullable Federation federation;
 
     @FunctionalInterface
     public interface ConnectionSupplier {
@@ -118,16 +115,9 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     /* --- --- --- Internals --- --- --- */
 
     private @Nonnull Results runUnderFederation(@Nonnull CQuery query) {
-            SimpleFederationModule m = new SimpleFederationModule() {
-                @Override
-                protected void configureResultsExecutor() {
-                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-            };
-            try (Federation federation = Guice.createInjector(m).getInstance(Federation.class)) {
-                federation.addSource(asSource());
-                return federation.query(query);
-            }
+        if (federation == null)
+            federation = SingletonSourceFederation.createFederation(asSource());
+        return federation.query(query);
     }
 
     private class SqlResults extends RelationalResults {
@@ -219,6 +209,14 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             default:
                 // TODO add support for VALUES using IN
                 return false;
+        }
+    }
+
+    @Override
+    public void close() {
+        if (federation != null) {
+            federation.close();
+            federation = null;
         }
     }
 

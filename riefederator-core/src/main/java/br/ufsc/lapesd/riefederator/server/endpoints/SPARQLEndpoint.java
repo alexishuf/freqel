@@ -1,9 +1,9 @@
 package br.ufsc.lapesd.riefederator.server.endpoints;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.Federation;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.parse.UnsupportedSPARQLFeatureException;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.server.sparql.ResultsFormatterDispatcher;
@@ -42,10 +42,10 @@ public class SPARQLEndpoint {
                                           @Nullable HttpHeaders headers, UriInfo uriInfo) {
         query = query == null ? "" : query;
         try {
-            CQuery cQuery = SPARQLQueryParser.tolerant().parse(query);
-            Results results = getFederation().query(cQuery);
+            Op parsed = SPARQLParser.tolerant().parse(query);
+            Results results = getFederation().query(parsed);
             return ResultsFormatterDispatcher.getDefault()
-                    .format(results, cQuery.attr().isAsk(), headers, uriInfo)
+                    .format(results, parsed.modifiers().ask() != null, headers, uriInfo)
                     .toResponse().build();
         } catch (UnsupportedSPARQLFeatureException e) {
             return createExceptionResponse(query, "Unsupported SPARQL Feature", e);

@@ -1,51 +1,77 @@
+<https://example.org/sk#343> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#342> .
+<https://example.org/sk#343> <http://bio2rdf.org/ns/chebi#iupacName> "adenosine 5\'-{3-[1-(3-carbamoyl-1,4-dihydropyridin-1-yl)-1,4-anhydro-D-ribitol-5-yl] dihydrogen diphosphate}"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#346> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#345> .
+<https://example.org/sk#346> <http://bio2rdf.org/ns/chebi#iupacName> "(2S,3S)-2,3-dihydroxybutanedioic acid"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#349> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#348> .
+<https://example.org/sk#349> <http://bio2rdf.org/ns/chebi#iupacName> "2-amino-6-[(1S,2R)-1,2-dihydroxypropyl]-7,8-dihydropteridin-4(1H)-one"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#352> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#351> .
+<https://example.org/sk#352> <http://bio2rdf.org/ns/chebi#iupacName> "3-phenylpropanoic acid"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbpedia.org/resource/Barack_Obama> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> .
+<https://example.org/sk#410> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Barack_Obama> .
+<https://example.org/sk#410> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> .
+<http://dbpedia.org/resource/Barack_Obama> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Person> .
+<https://example.org/sk#411> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Barack_Obama> .
+<https://example.org/sk#411> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Person> .
+<http://dbpedia.org/resource/Barack_Obama> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Politician> .
+<https://example.org/sk#412> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Barack_Obama> .
+<https://example.org/sk#412> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Politician> .
+<http://dbpedia.org/resource/Barack_Obama> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/President> .
+<https://example.org/sk#413> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Barack_Obama> .
+<https://example.org/sk#413> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/President> .
+<http://dbpedia.org/resource/Barack_Obama> <http://www.w3.org/2000/01/rdf-schema#label> "Barack Obama"@en .
+<https://example.org/sk#414> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Barack_Obama> .
+<https://example.org/sk#414> <http://www.w3.org/2000/01/rdf-schema#label> "Barack Obama"@en .
 <http://dbpedia.org/resource/Atazanavir> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/Drug> .
-<https://example.org/sk#171> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#173> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#175> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#177> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#179> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#181> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#183> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#185> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#187> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#189> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
-<https://example.org/sk#202> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#201> .
-<https://example.org/sk#202> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=4875"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#205> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#204> .
-<https://example.org/sk#205> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=3823"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#208> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#207> .
-<https://example.org/sk#208> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=5938"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#211> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#210> .
-<https://example.org/sk#211> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=6427"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#214> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#213> .
-<https://example.org/sk#214> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=3774"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#217> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#216> .
-<https://example.org/sk#217> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43048"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#220> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#219> .
-<https://example.org/sk#220> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43114"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#223> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#222> .
-<https://example.org/sk#223> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43190"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#226> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#225> .
-<https://example.org/sk#226> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43239"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#229> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#228> .
-<https://example.org/sk#229> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43757"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#258> <http://xmlns.com/foaf/0.1/name> "Superdefekt"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#258> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#260> <http://xmlns.com/foaf/0.1/name> "Chaos"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#260> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#262> <http://xmlns.com/foaf/0.1/name> "Michael Bartels"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#262> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#264> <http://xmlns.com/foaf/0.1/name> "Remote Controlled"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#264> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#266> <http://xmlns.com/foaf/0.1/name> "Melophon"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#266> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#268> <http://xmlns.com/foaf/0.1/name> "Arne Pahlke"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#268> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#270> <http://xmlns.com/foaf/0.1/name> "The Gay Romeos"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#270> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#272> <http://xmlns.com/foaf/0.1/name> "Der tollw�tige Kasper"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#272> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#274> <http://xmlns.com/foaf/0.1/name> "The Rodeo Five"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#274> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
-<https://example.org/sk#276> <http://xmlns.com/foaf/0.1/name> "the ad.kowas"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#276> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#420> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#422> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#424> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#426> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#428> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#430> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#432> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#434> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#436> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#438> <http://www.w3.org/2002/07/owl#sameAs> <http://dbpedia.org/resource/Atazanavir> .
+<https://example.org/sk#451> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#450> .
+<https://example.org/sk#451> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=4875"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#454> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#453> .
+<https://example.org/sk#454> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=3823"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#457> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#456> .
+<https://example.org/sk#457> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=5938"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#460> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#459> .
+<https://example.org/sk#460> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=6427"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#463> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#462> .
+<https://example.org/sk#463> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=3774"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#466> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#465> .
+<https://example.org/sk#466> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43048"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#469> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#468> .
+<https://example.org/sk#469> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43114"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#472> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#471> .
+<https://example.org/sk#472> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43190"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#475> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#474> .
+<https://example.org/sk#475> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43239"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#478> <http://purl.org/dc/elements/1.1/title> <https://example.org/sk#477> .
+<https://example.org/sk#478> <http://bio2rdf.org/ns/bio2rdf#image> "http://www.ebi.ac.uk/chebi/displayImage.do?defaultImage=true&imageIndex=0&chebiId=43757"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#527> <http://xmlns.com/foaf/0.1/name> "Superdefekt"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#527> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#529> <http://xmlns.com/foaf/0.1/name> "Chaos"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#529> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#531> <http://xmlns.com/foaf/0.1/name> "Michael Bartels"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#531> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#533> <http://xmlns.com/foaf/0.1/name> "Remote Controlled"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#533> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#535> <http://xmlns.com/foaf/0.1/name> "Melophon"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#535> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#537> <http://xmlns.com/foaf/0.1/name> "Arne Pahlke"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#537> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#539> <http://xmlns.com/foaf/0.1/name> "The Gay Romeos"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#539> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#541> <http://xmlns.com/foaf/0.1/name> "Der tollw�tige Kasper"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#541> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#543> <http://xmlns.com/foaf/0.1/name> "The Rodeo Five"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#543> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#545> <http://xmlns.com/foaf/0.1/name> "the ad.kowas"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#545> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2911297/> .
+<https://example.org/sk#549> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> .
+<https://example.org/sk#550> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/ChemicalCompound> .
+<https://example.org/sk#551> <http://www.w3.org/2000/01/rdf-schema#label> "Caffeine"@en .

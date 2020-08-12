@@ -4,8 +4,8 @@ import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
@@ -77,13 +77,13 @@ public class JoinPathsPlanner implements Planner {
            built a Federation using incompatible components. This is likely a bug in the
            Federation creator */
         if (!query.attr().isJoinConnected()) {
-            Op plan = new NaiveOuterPlanner().plan(query);
+            Op plan = new NaiveOuterPlanner().plan(new FreeQueryOp(query));
             logger.warn("JoinPathsPlanner was designed for handling conjunctive queries, yet " +
                         "the given query requires Cartesian products or unions. Will try to " +
                         "continue, but planning may fail. Query: {}", query);
             plan = TreeUtils.replaceNodes(plan, innerCardComputer, op -> {
-                if (!(op.getClass().equals(UnassignedQueryOp.class))) return op;
-                IndexedSet<Triple> component = ((UnassignedQueryOp) op).getQuery().attr().getSet();
+                if (!(op.getClass().equals(FreeQueryOp.class))) return op;
+                IndexedSet<Triple> component = ((FreeQueryOp) op).getQuery().attr().getSet();
                 List<Op> relevant = qns.stream()
                         .filter(qn -> component.containsAny(qn.getMatchedTriples()))
                         .collect(toList());
@@ -150,7 +150,7 @@ public class JoinPathsPlanner implements Planner {
         builder.addAll((parallel ? aggregatedPaths.parallelStream() : aggregatedPaths.stream())
                 .map(p -> joinOrderPlanner.plan(g2, p.getNodes()))
                 .collect(toList()));
-        return builder.buildIfMulti();
+        return builder.build();
     }
 
     @VisibleForTesting

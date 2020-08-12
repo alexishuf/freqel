@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.OWL2;
@@ -136,6 +137,10 @@ public interface TestContext {
     @Nonnull Var v2 = new StdVar("v2");
     @Nonnull Var s2 = new StdVar("s2");
     @Nonnull Var o2 = new StdVar("o2");
+    @Nonnull Var u3 = new StdVar("u3");
+    @Nonnull Var v3 = new StdVar("v3");
+    @Nonnull Var s3 = new StdVar("s3");
+    @Nonnull Var o3 = new StdVar("o3");
 
     @Nonnull Var x0 = new StdVar("x0");
     @Nonnull Var x1 = new StdVar("x1");
@@ -150,4 +155,9 @@ public interface TestContext {
 
     @Nonnull Var z1 = new StdVar("z1");
     @Nonnull Var z2 = new StdVar("z2");
+
+    @Nonnull Var spHidden0 = SPARQLParser.hidden(0);
+    @Nonnull Var spHidden1 = SPARQLParser.hidden(1);
+    @Nonnull Var spHidden2 = SPARQLParser.hidden(2);
+    @Nonnull Var spHidden3 = SPARQLParser.hidden(3);
 }

@@ -1,0 +1,27 @@
+<http://dbtune.org/jamendo/artist/1375> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/mo/MusicArtist> .
+<http://dbtune.org/jamendo/artist/1375> <http://xmlns.com/foaf/0.1/name> "The Maya Conglomerate"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbtune.org/jamendo/artist/1375> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/1269750/> .
+<http://dbtune.org/jamendo/artist/2285> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/mo/MusicArtist> .
+<http://dbtune.org/jamendo/artist/2285> <http://xmlns.com/foaf/0.1/name> "savium"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbtune.org/jamendo/artist/2285> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2623032/> .
+<http://dbtune.org/jamendo/artist/336463> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/mo/MusicArtist> .
+<http://dbtune.org/jamendo/artist/336463> <http://xmlns.com/foaf/0.1/name> "Etherdust"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbtune.org/jamendo/artist/336463> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/1269750/> .
+<http://dbtune.org/jamendo/artist/337054> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/mo/MusicArtist> .
+<http://dbtune.org/jamendo/artist/337054> <http://xmlns.com/foaf/0.1/name> "SMG"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbtune.org/jamendo/artist/337054> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/1269750/> .
+<http://dbtune.org/jamendo/artist/337239> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/mo/MusicArtist> .
+<http://dbtune.org/jamendo/artist/337239> <http://xmlns.com/foaf/0.1/name> "Mudit Sood"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbtune.org/jamendo/artist/337239> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/1269750/> .
+<http://dbtune.org/jamendo/artist/337309> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/mo/MusicArtist> .
+<http://dbtune.org/jamendo/artist/337309> <http://xmlns.com/foaf/0.1/name> "Rainvan"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbtune.org/jamendo/artist/337309> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/1269750/> .
+<http://dbtune.org/jamendo/artist/5510> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/mo/MusicArtist> .
+<http://dbtune.org/jamendo/artist/5510> <http://xmlns.com/foaf/0.1/name> "kwhyos"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbtune.org/jamendo/artist/5510> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/1269750/> .
+<http://dbtune.org/jamendo/artist/5836> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/mo/MusicArtist> .
+<http://dbtune.org/jamendo/artist/5836> <http://xmlns.com/foaf/0.1/name> "untied"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbtune.org/jamendo/artist/5836> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/2623032/> .
+<http://dbtune.org/jamendo/artist/8028> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/ontology/mo/MusicArtist> .
+<http://dbtune.org/jamendo/artist/8028> <http://xmlns.com/foaf/0.1/name> "brynet"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://dbtune.org/jamendo/artist/8028> <http://xmlns.com/foaf/0.1/based_near> <http://sws.geonames.org/1149361/> .

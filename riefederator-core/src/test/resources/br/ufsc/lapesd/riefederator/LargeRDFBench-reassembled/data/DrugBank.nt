@@ -1,126 +1,196 @@
-<https://example.org/sk#143> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#143> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#143> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#143> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#146> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#146> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#146> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#146> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#149> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#149> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#149> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#149> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#152> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#152> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#152> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#152> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#155> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#155> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#155> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#155> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#158> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#158> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#158> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#158> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#161> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#161> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#161> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#161> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#164> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#164> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#164> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#164> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#167> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#167> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#167> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#167> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#170> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#170> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#170> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#170> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
-<https://example.org/sk#172> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#171> .
-<https://example.org/sk#172> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00091> .
-<https://example.org/sk#172> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increases the effect and toxicity of immunosuppressant"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#174> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#173> .
-<https://example.org/sk#174> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00203> .
-<https://example.org/sk#174> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increases the effect and toxicity of sildenafil"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#176> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#175> .
-<https://example.org/sk#176> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00213> .
-<https://example.org/sk#176> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "This gastric pH modifier decreases the levels/effects of atazanavir"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#178> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#177> .
-<https://example.org/sk#178> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00224> .
-<https://example.org/sk#178> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increased risk of hyperbilirubinemia with this association"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#180> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#179> .
-<https://example.org/sk#180> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00227> .
-<https://example.org/sk#180> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increased risk of myopathy/rhabdomyolysis"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#182> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#181> .
-<https://example.org/sk#182> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00238> .
-<https://example.org/sk#182> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Nevirapine decreases levels/effect of atazanavir"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#184> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#183> .
-<https://example.org/sk#184> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00243> .
-<https://example.org/sk#184> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increased levels of ranolazine- risk of toxicity"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#186> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#185> .
-<https://example.org/sk#186> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00266> .
-<https://example.org/sk#186> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "The protease inhibitor increases the anticoagulant effect"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#188> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#187> .
-<https://example.org/sk#188> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00281> .
-<https://example.org/sk#188> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increased risk of cardiotoxicity and arrhythmias"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#190> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#189> .
-<https://example.org/sk#190> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00300> .
-<https://example.org/sk#190> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Tenofovir decreases the levels/effects of atazanavir"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#191> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/cathartics> .
-<https://example.org/sk#191> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C00794> .
-<https://example.org/sk#191> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/description> "A polyhydric alcohol with about half the sweetness of sucrose. Sorbitol occurs naturally and is also produced synthetically from glucose. It was formerly used as a diuretic and may still be used as a laxative and in irrigating solutions for some surgical procedures. It is also used in many manufacturing processes, as a pharmaceutical aid, and in several research applications. [PubChem]"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#194> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/cathartics> .
-<https://example.org/sk#194> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C00794> .
-<https://example.org/sk#194> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/description> "A polyhydric alcohol with about half the sweetness of sucrose. Sorbitol occurs naturally and is also produced synthetically from glucose. It was formerly used as a diuretic and may still be used as a laxative and in irrigating solutions for some surgical procedures. It is also used in many manufacturing processes, as a pharmaceutical aid, and in several research applications. [PubChem]"^^<http://www.w3.org/2001/XMLSchema#string> .
-<https://example.org/sk#197> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/cathartics> .
-<https://example.org/sk#197> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C00794> .
-<https://example.org/sk#197> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/description> "A polyhydric alcohol with about half the sweetness of sucrose. Sorbitol occurs naturally and is also produced synthetically from glucose. It was formerly used as a diuretic and may still be used as a laxative and in irrigating solutions for some surgical procedures. It is also used in many manufacturing processes, as a pharmaceutical aid, and in several research applications. [PubChem]"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#313> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#313> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#313> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#313> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<https://example.org/sk#316> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#316> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#316> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#316> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<https://example.org/sk#319> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#319> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#319> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#319> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<https://example.org/sk#322> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#322> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#322> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#322> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<https://example.org/sk#325> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#325> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#325> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#325> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<https://example.org/sk#328> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#328> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#328> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#328> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<https://example.org/sk#331> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#331> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#331> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#331> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<https://example.org/sk#334> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#334> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#334> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#334> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<https://example.org/sk#337> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#337> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#337> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#337> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<https://example.org/sk#340> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> "Gemcitabine"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#340> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/indication> "For the first-line treatment of patients with metastatic breast cancer, locally advanced (Stage IIIA or IIIB), or metastatic (Stage IV) non-small cell lung cancer and as first-line treatment for patients with adenocarcinoma of the pancreas."^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#340> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/chemicalFormula> "C9H11F2N3O4"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#340> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C07650> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00157> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00157> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#341> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00157> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#342> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB01694> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB01694> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#344> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB01694> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#345> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB04400> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB04400> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#347> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB04400> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#348> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB02024> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB02024> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#350> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB02024> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#351> .
+<https://example.org/sk#421> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#420> .
+<https://example.org/sk#421> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00091> .
+<https://example.org/sk#421> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increases the effect and toxicity of immunosuppressant"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#423> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#422> .
+<https://example.org/sk#423> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00203> .
+<https://example.org/sk#423> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increases the effect and toxicity of sildenafil"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#425> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#424> .
+<https://example.org/sk#425> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00213> .
+<https://example.org/sk#425> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "This gastric pH modifier decreases the levels/effects of atazanavir"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#427> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#426> .
+<https://example.org/sk#427> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00224> .
+<https://example.org/sk#427> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increased risk of hyperbilirubinemia with this association"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#429> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#428> .
+<https://example.org/sk#429> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00227> .
+<https://example.org/sk#429> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increased risk of myopathy/rhabdomyolysis"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#431> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#430> .
+<https://example.org/sk#431> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00238> .
+<https://example.org/sk#431> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Nevirapine decreases levels/effect of atazanavir"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#433> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#432> .
+<https://example.org/sk#433> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00243> .
+<https://example.org/sk#433> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increased levels of ranolazine- risk of toxicity"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#435> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#434> .
+<https://example.org/sk#435> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00266> .
+<https://example.org/sk#435> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "The protease inhibitor increases the anticoagulant effect"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#437> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#436> .
+<https://example.org/sk#437> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00281> .
+<https://example.org/sk#437> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Increased risk of cardiotoxicity and arrhythmias"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#439> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug1> <https://example.org/sk#438> .
+<https://example.org/sk#439> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/interactionDrug2> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00300> .
+<https://example.org/sk#439> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/text> "Tenofovir decreases the levels/effects of atazanavir"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#440> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/cathartics> .
+<https://example.org/sk#440> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C00794> .
+<https://example.org/sk#440> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/description> "A polyhydric alcohol with about half the sweetness of sucrose. Sorbitol occurs naturally and is also produced synthetically from glucose. It was formerly used as a diuretic and may still be used as a laxative and in irrigating solutions for some surgical procedures. It is also used in many manufacturing processes, as a pharmaceutical aid, and in several research applications. [PubChem]"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#443> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/cathartics> .
+<https://example.org/sk#443> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C00794> .
+<https://example.org/sk#443> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/description> "A polyhydric alcohol with about half the sweetness of sucrose. Sorbitol occurs naturally and is also produced synthetically from glucose. It was formerly used as a diuretic and may still be used as a laxative and in irrigating solutions for some surgical procedures. It is also used in many manufacturing processes, as a pharmaceutical aid, and in several research applications. [PubChem]"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#446> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/cathartics> .
+<https://example.org/sk#446> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <http://bio2rdf.org/cpd:C00794> .
+<https://example.org/sk#446> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/description> "A polyhydric alcohol with about half the sweetness of sucrose. Sorbitol occurs naturally and is also produced synthetically from glucose. It was formerly used as a diuretic and may still be used as a laxative and in irrigating solutions for some surgical procedures. It is also used in many manufacturing processes, as a pharmaceutical aid, and in several research applications. [PubChem]"^^<http://www.w3.org/2001/XMLSchema#string> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00005> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00005> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#200> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00005> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#201> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00005> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#449> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00005> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#450> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00048> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00048> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#203> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00048> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#204> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00048> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#452> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00048> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#453> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00068> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00068> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#206> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00068> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#207> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00068> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#455> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00068> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#456> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00007> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00007> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#209> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00007> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#210> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00007> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#458> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00007> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#459> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00100> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00100> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#212> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00100> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#213> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00100> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#461> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00100> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#462> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#215> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#216> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#218> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#219> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#221> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#222> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#224> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#225> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#464> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#465> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#467> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#468> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#470> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#471> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#473> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#474> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00123> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00123> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#227> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00123> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#228> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00123> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> <https://example.org/sk#476> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00123> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> <https://example.org/sk#477> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#230> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00117> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#479> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00120> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00120> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#232> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00120> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#481> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00121> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00121> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#234> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00121> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#483> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00123> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00123> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#236> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00123> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#485> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00125> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00125> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#238> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00125> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#487> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00128> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00128> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#240> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00128> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#489> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00130> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00130> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#242> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00130> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#491> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00131> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00131> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#244> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00131> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#493> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00133> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00133> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#246> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00133> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#495> .
 <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00134> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugCategory> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugcategory/micronutrient> .
-<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00134> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#248> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00134> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#497> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00006> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/affectedOrganism> "Humans and other mammals"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00006> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#499> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00010> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/affectedOrganism> "Humans and other mammals"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00010> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#501> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00007> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/affectedOrganism> "Humans and other mammals"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00007> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#503> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00007> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#505> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00009> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/affectedOrganism> "Humans and other mammals"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00009> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#507> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00419> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/affectedOrganism> "Humans and other mammals"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00419> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#509> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00010> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#511> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00004> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/affectedOrganism> "Humans and other mammals"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00004> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#513> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00053> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/affectedOrganism> "Humans and other mammals"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00053> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#515> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00054> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/affectedOrganism> "Humans and other mammals"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00054> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/casRegistryNumber> <https://example.org/sk#517> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00419> <http://dbpedia.org/ontology/Drug/meltingPoint> "169 - 172 oC"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00419> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "169 - 172 oC"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00001> <http://dbpedia.org/ontology/Drug/meltingPoint> "65 oC (Otto, A. & Seckler, R. Eur. J. Biochem. 202:67-73 (1991))"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00001> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "65 oC (Otto, A. & Seckler, R. Eur. J. Biochem. 202:67-73 (1991))"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00002> <http://dbpedia.org/ontology/Drug/meltingPoint> "61 oC (FAB fragment), 71 oC (whole mAb) - Vermeer, A.W.P. & Norde, W., Biophys. J. 78:394-404 (2000)."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00002> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "61 oC (FAB fragment), 71 oC (whole mAb) - Vermeer, A.W.P. & Norde, W., Biophys. J. 78:394-404 (2000)."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00003> <http://dbpedia.org/ontology/Drug/meltingPoint> "67 oC (Chan, H.K. et al., Pharm Res. 13:756-761 (1996))"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00003> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "67 oC (Chan, H.K. et al., Pharm Res. 13:756-761 (1996))"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00005> <http://dbpedia.org/ontology/Drug/meltingPoint> "71 oC (whole mAb) - Vermeer, A.W.P. & Norde, W., Biophys. J. 78:394-404 (2000)."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00005> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "71 oC (whole mAb) - Vermeer, A.W.P. & Norde, W., Biophys. J. 78:394-404 (2000)."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00008> <http://dbpedia.org/ontology/Drug/meltingPoint> "61 oC (Beldarrain, A. et al., Biochemistry 38:7865-7873 (1999))Davis JM, Narachi MA, Levine HL, Alton NK, Arakawa T. Conformation and stability of two recombinant human interferon-alpha analogs."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00008> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "61 oC (Beldarrain, A. et al., Biochemistry 38:7865-7873 (1999))Davis JM, Narachi MA, Levine HL, Alton NK, Arakawa T. Conformation and stability of two recombinant human interferon-alpha analogs."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00009> <http://dbpedia.org/ontology/Drug/meltingPoint> "60 oC (Novokhatny, V.V. et al., J. Biol. Chem. 266:12994-123002 (1991))"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00009> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "60 oC (Novokhatny, V.V. et al., J. Biol. Chem. 266:12994-123002 (1991))"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00011> <http://dbpedia.org/ontology/Drug/meltingPoint> "Melting point: 61 oC (Beldarrain, A. et al., Biochemistry 38:7865-7873 (1999))"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00011> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "Melting point: 61 oC (Beldarrain, A. et al., Biochemistry 38:7865-7873 (1999))"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00012> <http://dbpedia.org/ontology/Drug/meltingPoint> "53 oC (Arakawa, T. et al., Biosci. Biotechnol. Biochem. 65:1321-1327 (2001))."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00012> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "53 oC (Arakawa, T. et al., Biosci. Biotechnol. Biochem. 65:1321-1327 (2001))."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00013> <http://dbpedia.org/ontology/Drug/meltingPoint> "76 oC at pH 4.5 (Nowak, U.K. et al., Biochemistry 33:2951-2960 (1994)."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00013> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/meltingPoint> "76 oC at pH 4.5 (Nowak, U.K. et al., Biochemistry 33:2951-2960 (1994)."^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Thing> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#549> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://dbpedia.org/ontology/ChemicalCompound> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#550> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2000/01/rdf-schema#label> "Caffeine"@en .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#551> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://dbpedia.org/ontology/thumbnail> <http://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Caffeine.svg/200px-Caffeine.svg.png> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#552> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://xmlns.com/foaf/0.1/depiction> <http://upload.wikimedia.org/wikipedia/commons/d/d8/Caffeine.svg> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#553> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2004/02/skos/core#subject> <http://dbpedia.org/resource/Category:Anxiogenics> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#554> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2004/02/skos/core#subject> <http://dbpedia.org/resource/Category:Bitter_compounds> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#555> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2004/02/skos/core#subject> <http://dbpedia.org/resource/Category:Caffeine> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#556> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2004/02/skos/core#subject> <http://dbpedia.org/resource/Category:Coffee> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#557> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2004/02/skos/core#subject> <http://dbpedia.org/resource/Category:IARC_Group_3_carcinogens> .
+<http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugs/DB00201> <http://www.w3.org/2002/07/owl#sameAs> <https://example.org/sk#558> .

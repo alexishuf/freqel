@@ -16,7 +16,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
@@ -537,7 +537,7 @@ public class APIMoleculeMatcherTest implements TestContext {
         String resourcePath = "../../federation/transparency-query-2.sparql";
         CQuery query;
         try (InputStream in = getClass().getResourceAsStream(resourcePath)) {
-            query = SPARQLQueryParser.strict().parse(new InputStreamReader(in, UTF_8));
+            query = SPARQLParser.strict().parseConjunctive(new InputStreamReader(in, UTF_8));
         }
         WebTarget target = ClientBuilder.newClient().target("http://dummy.example.org:1234/");
         WebAPICQEndpoint endpoint = TransparencyService.getContractsClient(target);

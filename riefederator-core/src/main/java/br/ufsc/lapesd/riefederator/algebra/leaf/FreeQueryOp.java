@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.riefederator.algebra.leaf;
 
 import br.ufsc.lapesd.riefederator.algebra.AbstractOp;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.OpChangeListener;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
@@ -14,12 +16,13 @@ import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import java.util.Objects;
 import java.util.Set;
 
-public class UnassignedQueryOp extends AbstractOp {
+public class FreeQueryOp extends AbstractOp {
     protected MutableCQuery query = null;
 
-    public UnassignedQueryOp(@Nonnull CQuery query) {
+    public FreeQueryOp(@Nonnull CQuery query) {
         setQuery(query);
     }
 
@@ -28,25 +31,34 @@ public class UnassignedQueryOp extends AbstractOp {
         return query.mutateModifiers();
     }
 
-    public @Nonnull CQuery getQuery() {
+    public @Nonnull MutableCQuery getQuery() {
         return query;
     }
 
     public void setQuery(@Nonnull CQuery query) {
-        if (this.query != null)
-            this.query.mutateModifiers().removeListener(modifiersListener);
-        this.query = new MutableCQuery(query) {
-            @Override
-            protected void makeExclusive() {
-                CQueryData exclusive = d.toExclusive().attach();
-                if (exclusive != d) {
-                    d.modifiers.removeListener(modifiersListener);
-                    d = exclusive;
-                    d.modifiers.addListener(modifiersListener);
+        if (query != this.query) {
+            if (this.query != null)
+                this.query.mutateModifiers().removeListener(modifiersListener);
+            this.query = new MutableCQuery(query) {
+                @Override
+                protected void makeExclusive() {
+                    CQueryData exclusive = d.toExclusive().attach();
+                    if (exclusive != d) {
+                        d.modifiers.removeListener(modifiersListener);
+                        d = exclusive;
+                        d.modifiers.addListener(modifiersListener);
+                    }
                 }
-            }
-        };
-        this.query.mutateModifiers().addListener(modifiersListener);
+            };
+            this.query.mutateModifiers().addListener(modifiersListener);
+        }
+        for (OpChangeListener listener : listeners)
+            listener.matchedTriplesChanged(this);
+        notifyVarsChanged();
+    }
+
+    public @Nonnull FreeQueryOp withQuery(@Nonnull CQuery query) {
+        return new FreeQueryOp(query);
     }
 
     @Override
@@ -104,9 +116,20 @@ public class UnassignedQueryOp extends AbstractOp {
         return b;
     }
 
+    protected @Nonnull FreeQueryOp createWith(@Nonnull CQuery query) {
+        return new FreeQueryOp(query);
+    }
+
     @Override
-    public @Nonnull UnassignedQueryOp createBound(@Nonnull Solution s) {
-        return new UnassignedQueryOp(bindQuery(s));
+    public @Nonnull FreeQueryOp createBound(@Nonnull Solution s) {
+        return createWith(bindQuery(s));
+    }
+
+    @Override
+    public @Nonnull  Op flatCopy() {
+        FreeQueryOp copy = createWith(new MutableCQuery(getQuery()));
+        copy.setCardinality(getCardinality());
+        return copy;
     }
 
     @Override
@@ -124,18 +147,36 @@ public class UnassignedQueryOp extends AbstractOp {
         return builder;
     }
 
+    protected @Nonnull StringBuilder prettyPrintQArgs(@Nonnull StringBuilder b) {
+        return b;
+    }
+
     @Override
-    public  @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
+    public @Nonnull StringBuilder prettyPrint(@Nonnull StringBuilder builder,
                                                @Nonnull String indent) {
         String indent2 = indent + "  ";
         builder.append(indent);
         if (isProjected())
             builder.append(getPiWithNames()).append('(');
-        builder.append("Q(")
+        builder.append("Q(").append(getCardinality());
+        prettyPrintQArgs(builder)
                 .append(isProjected() ? ")) " : ")"+getVarNamesString()+" ")
                 .append(getName()).append('\n').append(indent2)
                 .append(getQuery().toString().replace("\n", "\n"+indent2));
-        printFilters(builder, indent2);
         return builder;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof FreeQueryOp)) return false;
+        if (!super.equals(o)) return false;
+        FreeQueryOp that = (FreeQueryOp) o;
+        return Objects.equals(getQuery(), that.getQuery());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), getQuery());
     }
 }

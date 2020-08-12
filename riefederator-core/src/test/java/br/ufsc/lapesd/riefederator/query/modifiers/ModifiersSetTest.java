@@ -9,6 +9,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
@@ -20,7 +21,7 @@ public class ModifiersSetTest implements TestContext {
     @SuppressWarnings({"WhileLoopReplaceableByForEach", "UseBulkOperation"})
     @Test
     public void testAllSubsets() {
-        Set<Modifier> all = Sets.newHashSet(
+        Set<Modifier> all = newHashSet(
                 Projection.required("x"),
                 Ask.REQUIRED,
                 Limit.required(23),
@@ -105,7 +106,7 @@ public class ModifiersSetTest implements TestContext {
         assertFalse(set.add(Projection.required("y")));
 
         assertEquals(set.size(), 2);
-        assertEquals(set, Sets.newHashSet(Projection.required("y"),
+        assertEquals(set, newHashSet(Projection.required("y"),
                                           SPARQLFilter.build("?u > 23")));
     }
 
@@ -260,5 +261,98 @@ public class ModifiersSetTest implements TestContext {
         assertEquals(added, asList(Projection.advised("x"), Limit.advised(23)));
         assertEquals(otherAdded, emptyList());
         assertEquals(otherRemoved, emptyList());
+    }
+
+    @Test
+    public void testMergeProjection() {
+        ModifiersSet a = new ModifiersSet(), ex = new ModifiersSet();
+        a.add(Projection.required("x"));
+        assertTrue(a.mergeWith(singleton(Projection.advised("y")), singleton("x"), singleton("y")));
+
+        ex.add(Projection.required("x", "y"));
+        assertEquals(a, ex);
+    }
+
+    @Test
+    public void testMergeProjectionWithoutPrevious() {
+        ModifiersSet a = new ModifiersSet(), ex = new ModifiersSet();
+        assertTrue(a.mergeWith(singleton(Projection.advised("x")), singleton("y"), singleton("x")));
+
+        ex.add(Projection.advised("x", "y"));
+        assertEquals(a, ex);
+    }
+
+    @Test
+    public void tetMergeProjectionNoOp() {
+        ModifiersSet a = new ModifiersSet(), ex = new ModifiersSet();
+        a.add(Projection.required("x"));
+        assertFalse(a.mergeWith(singleton(Projection.required("x")), singleton("x"), singleton("x")));
+
+        ex.add(Projection.required("x"));
+        assertEquals(a, ex);
+    }
+
+    @Test
+    public void testMergeValuesJoin() {
+        ValuesModifier valuesA = new ValuesModifier(newHashSet("x", "y"), asList(
+                MapSolution.builder().put(x, Alice).put(y, Charlie).build(),
+                MapSolution.builder().put(x,   Bob).put(y,    Dave).build()
+        ));
+        ValuesModifier valuesB = new ValuesModifier(newHashSet("y", "z"), asList(
+                MapSolution.builder().put(y, Charlie).put(z, lit(23)).build(),
+                MapSolution.builder().put(y,    Dave).put(z, lit(27)).build()
+        ));
+        ValuesModifier valuesEx = new ValuesModifier(newHashSet("x", "y", "z"), asList(
+                MapSolution.builder().put(x, Alice).put(y, Charlie).put(z, lit(23)).build(),
+                MapSolution.builder().put(x, Bob  ).put(y, Dave   ).put(z, lit(27)).build()
+        ));
+
+        ModifiersSet a = new ModifiersSet(), b = new ModifiersSet(), ex = new ModifiersSet();
+        a.add(Projection.required("y"));
+        a.add(valuesA);
+        b.add(valuesB);
+
+        assertTrue(a.mergeWith(b, singleton("x"), newHashSet("y", "z")));
+
+        ex.add(Projection.required("y", "z"));
+        ex.add(valuesEx);
+        assertEquals(a, ex);
+    }
+
+    @Test
+    public void testMergeValuesProduct() {
+        ValuesModifier valuesA = new ValuesModifier(singleton("x"),
+                asList(MapSolution.build(x, Alice), MapSolution.build(x, Bob)));
+        ValuesModifier valuesB = new ValuesModifier(singleton("y"),
+                asList(MapSolution.build(y, Charlie), MapSolution.build(y, Dave)));
+        ValuesModifier valuesEx = new ValuesModifier(newHashSet("x", "y"), asList(
+                MapSolution.builder().put(x, Alice).put(y, Charlie).build(),
+                MapSolution.builder().put(x, Alice).put(y, Dave).build(),
+                MapSolution.builder().put(x, Bob  ).put(y, Charlie).build(),
+                MapSolution.builder().put(x, Bob  ).put(y, Dave   ).build()
+        ));
+
+        ModifiersSet a = new ModifiersSet(), b = new ModifiersSet(), ex = new ModifiersSet();
+        a.add(Projection.required("y"));
+        a.add(valuesA);
+        b.add(valuesB);
+
+        assertTrue(a.mergeWith(b, singleton("x"), newHashSet("y", "z")));
+
+        ex.add(Projection.required("y", "z"));
+        ex.add(valuesEx);
+        assertEquals(a, ex);
+    }
+
+    @Test
+    public void testMergeLimit() {
+        ModifiersSet a = new ModifiersSet(), ex = new ModifiersSet();
+        a.add(Limit.required(23));
+        assertFalse(a.mergeWith(singleton(Limit.required(27)), singleton("x"), singleton("x")));
+        assertEquals(a.limit(), Limit.required(23));
+        assertTrue(a.mergeWith(singleton(Limit.required(5)), singleton("x"), singleton("x")));
+
+        ex.add(Limit.required(5));
+        assertEquals(a, ex);
     }
 }

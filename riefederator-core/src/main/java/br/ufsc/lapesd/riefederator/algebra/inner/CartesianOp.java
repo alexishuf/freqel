@@ -3,12 +3,46 @@ package br.ufsc.lapesd.riefederator.algebra.inner;
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 public class CartesianOp extends AbstractInnerOp {
+
+    public static class Builder {
+        private final @Nonnull List<Op> list = new ArrayList<>();
+        private @Nullable List<Modifier> modifiers = null;
+
+        public @Nonnull Builder add(@Nonnull Op op) {
+            list.add(op);
+            return this;
+        }
+
+        public @Nonnull Builder add(@Nonnull Modifier modifier) {
+            if (modifiers == null)
+                modifiers = new ArrayList<>();
+            modifiers.add(modifier);
+            return this;
+        }
+
+        public @Nonnull Op build() {
+            Preconditions.checkState(!list.isEmpty(), "Builder is empty");
+            Op op = list.size() > 1 || modifiers != null ? new CartesianOp(list) : list.get(0);
+            if (modifiers != null)
+                op.modifiers().addAll(modifiers);
+            return op;
+        }
+    }
+
+    public static @Nonnull Builder builder() {
+        return new Builder();
+    }
+
     private static @Nonnull Cardinality computeCardinality(@Nonnull Collection<Op> children) {
         Cardinality max = children.stream().map(Op::getCardinality)
                 .max(ThresholdCardinalityComparator.DEFAULT).orElse(Cardinality.UNSUPPORTED);
@@ -28,8 +62,12 @@ public class CartesianOp extends AbstractInnerOp {
     }
 
     @Override
-    protected @Nonnull Op createWith(@Nonnull List<Op> children) {
-        return new CartesianOp(children);
+    public  @Nonnull Op createWith(@Nonnull List<Op> children,
+                                   @Nullable Collection<Modifier> modifiers) {
+        CartesianOp op = new CartesianOp(children);
+        if (modifiers != null) op.modifiers().addAll(modifiers);
+        op.setCardinality(getCardinality());
+        return op;
     }
 
     @Override

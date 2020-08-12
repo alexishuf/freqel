@@ -1,9 +1,9 @@
 package br.ufsc.lapesd.riefederator.benchmark;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.benchmark.impl.QueryExperiment;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.util.ChildJVM;
 import com.google.common.base.Stopwatch;
 import com.google.gson.Gson;
@@ -238,7 +238,7 @@ public class QueryEvaluation {
         }
     }
 
-    private @Nonnull QueryExperiment createExperiment(String queryName, CQuery query,
+    private @Nonnull QueryExperiment createExperiment(String queryName, Op query,
                                                       boolean saveResults) {
         return new QueryExperiment(queryName, query, configFile, preheatRuns, runs, noExec,
                                    saveResults ? queryResultsDir : null);
@@ -297,9 +297,9 @@ public class QueryEvaluation {
     private static class ParsedQuery {
         private final @Nonnull File file;
         private final @Nonnull String name;
-        private final @Nonnull CQuery query;
+        private final @Nonnull Op query;
 
-        public ParsedQuery(@Nonnull File file, @Nonnull String name, @Nonnull CQuery query) {
+        public ParsedQuery(@Nonnull File file, @Nonnull String name, @Nonnull Op query) {
             this.file = file;
             this.name = name;
             this.query = query;
@@ -309,7 +309,7 @@ public class QueryEvaluation {
             throws SPARQLParseException, IOException {
         List<ParsedQuery> list = new ArrayList<>();
         for (File file : queryFiles) {
-            CQuery query = SPARQLQueryParser.tolerant().parse(file);
+            Op query = SPARQLParser.tolerant().parse(file);
             String name = usePath ? file.getPath() : file.getName();
             list.add(new ParsedQuery(file, name, query));
         }

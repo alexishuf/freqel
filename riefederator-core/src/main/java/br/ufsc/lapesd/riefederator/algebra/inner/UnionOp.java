@@ -3,11 +3,13 @@ package br.ufsc.lapesd.riefederator.algebra.inner;
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -20,18 +22,11 @@ import java.util.List;
 public class UnionOp extends AbstractInnerOp {
     public static class Builder {
         private final List<Op> list = new ArrayList<>();
+        private List<Modifier> initialModifiers = null;
 
-        @CanIgnoreReturnValue
-        public @Nonnull Builder add(@Nonnull Op node) {
+        public @CanIgnoreReturnValue @Nonnull Builder add(@Nonnull Op node) {
             list.add(node);
             return this;
-        }
-        @CanIgnoreReturnValue
-        public @Nonnull Builder addAll(@Nonnull Op maybeMultiQueryNode) {
-            if (maybeMultiQueryNode instanceof UnionOp)
-                return addAll(maybeMultiQueryNode.getChildren());
-            else
-                return add(maybeMultiQueryNode);
         }
 
         @CanIgnoreReturnValue
@@ -40,29 +35,31 @@ public class UnionOp extends AbstractInnerOp {
             return this;
         }
 
-        public boolean isEmpty() {
-            return list.isEmpty();
+        public @Nonnull Builder add(@Nonnull Modifier modifier) {
+            if (initialModifiers == null)
+                initialModifiers = new ArrayList<>();
+            initialModifiers.add(modifier);
+            return this;
         }
 
-        @CheckReturnValue
-        public @Nonnull Op buildIfMulti() {
-            Preconditions.checkState(!isEmpty(), "Builder is empty");
-            if (list.size() > 1) return build();
-            else return list.get(0);
-        }
-
-        @CheckReturnValue
-        public @Nonnull UnionOp build() {
-            Preconditions.checkState(!isEmpty(), "Builder is empty");
-            return new UnionOp(list);
+        public @CheckReturnValue @Nonnull Op build() {
+            Preconditions.checkState(!list.isEmpty(), "Builder is empty");
+            Op op = list.size() > 1 || initialModifiers != null ? new UnionOp(list) : list.get(0);
+            if (initialModifiers != null)
+                op.modifiers().addAll(initialModifiers);
+            return op;
         }
     }
 
     public static @Nonnull Builder builder() {
         return new Builder();
     }
+    public static @Nonnull Op build(@Nonnull Collection<Op> children) {
+        Preconditions.checkArgument(!children.isEmpty(), "No child Ops given");
+        return children.size() > 1 ? new UnionOp(children) : children.iterator().next();
+    }
 
-    protected UnionOp(@Nonnull List<Op> children) {
+    protected UnionOp(@Nonnull Collection<Op> children) {
         super(children);
         setCardinality(children.stream().map(Op::getCardinality)
                 .min(ThresholdCardinalityComparator.DEFAULT)
@@ -71,8 +68,11 @@ public class UnionOp extends AbstractInnerOp {
     }
 
     @Override
-    protected @Nonnull Op createWith(@Nonnull List<Op> children) {
-        return new UnionOp(children);
+    public @Nonnull Op createWith(@Nonnull List<Op> children, @Nullable Collection<Modifier> mods) {
+        UnionOp op = new UnionOp(children);
+        op.setCardinality(getCardinality());
+        if (mods != null) op.modifiers().addAll(mods);
+        return op;
     }
 
     @Override

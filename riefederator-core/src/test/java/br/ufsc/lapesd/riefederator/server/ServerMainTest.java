@@ -1,9 +1,9 @@
 package br.ufsc.lapesd.riefederator.server;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
-import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.server.utils.PercentEncoder;
@@ -159,7 +159,7 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
             assertNotNull(in, "Resource "+sparqlResourcePath+" not found!");
             sparql = IOUtils.toString(in, UTF_8);
         }
-        CQuery query = SPARQLQueryParser.strict().parse(sparql);
+        Op query = SPARQLParser.strict().parse(sparql);
         Set<Map<String, String>> solutions = new HashSet<>();
         Results results = federation.query(query);
         while (results.hasNext()) {

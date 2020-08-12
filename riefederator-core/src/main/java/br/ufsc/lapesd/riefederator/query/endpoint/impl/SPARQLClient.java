@@ -614,7 +614,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         protected @Nullable Exception connectionFailure;
         protected boolean closed = false, exhausted = false, distinct = false;
 
-        public BaseResults(@Nonnull Collection<String> varNames, @Nonnull Future<Connection> connectionFuture) {
+        protected BaseResults(@Nonnull Collection<String> varNames, @Nonnull Future<Connection> connectionFuture) {
             super(varNames);
             this.connectionFuture = connectionFuture;
         }

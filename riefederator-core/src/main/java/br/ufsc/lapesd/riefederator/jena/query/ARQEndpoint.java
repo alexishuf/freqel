@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.riefederator.jena.query;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.description.SelectDescription;
+import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
@@ -81,6 +83,10 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         try (QueryExecution execution = createExecution("ASK WHERE {?s ?p ?o.}")) {
             return !execution.execAsk();
         }
+    }
+
+    public @Nonnull Source asSource() {
+        return new Source(new SelectDescription(this), this);
     }
 
     /* ~~~ static method factories over some common source types  ~~~ */

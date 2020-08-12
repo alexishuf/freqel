@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.linkedator;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.linkedator.strategies.APIMoleculeInputsLinkedatorStrategy;
@@ -11,7 +13,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.TemplateLink;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.TemplateExpander;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
@@ -135,7 +137,13 @@ public class Linkedator {
             throw new ResultParseException("Missing sparql key");
         CQuery query;
         try {
-            query = SPARQLQueryParser.strict().parse(queryString);
+            Op root = SPARQLParser.strict().parse(queryString);
+            if (root instanceof FreeQueryOp) {
+                query = ((FreeQueryOp) root).getQuery();
+            } else {
+                throw new ResultParseException("Link templates must expand to conjunctive " +
+                                               "queries. Query: " + queryString);
+            }
         } catch (SPARQLParseException e) {
             throw new ResultParseException("SPARQL query failed to parse: " + e.getMessage() +
                                            "Query: "+ queryString, e);

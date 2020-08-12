@@ -1,14 +1,17 @@
 package br.ufsc.lapesd.riefederator;
 
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.federation.Federation;
+import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.jena.query.JenaBindingResults;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.TPEndpointTest;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import org.apache.commons.io.IOUtils;
@@ -61,13 +64,13 @@ public class BSBMSelfTest {
             "query1.sparql",
             "query2.sparql",
             "query3.sparql",
-//            "query4.sparql" /* UNION */
+            "query4.sparql", /* UNION */
             "query5.sparql",
             "query6.sparql", /* REGEX */
             "query7.sparql",  /* uses Product,Offer,Vendor,Review  & Person */
             "query8.sparql",
-            "query10.sparql"
-//            "query11.sparql" /*UNION & unbound predicate */
+            "query10.sparql",
+            "query11.sparql" /*UNION & unbound predicate */
     );
 
     private static @Nonnull InputStream getStream(@Nonnull String path) {
@@ -82,19 +85,27 @@ public class BSBMSelfTest {
         return new InputStreamReader(getStream(path), StandardCharsets.UTF_8);
     }
 
-    public static @Nonnull MutableCQuery loadQueryWithLimit(@Nonnull String queryName) throws
+    public static @Nonnull Op loadQueryWithLimit(@Nonnull String queryName) throws
             IOException, SPARQLParseException {
         try (Reader reader = getReader("queries/" + queryName)) {
-            SPARQLQueryParser tolerant = SPARQLQueryParser.tolerant();
+            SPARQLParser tolerant = SPARQLParser.tolerant();
             return tolerant.parse(reader);
         }
     }
 
-    public static @Nonnull CQuery loadQuery(@Nonnull String queryName) throws
+    public static @Nonnull Op loadQuery(@Nonnull String queryName) throws
             IOException, SPARQLParseException {
-        MutableCQuery query = loadQueryWithLimit(queryName);
-        query.mutateModifiers().removeIf(Limit.class::isInstance);
+        Op query = loadQueryWithLimit(queryName);
+        query.modifiers().removeIf(Limit.class::isInstance);
         return query;
+    }
+
+    public static @Nullable CQuery loadConjunctiveQuery(@Nonnull String queryName) throws
+            IOException, SPARQLParseException {
+        Op op = loadQuery(queryName);
+        if (op instanceof FreeQueryOp)
+            return ((FreeQueryOp) op).getQuery();
+        return null;
     }
 
     public static @Nonnull Model loadData(@Nonnull String fileName) throws IOException {
@@ -179,7 +190,9 @@ public class BSBMSelfTest {
 
     @Test(groups = {"fast"}, dataProvider = "queryData")
     public void testRunQueriesWithARQEndpoint(String queryName) throws Exception {
-        CQuery query = loadQuery(queryName);
+        CQuery query = loadConjunctiveQuery(queryName);
+        if (query == null)
+            return; //silently skip
         Set<Solution> actual = new HashSet<>(), expected = new HashSet<>();
         ARQEndpoint.forModel(allData()).query(query).forEachRemainingThenClose(actual::add);
         loadResults(queryName).forEachRemainingThenClose(expected::add);
@@ -188,10 +201,24 @@ public class BSBMSelfTest {
 
     @Test(dataProvider = "queryData")
     public void testRunQueriesWithSPARQLClient(String queryName) throws Exception {
-        CQuery query = loadQuery(queryName);
+        CQuery query = loadConjunctiveQuery(queryName);
+        if (query == null)
+            return; //silently skip
         Set<Solution> actual = new HashSet<>(), expected = new HashSet<>();
         getSPARQLClient().query(query).forEachRemainingThenClose(actual::add);
         loadResults(queryName).forEachRemainingThenClose(expected::add);
         assertEquals(actual, expected);
+    }
+
+    @Test(dataProvider = "queryData")
+    public void testRunOnSingletonFederation(String queryName) throws Exception {
+        Op query = loadQuery(queryName);
+        Set<Solution> actual = new HashSet<>(), expected = new HashSet<>();
+        ARQEndpoint ep = ARQEndpoint.forModel(allData());
+        try (Federation federation = SingletonSourceFederation.createFederation(ep.asSource())) {
+            federation.query(query).forEachRemainingThenClose(actual::add);
+            loadResults(queryName).forEachRemainingThenClose(expected::add);
+            assertEquals(actual, expected);
+        }
     }
 }

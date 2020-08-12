@@ -1,1 +1,46 @@
-<https://example.org/sk#253> <http://purl.org/dc/terms/title> "Tarzan"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#380> <http://purl.org/dc/terms/title> "Becket"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#383> <http://purl.org/dc/terms/title> "Kim"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#386> <http://purl.org/dc/terms/title> "Murphy\'s War"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#389> <http://purl.org/dc/terms/title> "Ratatouille"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#392> <http://purl.org/dc/terms/title> "Phantoms"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#395> <http://purl.org/dc/terms/title> "Rosebud"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#398> <http://purl.org/dc/terms/title> "What\'s New Pussycat?"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#401> <http://purl.org/dc/terms/title> "Supergirl"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#404> <http://purl.org/dc/terms/title> "Country Dance"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#407> <http://purl.org/dc/terms/title> "Lawrence of Arabia"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://data.semanticweb.org/conference/eswc/2010/inuse/pcmember> <http://data.semanticweb.org/ns/swc/ontology#isRoleAt> <http://data.semanticweb.org/conference/eswc/2010> .
+<http://data.semanticweb.org/conference/eswc/2010/inuse/pcmember> <http://data.semanticweb.org/ns/swc/ontology#heldBy> <http://data.semanticweb.org/person/bernhard-schandl> .
+<http://data.semanticweb.org/conference/eswc/2010/proceedings> <http://data.semanticweb.org/ns/swc/ontology#relatedToEvent> <http://data.semanticweb.org/conference/eswc/2010> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/mobility/6> <http://swrc.ontoware.org/ontology#author> <http://data.semanticweb.org/person/bernhard-schandl> .
+<http://data.semanticweb.org/person/bernhard-schandl> <http://xmlns.com/foaf/0.1/based_near> <http://dbpedia.org/resource/Austria> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/mobility/6> <http://data.semanticweb.org/ns/swc/ontology#isPartOf> <http://data.semanticweb.org/conference/eswc/2010/proceedings> .
+<http://data.semanticweb.org/conference/eswc/2010/inuse/pcmember> <http://data.semanticweb.org/ns/swc/ontology#heldBy> <http://data.semanticweb.org/person/soeren-auer> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/web_of_data/30> <http://swrc.ontoware.org/ontology#author> <http://data.semanticweb.org/person/soeren-auer> .
+<http://data.semanticweb.org/person/soeren-auer> <http://xmlns.com/foaf/0.1/based_near> <http://dbpedia.org/resource/Germany> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/web_of_data/30> <http://data.semanticweb.org/ns/swc/ontology#isPartOf> <http://data.semanticweb.org/conference/eswc/2010/proceedings> .
+<http://data.semanticweb.org/person/soeren-auer> <http://xmlns.com/foaf/0.1/based_near> <http://dbpedia.org/resource/United_States> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/web_of_data/36> <http://swrc.ontoware.org/ontology#author> <http://data.semanticweb.org/person/soeren-auer> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/web_of_data/36> <http://data.semanticweb.org/ns/swc/ontology#isPartOf> <http://data.semanticweb.org/conference/eswc/2010/proceedings> .
+<http://data.semanticweb.org/conference/eswc/2010/inuse/pcmember> <http://data.semanticweb.org/ns/swc/ontology#heldBy> <http://data.semanticweb.org/person/harith-alani> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/social_web/5> <http://swrc.ontoware.org/ontology#author> <http://data.semanticweb.org/person/harith-alani> .
+<http://data.semanticweb.org/person/harith-alani> <http://xmlns.com/foaf/0.1/based_near> <http://dbpedia.org/resource/United_Kingdom> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/social_web/5> <http://data.semanticweb.org/ns/swc/ontology#isPartOf> <http://data.semanticweb.org/conference/eswc/2010/proceedings> .
+<http://data.semanticweb.org/person/harith-alani> <http://xmlns.com/foaf/0.1/based_near> <http://dbpedia.org/resource/UK> .
+<http://data.semanticweb.org/conference/eswc/2010/inuse/pcmember> <http://data.semanticweb.org/ns/swc/ontology#heldBy> <http://data.semanticweb.org/person/lora-aroyo> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/mobility/4> <http://swrc.ontoware.org/ontology#author> <http://data.semanticweb.org/person/lora-aroyo> .
+<http://data.semanticweb.org/person/lora-aroyo> <http://xmlns.com/foaf/0.1/based_near> <http://dbpedia.org/resource/Netherlands> .
+<http://data.semanticweb.org/conference/eswc/2010/paper/mobility/4> <http://data.semanticweb.org/ns/swc/ontology#isPartOf> <http://data.semanticweb.org/conference/eswc/2010/proceedings> .
+<http://data.semanticweb.org/person/lora-aroyo> <http://xmlns.com/foaf/0.1/based_near> <http://dbpedia.org/resource/The_Netherlands> .
+<http://data.semanticweb.org/conference/iswc/2009/paper/research/306> <http://data.semanticweb.org/ns/swc/ontology#isPartOf> <http://data.semanticweb.org/conference/iswc/2009/proceedings> .
+<http://data.semanticweb.org/conference/iswc/2009/proceedings> <http://swrc.ontoware.org/ontology#address> "Berlin, Heidelberg, New York"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://data.semanticweb.org/conference/iswc/2009/paper/research/306> <http://swrc.ontoware.org/ontology#author> <http://data.semanticweb.org/person/christian-bizer> .
+<http://data.semanticweb.org/person/christian-bizer> <http://swrc.ontoware.org/ontology#affiliation> <http://data.semanticweb.org/organization/freie-universitaet-berlin> .
+<http://data.semanticweb.org/person/christian-bizer> <http://www.w3.org/2000/01/rdf-schema#label> "Christian Bizer"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://data.semanticweb.org/person/christian-bizer> <http://xmlns.com/foaf/0.1/based_near> <http://dbpedia.org/resource/Germany> .
+<http://data.semanticweb.org/conference/iswc/2009/paper/poster_demo/146> <http://data.semanticweb.org/ns/swc/ontology#isPartOf> <http://data.semanticweb.org/conference/iswc/2009/proceedings> .
+<http://data.semanticweb.org/conference/iswc/2009/paper/poster_demo/146> <http://swrc.ontoware.org/ontology#author> <http://data.semanticweb.org/person/bernhard-schandl> .
+<http://data.semanticweb.org/person/bernhard-schandl> <http://swrc.ontoware.org/ontology#affiliation> <http://data.semanticweb.org/organization/ddms-university-vienna> .
+<http://data.semanticweb.org/person/bernhard-schandl> <http://www.w3.org/2000/01/rdf-schema#label> "Bernhard Schandl"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://data.semanticweb.org/person/bernhard-schandl> <http://swrc.ontoware.org/ontology#affiliation> <http://data.semanticweb.org/organization/university-of-vienna> .
+<https://example.org/sk#522> <http://purl.org/dc/terms/title> "Tarzan"^^<http://www.w3.org/2001/XMLSchema#string> .
+<https://example.org/sk#553> <http://xmlns.com/foaf/0.1/depiction> <http://upload.wikimedia.org/wikipedia/commons/d/d8/Caffeine.svg> .

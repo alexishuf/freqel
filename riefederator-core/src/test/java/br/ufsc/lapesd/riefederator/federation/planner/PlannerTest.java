@@ -3,11 +3,13 @@ package br.ufsc.lapesd.riefederator.federation.planner;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.*;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
@@ -22,6 +24,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.RefEquals;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
@@ -116,16 +119,34 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public static void assertPlanAnswers(@Nonnull Op root, @Nonnull CQuery query) {
         assertPlanAnswers(root, query, false, false);
     }
+    public static void assertPlanAnswers(@Nonnull Op root, @Nonnull Op query) {
+        assertPlanAnswers(root, query, false, false);
+    }
     public static void assertPlanAnswers(@Nonnull Op root, @Nonnull CQuery query,
                                          boolean allowEmptyNode, boolean forgiveFilters) {
-        IndexedSet<Triple> triples = IndexedSet.from(query.attr().matchedTriples());
+        assertPlanAnswers(root, new FreeQueryOp(query), allowEmptyNode, forgiveFilters);
+    }
+    public static void assertPlanAnswers(@Nonnull Op root, @Nonnull Op query,
+                                         boolean allowEmptyNode, boolean forgiveFilters) {
+        IndexedSet<Triple> triples = IndexedSet.from(query.getMatchedTriples());
 
         // the plan is acyclic
         assertTrue(isAcyclic(root));
 
         if (!allowEmptyNode) {
             assertFalse(root instanceof EmptyOp, "EmptyNode is not an answer!");
-            assertEquals(streamPreOrder(root).filter(EmptyOp.class::isInstance).count(),
+            Set<RefEquals<Op>> tolerate = new HashSet<>();
+            streamPreOrder(root).filter(UnionOp.class::isInstance)
+                    .forEach(o -> {
+                        long c = o.getChildren().stream().filter(EmptyOp.class::isInstance).count();
+                        if (c < o.getChildren().size()) {
+                            o.getChildren().stream().filter(EmptyOp.class::isInstance)
+                                           .map(RefEquals::of).forEach(tolerate::add);
+                        }
+                    });
+            assertEquals(streamPreOrder(root).filter(o -> o instanceof EmptyOp
+                                                       && !tolerate.contains(RefEquals.of(o)))
+                                             .count(),
                          0, "There are EmptyNodes in the plan as leaves");
         }
 
@@ -145,22 +166,24 @@ public class PlannerTest implements TransparencyServiceTestContext {
         // the set of matched triples in the plan must be the same as the query
         assertEquals(root.getMatchedTriples(), triples);
 
-        // all nodes in a MQNode must match the exact same triples in query
-        // this allows us to consider the MQNode as a unit in the plan
-        bad = streamPreOrder(root).filter(n -> n instanceof UnionOp)
-                .map(n -> (UnionOp) n)
-                .filter(n -> n.getChildren().stream().map(Op::getMatchedTriples)
-                        .distinct().count() != 1)
-                .collect(toList());
-        assertEquals(bad, emptyList());
+        long queryUnions = streamPreOrder(query).filter(UnionOp.class::isInstance).count();
+        if (queryUnions == 0) {
+            // all nodes in a MQNode must match the exact same triples in query
+            // this allows us to consider the MQNode as a unit in the plan
+            bad = streamPreOrder(root).filter(n -> n instanceof UnionOp)
+                    .map(n -> (UnionOp) n)
+                    .filter(n -> n.getChildren().stream().map(Op::getMatchedTriples)
+                            .distinct().count() != 1)
+                    .collect(toList());
+            assertEquals(bad, emptyList());
+        }
 
         // children of MQ nodes may match the same triples with different triples
         // However, if two children have the same query, then their endpoints must not be
         // equivalent as this would be wasteful. Comparison must use the CQuery instead of
         // Set<Triple> since it may make sense to send the same triples with distinct
         // QueryRelevantTermAnnotations (e.g., WebAPICQEndpoint and JDBCCQEndpoint)
-        List<Set<QueryOp>> equivSets = streamPreOrder(root)
-                .filter(n -> n instanceof UnionOp)
+        List<Set<QueryOp>> equivSets = multiQueryNodes(root).stream()
                 .map(n -> {
                     Set<QueryOp> equiv = new HashSet<>();
                     ListMultimap<CQuery, QueryOp> mm;
@@ -186,17 +209,20 @@ public class PlannerTest implements TransparencyServiceTestContext {
                 }).filter(s -> !s.isEmpty()).collect(toList());
         assertEquals(equivSets, emptySet());
 
-        // no single-child MQ nodes
+        // no single-child union  (be it a legit union or a multi-query)
         bad = streamPreOrder(root)
                 .filter(n -> n instanceof UnionOp && n.getChildren().size() < 2)
                 .collect(toList());
         assertEquals(bad, emptyList());
 
         // MQ nodes should not be directly nested (that is not elegant)
-        bad = streamPreOrder(root)
-                .filter(n -> n instanceof UnionOp
-                          && n.getChildren().stream().anyMatch(n2 -> n2 instanceof UnionOp))
+        bad = multiQueryNodes(root).stream()
+                .filter(n -> n.getChildren().stream().anyMatch(n2 -> n2 instanceof UnionOp))
                 .collect(toList());
+        assertEquals(bad, emptyList());
+
+        // no ConjunctionOp in the plan (should've been replaced with JoinOps)
+        bad = streamPreOrder(root).filter(n -> n instanceof ConjunctionOp).collect(toList());
         assertEquals(bad, emptyList());
 
         // all join nodes are valid joins
@@ -235,22 +261,24 @@ public class PlannerTest implements TransparencyServiceTestContext {
                 }).collect(toList());
 
         if (!forgiveFilters) {
-            Set<String> allVars = query.attr().tripleVarNames();
-            List<SPARQLFilter> allFilters = query.getModifiers().stream()
-                    .filter(SPARQLFilter.class::isInstance).map(m -> (SPARQLFilter) m)
+            Set<String> allVars = TreeUtils.streamPreOrder(query)
+                    .filter(FreeQueryOp.class::isInstance)
+                    .flatMap(o -> ((FreeQueryOp)o).getQuery().attr().tripleVarNames().stream())
+                    .collect(toSet());
+            List<SPARQLFilter> allFilters = streamPreOrder(query)
+                    .flatMap(o -> o.modifiers().filters().stream())
                     .map(f -> {
                         if (allVars.containsAll(f.getVarTermNames()))
                             return f;
                         HashSet<String> missing = new HashSet<>(f.getVarTermNames());
                         missing.removeAll(allVars);
                         return f.withVarTermsUnbound(missing);
-                    })
-                    .collect(toList());
+                    }).collect(toList());
             //all filters are placed somewhere
             List<SPARQLFilter> missingFilters = allFilters.stream()
                     .filter(f -> streamPreOrder(root).noneMatch(n -> {
-                        if (n instanceof UnassignedQueryOp) {
-                            if (((UnassignedQueryOp)n).getQuery().getModifiers().contains(f))
+                        if (n instanceof FreeQueryOp) {
+                            if (((FreeQueryOp)n).getQuery().getModifiers().contains(f))
                                 return true;
                         }
                         return n.modifiers().contains(f);
@@ -270,8 +298,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
 
             // same as previous, but checks filters within CQuery instances
             badFilterAssignments = streamPreOrder(root)
-                    .filter(UnassignedQueryOp.class::isInstance)
-                    .map(n -> (UnassignedQueryOp)n)
+                    .filter(FreeQueryOp.class::isInstance)
+                    .map(n -> (FreeQueryOp)n)
                     .flatMap(n -> n.getQuery().getModifiers().stream()
                                               .filter(SPARQLFilter.class::isInstance)
                                               .map(f -> ImmutablePair.of(n, (SPARQLFilter)f)))
@@ -281,6 +309,23 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
 
         assertEquals(bad, emptyList());
+    }
+
+    private static @Nonnull List<UnionOp> multiQueryNodes(@Nonnull Op root) {
+        List<UnionOp> list = new ArrayList<>();
+        ArrayDeque<Op> queue = new ArrayDeque<>();
+        queue.add(root);
+        while (!queue.isEmpty()) {
+            Op op = queue.remove();
+            if (op instanceof UnionOp) {
+                boolean isMQ = op.getChildren().stream().map(Op::getMatchedTriples)
+                                               .distinct().count() == 1;
+                if (isMQ)
+                    list.add((UnionOp)op);
+            }
+            queue.addAll(op.getChildren());
+        }
+        return list;
     }
 
     @DataProvider

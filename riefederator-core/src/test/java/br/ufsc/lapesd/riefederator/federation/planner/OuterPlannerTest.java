@@ -4,11 +4,12 @@ import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.planner.impl.NaiveOuterPlanner;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
@@ -94,8 +95,11 @@ public class OuterPlannerTest implements TestContext {
         queryNames.remove("B5"); // has cartesian product
         queryNames.remove("B6"); // has cartesian product
         for (String queryName : queryNames) {
-            CQuery query = LargeRDFBenchSelfTest.loadQuery(queryName);
-            stubs.add(asList(query, singleton(query)));
+            Op op = LargeRDFBenchSelfTest.loadQuery(queryName);
+            if (op instanceof FreeQueryOp) {
+                MutableCQuery query = ((FreeQueryOp) op).getQuery();
+                stubs.add(asList(query, singleton(query)));
+            }
         }
 
         List<List<Object>> rows = new ArrayList<>();
@@ -111,16 +115,18 @@ public class OuterPlannerTest implements TestContext {
 
     @Test(dataProvider = "planData")
     public void testPlan(Supplier<OuterPlanner> supplier,
-                         CQuery query, Collection<CQuery> expectedComponents) {
+                         Object query, Collection<CQuery> expectedComponents) {
         OuterPlanner planner = supplier.get();
-        Op plan = planner.plan(query);
+        Op asTree = query instanceof Op ? (Op)query : new FreeQueryOp((CQuery)query);
+        Op plan = planner.plan(asTree);
         Set<Op> leaves = TreeUtils.streamPreOrder(plan)
-                .filter(UnassignedQueryOp.class::isInstance).collect(toSet());
-        assertTrue(leaves.stream().allMatch(UnassignedQueryOp.class::isInstance));
+                .filter(FreeQueryOp.class::isInstance).collect(toSet());
+        assertTrue(leaves.stream().allMatch(FreeQueryOp.class::isInstance));
         assertTrue(leaves.stream().noneMatch(QueryOp.class::isInstance));
-        PlannerTest.assertPlanAnswers(plan, query);
+        PlannerTest.assertPlanAnswers(plan, asTree);
 
-        Set<CQuery> actual = leaves.stream().map(n -> ((UnassignedQueryOp) n).getQuery()).collect(toSet());
+        Set<CQuery> actual = leaves.stream().map(n -> ((FreeQueryOp) n).getQuery()).collect(toSet());
+        
         HashSet<CQuery> expected = new HashSet<>(expectedComponents);
 
         assertTrue(expected.stream().allMatch(e -> actual.stream()
@@ -130,6 +136,9 @@ public class OuterPlannerTest implements TestContext {
                 .anyMatch(e -> e.attr().getSet().equals(a.attr().getSet())
                         && e.getModifiers().equals(a.getModifiers()))));
 
-        assertEquals(query.attr().isJoinConnected(), expectedComponents.size()==1);
+        if (asTree instanceof FreeQueryOp) {
+            CQuery cQuery = ((FreeQueryOp) asTree).getQuery();
+            assertEquals(cQuery.attr().isJoinConnected(), expectedComponents.size()==1);
+        }
     }
 }

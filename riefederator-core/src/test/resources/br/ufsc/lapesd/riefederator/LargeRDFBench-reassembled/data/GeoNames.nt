@@ -1,22 +1,40 @@
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#259> .
-<https://example.org/sk#259> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#261> .
-<https://example.org/sk#261> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#263> .
-<https://example.org/sk#263> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#265> .
-<https://example.org/sk#265> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#267> .
-<https://example.org/sk#267> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#269> .
-<https://example.org/sk#269> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#271> .
-<https://example.org/sk#271> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#273> .
-<https://example.org/sk#273> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#275> .
-<https://example.org/sk#275> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#277> .
-<https://example.org/sk#277> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
-<http://sws.geonames.org/5369907/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#278> .
-<https://example.org/sk#278> <http://www.geonames.org/ontology#name> "California"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/1269750/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#353> .
+<https://example.org/sk#353> <http://www.geonames.org/ontology#name> "Asia"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2623032/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#356> .
+<https://example.org/sk#356> <http://www.geonames.org/ontology#name> "Europe"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/1269750/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#359> .
+<https://example.org/sk#359> <http://www.geonames.org/ontology#name> "Asia"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/1269750/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#362> .
+<https://example.org/sk#362> <http://www.geonames.org/ontology#name> "Asia"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/1269750/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#365> .
+<https://example.org/sk#365> <http://www.geonames.org/ontology#name> "Asia"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/1269750/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#368> .
+<https://example.org/sk#368> <http://www.geonames.org/ontology#name> "Asia"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/1269750/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#371> .
+<https://example.org/sk#371> <http://www.geonames.org/ontology#name> "Asia"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2623032/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#374> .
+<https://example.org/sk#374> <http://www.geonames.org/ontology#name> "Europe"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/1149361/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#377> .
+<https://example.org/sk#377> <http://www.geonames.org/ontology#name> "Asia"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#528> .
+<https://example.org/sk#528> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#530> .
+<https://example.org/sk#530> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#532> .
+<https://example.org/sk#532> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#534> .
+<https://example.org/sk#534> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#536> .
+<https://example.org/sk#536> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#538> .
+<https://example.org/sk#538> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#540> .
+<https://example.org/sk#540> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#542> .
+<https://example.org/sk#542> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#544> .
+<https://example.org/sk#544> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/2911297/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#546> .
+<https://example.org/sk#546> <http://www.geonames.org/ontology#name> "Federal Republic of Germany"^^<http://www.w3.org/2001/XMLSchema#string> .
+<http://sws.geonames.org/5369907/> <http://www.geonames.org/ontology#parentFeature> <https://example.org/sk#547> .
+<https://example.org/sk#547> <http://www.geonames.org/ontology#name> "California"^^<http://www.w3.org/2001/XMLSchema#string> .

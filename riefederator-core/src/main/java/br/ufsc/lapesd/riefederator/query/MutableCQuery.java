@@ -15,7 +15,6 @@ import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -396,7 +395,6 @@ public class MutableCQuery extends CQuery {
     public @CanIgnoreReturnValue boolean mergeWith(@Nonnull CQuery other) {
         boolean change = false, triplesChange = false;
         IndexedSet<String> oldPublicVars = attr().publicVarNames();
-        Projection oldProj = getModifiers().projection();
         IndexedSet<Triple> oldSet = attr().getSet();
         makeExclusive();
         for (Triple triple : other) {
@@ -421,21 +419,8 @@ public class MutableCQuery extends CQuery {
                 }
             }
         }
-        if (!change && other.getModifiers().projection() == null)
-            return false; // ignore other's Projection modifier if it is the only thing
-        for (Modifier modifier : other.getModifiers()) {
-            if (!(modifier instanceof Projection))
-                change |= d.modifiers.add(modifier);
-        }
-        Projection otherProj = other.getModifiers().projection();
-        if (oldProj != null || otherProj != null) {
-            boolean req = (  oldProj != null &&   oldProj.isRequired())
-                       || (otherProj != null && otherProj.isRequired());
-            ImmutableSet.Builder<String> b = ImmutableSet.builder();
-            b.addAll(oldPublicVars);
-            b.addAll(other.attr().publicVarNames());
-            change |= d.modifiers.add(new Projection(b.build(), req));
-        }
+        change |= d.modifiers.mergeWith(other.getModifiers(), oldPublicVars,
+                                        other.attr().publicVarNames());
         return change;
     }
 

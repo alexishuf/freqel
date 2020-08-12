@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
-import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
+import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
@@ -26,9 +26,11 @@ import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.query.results.impl.*;
+import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.LimitResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.rel.common.AnnotationStatus;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalMoleculeMatcher;
@@ -41,8 +43,6 @@ import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.base.Preconditions;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -83,9 +83,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
     private @Nonnull final RelationalMapping mapping;
     private @Nonnull final Molecule molecule;
     private @Nonnull final MoleculeMatcher moleculeMatcher;
-    private @Nullable Injector injector;
     private @Nullable Federation federation;
-    private @Nullable Planner planner;
 
     /* --- --- --- Constructor & loader/parser --- --- --- */
 
@@ -305,35 +303,15 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
                 q.mutateModifiers().addAll(star.getFilters());
                 leaves.add(new QueryOp(this, q));
             }
-            return getFederation().execute(query, getPlanner().plan(query, leaves));
+            Planner planner = SingletonSourceFederation.getInjector().getInstance(Planner.class);
+            return getFederation().execute(query, planner.plan(query, leaves));
         }
-    }
-
-    private @Nonnull Injector getInjector() {
-        if (injector == null) {
-            SimpleFederationModule m = new SimpleFederationModule() {
-                @Override
-                protected void configureResultsExecutor() {
-                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-            };
-            injector = Guice.createInjector(m);
-        }
-        return injector;
     }
 
     private @Nonnull Federation getFederation() {
-        if (federation == null) {
-            federation = getInjector().getInstance(Federation.class);
-            federation.addSource(asSource());
-        }
+        if (federation == null)
+            federation = SingletonSourceFederation.createFederation(asSource());
         return federation;
-    }
-
-    private @Nonnull Planner getPlanner() {
-        if (planner == null)
-            planner = getInjector().getInstance(Planner.class);
-        return planner;
     }
 
     private @Nonnull CollectionResults queryStar(@Nonnull StarSubQuery star, boolean distinct) {

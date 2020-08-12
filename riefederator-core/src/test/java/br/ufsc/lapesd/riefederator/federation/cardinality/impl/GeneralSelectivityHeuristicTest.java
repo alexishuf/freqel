@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.riefederator.query.parse.SPARQLQueryParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import org.testng.annotations.Test;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
@@ -127,13 +127,13 @@ public class GeneralSelectivityHeuristicTest implements TestContext {
 
     @Test
     public void testLargeRDFBenchS5() throws SPARQLParseException {
-        SPARQLQueryParser parser = SPARQLQueryParser.strict();
-        CQuery cheap = parser.parse("SELECT * WHERE {\n" +
+        SPARQLParser parser = SPARQLParser.strict();
+        CQuery cheap = parser.parseConjunctive("SELECT * WHERE {\n" +
                 "   ?film <http://dbpedia.org/ontology/director>  ?director .\n" +
                 "   ?director <http://dbpedia.org/ontology/nationality> <http://dbpedia.org/resource/Italy> .\n" +
                 "   ?x <http://www.w3.org/2002/07/owl#sameAs> ?film .\n" +
                 "}");
-        CQuery expensive = parser.parse("SELECT * WHERE {\n" +
+        CQuery expensive = parser.parseConjunctive("SELECT * WHERE {\n" +
                 "   ?x <http://www.w3.org/2002/07/owl#sameAs> ?film .\n" +
                 "   ?x <http://data.linkedmdb.org/resource/movie/genre> ?genre .\n" +
                 "}");
@@ -147,13 +147,13 @@ public class GeneralSelectivityHeuristicTest implements TestContext {
 
     @Test
     public void testOpenStarIsBetterThanOpenTriple() throws SPARQLParseException {
-        SPARQLQueryParser parser = SPARQLQueryParser.strict();
-        CQuery star = parser.parse("SELECT * WHERE {\n" +
+        SPARQLParser parser = SPARQLParser.strict();
+        CQuery star = parser.parseConjunctive("SELECT * WHERE {\n" +
                 "   $drug <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/drugs> .\n" +
                 "   $drug <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/keggCompoundId> $keggDrug .\n" +
                 "   $drug <http://www4.wiwiss.fu-berlin.de/drugbank/resource/drugbank/genericName> $drugBankName .\n" +
                 "}\n");
-        CQuery triple = parser.parse("SELECT * WHERE {\n" +
+        CQuery triple = parser.parseConjunctive("SELECT * WHERE {\n" +
                 "   $chebiDrug <http://bio2rdf.org/ns/bio2rdf#image> $chebiImage .\n" +
                 "}\n");
         Cardinality starCard = heuristic.estimate(star);

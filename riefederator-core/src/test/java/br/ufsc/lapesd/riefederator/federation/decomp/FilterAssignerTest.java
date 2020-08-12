@@ -87,7 +87,7 @@ public class FilterAssignerTest implements TestContext {
                 Alice, knows, x,
                 x,     age,   u,
                 SPARQLFilter.build("?u > 23"));
-        UnionOp node = UnionOp.builder()
+        Op node = UnionOp.builder()
                 .add(new QueryOp(ep1, query))
                 .add(new QueryOp(ep2, query))
                 .build();
@@ -113,7 +113,7 @@ public class FilterAssignerTest implements TestContext {
         for (QueryOp queryOp : queryOps)
             checkAllFilters(query, queryOp);
 
-        UnionOp multi = UnionOp.builder().addAll(queryOps).build();
+        Op multi = UnionOp.builder().addAll(queryOps).build();
         assigner.placeBottommost(multi);
         checkAllFilters(query, multi);
     }

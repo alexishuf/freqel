@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
+import com.google.common.collect.Sets;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -18,8 +19,7 @@ import java.util.stream.Stream;
 
 import static java.lang.Integer.parseInt;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testng.Assert.*;
 
@@ -165,6 +165,30 @@ public class ResultsExecutorTest implements TestContext {
 
         assertTrue(inputs.stream().allMatch(MockResults::isClosed));
         assertEquals(actual, expected(columns, rows));
+    }
+
+    @Test(dataProvider = "suppliersData")
+    public void testConsumeProjecting(Supplier<ResultsExecutor> supplier) {
+        ResultsExecutor executor = supplier.get();
+        MockResults inXZ = new MockResults(singletonList(
+                MapSolution.builder().put(x, lit(1)).put(z, lit(2)).build()
+        ), Sets.newHashSet("x", "z"), "inXZ");
+        MockResults inXY = new MockResults(asList(
+                MapSolution.builder().put(x, lit(3)).put(y, lit(4)).build(),
+                MapSolution.builder().put(x, lit(5)).put(y, lit(6)).build()
+        ), Sets.newHashSet("x", "y"), "inXY");
+
+        List<MockResults> inputs = asList(inXZ, inXY);
+        Results results = executor.async(inputs, singletonList("x"));
+        Set<Solution> actual = new HashSet<>();
+        results.forEachRemainingThenClose(actual::add);
+
+        assertTrue(inputs.stream().allMatch(MockResults::isClosed));
+        assertEquals(actual, Sets.newHashSet(
+                MapSolution.build(x, lit(1)),
+                MapSolution.build(x, lit(3)),
+                MapSolution.build(x, lit(5))
+        ));
     }
 
     @Test(dataProvider = "inputData")

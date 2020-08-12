@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.federation;
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.UnassignedQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
@@ -18,13 +18,11 @@ import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.AskResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
-import br.ufsc.lapesd.riefederator.util.LogUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableCollection;
@@ -140,6 +138,10 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
+        return query(new FreeQueryOp(query));
+    }
+
+    public @Nonnull Results query(@Nonnull Op query) {
         Stopwatch sw = Stopwatch.createStarted();
         Op plan = plan(expandTemplates(query));
         double planMs = sw.elapsed(MICROSECONDS)/1000.0;
@@ -153,32 +155,39 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public @Nonnull Results execute(@Nonnull CQuery query, Op plan) {
-        assert plan.getMatchedTriples().equals(query.attr().getSet())
+        return execute(new FreeQueryOp(query), plan);
+    }
+
+    public @Nonnull Results execute(@Nonnull Op query, Op plan) {
+        assert plan.getMatchedTriples().equals(query.getMatchedTriples())
                 : "This plan does not correspond to this query!";
         Results results = executor.executePlan(plan);
-        results = ProjectingResults.applyIf(results, query);
-        results = HashDistinctResults.applyIf(results, query);
-        results = AskResults.applyIf(results, query);
+        results = ProjectingResults.applyIf(results, query.modifiers());
+        results = HashDistinctResults.applyIf(results, query.modifiers());
+        results = AskResults.applyIf(results, query.modifiers());
         results = resultsExecutor.async(results);
         return results;
     }
 
     @VisibleForTesting
-    @Nonnull CQuery expandTemplates(@Nonnull CQuery query) {
-        ModifierUtils.check(this, query.getModifiers());
-        return templateExpander.apply(query);
+    @Nonnull Op expandTemplates(@Nonnull Op query) {
+        return TreeUtils.replaceNodes(query, null, op -> {
+            if (!(op instanceof FreeQueryOp)) return null;
+            FreeQueryOp queryOp = (FreeQueryOp) op;
+            return queryOp.withQuery(templateExpander.apply(queryOp.getQuery()));
+        });
     }
 
-    private @Nonnull Op planComponents(@Nonnull Op root, @Nonnull CQuery query,
-                                @Nonnull InnerCardinalityComputer cardinalityComputer) {
+    private @Nonnull Op planComponents(@Nonnull Op root, @Nonnull Op query,
+                                        @Nonnull InnerCardinalityComputer cardinalityComputer) {
         return TreeUtils.replaceNodes(root, cardinalityComputer, op -> {
-            if (op.getClass().equals(UnassignedQueryOp.class)) {
-                UnassignedQueryOp component = (UnassignedQueryOp) op;
+            if (op.getClass().equals(FreeQueryOp.class)) {
+                FreeQueryOp component = (FreeQueryOp) op;
                 Op componentPlan = strategy.decompose(component.getQuery());
                 if (componentPlan instanceof EmptyOp) {
                     logger.info("Query is unsatisfiable because one component extracted by " +
                                 "the OuterPlanner is unsatisfiable. Query: {}. Component: {}",
-                                query, component.getQuery());
+                                query.prettyPrint(), component.getQuery());
                 }
                 return componentPlan;
             }
@@ -187,15 +196,19 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public @Nonnull Op plan(@Nonnull CQuery query) {
+        return plan(new FreeQueryOp(query));
+    }
+
+    public @Nonnull Op plan(@Nonnull Op query) {
         try (TimeSampler ignored = Metrics.FULL_PLAN_MS.createThreadSampler(performanceListener)) {
             Stopwatch sw = Stopwatch.createStarted();
-            ModifierUtils.check(this, query.getModifiers());
-            Op root = outerPlanner.plan(query);
+            Op root = query instanceof FreeQueryOp ? query : TreeUtils.deepCopy(query);
+            root = outerPlanner.plan(root);
             root = planComponents(root, query, cardinalityComputer);
             TreeUtils.nameNodes(root);
             if (logger.isDebugEnabled()) {
                 logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",
-                        sw.elapsed(MICROSECONDS) / 1000.0, LogUtils.toString(query),
+                        sw.elapsed(MICROSECONDS) / 1000.0, query.prettyPrint(),
                         root.prettyPrint());
             }
             return root;
