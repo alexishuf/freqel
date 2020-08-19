@@ -282,7 +282,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         if (EstimatePolicy.canQueryRemote(policy) || EstimatePolicy.canAskRemote(policy)) {
             MutableCQuery askQuery = new MutableCQuery(query);
             if (askQuery.getModifiers().ask() == null)
-                askQuery.mutateModifiers().add(Ask.REQUIRED);
+                askQuery.mutateModifiers().add(Ask.INSTANCE);
             try (Results results = query(askQuery)) {
                 return results.hasNext() ? NON_EMPTY : EMPTY;
             } catch (QueryExecutionException e) { return EMPTY; }

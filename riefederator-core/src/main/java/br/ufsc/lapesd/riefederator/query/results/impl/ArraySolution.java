@@ -22,7 +22,7 @@ public class ArraySolution extends AbstractSolution implements MutableSolution {
             = new ArraySolution(IndexedSet.empty(), new Term[0]);
 
 
-    protected ArraySolution(@Nonnull IndexedSet<String> vars, @Nonnull Term[] values) {
+    public ArraySolution(@Nonnull IndexedSet<String> vars, @Nonnull Term[] values) {
         this.vars = vars;
         this.values = values;
     }

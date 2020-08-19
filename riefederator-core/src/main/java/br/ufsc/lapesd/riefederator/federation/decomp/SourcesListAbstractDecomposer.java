@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.decomp;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
@@ -13,6 +13,9 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
+import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
+import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.collect.HashMultimap;
@@ -32,7 +35,7 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     protected final @Nonnull Planner planner;
     protected final @Nonnull PerformanceListener performance;
 
-    public SourcesListAbstractDecomposer(@Nonnull Planner planner,
+    protected SourcesListAbstractDecomposer(@Nonnull Planner planner,
                                          @Nonnull PerformanceListener performance) {
         this.planner = planner;
         this.performance = performance;
@@ -57,6 +60,15 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
             performance.sample(Metrics.SOURCES_COUNT, countEndpoints(leaves));
             Op plan = planner.plan(query, leaves);
             p.placeBottommost(plan);
+            Distinct distinct = query.getModifiers().distinct();
+            Optional optional = query.getModifiers().optional();
+            Limit limit = query.getModifiers().limit();
+            if (distinct != null)
+                plan.modifiers().add(distinct);
+            if (optional != null)
+                plan.modifiers().add(optional);
+            if (limit != null)
+                plan.modifiers().add(limit);
             return plan;
         }
     }
@@ -64,12 +76,12 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     private int countEndpoints(@Nonnull Collection<Op> leaves) {
         Set<TPEndpoint> endpoints = new HashSet<>(Math.max(10, leaves.size()));
         for (Op leaf : leaves) {
-            if (leaf instanceof QueryOp)
-                endpoints.add(((QueryOp) leaf).getEndpoint());
+            if (leaf instanceof EndpointQueryOp)
+                endpoints.add(((EndpointQueryOp) leaf).getEndpoint());
             else if (leaf instanceof UnionOp) {
                 for (Op child : leaf.getChildren()) {
-                    if (child instanceof QueryOp)
-                        endpoints.add(((QueryOp) child).getEndpoint());
+                    if (child instanceof EndpointQueryOp)
+                        endpoints.add(((EndpointQueryOp) child).getEndpoint());
                     else
                         assert false : "Expected all leaves to be QueryNodes";
                 }

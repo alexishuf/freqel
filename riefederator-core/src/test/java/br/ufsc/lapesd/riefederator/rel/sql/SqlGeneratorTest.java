@@ -85,7 +85,7 @@ public class SqlGeneratorTest implements TestContext {
         return Stream.of(
                 // simplest possible query
                 // Note: star_0.cu instead of star_0.u due to lack of (SELECT ...)
-                asList(createQuery(x, aaT, name, u, aaCu, Projection.advised("u")),
+                asList(createQuery(x, aaT, name, u, aaCu, Projection.of("u")),
                        "sql-mapping-1.json",
                        "SELECT star_0.cu AS $ FROM T AS star_0 ;",
                        singleton(cu), emptySet()),
@@ -103,7 +103,7 @@ public class SqlGeneratorTest implements TestContext {
                 // simple join between two stars
                 asList(createQuery(x, aaT, age,  v, aaCv,
                                    y, aaT, age,  v, aaCv,
-                                   y, aaT, name, u, aaCu, Projection.required("v", "u")),
+                                   y, aaT, name, u, aaCu, Projection.of("v", "u")),
                        "sql-mapping-1.json",
                        "SELECT star_1.@ AS $, star_0.@ AS $ FROM " +
                                 "T AS star_0 " +
@@ -113,7 +113,7 @@ public class SqlGeneratorTest implements TestContext {
                 asList(createQuery(x, aaT, name, bob, aaCu,
                                    x, aaT, age,  v, aaCv,
                                    y, aaT, age,  v, aaCv,
-                                   y, aaT, name, u, aaCu, Projection.required("v", "u")),
+                                   y, aaT, name, u, aaCu, Projection.of("v", "u")),
                         "sql-mapping-1.json",
                         "SELECT star_1.@ AS $, star_0.$ AS $ FROM " +
                                 "(SELECT T.@ AS $ FROM T WHERE T.@ = 'bob' ) AS star_0 " +
@@ -126,7 +126,7 @@ public class SqlGeneratorTest implements TestContext {
                                    y, aaT, name, u, aaCu,
                                    z, aaT, name, u, aaCu,
                                    z, aaT, p1,   o, aaCo, SPARQLFilter.build("?o > 23"),
-                                   Projection.required("v", "u", "o")),
+                                   Projection.of("v", "u", "o")),
                         "sql-mapping-1.json",
                         "SELECT star_2.$ AS $, star_1.@ AS $, star_0.$ AS $ FROM " +
                                 "(SELECT T.@ AS $ FROM T WHERE T.@ = 'bob' ) AS star_0 " +
@@ -162,12 +162,12 @@ public class SqlGeneratorTest implements TestContext {
                                         "AS star_0 ;",
                        newHashSet(cu, cv), singleton(SPARQLFilter.build("REGEX(?u, \"b.*\")"))),
                 // tolerate ColumnTag on Subject and TableTag on object
-                asList(createQuery(x, aaT2, name, u, aaCu2, Projection.advised("u")),
+                asList(createQuery(x, aaT2, name, u, aaCu2, Projection.of("u")),
                         "sql-mapping-1.json",
                         "SELECT star_0.@ AS $ FROM T AS star_0 ;",
                         singleton(cu), emptySet()),
                 // tolerate ColumnTag on subject and unrelated ColumnTag on object
-                asList(createQuery(x, aaT2, name, u, aaCu3, Projection.advised("u")),
+                asList(createQuery(x, aaT2, name, u, aaCu3, Projection.of("u")),
                         "sql-mapping-1.json",
                         "SELECT star_0.@ AS $ FROM T AS star_0 ;",
                         singleton(cu), emptySet()),
@@ -175,7 +175,7 @@ public class SqlGeneratorTest implements TestContext {
                 asList(createQuery(x, aaT, name, bob, aaCu,
                                    x, aaT, age,  v, aaCv,
                                    y, aaU, age,  v, aaKv,
-                                   y, aaU, name, u, aaKu, Projection.required("v", "u")),
+                                   y, aaU, name, u, aaKu, Projection.of("v", "u")),
                         "sql-mapping-1.json",
                         "SELECT star_1.@ AS $, star_0.$ AS $ FROM " +
                                 "(SELECT T.@ AS $ FROM T WHERE T.@ = 'bob' ) AS star_0 " +
@@ -185,7 +185,7 @@ public class SqlGeneratorTest implements TestContext {
                 asList(createQuery(x, aaT2, name, bob, aaCu2,
                                    x, aaT2, age,  v, aaCv2, //cv3 is really ambiguous
                                    y, aaU, age,  v, aaKv,
-                                   y, aaU, name, u, aaKu, Projection.required("v", "u")),
+                                   y, aaU, name, u, aaKu, Projection.of("v", "u")),
                         "sql-mapping-1.json",
                         "SELECT star_1.@ AS $, star_0.$ AS $ FROM " +
                                 "(SELECT T.@ AS $ FROM T WHERE T.@ = 'bob' ) AS star_0 " +

@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.algebra.inner;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import com.google.common.base.Preconditions;
@@ -21,7 +21,7 @@ import java.util.List;
  *
  * This operation could be used to create conjunctions between unions, which cannot be represented
  * in a CQuery instace (and thus cannot be represented by an
- * {@link FreeQueryOp}/{@link QueryOp}.
+ * {@link QueryOp}/{@link EndpointQueryOp}.
  */
 public class ConjunctionOp extends AbstractInnerOp {
     public static class Builder {

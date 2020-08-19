@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.algebra;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
@@ -26,18 +26,18 @@ import static org.testng.Assert.*;
 public class JoinOpTest implements TestContext {
     private static final EmptyEndpoint empty = new EmptyEndpoint();
 
-    public QueryOp aliceKnowsX, xKnowsY, yKnown, xKnowsYInput, yInputKnowsAlice;
+    public EndpointQueryOp aliceKnowsX, xKnowsY, yKnown, xKnowsYInput, yInputKnowsAlice;
     private static final Atom Person = Molecule.builder("Person").buildAtom();
     private static final Atom KnownPerson = Molecule.builder("KnownPerson").buildAtom();
 
     @BeforeMethod
     public void setUp() {
-        aliceKnowsX = new QueryOp(empty, CQuery.from(new Triple(Alice, knows, x)));
-        xKnowsY = new QueryOp(empty, CQuery.from(new Triple(x, knows, y)));
-        xKnowsYInput = new QueryOp(empty, createQuery(x, AtomAnnotation.of(Person),
+        aliceKnowsX = new EndpointQueryOp(empty, CQuery.from(new Triple(Alice, knows, x)));
+        xKnowsY = new EndpointQueryOp(empty, CQuery.from(new Triple(x, knows, y)));
+        xKnowsYInput = new EndpointQueryOp(empty, createQuery(x, AtomAnnotation.of(Person),
                 knows, y, AtomInputAnnotation.asRequired(KnownPerson, "knownPerson").get()));
-        yKnown = new QueryOp(empty, createQuery(x, knows, y, Projection.advised("y")));
-        yInputKnowsAlice = new QueryOp(empty, createQuery(
+        yKnown = new EndpointQueryOp(empty, createQuery(x, knows, y, Projection.of("y")));
+        yInputKnowsAlice = new EndpointQueryOp(empty, createQuery(
                 y, AtomInputAnnotation.asRequired(Person, "person").get(), knows, Alice
         ));
     }
@@ -63,7 +63,7 @@ public class JoinOpTest implements TestContext {
     @Test
     public void testManuallySetResultVarsNotProjecting() {
         JoinOp node = JoinOp.create(aliceKnowsX, xKnowsY);
-        node.modifiers().add(Projection.advised("x", "y"));
+        node.modifiers().add(Projection.of("x", "y"));
         assertEquals(node.getResultVars(), newHashSet("x", "y"));
         assertEquals(node.getJoinVars(), singleton("x"));
         assertTrue(node.isProjected());
@@ -73,7 +73,7 @@ public class JoinOpTest implements TestContext {
 
         // order shouldn't change the result
         node = JoinOp.create(xKnowsY, aliceKnowsX);
-        node.modifiers().add(Projection.advised("x", "y"));
+        node.modifiers().add(Projection.of("x", "y"));
         assertEquals(node.getResultVars(), newHashSet("x", "y"));
         assertEquals(node.getJoinVars(), singleton("x"));
         assertTrue(node.isProjected());
@@ -84,7 +84,7 @@ public class JoinOpTest implements TestContext {
     @Test
     public void testProjectJoinVarOut() {
         JoinOp node = JoinOp.create(aliceKnowsX, xKnowsY);
-        node.modifiers().add(Projection.advised("y"));
+        node.modifiers().add(Projection.of("y"));
         assertEquals(node.getResultVars(), newHashSet("y"));
         assertEquals(node.getJoinVars(), singleton("x"));
         assertTrue(node.isProjected());
@@ -93,7 +93,7 @@ public class JoinOpTest implements TestContext {
         assertFalse(node.hasInputs());
 
         node = JoinOp.create(xKnowsY, aliceKnowsX);
-        node.modifiers().add(Projection.advised("y"));
+        node.modifiers().add(Projection.of("y"));
         assertEquals(node.getResultVars(), newHashSet("y"));
         assertEquals(node.getJoinVars(), singleton("x"));
         assertTrue(node.isProjected());

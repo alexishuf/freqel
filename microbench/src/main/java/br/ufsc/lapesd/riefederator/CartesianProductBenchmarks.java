@@ -1,11 +1,11 @@
 package br.ufsc.lapesd.riefederator;
 
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
+import br.ufsc.lapesd.riefederator.deprecated.EagerCartesianOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianOpExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.LazyCartesianOpExecutor;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -140,8 +140,8 @@ public class CartesianProductBenchmarks {
     }
 
     protected @Nonnull Set<Solution> runCartesian(@Nonnull PlanExecutor executor) {
-        QueryOp leftNode = new QueryOp(left, createQuery(x, fromJena(link1), y));
-        QueryOp rightNode = new QueryOp(right, createQuery(u, fromJena(link2), v));
+        EndpointQueryOp leftNode = new EndpointQueryOp(left, createQuery(x, fromJena(link1), y));
+        EndpointQueryOp rightNode = new EndpointQueryOp(right, createQuery(u, fromJena(link2), v));
         CartesianOp node = new CartesianOp(Arrays.asList(leftNode, rightNode));
         Results results = executor.executeNode(node);
         Set<Solution> set = new HashSet<>();

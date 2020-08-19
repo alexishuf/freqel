@@ -12,12 +12,12 @@ public abstract class SimpleOpExecutor implements OpExecutor {
     private @Nullable PlanExecutor planExecutor;
     private final @Nullable Provider<PlanExecutor> planExecutorProvider;
 
-    public SimpleOpExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider) {
+    protected SimpleOpExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider) {
         this.planExecutorProvider = planExecutorProvider;
         this.planExecutor = null;
     }
 
-    public SimpleOpExecutor(@Nonnull PlanExecutor planExecutor) {
+    protected SimpleOpExecutor(@Nonnull PlanExecutor planExecutor) {
         this.planExecutorProvider = null;
         this.planExecutor = planExecutor;
     }

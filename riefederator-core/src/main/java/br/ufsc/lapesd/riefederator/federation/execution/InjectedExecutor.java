@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
@@ -48,7 +48,7 @@ public class InjectedExecutor implements PlanExecutor {
         assert node.getRequiredInputVars().isEmpty() : "Node needs inputs";
         Class<? extends Op> cls = node.getClass();
         Results results;
-        if (QueryOp.class.isAssignableFrom(cls))
+        if (EndpointQueryOp.class.isAssignableFrom(cls))
             results = queryNodeExecutor.execute(node);
         else if (UnionOp.class.isAssignableFrom(cls))
             results = multiQueryNodeExecutor.execute(node);

@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
+import br.ufsc.lapesd.riefederator.query.results.BufferedResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.errorprone.annotations.concurrent.LazyInit;
@@ -14,7 +15,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
 @NotThreadSafe
-public class CollectionResults extends AbstractResults implements Results {
+public class CollectionResults extends AbstractResults implements BufferedResults {
     private final @Nonnull Collection<? extends Solution> collection;
     private @LazyInit @Nullable Iterator<? extends Solution> iterator = null;
     private @LazyInit int size = -1;
@@ -47,8 +48,14 @@ public class CollectionResults extends AbstractResults implements Results {
     }
 
     @Override
-    public boolean isAsync() {
-        return false;
+    public boolean isOrdered() {
+        return true;
+    }
+
+    @Override
+    public void reset(boolean close) {
+        /* nothing to close */
+        iterator = null;
     }
 
     @Override

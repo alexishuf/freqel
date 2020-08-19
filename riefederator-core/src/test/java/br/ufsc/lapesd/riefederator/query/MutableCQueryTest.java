@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
+import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Sets;
@@ -20,6 +21,8 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.*;
@@ -118,17 +121,17 @@ public class MutableCQueryTest implements TestContext {
         assertTrue(q.add(new Triple(x, knows, y)));
         assertEquals(q.attr().publicVarNames(), newHashSet("x", "y"));
 
-        assertTrue(q.mutateModifiers().add(Projection.advised("x")));
+        assertTrue(q.mutateModifiers().add(Projection.of("x")));
         assertEquals(q.attr().publicVarNames(), singleton("x"));
-        assertEquals(q.getModifiers(), singleton(Projection.advised("x")));
+        assertEquals(q.getModifiers(), singleton(Projection.of("x")));
 
-        assertFalse(q.mutateModifiers().add(Projection.advised("x")));
+        assertFalse(q.mutateModifiers().add(Projection.of("x")));
         assertEquals(q.attr().publicVarNames(), singleton("x"));
-        assertEquals(q.getModifiers(), singleton(Projection.advised("x")));
+        assertEquals(q.getModifiers(), singleton(Projection.of("x")));
 
-        assertTrue(q.mutateModifiers().add(Projection.required("y")));
+        assertTrue(q.mutateModifiers().add(Projection.of("y")));
         assertEquals(q.attr().publicVarNames(), newHashSet("y"));
-        assertEquals(q.getModifiers(), singleton(Projection.required("y")));
+        assertEquals(q.getModifiers(), singleton(Projection.of("y")));
     }
 
     @Test(groups = {"fast"})
@@ -899,6 +902,8 @@ public class MutableCQueryTest implements TestContext {
         MutableCQuery q = generateConstellationQuery(3);
         ListIterator<Triple> it = q.listIterator(q.size());
         assertEquals(it.previousIndex(), 2);
+        assertEquals(it.previousIndex(), 2);
+        assertSame(it.previous(), q.get(2));
         heatCache(q);
         it.add(new Triple(x, knows, y));
         checkCache(q);
@@ -968,8 +973,8 @@ public class MutableCQueryTest implements TestContext {
         MutableCQuery q1 = generateConstellationQuery(2), q2 = generateConstellationQuery(2);
         q2.annotate(o1, new Ann(666));
         q2.annotate(new Triple(x0, p2, o2), new Ann(777));
-        q1.mutateModifiers().add(Projection.required("o1"));
-        q2.mutateModifiers().add(Projection.required("o2"));
+        q1.mutateModifiers().add(Projection.of("o1"));
+        q2.mutateModifiers().add(Projection.of("o2"));
 
         heatCache(q1);
         heatCache(q2);
@@ -980,7 +985,7 @@ public class MutableCQueryTest implements TestContext {
         MutableCQuery expected = generateConstellationQuery(2);
         expected.annotate(o1, new Ann(666));
         expected.annotate(new Triple(x0, p2, o2), new Ann(777));
-        expected.mutateModifiers().add(Projection.required("o1", "o2")); //projections are merged
+        expected.mutateModifiers().add(Projection.of("o1", "o2")); //projections are merged
         assertEqualQueries(q1, expected);
     }
 
@@ -1025,7 +1030,6 @@ public class MutableCQueryTest implements TestContext {
 
         assertEqualQueries(q, expected);
     }
-
 
     @Test(groups = {"fast"})
     public void testDeannotateSpecificTripleByClass() {
@@ -1087,7 +1091,7 @@ public class MutableCQueryTest implements TestContext {
     public void testMergeNoProjectionAndAdvised() {
         MutableCQuery q1 = generateConstellationQuery(1), q2 = generateConstellationQuery(3);
         q2.remove(0);
-        q2.mutateModifiers().add(Projection.advised("o3"));
+        q2.mutateModifiers().add(Projection.of("o3"));
 
         heatCache(q1);
         assertTrue(q1.mergeWith(q2));
@@ -1095,26 +1099,7 @@ public class MutableCQueryTest implements TestContext {
         assertEquals(q2.attr().publicVarNames(), singleton("o3"));
 
         MutableCQuery expected = generateConstellationQuery(3);
-        expected.mutateModifiers().add(Projection.advised("x0", "o1", "o3"));
-        assertEqualQueries(q1, expected);
-    }
-
-    @Test(groups = {"fast"})
-    public void testMergeRequiredAndAdvisedProjections() {
-        MutableCQuery q1 = generateConstellationQuery(1), q2 = generateConstellationQuery(3);
-        q1.mutateModifiers().add(Projection.required("o1"));
-        q2.remove(0);
-        q2.mutateModifiers().add(Projection.advised("o3"));
-        q2.mutateModifiers().add(Limit.required(2));
-
-        heatCache(q1);
-        assertTrue(q1.mergeWith(q2));
-        checkCache(q1);
-        assertEquals(q2.attr().publicVarNames(), singleton("o3"));
-
-        MutableCQuery expected = generateConstellationQuery(3);
-        expected.mutateModifiers().add(Projection.required("o1", "o3"));
-        expected.mutateModifiers().add(Limit.required(2));
+        expected.mutateModifiers().add(Projection.of("x0", "o1", "o3"));
         assertEqualQueries(q1, expected);
     }
 
@@ -1138,7 +1123,7 @@ public class MutableCQueryTest implements TestContext {
         q.add(new Triple(x, knows, y));
         q.add(new Triple(y, age, u));
         q.mutateModifiers().add(SPARQLFilter.build("?u > 23"));
-        q.mutateModifiers().add(Ask.REQUIRED);
+        q.mutateModifiers().add(Ask.INSTANCE);
 
         assertEquals(q.sanitizeFilters(), emptySet());
         heatCache(q);
@@ -1148,7 +1133,7 @@ public class MutableCQueryTest implements TestContext {
 
         MutableCQuery expected = new MutableCQuery();
         expected.add(new Triple(x, knows, y));
-        expected.mutateModifiers().add(Ask.REQUIRED);
+        expected.mutateModifiers().add(Ask.INSTANCE);
         assertEqualQueries(q, expected);
     }
 
@@ -1158,7 +1143,7 @@ public class MutableCQueryTest implements TestContext {
         q.add(new Triple(x, knows, y));
         q.add(new Triple(y, age, u));
         q.mutateModifiers().add(SPARQLFilter.build("?u > ?v"));
-        q.mutateModifiers().add(Projection.required("y"));
+        q.mutateModifiers().add(Projection.of("y"));
 
         heatCache(q);
         assertEquals(q.sanitizeFilters(), emptySet());
@@ -1169,7 +1154,7 @@ public class MutableCQueryTest implements TestContext {
         MutableCQuery expected1 = new MutableCQuery();
         expected1.add(new Triple(x, knows, y));
         expected1.add(new Triple(y, age, u));
-        expected1.mutateModifiers().add(Projection.required("y"));
+        expected1.mutateModifiers().add(Projection.of("y"));
         assertEqualQueries(q, expected1);
 
         q.mutateModifiers().add(SPARQLFilter.build("?u > ?v")); // re-add the filter
@@ -1184,7 +1169,7 @@ public class MutableCQueryTest implements TestContext {
         checkCache(q);
         MutableCQuery expected2 = new MutableCQuery();
         expected2.add(new Triple(x, knows, y));
-        expected2.mutateModifiers().add(Projection.required("y"));
+        expected2.mutateModifiers().add(Projection.of("y"));
         assertEqualQueries(q, expected2);
     }
 
@@ -1201,7 +1186,7 @@ public class MutableCQueryTest implements TestContext {
     @Test(groups = {"fast"})
     public void testSanitizeProjectionNoWork() {
         MutableCQuery q = generateConstellationQuery(3);
-        assertTrue(q.mutateModifiers().add(Projection.required("o1", "o2")));
+        assertTrue(q.mutateModifiers().add(Projection.of("o1", "o2")));
         heatCache(q);
         assertFalse(q.sanitizeProjection());
         checkCache(q);
@@ -1212,7 +1197,7 @@ public class MutableCQueryTest implements TestContext {
     @Test(groups = {"fast"})
     public void testSanitizeProjectionNonStrict() {
         MutableCQuery q = generateConstellationQuery(3);
-        assertTrue(q.mutateModifiers().add(Projection.advised("o1", "y")));
+        assertTrue(q.mutateModifiers().add(Projection.of("o1", "y")));
         assertEquals(q.attr().publicVarNames(), newHashSet("o1", "y"));
 
         heatCache(q);
@@ -1221,14 +1206,14 @@ public class MutableCQueryTest implements TestContext {
         assertEquals(q.attr().publicVarNames(), singleton("o1"));
 
         MutableCQuery expected = generateConstellationQuery(3);
-        expected.mutateModifiers().add(Projection.advised("o1"));
+        expected.mutateModifiers().add(Projection.of("o1"));
         assertEqualQueries(q, expected);
     }
 
     @Test(groups = {"fast"})
     public void testSanitizeProjectionStrict() {
         MutableCQuery q = generateConstellationQuery(3);
-        assertTrue(q.mutateModifiers().add(Projection.advised("o1", "y")));
+        assertTrue(q.mutateModifiers().add(Projection.of("o1", "y")));
         assertTrue(q.mutateModifiers().add(SPARQLFilter.build("?o1 > ?y")));
         assertEquals(q.attr().publicVarNames(), newHashSet("o1", "y"));
 
@@ -1244,7 +1229,7 @@ public class MutableCQueryTest implements TestContext {
 
 
         MutableCQuery expected = generateConstellationQuery(3);
-        expected.mutateModifiers().add(Projection.advised("o1"));
+        expected.mutateModifiers().add(Projection.of("o1"));
         expected.mutateModifiers().add(SPARQLFilter.build("?o1 > ?y"));
         assertEqualQueries(q, expected);
     }
@@ -1267,7 +1252,7 @@ public class MutableCQueryTest implements TestContext {
         assertEqualQueries(q, generateConstellationQuery(6));
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testAddPath() {
         MutableCQuery query = new MutableCQuery();
         query.add(new Triple(x, age, lit(22)));
@@ -1308,32 +1293,32 @@ public class MutableCQueryTest implements TestContext {
         assertNotEquals(at.getObject(), it.getObject());
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testModifierRemoveIfCopies() {
         MutableCQuery q1 = generateConstellationQuery(3);
-        assertTrue(q1.mutateModifiers().add(Projection.advised("x")));
-        assertTrue(q1.mutateModifiers().add(Limit.advised(23)));
+        assertTrue(q1.mutateModifiers().add(Projection.of("x")));
+        assertTrue(q1.mutateModifiers().add(Limit.of(23)));
 
         MutableCQuery q2 = new MutableCQuery(q1);
         assertTrue(q2.mutateModifiers().removeIf(Projection.class::isInstance));
 
         MutableCQuery expected1 = generateConstellationQuery(3);
-        assertTrue(expected1.mutateModifiers().add(Projection.advised("x")));
-        assertTrue(expected1.mutateModifiers().add(Limit.advised(23)));
+        assertTrue(expected1.mutateModifiers().add(Projection.of("x")));
+        assertTrue(expected1.mutateModifiers().add(Limit.of(23)));
         assertEqualQueries(q1, expected1);
 
         MutableCQuery expected2 = generateConstellationQuery(3);
-        assertTrue(expected2.mutateModifiers().add(Limit.advised(23)));
+        assertTrue(expected2.mutateModifiers().add(Limit.of(23)));
         assertEqualQueries(q2, expected2);
     }
 
-    @Test
+    @Test(groups = {"fast"})
     public void testModifierIteratorRemoveCopies() {
         MutableCQuery q1 = generateConstellationQuery(3), expected = generateConstellationQuery(3);
-        q1.mutateModifiers().add(Projection.advised("x"));
-        q1.mutateModifiers().add(Limit.advised(23));
-        expected.mutateModifiers().add(Projection.advised("x"));
-        expected.mutateModifiers().add(Limit.advised(23));
+        q1.mutateModifiers().add(Projection.of("x"));
+        q1.mutateModifiers().add(Limit.of(23));
+        expected.mutateModifiers().add(Projection.of("x"));
+        expected.mutateModifiers().add(Limit.of(23));
 
         MutableCQuery q2 = new MutableCQuery(q1);
         Iterator<Modifier> it = q2.mutateModifiers().iterator();
@@ -1345,4 +1330,51 @@ public class MutableCQueryTest implements TestContext {
         assertFalse(q2.getModifiers().contains(removed));
         assertEquals(q2.getModifiers().size(), 1);
     }
+
+    @Test(groups = {"fast"})
+    public void testBlockUnsafeMerge() {
+        MutableCQuery a = generateConstellationQuery(3), b = generateConstellationQuery(6);
+        assertTrue(b.mutateModifiers().add(Optional.INSTANCE));
+
+        expectThrows(UnsafeMergeException.class, () -> a.mergeWith(b));
+        assertEquals(a, generateConstellationQuery(3)); // no side effect remains
+    }
+
+    @Test(invocationCount = 8)
+    public void testConcurrentCopy() throws Exception {
+        MutableCQuery original = generateConstellationQuery(3);
+        original.mutateModifiers().add(Optional.INSTANCE);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        List<Future<CQuery>> futures1 = new ArrayList<>();
+        List<Future<CQuery>> futures2 = new ArrayList<>();
+        try {
+            IntStream.range(0, 256).forEach(i -> {
+                futures1.add(executor.submit(() -> {
+                    MutableCQuery copy = new MutableCQuery(original);
+                    copy.mutateModifiers().add(Limit.of(i+1));
+                    return copy;
+                }));
+                futures2.add(executor.submit(() -> {
+                    MutableCQuery copy = new MutableCQuery(original);
+                    copy.mutateModifiers().remove(Optional.INSTANCE);
+                    return copy;
+                }));
+            });
+        } finally {
+            executor.shutdown();
+            executor.awaitTermination(5, TimeUnit.SECONDS);
+        }
+
+        for (int i = 0, size = futures1.size(); i < size; i++) {
+            Future<CQuery> future = futures1.get(i);
+            CQuery actual = future.get();
+            MutableCQuery expected = generateConstellationQuery(3);
+            expected.mutateModifiers().add(Limit.of(i+1));
+            assertEquals(actual, expected);
+        }
+        for (Future<CQuery> future : futures2)
+            assertEquals(future.get(), generateConstellationQuery(3));
+        assertEquals(original, generateConstellationQuery(3));
+    }
+
 }

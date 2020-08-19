@@ -61,8 +61,12 @@ public class LazyCartesianOpExecutor extends SimpleOpExecutor implements Cartesi
             Set<String> varNames = node.getResultVars();
             // parallelizing the inputs provides no significant improvement
             // the parallelization provided by lazyness is enough and is significant
-            LazyCartesianResults r = new LazyCartesianResults(list.steal(), varNames);
-            return SPARQLFilterResults.applyIf(r, node);
+            Results r = new LazyCartesianResults(list.steal(), varNames);
+            r.setOptional(node.modifiers().optional() != null);
+            r = SPARQLFilterResults.applyIf(r, node);
+            assert r.isOptional() == (node.modifiers().optional() != null);
+            return r;
+
         }
     }
 

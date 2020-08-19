@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.riefederator.federation.cardinality.impl;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;

@@ -9,6 +9,7 @@ import java.util.Set;
 public abstract class AbstractResults implements Results {
     protected @Nonnull Set<String> varNames;
     protected @Nullable String name;
+    private boolean optional = false;
 
     protected AbstractResults(@Nonnull Collection<String> varNames) {
         this.varNames = varNames instanceof Set ? (Set<String>)varNames
@@ -31,6 +32,16 @@ public abstract class AbstractResults implements Results {
     }
 
     @Override
+    public boolean isOptional() {
+        return optional;
+    }
+
+    @Override
+    public void setOptional(boolean optional) {
+        this.optional = optional;
+    }
+
+    @Override
     public @Nonnull Set<String> getVarNames() {
         return varNames;
     }
@@ -48,7 +59,8 @@ public abstract class AbstractResults implements Results {
     @Override
     public String toString() {
         int id = System.identityHashCode(this);
+        String optSuffix = optional ? "[OPTIONAL]" : "";
         String suffix = name == null ? "" : " for " + name;
-        return String.format("%s@%x%s", getClass().getSimpleName(), id, suffix);
+        return String.format("%s@%x%s%s", getClass().getSimpleName(), id, optSuffix, suffix);
     }
 }

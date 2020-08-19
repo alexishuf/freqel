@@ -257,7 +257,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         PrefixDict dict = query.getPrefixDict(StdPrefixDict.EMPTY);
         Set<Modifier> mods = query.getModifiers();
         if ((isLocal() && !canQueryLocal(policy)) || (!isLocal() && !canQueryRemote(policy)))
-            mods = ImmutableSet.<Modifier>builder().addAll(mods).add(Ask.ADVISED).build();
+            mods = ImmutableSet.<Modifier>builder().addAll(mods).add(Ask.INSTANCE).build();
 
         SPARQLString sparql = new SPARQLString(query, dict, mods);
         if (sparql.getType() == SPARQLString.Type.ASK) {

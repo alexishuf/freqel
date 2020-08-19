@@ -4,12 +4,9 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
-import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 
 import static java.lang.String.join;
@@ -17,68 +14,25 @@ import static java.lang.String.join;
 @Immutable
 public class Projection implements Modifier {
     private final @Nonnull ImmutableSet<String> varNames;
-    private final boolean required;
     private @LazyInit int hash = 0;
 
     /* ~~~ Constructor & builder ~~~ */
 
-    public Projection(@Nonnull Set<String> varNames, boolean required) {
+    public Projection(@Nonnull Set<String> varNames) {
         this.varNames = ImmutableSet.copyOf(varNames);
-        this.required = required;
     }
 
-    public static class Builder {
-        private HashSet<String> set;
-        private boolean required = false;
+    public static @Nonnull Projection of(String... names) {
+        //noinspection UnstableApiUsage
+        ImmutableSet.Builder<String> b = ImmutableSet.builderWithExpectedSize(names.length);
+        for (String name : names)
+            b.add(name);
 
-        public Builder(int expected) {
-            set = new HashSet<>(expected);
-        }
-
-        public @Nonnull Set<String> getMutableSet() {
-            return set;
-        }
-
-        public @Contract("_ -> this") @Nonnull Builder required(boolean value) {
-            this.required = value;
-            return this;
-        }
-        public @Contract("-> this") @Nonnull Builder required() { return required(true ); }
-        public @Contract("-> this") @Nonnull Builder  advised() { return required(false); }
-
-        public @Contract("_ -> this") @Nonnull Builder add(@Nonnull String string) {
-            set.add(string);
-            return this;
-        }
-
-        public @Contract("-> new") @Nonnull Projection build() {
-            return new Projection(set, required);
-        }
+        return new Projection(b.build());
     }
 
-    public static @Nonnull Builder builder() {
-        return new Builder(8);
-    }
-    public static @Nonnull Builder builder(int expected) {
-        return new Builder(expected);
-    }
-
-    public static @Nonnull Projection required(String... names) {
-        Builder b = builder(names.length).required();
-        for (String name : names) b.add(name);
-        return b.build();
-    }
-    public static @Nonnull Projection advised(String... names) {
-        Builder b = builder(names.length).advised();
-        for (String name : names) b.add(name);
-        return b.build();
-    }
-
-    public static @Nonnull Projection required(@Nonnull Collection<String> names) {
-        return new Projection(ImmutableSet.copyOf(names), true);
-    }
-    public static @Nonnull Projection advised(@Nonnull Collection<String> names) {
-        return new Projection(ImmutableSet.copyOf(names), false);
+    public static @Nonnull Projection of(@Nonnull Collection<String> names) {
+        return new Projection(ImmutableSet.copyOf(names));
     }
 
     /* ~~~ actual methods ~~~ */
@@ -92,32 +46,22 @@ public class Projection implements Modifier {
         return Capability.PROJECTION;
     }
 
-    @Override
-    public boolean isRequired() {
-        return required;
-    }
-
     /* ~~~ Object-ish methods ~~~ */
 
     @Override
     public @Nonnull String toString() {
-        return String.format("π[%s](%s)",
-                isRequired() ? "required" : "advised", join(", ", getVarNames()));
+        return "π("+join(", ", getVarNames())+")";
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Projection)) return false;
-        Projection that = (Projection) o;
-        return isRequired() == that.isRequired() &&
-                getVarNames().equals(that.getVarNames());
+        return o instanceof Projection && ((Projection)o).getVarNames().equals(getVarNames());
     }
 
     @Override
     public int hashCode() {
         if (hash == 0)
-            hash = Objects.hash(getVarNames(), isRequired());
+            hash = getVarNames().hashCode();
         return hash;
     }
 }

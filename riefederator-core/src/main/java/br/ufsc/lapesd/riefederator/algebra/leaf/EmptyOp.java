@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.algebra.leaf;
 import br.ufsc.lapesd.riefederator.algebra.AbstractOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 
@@ -17,16 +16,19 @@ import static br.ufsc.lapesd.riefederator.util.CollectionUtils.unmodifiableSet;
 import static java.util.Collections.emptySet;
 
 public class EmptyOp extends AbstractOp {
-    private @Nullable CQuery query;
+    private @Nullable Op query;
     private @Nonnull Set<String> resultVars;
+    private @Nullable ModifiersSet modifiers;
 
     public EmptyOp(@Nonnull Collection<String> resultVars) {
         this.resultVars = unmodifiableSet(resultVars);
+        this.modifiers = new ModifiersSet();
         assertAllInvariants();
     }
 
-    public EmptyOp(@Nonnull CQuery query) {
-        this(query.attr().publicVarNames());
+    public EmptyOp(@Nonnull Op query) {
+        this(query.getResultVars());
+        this.resultVars = unmodifiableSet(resultVars);
         this.query = query;
         assertAllInvariants();
     }
@@ -43,12 +45,12 @@ public class EmptyOp extends AbstractOp {
 
     @Override
     public @Nonnull Set<Triple> getMatchedTriples() {
-        return query == null ? emptySet() : query.attr().matchedTriples();
+        return query == null ? emptySet() : query.getMatchedTriples();
     }
 
     @Override
     public @Nonnull ModifiersSet modifiers() {
-        return ModifiersSet.EMPTY;
+        return query != null ? query.modifiers() : Objects.requireNonNull(modifiers);
     }
 
     @Override

@@ -386,7 +386,7 @@ public class StarVarIndexTest implements TestContext {
     @Test
     public void testSingleStarHideSubject() {
         CQuery q = createQuery(x, aaT, nameEx, v, aaCv,
-                x, aaT, ageEx,  o, aaCo, Projection.required("v", "o"));
+                x, aaT, ageEx,  o, aaCo, Projection.of("v", "o"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 1);
         assertEquals(index.getStar(0).getTriples(), q.attr().getSet());
@@ -401,7 +401,7 @@ public class StarVarIndexTest implements TestContext {
     @Test
     public void testTwoColumnsPerVar() {
         CQuery q = createQuery(x, aaT, nameEx, v, aaCvv,
-                x, aaT, ageEx,  o, aaCo, Projection.required("v", "o"));
+                x, aaT, ageEx,  o, aaCo, Projection.of("v", "o"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 1);
         assertEquals(index.getStar(0).getTriples(), q.attr().getSet());
@@ -417,7 +417,7 @@ public class StarVarIndexTest implements TestContext {
     public void testExposeColumnUsedInFilter() {
         CQuery q = createQuery(x, aaT, nameEx, TestContext.u, aaCu,
                 x, aaT, ageEx, v, aaCv, SPARQLFilter.build("REGEX(?v, \"2.*\")"),
-                Projection.required("u"));
+                Projection.of("u"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 1);
         assertEquals(index.getStar(0).getTriples(), q.attr().getSet());
@@ -460,7 +460,7 @@ public class StarVarIndexTest implements TestContext {
         CQuery q = createQuery(x, aaT, nameEx  , u, aaCu,
                 y, aaT, nameEx,   u, aaCu,
                 y, ageEx,         v, aaCv, SPARQLFilter.build("REGEX(?v, \"2.*\")"),
-                y, university_id, o, aaCo, Projection.required("o"));
+                y, university_id, o, aaCo, Projection.of("o"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
         assertEquals(index.getStar(0).getTriples(), q.attr().getSet().subset(q.get(0)));
@@ -485,7 +485,7 @@ public class StarVarIndexTest implements TestContext {
         CQuery q = createQuery(x, aaT, nameEx  , u, aaCu,
                 y, aaT, nameEx,   u, aaCu,
                 y, ageEx,         v, aaCv,
-                y, university_id, o, aaCo, Projection.required("o"));
+                y, university_id, o, aaCo, Projection.of("o"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
         assertEquals(index.getStar(0).getTriples(), q.attr().getSet().subset(q.get(0)));
@@ -512,7 +512,7 @@ public class StarVarIndexTest implements TestContext {
                 y, aaT, nameEx, u, aaCu,
                 y, aaT, university_id, o, aaCo,
                 z, aaT, university_id, o, aaCo,
-                z, aaT, nameEx, v, aaCv, Projection.required("x", "v"));
+                z, aaT, nameEx, v, aaCv, Projection.of("x", "v"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 3);
         assertValidIndex(index, true);
@@ -540,7 +540,7 @@ public class StarVarIndexTest implements TestContext {
                                y, aaT, nameEx, v, aaCvv,
                                y, aaT, university_id, o, aaCo,
                                z, aaT, university_id, o, aaCo,
-                               z, aaT, nameEx, u, aaCu, Projection.required("x", "u"));
+                               z, aaT, nameEx, u, aaCu, Projection.of("x", "u"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 3);
         // the join on v is non-direct and must be re-done on SPARQL
@@ -589,7 +589,7 @@ public class StarVarIndexTest implements TestContext {
                 x, aaT, ageEx, v1, aaCv,
                 y, aaT, nameEx, u, aaCu,
                 y, aaT, ageEx, v2, aaCv, SPARQLFilter.build("?v2 > ?v1"),
-                Projection.required("v1", "v2"));
+                Projection.of("v1", "v2"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
         assertValidIndex(index, false);
@@ -627,7 +627,7 @@ public class StarVarIndexTest implements TestContext {
     public void testCreateSelectorFromFilter() {
         CQuery q = createQuery(x, aaT, nameEx, u, aaCu,
                                x, aaT, ageEx, v, aaCv, SPARQLFilter.build("?v > 23"),
-                               Projection.required("x"));
+                               Projection.of("x"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertValidIndex(index, true);
 
@@ -647,7 +647,7 @@ public class StarVarIndexTest implements TestContext {
         CQuery q = createQuery(x, aaT, ageEx, v, aaCv,
                 x, aaT, isAuthorOf, o, aaCo, regexFilter,
                 y, aaT, ageEx, v, aaCv, SPARQLFilter.build("?v > 23"),
-                Projection.required("x", "y", "v"));
+                Projection.of("x", "y", "v"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertValidIndex(index, false); //u is fetched for x and y
 
@@ -674,7 +674,7 @@ public class StarVarIndexTest implements TestContext {
         CQuery q = createQuery(x, aaT, ageEx,      v, aaCvv, SPARQLFilter.build("?v > 23"),
                                x, aaT, isAuthorOf, o, aaCo,
                                y, aaT, ageEx,      v, aaCvv,
-                               Projection.required("x", "o"));
+                               Projection.of("x", "o"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertValidIndex(index, false);
 
@@ -705,7 +705,7 @@ public class StarVarIndexTest implements TestContext {
                                y, aaU, paper_id,  v,       aaKv,
                                z, aaV, idEx,      v,       aaJv,
                                z, aaV, titleEx,   o,       aaJo,
-                               Projection.required("o"));
+                               Projection.of("o"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertValidIndex(index, true);
 
@@ -722,7 +722,7 @@ public class StarVarIndexTest implements TestContext {
     public void testHideJoinFromSPARQL() {
         CQuery q = createQuery(x, aaT, nameEx, u, aaCu,
                                y, aaU, nameEx, u, aaKu,
-                               y, aaU, ageEx,  v, aaKv, Projection.required("v"));
+                               y, aaU, ageEx,  v, aaKv, Projection.of("v"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertValidIndex(index, true);
         checkJoinVars(index, x, y, singletonList(cu), singletonList(ku));
@@ -741,7 +741,7 @@ public class StarVarIndexTest implements TestContext {
     public void testJoinWithNonDirectColumnIsPending() {
         CQuery q = createQuery(x, aaT, nameEx, u, aaCp, //non-direct)
                                y, aaU, nameEx, u, aaKu,
-                               y, aaU, ageEx, v, aaKv, Projection.required("v"));
+                               y, aaU, ageEx, v, aaKv, Projection.of("v"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertValidIndex(index, true);
         checkJoinVars(index, x, y, singletonList(cp), singletonList(ku));
@@ -782,7 +782,7 @@ public class StarVarIndexTest implements TestContext {
     @Test
     public void testReferenceObjectJoinWithProjection() {
         CQuery q = createQuery(x, aaT, knows, y, aaCvv,
-                               y, aaW, ageEx, v, aaLv, Projection.required("v"));
+                               y, aaW, ageEx, v, aaLv, Projection.of("v"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertValidIndex(index, true);
 

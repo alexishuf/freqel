@@ -258,8 +258,8 @@ public class SelectDescription implements Description {
     private Set<Term> fill(@Nonnull Triple query, @Nonnull String varName) {
         Stopwatch sw = Stopwatch.createStarted();
         MutableCQuery cQuery = MutableCQuery.from(query);
-        cQuery.mutateModifiers().add(Projection.advised(varName));
-        cQuery.mutateModifiers().add(Distinct.ADVISED);
+        cQuery.mutateModifiers().add(Projection.of(varName));
+        cQuery.mutateModifiers().add(Distinct.INSTANCE);
         Set<Term> set = null;
         try (Results results = endpoint.query(cQuery)) {
             set = new HashSet<>();

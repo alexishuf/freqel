@@ -1,11 +1,11 @@
 package br.ufsc.lapesd.riefederator.query.parse;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.parse.impl.ConvertOptions;
-import br.ufsc.lapesd.riefederator.query.parse.impl.JenaVisitor;
+import br.ufsc.lapesd.riefederator.query.parse.impl.ConvertVisitor;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
@@ -22,7 +22,7 @@ public class SPARQLParser {
     private final static SPARQLParser INSTANCE = new SPARQLParser().lockConfiguration();
     private final static SPARQLParser TOLERANT = new SPARQLParser()
             .allowExtraProjections(true)
-            .eraseGroupBy(true).eraseOrderBy(true).eraseOptionals(true).eraseOffset(true)
+            .eraseGroupBy(true).eraseOrderBy(true).eraseOffset(true)
             .lockConfiguration();
     private ConvertOptions convertOptions = new ConvertOptions();
     private boolean locked = false;
@@ -39,12 +39,6 @@ public class SPARQLParser {
     public @Nonnull SPARQLParser allowExtraProjections(boolean value) {
         checkState(!locked, "SPARQLQueryParser configuration is locked");
         convertOptions.setAllowExtraProjections(value);
-        return this;
-    }
-
-    public @Nonnull SPARQLParser eraseOptionals(boolean value) {
-        checkState(!locked, "SPARQLQueryParser configuration is locked");
-        convertOptions.setEraseOptionals(value);
         return this;
     }
 
@@ -106,8 +100,8 @@ public class SPARQLParser {
     public @Nonnull CQuery parseConjunctive(@Nonnull String sparql) throws SPARQLParseException {
         try {
             Op root = convert(QueryFactory.create(sparql));
-            if (root instanceof FreeQueryOp)
-                return ((FreeQueryOp) root).getQuery();
+            if (root instanceof QueryOp)
+                return ((QueryOp) root).getQuery();
             throw new SPARQLParseException("parseConjunctive received an input query that " +
                                            "is not conjunctive", sparql);
         } catch (QueryParseException e) {
@@ -134,11 +128,11 @@ public class SPARQLParser {
     }
 
     public @Nonnull Op convert(@Nonnull Query q) throws SPARQLParseException {
-        JenaVisitor visitor = new JenaVisitor(convertOptions);
+        ConvertVisitor visitor = new ConvertVisitor(convertOptions);
         try {
             q.visit(visitor);
             return visitor.getTree();
-        } catch (JenaVisitor.FeatureException e) {
+        } catch (ConvertVisitor.FeatureException e) {
             throw new UnsupportedSPARQLFeatureException(e.getMessage(), q);
         } catch (RuntimeException e) {
             throw new SPARQLParseException("RuntimeException while parsing query: "+e.getMessage(),

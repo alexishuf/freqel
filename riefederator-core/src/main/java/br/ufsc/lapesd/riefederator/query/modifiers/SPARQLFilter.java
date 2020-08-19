@@ -2,11 +2,8 @@ package br.ufsc.lapesd.riefederator.query.modifiers;
 
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
-import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -30,7 +27,6 @@ import org.apache.jena.sparql.syntax.ElementFilter;
 import org.apache.jena.sparql.syntax.ElementGroup;
 import org.apache.jena.sparql.syntax.ElementVisitorBase;
 import org.apache.jena.sparql.util.Context;
-import org.apache.jena.vocabulary.XSD;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +38,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.*;
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJenaNode;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
@@ -58,28 +55,6 @@ public class SPARQLFilter implements Modifier {
                                                              "&&", "||");
     private static final Set<String> unOps = Sets.newHashSet("!", "-", "+");
 
-    private static final @Nonnull Set<URI> INTEGER_DATATYPES;
-    private static final @Nonnull URI XSD_INTEGER;
-
-    static {
-        Set<URI> set = new HashSet<>();
-        set.add(fromURIResource(XSD.nonPositiveInteger));
-        set.add(fromURIResource(XSD.nonNegativeInteger));
-        set.add(fromURIResource(XSD.xlong));
-        set.add(fromURIResource(XSD.negativeInteger));
-        set.add(fromURIResource(XSD.unsignedLong));
-        set.add(fromURIResource(XSD.positiveInteger));
-        set.add(fromURIResource(XSD.xint));
-        set.add(fromURIResource(XSD.xshort));
-        set.add(fromURIResource(XSD.xbyte));
-        set.add(fromURIResource(XSD.unsignedInt));
-        set.add(fromURIResource(XSD.unsignedShort));
-        set.add(fromURIResource(XSD.unsignedByte));
-        INTEGER_DATATYPES = set;
-        XSD_INTEGER = fromURIResource(XSD.integer);
-    }
-
-    private final boolean required;
     private final @Nonnull String filter;
     private final @SuppressWarnings("Immutable") @Nonnull Expr expr;
     private final @Nonnull ImmutableBiMap<String, Term> var2term;
@@ -109,9 +84,9 @@ public class SPARQLFilter implements Modifier {
     /* --- --- --- Constructor & builder --- --- --- */
 
     SPARQLFilter(@Nonnull String filter, @Nonnull Expr expr,
-                 @NotNull ImmutableBiMap<String, Term> var2term, boolean required) {
+                 @NotNull ImmutableBiMap<String, Term> var2term) {
         this.filter = innerExpression(filter);
-        this.expr = parseFilterExpr(this.filter);
+        this.expr = expr;
         //noinspection Convert2MethodRef
         Set<String> actualNames = this.expr.getVarsMentioned().stream()
                 .map(v -> v.getVarName()).collect(toSet());
@@ -137,7 +112,6 @@ public class SPARQLFilter implements Modifier {
             var2term = ImmutableBiMap.copyOf(v2t);
         }
         this.var2term = var2term;
-        this.required = required;
     }
 
     /**
@@ -148,18 +122,10 @@ public class SPARQLFilter implements Modifier {
      *               is a valid SPARQL filter.
      * @param var2term A map from variable names in the filter expression to {@link Term}s.
      *                 The mapping must be bijective.
-     * @param required Whether the filter is required. Usually this should be true. If the
-     *                 filter is required and the endpoint does not support SPARQL filters,
-     *                 then the mediator itself will run the filter over results from the endpoint.
      */
     public SPARQLFilter(@Nonnull String filter,
-                        @Nonnull ImmutableBiMap<String, Term> var2term, boolean required) {
-        this(innerExpression(filter), parseFilterExpr(innerExpression(filter)), var2term, required);
-    }
-
-    public SPARQLFilter(@Nonnull String filter,
-                        @NotNull ImmutableBiMap<String, Term> var2term) {
-        this(filter, var2term, true);
+                        @Nonnull ImmutableBiMap<String, Term> var2term) {
+        this(innerExpression(filter), parseFilterExpr(innerExpression(filter)), var2term);
     }
 
     private static @Nonnull String innerExpression(@Nonnull String string) {
@@ -201,7 +167,6 @@ public class SPARQLFilter implements Modifier {
     }
 
     public static class Builder {
-        protected boolean required = true;
         protected @Nullable String filter;
         protected @Nullable Expr expr;
         protected @Nonnull BiMap<String, Term> var2term = HashBiMap.create();
@@ -228,25 +193,14 @@ public class SPARQLFilter implements Modifier {
             return map(var.getName(), var);
         }
 
-        @CanIgnoreReturnValue
-        public @Nonnull Builder setRequired(boolean required) {
-            this.required = required;
-            return this;
-        }
-
-        @CanIgnoreReturnValue
-        public @Nonnull Builder advise() {
-            return setRequired(true);
-        }
-
         @CheckReturnValue
         public @Nonnull SPARQLFilter build() {
             if (filter != null) {
                 assert expr == null;
-                return new SPARQLFilter(filter, ImmutableBiMap.copyOf(var2term), required);
+                return new SPARQLFilter(filter, ImmutableBiMap.copyOf(var2term));
             } else if (expr != null) {
                 String sparql = toSPARQLSyntax(expr);
-                return new SPARQLFilter(sparql, expr, ImmutableBiMap.copyOf(var2term), required);
+                return new SPARQLFilter(sparql, expr, ImmutableBiMap.copyOf(var2term));
             } else {
                 throw new IllegalStateException("Builder has neither filter nor expr");
             }
@@ -260,10 +214,10 @@ public class SPARQLFilter implements Modifier {
         return new Builder(expr);
     }
     public static @Nonnull SPARQLFilter build(@Nonnull String filter) {
-        return new  SPARQLFilter(filter, ImmutableBiMap.of(), true);
+        return new  SPARQLFilter(filter, ImmutableBiMap.of() );
     }
     public static @Nonnull SPARQLFilter build(@Nonnull Expr expr) {
-        return new  SPARQLFilter(toSPARQLSyntax(expr), expr, ImmutableBiMap.of(), true);
+        return new  SPARQLFilter(toSPARQLSyntax(expr), expr, ImmutableBiMap.of());
     }
 
     public @Nonnull SPARQLFilter withVarTermsUnbound(@Nonnull Collection<String> varTermNames) {
@@ -282,7 +236,7 @@ public class SPARQLFilter implements Modifier {
 
         if (this.expr == expr)
             return this;
-        Builder builder = SPARQLFilter.builder(expr).setRequired(isRequired());
+        Builder builder = SPARQLFilter.builder(expr);
         for (Map.Entry<String, Term> e : var2term.entrySet()) {
             if (e.getValue().isVar() && set.contains(e.getValue().asVar().getName()))
                 continue;
@@ -296,11 +250,6 @@ public class SPARQLFilter implements Modifier {
     @Override
     public @Nonnull Capability getCapability() {
         return Capability.SPARQL_FILTER;
-    }
-
-    @Override
-    public boolean isRequired() {
-        return required;
     }
 
     /* --- --- --- Getters --- --- --- */
@@ -703,8 +652,11 @@ public class SPARQLFilter implements Modifier {
 
     private static @Nonnull Binding toJenaBinding(@Nonnull Solution solution) {
         BindingHashMap b = new BindingHashMap();
-        solution.forEach((v, t) -> b.add(org.apache.jena.sparql.core.Var.alloc(v),
-                                         JenaWrappers.toJena(t).asNode()));
+        solution.forEach((v, t) -> {
+            Node value = toJenaNode(t);
+            if (value != null)
+                b.add(org.apache.jena.sparql.core.Var.alloc(v), value);
+        });
         return b;
     }
 
@@ -760,23 +712,6 @@ public class SPARQLFilter implements Modifier {
         return toSPARQLSyntax(expr, new StringBuilder()).toString();
     }
 
-
-    /**
-     * Bind works by manipulating {@link Expr} instances. Such representations discard datatype
-     * information of xsd:integer sub-datatypes. This method will emulate the same behavior.
-     *
-     * @param term term to generalize the datatype
-     * @return generalized term in accordance to {@link SPARQLFilter#bind}.
-     */
-    public static @Nonnull Term generalizeAsBind(@Nonnull Term term) {
-        if (!term.isLiteral())
-            return term;
-        Lit lit = term.asLiteral();
-        if (INTEGER_DATATYPES.contains(lit.getDatatype()))
-            return StdLit.fromUnescaped(lit.getLexicalForm(), XSD_INTEGER);
-        return lit;
-    }
-
     public @Nonnull SPARQLFilter bind(@Nonnull Solution solution) {
         if (getVarTerms().stream().noneMatch(v -> solution.getVarNames().contains(v.getName())))
             return this; // no change
@@ -809,7 +744,7 @@ public class SPARQLFilter implements Modifier {
                 builder.put(varName, e.getValue());
         }
         String filterString = toSPARQLSyntax(boundExpr);
-        return new SPARQLFilter(filterString, boundExpr, builder.build(), isRequired());
+        return new SPARQLFilter(filterString, boundExpr, builder.build());
     }
 
     /* --- --- --- Object methods --- --- --- */

@@ -61,7 +61,7 @@ public class ModifierUtils {
         b.append("Modifiers not supported by ").append(endpoint).append(": ");
         boolean  ok = true;
         for (Modifier mod : modifiers) {
-            if (!endpoint.hasCapability(mod.getCapability()) && mod.isRequired()) {
+            if (!endpoint.hasCapability(mod.getCapability())) {
                 ok = false;
                 b.append(mod);
             }

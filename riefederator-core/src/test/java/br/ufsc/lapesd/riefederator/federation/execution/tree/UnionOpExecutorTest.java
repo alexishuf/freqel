@@ -4,7 +4,7 @@ import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleQueryOpExecutor;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
@@ -80,8 +80,8 @@ public class UnionOpExecutorTest implements TestContext {
     @Test(dataProvider = "testData")
     public void testQueryBoth(Supplier<MultiQueryOpExecutor> supplier) {
         MultiQueryOpExecutor executor = supplier.get();
-        QueryOp qn1 = new QueryOp(rdf1, createQuery(x, knows, Bob));
-        QueryOp qn2 = new QueryOp(rdf2, createQuery(x, knows, Bob));
+        EndpointQueryOp qn1 = new EndpointQueryOp(rdf1, createQuery(x, knows, Bob));
+        EndpointQueryOp qn2 = new EndpointQueryOp(rdf2, createQuery(x, knows, Bob));
 
         Results results = executor.execute(UnionOp.builder().add(qn1).add(qn2).build());
         Set<Solution> actual = new HashSet<>();
@@ -95,10 +95,10 @@ public class UnionOpExecutorTest implements TestContext {
     @Test(dataProvider = "testData")
     public void testRunFilters(Supplier<MultiQueryOpExecutor> supplier) {
         MultiQueryOpExecutor executor = supplier.get();
-        QueryOp qn1 = new QueryOp(rdf1, createQuery(x, age, y));
-        QueryOp qn2 = new QueryOp(rdf2, createQuery(x, age, y));
+        EndpointQueryOp qn1 = new EndpointQueryOp(rdf1, createQuery(x, age, y));
+        EndpointQueryOp qn2 = new EndpointQueryOp(rdf2, createQuery(x, age, y));
         Op node = UnionOp.builder().add(qn1).add(qn2).build();
-        node.modifiers().add(Projection.advised("x"));
+        node.modifiers().add(Projection.of("x"));
         node.modifiers().add(SPARQLFilter.builder("?y > 23").build());
 
         Results results = executor.execute(node);

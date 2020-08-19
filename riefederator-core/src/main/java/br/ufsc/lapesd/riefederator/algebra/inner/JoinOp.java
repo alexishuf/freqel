@@ -1,8 +1,10 @@
 package br.ufsc.lapesd.riefederator.algebra.inner;
 
+import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -37,6 +39,27 @@ public class JoinOp extends AbstractInnerOp {
         this.joinInfo = info;
         super.clearVarsCaches();
         assert assertAllInvariants(!joinInfo.equals(info));
+    }
+
+    public static class Builder {
+        private final @Nonnull JoinOp op;
+
+        public Builder(@Nonnull JoinOp op) {
+            this.op = op;
+        }
+
+        public @Nonnull Builder add(@Nonnull Modifier modifier) {
+            op.modifiers().add(modifier);
+            return this;
+        }
+
+        public @Nonnull JoinOp build() {
+            return op;
+        }
+    }
+
+    public static @Nonnull Builder builder(@Nonnull Op left, @Nonnull Op right) {
+        return new Builder(create(left, right));
     }
 
     public static @Nonnull JoinOp create(@Nonnull Op left, @Nonnull Op right) {
@@ -99,6 +122,19 @@ public class JoinOp extends AbstractInnerOp {
         op.setCardinality(getCardinality());
         if (mods != null) op.modifiers().addAll(mods);
         return op;
+    }
+
+    @Override
+    public @Nonnull Op createBound(@Nonnull Solution solution) {
+        List<Op> list = new ArrayList<>(getChildren().size());
+        for (Op child : getChildren())
+            list.add(child.createBound(solution));
+        assert list.size() == 2;
+        JoinInfo info = JoinInfo.getJoinability(list.get(0), list.get(1));
+        Op boundOp = info.isValid() ? new JoinOp(info) : new CartesianOp(list);
+        boundOp.setCardinality(getCardinality());
+        TreeUtils.addBoundModifiers(boundOp.modifiers(), modifiers(), solution);
+        return boundOp;
     }
 
     @Override

@@ -60,19 +60,19 @@ public class CSVInMemoryCQEndpointTest implements TestContext {
                                 .put(y, i22).build())),
                 // test projection
                 asList("data-1.csv",
-                       createQuery(x, nameEx, alice, x, ageEx, y, Projection.advised("y")),
+                       createQuery(x, nameEx, alice, x, ageEx, y, Projection.of("y")),
                        singleton(MapSolution.build(y, i22))),
                 // test object-object match
                 asList("data-1.csv",
                        createQuery(x, nameEx, alice,
                                    x, university, u,
                                    y, nameEx, v,
-                                   y, university, u, Projection.advised("v")),
+                                   y, university, u, Projection.of("v")),
                         newHashSet(MapSolution.build(v, bob),
                                    MapSolution.build(v, alice))),
                 // test distinct
                 asList("data-1.csv",
-                       createQuery(x, university, u, Projection.advised("u"), Distinct.REQUIRED),
+                       createQuery(x, university, u, Projection.of("u"), Distinct.INSTANCE),
                        newHashSet(MapSolution.build(u, stanford), MapSolution.build(u, mit))),
                 // test filter
                 asList("data-1.csv",
@@ -93,7 +93,7 @@ public class CSVInMemoryCQEndpointTest implements TestContext {
                                     y, nameEx, v,
                                     y, ageEx, z,
                                     y, university, u,
-                                    Projection.advised("v"), SPARQLFilter.build("?z > 24")),
+                                    Projection.of("v"), SPARQLFilter.build("?z > 24")),
                         newHashSet(MapSolution.build(v, dave),
                                    MapSolution.build(v, eddie))),
                 // test object-object join with FILTER and distinct
@@ -103,8 +103,8 @@ public class CSVInMemoryCQEndpointTest implements TestContext {
                                     y, nameEx, v,
                                     y, ageEx, z,
                                     y, university, u,
-                                    Projection.advised("u"), SPARQLFilter.build("?z > 24"),
-                                    Distinct.REQUIRED),
+                                    Projection.of("u"), SPARQLFilter.build("?z > 24"),
+                                    Distinct.INSTANCE),
                         singleton(MapSolution.build(u, mit)))
                 ).map(List::toArray).toArray(Object[][]::new);
     }

@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.algebra;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
@@ -21,13 +21,13 @@ import static org.testng.Assert.assertFalse;
 public class UnionOpTest implements TestContext {
     public static final @Nonnull EmptyEndpoint empty = new EmptyEndpoint();
 
-    public QueryOp aliceKnowsX, bobKnowsX, xKnowsY;
+    public EndpointQueryOp aliceKnowsX, bobKnowsX, xKnowsY;
 
     @BeforeMethod
     public void setUp() {
-        aliceKnowsX = new QueryOp(empty, CQuery.from(new Triple(Alice, knows, x)));
-        bobKnowsX = new QueryOp(empty, CQuery.from(new Triple(Bob, knows, x)));
-        xKnowsY = new QueryOp(empty, CQuery.from(new Triple(x, knows, y)));
+        aliceKnowsX = new EndpointQueryOp(empty, CQuery.from(new Triple(Alice, knows, x)));
+        bobKnowsX = new EndpointQueryOp(empty, CQuery.from(new Triple(Bob, knows, x)));
+        xKnowsY = new EndpointQueryOp(empty, CQuery.from(new Triple(x, knows, y)));
     }
 
     @Test

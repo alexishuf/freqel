@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
@@ -35,11 +35,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 public class BSBMSelfTest {
@@ -103,8 +103,8 @@ public class BSBMSelfTest {
     public static @Nullable CQuery loadConjunctiveQuery(@Nonnull String queryName) throws
             IOException, SPARQLParseException {
         Op op = loadQuery(queryName);
-        if (op instanceof FreeQueryOp)
-            return ((FreeQueryOp) op).getQuery();
+        if (op instanceof QueryOp)
+            return ((QueryOp) op).getQuery();
         return null;
     }
 
@@ -137,9 +137,7 @@ public class BSBMSelfTest {
         String sparql = IOUtils.toString(getReader(path))
                 .replaceAll("LIMIT \\d+", "")
                 .replaceAll("GROUP BY.*\n", "")
-                .replaceAll("OFFSET \\d+", "")
-                .replaceAll("OPTIONAL *\\{[^{}]*}", "")
-                .replaceAll("(?ms)OPTIONAL *\\{\\s*\n.*\n\\s*}\\s*\n", "");
+                .replaceAll("OFFSET \\d+", "");
         QueryExecution exec = QueryExecutionFactory.create(sparql, allData());
         return CollectionResults.greedy(new JenaBindingResults(exec.execSelect(), exec));
     }
@@ -213,12 +211,30 @@ public class BSBMSelfTest {
     @Test(dataProvider = "queryData")
     public void testRunOnSingletonFederation(String queryName) throws Exception {
         Op query = loadQuery(queryName);
-        Set<Solution> actual = new HashSet<>(), expected = new HashSet<>();
+        Set<Solution> ac = new HashSet<>(), ex = new HashSet<>();
         ARQEndpoint ep = ARQEndpoint.forModel(allData());
         try (Federation federation = SingletonSourceFederation.createFederation(ep.asSource())) {
-            federation.query(query).forEachRemainingThenClose(actual::add);
-            loadResults(queryName).forEachRemainingThenClose(expected::add);
-            assertEquals(actual, expected);
+            federation.query(query).forEachRemainingThenClose(ac::add);
+            loadResults(queryName).forEachRemainingThenClose(ex::add);
+            Set<String> actualVars, expectedVars;
+            actualVars = ac.stream().flatMap(s -> s.getVarNames().stream()).collect(toSet());
+            expectedVars = ex.stream().flatMap(s -> s.getVarNames().stream()).collect(toSet());
+            assertEquals(actualVars, expectedVars, "Observed vars differ");
+            assertTrue(ac.stream().allMatch(s -> actualVars.equals(s.getVarNames())),
+                       "Not all solutions have the same varNames");
+
+            Map<String, Long> exHist = new TreeMap<>(), acHist = new TreeMap<>();
+            ex.stream().flatMap(s -> s.getVarNames().stream()).distinct()
+                    .forEach(n -> exHist.put(n, ex.stream().filter(s -> s.get(n) != null).count()));
+            ex.stream().flatMap(s -> s.getVarNames().stream()).distinct()
+                    .forEach(n -> acHist.put(n, ac.stream().filter(s -> s.get(n) != null).count()));
+            assertEquals(acHist, exHist);
+
+            assertEquals(ex.stream().filter(s -> !ac.contains(s)).collect(toSet()),
+                         emptySet(), "Missing solutions!");
+            assertEquals(ac.stream().filter(s -> !ex.contains(s)).collect(toSet()),
+                         emptySet(), "Unexpected solutions!");
+            assertEquals(ac, ex);
         }
     }
 }

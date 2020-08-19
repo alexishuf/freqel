@@ -141,7 +141,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
 
     @Override
     public @Nonnull List<Op> setChildren(@Nonnull List<Op> children) {
-        return setChildren(children, true);
+        return setChildren(children, true, true);
     }
 
     @Override
@@ -153,14 +153,19 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         }
     }
 
-    public @Nonnull List<Op> setChildren(@Nonnull List<Op> children, boolean hasChange) {
+    public @Nonnull List<Op> setChildren(@Nonnull List<Op> children,
+                                         boolean refChanged, boolean contentChanged) {
         List<Op> old = this.children == null ? Collections.emptyList() : this.children;
-        for (Op op : old)
-            op.detachListener(changeListener);
+        if (refChanged) {
+            for (Op op : old)
+                op.detachListener(changeListener);
+        }
         this.children = children;
-        for (Op child : children)
-            child.attachListener(changeListener);
-        if (hasChange) {
+        if (refChanged) {
+            for (Op child : children)
+                child.attachListener(changeListener);
+        }
+        if (contentChanged) {
             changeListener.matchedTriplesChanged(this);
             notifyVarsChanged();
         }
@@ -178,7 +183,6 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
 
     @Override
     public @Nonnull Op createBound(@Nonnull Solution solution) {
-        checkState(children != null, "Previous takeChildren() handle not closed");
         List<Op> list = new ArrayList<>(getChildren().size());
         for (Op child : getChildren())
             list.add(child.createBound(solution));

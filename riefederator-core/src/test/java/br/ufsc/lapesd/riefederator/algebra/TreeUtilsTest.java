@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
@@ -41,14 +41,14 @@ public class TreeUtilsTest implements TestContext {
 
     @DataProvider
     public static Object[][] iterateDeepLeft() {
-        QueryOp q1 = new QueryOp(ep, createQuery(x, knows, Alice));
-        QueryOp q2 = new QueryOp(ep, createQuery(x, knows, y));
+        EndpointQueryOp q1 = new EndpointQueryOp(ep, createQuery(x, knows, Alice));
+        EndpointQueryOp q2 = new EndpointQueryOp(ep, createQuery(x, knows, y));
         JoinOp j1 = JoinOp.create(q1, q2);
-        QueryOp q3 = new QueryOp(ep, createQuery(y, knows, Charlie));
-        QueryOp q4 = new QueryOp(ep, createQuery(y, knows, Dave));
+        EndpointQueryOp q3 = new EndpointQueryOp(ep, createQuery(y, knows, Charlie));
+        EndpointQueryOp q4 = new EndpointQueryOp(ep, createQuery(y, knows, Dave));
         JoinOp j2 = JoinOp.create(q3, q4);
         JoinOp j3 = JoinOp.create(j1, j2);
-        QueryOp q5 = new QueryOp(ep, createQuery(z, knows, Alice));
+        EndpointQueryOp q5 = new EndpointQueryOp(ep, createQuery(z, knows, Alice));
         CartesianOp c1 = new CartesianOp(asList(j3, q5));
 
         return new Object[][] {
@@ -73,9 +73,9 @@ public class TreeUtilsTest implements TestContext {
 
     @Test
     public void testIsTreeForgivesQueryNodes() {
-        QueryOp q1  = new QueryOp(ep, createQuery(x, knows, Alice));
-        QueryOp q2  = new QueryOp(ep, createQuery(x, knows, Bob));
-        QueryOp q1a = new QueryOp(ep, createQuery(
+        EndpointQueryOp q1  = new EndpointQueryOp(ep, createQuery(x, knows, Alice));
+        EndpointQueryOp q2  = new EndpointQueryOp(ep, createQuery(x, knows, Bob));
+        EndpointQueryOp q1a = new EndpointQueryOp(ep, createQuery(
                 x, AtomInputAnnotation.asRequired(person, "person").get(),
                         knows, Alice));
         JoinOp j1 = JoinOp.create(q1,  q2);
@@ -90,8 +90,8 @@ public class TreeUtilsTest implements TestContext {
 
     @Test
     public void testIsAcyclicSimple() {
-        QueryOp n1 = new QueryOp(ep, createQuery(Alice, knows, x));
-        QueryOp n2 = new QueryOp(ep, createQuery(x, knows, Bob));
+        EndpointQueryOp n1 = new EndpointQueryOp(ep, createQuery(Alice, knows, x));
+        EndpointQueryOp n2 = new EndpointQueryOp(ep, createQuery(x, knows, Bob));
         JoinOp root = JoinOp.create(n1, n2);
 
         assertTrue(isAcyclic(n1));
@@ -100,8 +100,8 @@ public class TreeUtilsTest implements TestContext {
 
     @Test
     public void testIsAcyclicWithQueryNodeReuse() {
-        QueryOp n1 = new QueryOp(ep, createQuery(Alice, knows, x));
-        QueryOp n2 = new QueryOp(ep, createQuery(x, knows, Bob));
+        EndpointQueryOp n1 = new EndpointQueryOp(ep, createQuery(Alice, knows, x));
+        EndpointQueryOp n2 = new EndpointQueryOp(ep, createQuery(x, knows, Bob));
         JoinOp j1 = JoinOp.create(n1, n2);
         JoinOp j2 = JoinOp.create(n1, n2);
         Op r = UnionOp.builder().add(j1).add(j2).build();
@@ -112,10 +112,10 @@ public class TreeUtilsTest implements TestContext {
     @Test
     public void testIsAcyclicWithJoinNodeReuse() {
         EmptyEndpoint ep2 = new EmptyEndpoint();
-        QueryOp n1 = new QueryOp(ep, createQuery(Alice, knows, x));
-        QueryOp n2 = new QueryOp(ep, createQuery(x, knows, y));
-        QueryOp n3a = new QueryOp(ep , createQuery(y, knows, Bob));
-        QueryOp n3b = new QueryOp(ep2, createQuery(y, knows, Bob));
+        EndpointQueryOp n1 = new EndpointQueryOp(ep, createQuery(Alice, knows, x));
+        EndpointQueryOp n2 = new EndpointQueryOp(ep, createQuery(x, knows, y));
+        EndpointQueryOp n3a = new EndpointQueryOp(ep , createQuery(y, knows, Bob));
+        EndpointQueryOp n3b = new EndpointQueryOp(ep2, createQuery(y, knows, Bob));
         JoinOp j1 = JoinOp.create(n1, n2);
         JoinOp j2 = JoinOp.create(j1, n3a);
         JoinOp j3 = JoinOp.create(j1, n3b);
@@ -127,10 +127,10 @@ public class TreeUtilsTest implements TestContext {
 
     @DataProvider
     public static Object[][] intersectResultsData() {
-        QueryOp x = new QueryOp(ep, createQuery(TreeUtilsTest.x, knows, Alice));
-        QueryOp xy = new QueryOp(ep, createQuery(TreeUtilsTest.x, knows, y));
-        QueryOp z = new QueryOp(ep, createQuery(Alice, TreeUtilsTest.z, Bob));
-        QueryOp xyz = new QueryOp(ep, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
+        EndpointQueryOp x = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, knows, Alice));
+        EndpointQueryOp xy = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, knows, y));
+        EndpointQueryOp z = new EndpointQueryOp(ep, createQuery(Alice, TreeUtilsTest.z, Bob));
+        EndpointQueryOp xyz = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
 
         return new Object[][] {
                 new Object[] {emptyList(), emptySet(), false},
@@ -165,10 +165,10 @@ public class TreeUtilsTest implements TestContext {
 
     @DataProvider
     public static Object[][] unionResultsData() {
-        QueryOp x = new QueryOp(ep, createQuery(TreeUtilsTest.x, knows, Alice));
-        QueryOp xy = new QueryOp(ep, createQuery(TreeUtilsTest.x, knows, y));
-        QueryOp z = new QueryOp(ep, createQuery(Alice, TreeUtilsTest.z, Bob));
-        QueryOp xyz = new QueryOp(ep, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
+        EndpointQueryOp x = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, knows, Alice));
+        EndpointQueryOp xy = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, knows, y));
+        EndpointQueryOp z = new EndpointQueryOp(ep, createQuery(Alice, TreeUtilsTest.z, Bob));
+        EndpointQueryOp xyz = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
 
         return new Object[][] {
                 new Object[] {emptyList(), emptySet()},
@@ -208,14 +208,14 @@ public class TreeUtilsTest implements TestContext {
         Atom atom1 = new Atom("Atom1");
         Atom atom2 = new Atom("Atom2");
 
-        QueryOp xInYZOut = new QueryOp(ep, createQuery(
+        EndpointQueryOp xInYZOut = new EndpointQueryOp(ep, createQuery(
                 x, AtomInputAnnotation.asRequired(atom1, "atom1").get(), y, z));
-        QueryOp xyInZOut = new QueryOp(ep, createQuery(
+        EndpointQueryOp xyInZOut = new EndpointQueryOp(ep, createQuery(
                 x, AtomInputAnnotation.asRequired(atom1, "atom1").get(),
                         y, z, AtomInputAnnotation.asRequired(atom2, "atom2").get()));
-        QueryOp xKnowsALICE = new QueryOp(ep, createQuery(x, knows, Alice));
-        QueryOp xKnowsZ = new QueryOp(ep, createQuery(x, knows, z));
-        QueryOp xKnowsY = new QueryOp(ep, createQuery(x, knows, y));
+        EndpointQueryOp xKnowsALICE = new EndpointQueryOp(ep, createQuery(x, knows, Alice));
+        EndpointQueryOp xKnowsZ = new EndpointQueryOp(ep, createQuery(x, knows, z));
+        EndpointQueryOp xKnowsY = new EndpointQueryOp(ep, createQuery(x, knows, y));
 
         return new Object[][] {
                 new Object[]{xKnowsALICE, xKnowsZ, singleton("x"), emptyList()},
@@ -231,8 +231,8 @@ public class TreeUtilsTest implements TestContext {
 
     @Test
     public void testDeepCopySingleton() {
-        FreeQueryOp root = new FreeQueryOp(createQuery(x, knows, Alice));
-        FreeQueryOp expected = new FreeQueryOp(createQuery(x, knows, Alice));
+        QueryOp root = new QueryOp(createQuery(x, knows, Alice));
+        QueryOp expected = new QueryOp(createQuery(x, knows, Alice));
         assertEquals(root.hashCode(), expected.hashCode());
         assertEquals(root, expected);
 
@@ -243,9 +243,9 @@ public class TreeUtilsTest implements TestContext {
         assertEquals(copy, expected);
 
         //mutate copy
-        MutableCQuery cQuery = ((FreeQueryOp) copy).getQuery();
+        MutableCQuery cQuery = ((QueryOp) copy).getQuery();
         cQuery.add(new Triple(x, age, u));
-        ((FreeQueryOp) copy).setQuery(cQuery); //notify change
+        ((QueryOp) copy).setQuery(cQuery); //notify change
 
         //change is visible in copy
         assertEquals(copy.getResultVars(), newHashSet("x", "u"));
@@ -267,45 +267,45 @@ public class TreeUtilsTest implements TestContext {
                 .add(UnionOp.builder()
                         .add(ConjunctionOp.builder()
                                 .add(UnionOp.builder()
-                                        .add(new FreeQueryOp(createQuery(
+                                        .add(new QueryOp(createQuery(
                                                 Alice, knows, x,
                                                 x, age, u1, SPARQLFilter.build("?u1 < 23"))))
-                                        .add(new FreeQueryOp(createQuery(
+                                        .add(new QueryOp(createQuery(
                                                 Bob, knows, x,
                                                 x, age, u2, SPARQLFilter.build("?u2 < 23"))))
                                         .build())
-                                .add(new FreeQueryOp(createQuery(
+                                .add(new QueryOp(createQuery(
                                         x, knows, y,
                                         y, age,   u3, SPARQLFilter.build("?u3 > 27"))))
                                 .build())
-                        .add(new FreeQueryOp(createQuery(
+                        .add(new QueryOp(createQuery(
                                 x, knows, Charlie,
                                 x, age, v3,
                                 SPARQLFilter.build("?v3 < 17"))))
                         .build())
-                .add(new FreeQueryOp(createQuery(z, age, o3, SPARQLFilter.build("?o3 > 31"))))
+                .add(new QueryOp(createQuery(z, age, o3, SPARQLFilter.build("?o3 > 31"))))
                 .build();
         Op expected = CartesianOp.builder()
                 .add(UnionOp.builder()
                         .add(ConjunctionOp.builder()
                                 .add(UnionOp.builder()
-                                        .add(new FreeQueryOp(createQuery(
+                                        .add(new QueryOp(createQuery(
                                                 Alice, knows, x,
                                                 x, age, u1, SPARQLFilter.build("?u1 < 23"))))
-                                        .add(new FreeQueryOp(createQuery(
+                                        .add(new QueryOp(createQuery(
                                                 Bob, knows, x,
                                                 x, age, u2, SPARQLFilter.build("?u2 < 23"))))
                                         .build())
-                                .add(new FreeQueryOp(createQuery(
+                                .add(new QueryOp(createQuery(
                                         x, knows, y,
                                         y, age,   u3, SPARQLFilter.build("?u3 > 27"))))
                                 .build())
-                        .add(new FreeQueryOp(createQuery(
+                        .add(new QueryOp(createQuery(
                                 x, knows, Charlie,
                                 x, age, v3,
                                 SPARQLFilter.build("?v3 < 17"))))
                         .build())
-                .add(new FreeQueryOp(createQuery(z, age, o3, SPARQLFilter.build("?o3 > 31"))))
+                .add(new QueryOp(createQuery(z, age, o3, SPARQLFilter.build("?o3 > 31"))))
                 .build();
         assertEquals(root.hashCode(), expected.hashCode());
         assertEquals(root.getMatchedTriples(), expected.getMatchedTriples());
@@ -342,7 +342,7 @@ public class TreeUtilsTest implements TestContext {
         assertTrue(expectedMatchedTriples.remove(new Triple(x, age, u1)));
 
         //remove a triple from a leaf -- do it
-        FreeQueryOp op = (FreeQueryOp)copy.getChildren().get(0) //union
+        QueryOp op = (QueryOp)copy.getChildren().get(0) //union
                 .getChildren().get(0) //conjunction
                 .getChildren().get(0) //union
                 .getChildren().get(0); //query
@@ -357,7 +357,7 @@ public class TreeUtilsTest implements TestContext {
         assertNotEquals(copy, expected);
 
         //change is NOT visible on original tree
-        FreeQueryOp rootLeaf = (FreeQueryOp) root.getChildren().get(0) //union
+        QueryOp rootLeaf = (QueryOp) root.getChildren().get(0) //union
                 .getChildren().get(0) // conjunction
                 .getChildren().get(0) // union
                 .getChildren().get(0);//query

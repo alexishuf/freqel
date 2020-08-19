@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.cardinality;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.BindJoinCardinalityEstimator;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
 import com.google.inject.ImplementedBy;
 
 import javax.annotation.Nonnull;

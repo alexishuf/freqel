@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.Source;
@@ -264,8 +264,8 @@ public class LargeRDFBenchSelfTest {
             Op root = SPARQLParser.tolerant().parse(stream);
             ARQEndpoint ep = ARQEndpoint.forModel(allData);
             Results actual;
-            if (root instanceof FreeQueryOp) {
-                actual = ep.query(((FreeQueryOp) root).getQuery());
+            if (root instanceof QueryOp) {
+                actual = ep.query(((QueryOp) root).getQuery());
             } else {
                 try (Federation federation = createFederation(ep.asSource())) {
                     actual = federation.query(root);
@@ -292,8 +292,8 @@ public class LargeRDFBenchSelfTest {
 
             Op root = SPARQLParser.tolerant().parse(stream);
             Results actual;
-            if (root instanceof FreeQueryOp) {
-                actual = client.query(((FreeQueryOp) root).getQuery());
+            if (root instanceof QueryOp) {
+                actual = client.query(((QueryOp) root).getQuery());
             } else {
                 Source source = new Source(new SelectDescription(client), client);
                 try (Federation federation = createFederation(source)) {

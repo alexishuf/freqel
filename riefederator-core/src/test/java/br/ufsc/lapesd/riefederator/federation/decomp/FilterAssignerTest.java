@@ -4,7 +4,7 @@ import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
@@ -56,9 +56,9 @@ public class FilterAssignerTest implements TestContext {
 
     @Test
     public void testNoFilter() {
-        QueryOp q1 = new QueryOp(ep1, createQuery(Alice, knows, x));
-        QueryOp q2 = new QueryOp(ep1, createQuery(x, knows, y));
-        QueryOp q3 = new QueryOp(ep1, createQuery(y, age, u));
+        EndpointQueryOp q1 = new EndpointQueryOp(ep1, createQuery(Alice, knows, x));
+        EndpointQueryOp q2 = new EndpointQueryOp(ep1, createQuery(x, knows, y));
+        EndpointQueryOp q3 = new EndpointQueryOp(ep1, createQuery(y, age, u));
         JoinOp j1 = JoinOp.create(q1, q2);
         JoinOp root = JoinOp.create(j1, q3);
 
@@ -66,12 +66,12 @@ public class FilterAssignerTest implements TestContext {
         FilterAssigner assigner = new FilterAssigner(fullQuery);
 
         // place on leaves
-        List<QueryOp> queryOps = asList(q1, q2, q3);
+        List<EndpointQueryOp> queryOps = asList(q1, q2, q3);
         List<ProtoQueryOp> prototypes;
         prototypes = queryOps.stream().map(ProtoQueryOp::new).collect(toList());
 
-        List<QueryOp> annotated = assigner.placeFiltersOnLeaves(prototypes).stream()
-                .map(n -> (QueryOp)n).collect(toList());
+        List<EndpointQueryOp> annotated = assigner.placeFiltersOnLeaves(prototypes).stream()
+                .map(n -> (EndpointQueryOp)n).collect(toList());
         assertEquals(annotated.size(), 3);
         assertTrue(annotated.stream().noneMatch(Objects::isNull));
         for (int i = 0; i < annotated.size(); i++)
@@ -88,8 +88,8 @@ public class FilterAssignerTest implements TestContext {
                 x,     age,   u,
                 SPARQLFilter.build("?u > 23"));
         Op node = UnionOp.builder()
-                .add(new QueryOp(ep1, query))
-                .add(new QueryOp(ep2, query))
+                .add(new EndpointQueryOp(ep1, query))
+                .add(new EndpointQueryOp(ep2, query))
                 .build();
         FilterAssigner assigner = new FilterAssigner(query);
         assigner.placeBottommost(node);
@@ -108,9 +108,9 @@ public class FilterAssignerTest implements TestContext {
         );
 
         FilterAssigner assigner = new FilterAssigner(query);
-        List<QueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
-                .map(n -> (QueryOp)n).collect(toList());
-        for (QueryOp queryOp : queryOps)
+        List<EndpointQueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
+                .map(n -> (EndpointQueryOp)n).collect(toList());
+        for (EndpointQueryOp queryOp : queryOps)
             checkAllFilters(query, queryOp);
 
         Op multi = UnionOp.builder().addAll(queryOps).build();
@@ -135,8 +135,8 @@ public class FilterAssignerTest implements TestContext {
         );
 
         FilterAssigner assigner = new FilterAssigner(fullQuery);
-        List<QueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
-                .map(n -> (QueryOp)n).collect(toList());
+        List<EndpointQueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
+                .map(n -> (EndpointQueryOp)n).collect(toList());
 
         assertEquals(queryOps.size(), prototypes.size());
         assertTrue(queryOps.stream().noneMatch(Objects::isNull));

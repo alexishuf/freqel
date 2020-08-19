@@ -146,7 +146,7 @@ public class JDBCCQEndpointTest implements TestContext {
         return Stream.of(
                 // enumerate a varchar column, do not inspect subjt
                 asList("dump-1.sql", "sql-mapping-2.json",
-                       createQuery(x, nameEx, u, Projection.required("u")),
+                       createQuery(x, nameEx, u, Projection.of("u")),
                        newHashSet(
                                MapSolution.build(u, Alice),
                                MapSolution.build(u, Bob),
@@ -170,7 +170,7 @@ public class JDBCCQEndpointTest implements TestContext {
                         false),
                 // enumerate subjects that have a varchar column
                 asList("dump-1.sql", "sql-mapping-2.json",
-                        createQuery(x, nameEx, u, Projection.required("x")),
+                        createQuery(x, nameEx, u, Projection.of("x")),
                         newHashSet(
                                 MapSolution.build(x, new StdURI(EX+"inst/1")),
                                 MapSolution.build(x, new StdURI(EX+"inst/2")),
@@ -192,7 +192,7 @@ public class JDBCCQEndpointTest implements TestContext {
                 // single star, no joins nor URI generation
                 asList("dump-1.sql", "sql-mapping-2.json",
                         createQuery(x, nameEx,     Alice,
-                                    x, university, u, Projection.required("u")),
+                                    x, university, u, Projection.of("u")),
                         singleton(MapSolution.build(u, Stanford)), false
                 ),
                 // who is in the same university as alice?
@@ -201,7 +201,7 @@ public class JDBCCQEndpointTest implements TestContext {
                        createQuery(x, nameEx,     Alice,
                                    x, university, u,
                                    y, university, u,
-                                   y, nameEx,     v, Projection.required("v")),
+                                   y, nameEx,     v, Projection.of("v")),
                        newHashSet(MapSolution.build(v, Alice), MapSolution.build(v, Bob)), false
                 ),
                 // URI generation: Get Alice URI and id
@@ -216,7 +216,7 @@ public class JDBCCQEndpointTest implements TestContext {
                 ),
                 // URI generation: Get URIs of persons in Stanford
                 asList("dump-1.sql", "sql-mapping-2.json",
-                        createQuery(x, university,  Stanford, Projection.required("x")),
+                        createQuery(x, university,  Stanford, Projection.of("x")),
                         newHashSet(MapSolution.build(x, uriAlice), MapSolution.build(x, uriBob)),
                         false
                 ),
@@ -230,25 +230,25 @@ public class JDBCCQEndpointTest implements TestContext {
                 // Simple filter: gets ids of two oldest
                 asList("dump-1.sql", "sql-mapping-2.json",
                         createQuery(x, idEx, v, x, ageEx, u, SPARQLFilter.build("?u >= 25"),
-                                    Projection.required("v")),
+                                    Projection.of("v")),
                         newHashSet(MapSolution.build(v, i4), MapSolution.build(v, i5)), false
                 ),
                 // Expression filter (||):  get the oldest and youngest
                 asList("dump-1.sql", "sql-mapping-2.json",
                         createQuery(x, nameEx, v, x, ageEx, u,
                                     SPARQLFilter.build("?u > 25 || ?u < 23"),
-                                    Projection.required("v")),
+                                    Projection.of("v")),
                         newHashSet(MapSolution.build(v, Alice), MapSolution.build(v, Eddie)), false
                 ),
                 // Positive ask query with single star
                 asList("dump-1.sql", "sql-mapping-2.json",
                        createQuery(x, nameEx, u,
-                                   x, ageEx, v, SPARQLFilter.build("?v > 20"), Ask.REQUIRED),
+                                   x, ageEx, v, SPARQLFilter.build("?v > 20"), Ask.INSTANCE),
                        singleton(ArraySolution.EMPTY), false),
                 // Negative ask query with single star
                 asList("dump-1.sql", "sql-mapping-2.json",
                         createQuery(x, nameEx, u,
-                                    x, ageEx, v, SPARQLFilter.build("?v < 18"), Ask.REQUIRED),
+                                    x, ageEx, v, SPARQLFilter.build("?v < 18"), Ask.INSTANCE),
                         emptySet(), false),
                 // Positive ask with two stars: someone older than Alice in same university?
                 asList("dump-1.sql", "sql-mapping-2.json",
@@ -256,7 +256,7 @@ public class JDBCCQEndpointTest implements TestContext {
                                     x, ageEx,      v,
                                     x, university, u,
                                     y, university, u,
-                                    y, ageEx,      o, SPARQLFilter.build("?o > ?v"), Ask.REQUIRED),
+                                    y, ageEx,      o, SPARQLFilter.build("?o > ?v"), Ask.INSTANCE),
                         singleton(ArraySolution.EMPTY), false),
                 // Negative ask with two stars: someone **younger** than Alice in same university?
                 asList("dump-1.sql", "sql-mapping-2.json",
@@ -264,46 +264,46 @@ public class JDBCCQEndpointTest implements TestContext {
                                     x, ageEx,      v,
                                     x, university, u,
                                     y, university, u,
-                                    y, ageEx,      o, SPARQLFilter.build("?o < ?v"), Ask.REQUIRED),
+                                    y, ageEx,      o, SPARQLFilter.build("?o < ?v"), Ask.INSTANCE),
                         emptySet(), false),
                 // Single star on a multi-table database (test dump-2.sql and sql-mapping-2.json)
                 asList("dump-2.sql", "sql-mapping-3.json",
-                        createQuery(x, nameEx, Alice, x, ageEx, v, Projection.required("v")),
+                        createQuery(x, nameEx, Alice, x, ageEx, v, Projection.of("v")),
                         singleton(MapSolution.build(v, i22)), false),
                 // Two tables have the predicates: University and Person
                 // this leads to an ambiguity: both Person and University satisfy this
                 asList("dump-2.sql", "sql-mapping-3.json",
                         createQuery(x, idEx, v,
-                                    x, nameEx, MIT, Projection.required("v")),
+                                    x, nameEx, MIT, Projection.of("v")),
                         singleton(MapSolution.build(v, i2)), false),
                 // Explore a near case of the previous ambiguity. University matches
                 // but is eliminated during planning
                 asList("dump-2.sql", "sql-mapping-3.json",
                         createQuery(x, idEx, v,
                                     x, nameEx, Alice,
-                                    x, ageEx, u, Projection.required("v", "u")),
+                                    x, ageEx, u, Projection.of("v", "u")),
                         singleton(MapSolution.builder().put(v, i1).put(u, i22).build()), false),
                 // A simple match on Paper (more of a self-test)
                 asList("dump-2.sql", "sql-mapping-3.json",
                         createQuery(x, idEx, v,
-                                    x, titleEx, title2, Projection.required("v")),
+                                    x, titleEx, title2, Projection.of("v")),
                         singleton(MapSolution.build(v, i2)), false),
                 // A simple match on Paper (more of a self-test). **already annotated**
                 asList("dump-2.sql", "sql-mapping-3.json",
                         createQuery(x, aaPaper, idEx, v, aaPaper_id,
                                     x, aaPaper, titleEx, title2, aaPaper_title,
-                                    Projection.required("v")),
+                                    Projection.of("v")),
                         singleton(MapSolution.build(v, i2)), false),
                 // A simple match on Authorship (more of a self-test)
                 asList("dump-2.sql", "sql-mapping-3.json",
                         createQuery(x, paper_id, i1,
-                                    x, author_id, v, Projection.required("v")),
+                                    x, author_id, v, Projection.of("v")),
                         newHashSet(MapSolution.build(v, i1), MapSolution.build(v, i2)), false),
                 // A simple match on Authorship (more of a self-test) **annotated**
                 asList("dump-2.sql", "sql-mapping-3.json",
                         createQuery(x, aaAuthorship,  paper_id, i1, aaAuthorship_paper_id,
                                     x, aaAuthorship, author_id, v, aaAuthorship_author_id,
-                                    Projection.required("v")),
+                                    Projection.of("v")),
                         newHashSet(MapSolution.build(v, i1), MapSolution.build(v, i2)), false),
                 // Composite key URI generation
                 asList("dump-2.sql", "sql-mapping-3.json",
@@ -320,7 +320,7 @@ public class JDBCCQEndpointTest implements TestContext {
                                     y, author_id, u,
                                     y, paper_id,  v,
                                     z, idEx,      v,
-                                    z, titleEx,   o, Projection.required("o")),
+                                    z, titleEx,   o, Projection.of("o")),
                         singleton(MapSolution.build(o, title2)), true),
                 // The mediator decomposes the above query. Avoid decomposition:
                 asList("dump-2.sql", "sql-mapping-3.json",
@@ -330,7 +330,7 @@ public class JDBCCQEndpointTest implements TestContext {
                                     y, aaAuthorship, paper_id,  v,       aaAuthorship_paper_id,
                                     z, aaPaper,      idEx,      v,       aaPaper_id,
                                     z, aaPaper,      titleEx,   o,       aaPaper_title,
-                                    Projection.required("o")),
+                                    Projection.of("o")),
                         singleton(MapSolution.build(o, title2)), false),
                 // Path-style 3-table join. Title of papers authored by who has >=24 years
                 asList("dump-2.sql", "sql-mapping-3.json",
@@ -339,7 +339,7 @@ public class JDBCCQEndpointTest implements TestContext {
                                     y, author_id, u,
                                     y, paper_id,  v,
                                     z, idEx,      v,
-                                    z, titleEx,   o, Projection.required("o")),
+                                    z, titleEx,   o, Projection.of("o")),
                         singleton(MapSolution.build(o, title2)), true),
                 // **ANNOTATED** Path-style 3-table join. Title of papers authored by who has >=24 years
                 asList("dump-2.sql", "sql-mapping-3.json",
@@ -350,7 +350,7 @@ public class JDBCCQEndpointTest implements TestContext {
                                     y, aaAuthorship, paper_id,  v, aaAuthorship_paper_id,
                                     z, aaPaper,      idEx,      v, aaPaper_id,
                                     z, aaPaper,      titleEx,   o, aaPaper_title,
-                                    Projection.required("o")),
+                                    Projection.of("o")),
                         singleton(MapSolution.build(o, title2)), false),
                 // Join all 4 tables: get papers with authors from both universities
                 asList("dump-2.sql", "sql-mapping-3.json",
@@ -368,7 +368,7 @@ public class JDBCCQEndpointTest implements TestContext {
                                     z2, paper_id,       s,
                                     w, idEx,            s,
                                     w, titleEx,         p,
-                                    Projection.required("p")),
+                                    Projection.of("p")),
                         singleton(MapSolution.build(p, title2)), true),
                 // **ANNOTATED** Join all 4 tables: get papers with authors from both universities
                 asList("dump-2.sql", "sql-mapping-3.json",
@@ -386,7 +386,7 @@ public class JDBCCQEndpointTest implements TestContext {
                                     z2, aaAuthorship, paper_id,       s,        aaAuthorship_paper_id,
                                     w,  aaPaper,      idEx,           s,        aaPaper_id,
                                     w,  aaPaper,      titleEx,        p,        aaPaper_title,
-                                Projection.required("p")),
+                                Projection.of("p")),
                         singleton(MapSolution.build(p, title2)), false)
         ).map(List::toArray).toArray(Object[][]::new);
     }

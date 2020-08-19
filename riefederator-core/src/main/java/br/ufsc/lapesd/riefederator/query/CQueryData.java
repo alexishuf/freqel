@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CQueryData {
-    public final @Nonnull AtomicInteger references = new AtomicInteger(0);
+    private int references;
     public @Nonnull List<Triple> list;
     public final @Nonnull ModifiersSet modifiers, modifiersView;
 
@@ -52,6 +52,7 @@ public class CQueryData {
                       @Nullable SetMultimap<Term, TermAnnotation> termAnn,
                       @Nullable Set<QueryAnnotation> queryAnn,
                       @Nullable SetMultimap<Triple, TripleAnnotation> tripleAnn) {
+        this.references = 1;
         this.list = list;
         this.modifiers = createModifierSet(modifiers);
         this.modifiersView = this.modifiers.getLockedView();
@@ -62,6 +63,7 @@ public class CQueryData {
     }
 
     public CQueryData(@Nonnull CQueryData other) {
+        this.references = 1;
         this.list = new ArrayList<>(other.list);
         this.modifiers = createModifierSet(other.modifiers);
         this.modifiersView = this.modifiers.getLockedView();
@@ -72,18 +74,15 @@ public class CQueryData {
         this.cache = new CQueryCache(this, other.cache);
     }
 
-    public @Nonnull CQueryData toExclusive() {
-        assert references.get() >= 0;
-        return references.decrementAndGet() == 0 ? this : new CQueryData(this);
+    public synchronized @Nonnull CQueryData toExclusive() {
+        if (references == 1)
+            return this;
+        return new CQueryData(this);
     }
 
-    public @Nonnull CQueryData attach() {
-        references.incrementAndGet();
+    public synchronized @Nonnull CQueryData attach() {
+        ++references;
         return this;
-    }
-
-    public void detach() {
-        references.decrementAndGet();
     }
 
     public int nextHiddenId() {

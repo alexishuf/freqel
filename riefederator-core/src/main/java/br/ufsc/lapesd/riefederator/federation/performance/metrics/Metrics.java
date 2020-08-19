@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.impl.SimpleMetric;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.impl.SimpleTimeMetric;
-import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -43,7 +43,7 @@ public class Metrics {
             = new SimpleTimeMetric("AGGLUTINATION_MS");
 
     /**
-     * Double with milliseconds spent on the {@link OuterPlanner} (not including
+     * Double with milliseconds spent on the {@link PrePlanner} (not including
      * planning triggered for the leaves).
      */
     public static final @Nonnull SimpleTimeMetric OUT_PLAN_MS

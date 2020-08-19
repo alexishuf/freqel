@@ -134,18 +134,6 @@ public class AtomFilter implements MoleculeElement {
             return map(var.getName(), var);
         }
 
-        @Override
-        public @Nonnull Builder setRequired(boolean required) {
-            super.setRequired(required);
-            return this;
-        }
-
-        @Override
-        public @Nonnull Builder advise() {
-            super.advise();
-            return this;
-        }
-
         public @Nonnull Builder map(@Nonnull AtomWithRole atom, @Nonnull String var) {
             atom2varBuilder.put(atom, var);
             return this;

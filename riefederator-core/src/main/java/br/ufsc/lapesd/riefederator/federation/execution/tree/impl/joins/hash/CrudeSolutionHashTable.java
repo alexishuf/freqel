@@ -1,13 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import com.google.common.base.Preconditions;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import javax.annotation.Nullable;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -17,6 +16,7 @@ public class CrudeSolutionHashTable {
     private final @Nonnull ArrayList<ArrayList<Solution>> buckets;
     private final @Nonnull Collection<String> varNames;
     private final int nBuckets, bucketCapacity;
+    private @Nullable ArrayList<BitSet> fetched = null;
 
     public CrudeSolutionHashTable(@Nonnull Collection<String> varNames, int expectedValues) {
         this(varNames, expectedValues, 16);
@@ -30,36 +30,78 @@ public class CrudeSolutionHashTable {
         this.buckets = new ArrayList<>(nBuckets);
         for (int i = 0; i < nBuckets; i++)
             this.buckets.add(new ArrayList<>(bucketCapacity));
-
     }
 
-    protected  @Nonnull List<Solution> getBucket(@Nonnull Solution solution) {
+    public void recordFetches() {
+        Preconditions.checkState(fetched == null, "Already recording!");
+        int size = buckets.size();
+        fetched = new ArrayList<>(size);
+        for (int i = 0; i < size; i++)
+            fetched.add(new BitSet());
+    }
+
+    protected int getBucketIndex(@Nonnull Solution solution) {
         HashCodeBuilder builder = new HashCodeBuilder();
         for (String name : varNames)
             builder.append(solution.get(name));
-        return buckets.get(Math.abs(builder.toHashCode()) % nBuckets);
+        return Math.abs(builder.toHashCode()) % nBuckets;
     }
 
     public void clear() {
-        for (ArrayList<Solution> b : buckets)
-            b.clear();
+        if (fetched != null) {
+            for (BitSet bitSet : fetched) bitSet.clear();
+        }
+        for (ArrayList<Solution> b : buckets) b.clear();
     }
 
-    public void add(@Nonnull Solution solution) {
-        getBucket(solution).add(solution);
+    public class AddedHandle {
+        private int bucketIndex, solutionIndex;
+
+        public AddedHandle(int bucketIndex, int solutionIndex) {
+            this.bucketIndex = bucketIndex;
+            this.solutionIndex = solutionIndex;
+        }
+
+        public void markFetched() {
+            if (fetched != null)
+                fetched.get(bucketIndex).set(solutionIndex);
+        }
+    }
+
+    public AddedHandle add(@Nonnull Solution solution) {
+        int bucketIndex = getBucketIndex(solution);
+        ArrayList<Solution> bucket = buckets.get(bucketIndex);
+        AddedHandle handle = new AddedHandle(bucketIndex, bucket.size());
+        bucket.add(solution);
+        return handle;
     }
 
     public @Nonnull Collection<Solution> getAll(@Nonnull Solution reference) {
         ArrayList<Solution> list = new ArrayList<>(bucketCapacity);
+        int bit = -1, bucketIndex = getBucketIndex(reference);
+        BitSet bitset = fetched == null ? null : fetched.get(bucketIndex);
         outer:
-        for (Solution sol : getBucket(reference)) {
+        for (Solution sol : buckets.get(bucketIndex)) {
+            ++bit;
             for (String name : varNames) {
                 if (!Objects.equals(sol.get(name), reference.get(name)))
                     continue outer;
             }
             list.add(sol);
+            if (bitset != null) bitset.set(bit);
         }
         return list;
+    }
+
+    public void forEachNotFetched(@Nonnull Consumer<Solution> consumer) {
+        Preconditions.checkState(fetched != null, "Fetches not recorded");
+        assert fetched.size() == buckets.size();
+        for (int i = 0, size = fetched.size(); i < size; i++) {
+            BitSet bs = fetched.get(i);
+            ArrayList<Solution> bucket = buckets.get(i);
+            for (int s = bucket.size(), j = bs.nextClearBit(0); j < s; j = bs.nextClearBit(j+1))
+                consumer.accept(bucket.get(j));
+        }
     }
 
     public void forEach(@Nonnull Consumer<Solution> consumer) {

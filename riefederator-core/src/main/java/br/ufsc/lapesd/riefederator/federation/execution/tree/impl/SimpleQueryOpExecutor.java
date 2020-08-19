@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree.impl;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianOpExecutor;
@@ -16,6 +16,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
@@ -57,7 +58,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
 
     @Override
     public boolean canExecute(@Nonnull Class<? extends Op> nodeClass) {
-        return QueryOp.class.isAssignableFrom(nodeClass)
+        return EndpointQueryOp.class.isAssignableFrom(nodeClass)
                 || UnionOp.class.isAssignableFrom(nodeClass)
                 || CartesianOp.class.isAssignableFrom(nodeClass)
                 || SPARQLValuesTemplateOp.class.isAssignableFrom(nodeClass);
@@ -67,8 +68,8 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
     public @Nonnull Results execute(@Nonnull Op node) {
         if (node instanceof UnionOp)
             return execute((UnionOp)node);
-        else if (node instanceof QueryOp)
-            return execute((QueryOp)node);
+        else if (node instanceof EndpointQueryOp)
+            return execute((EndpointQueryOp)node);
         else if (node instanceof SPARQLValuesTemplateOp)
             return execute((SPARQLValuesTemplateOp)node);
         throw new IllegalArgumentException("");
@@ -79,7 +80,10 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         CQEndpoint endpoint = (CQEndpoint) node.getEndpoint();
         assert endpoint.canQuerySPARQL();
         try {
-            return endpoint.querySPARQL(node.createSPARQL(), node.isAsk(), node.getResultVars());
+            Results results = endpoint.querySPARQL(node.createSPARQL(), node.isAsk(),
+                                                   node.getResultVars());
+            results.setOptional(node.modifiers().optional() != null);
+            return results;
         } catch (QueryExecutionException e) {
             logger.error("Failed to execute SPARQL query against {}. Will return an Empty result",
                          node.getEndpoint(), e);
@@ -88,7 +92,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
     }
 
     @Override
-    public @Nonnull Results execute(@Nonnull QueryOp node) {
+    public @Nonnull Results execute(@Nonnull EndpointQueryOp node) {
         try {
             return doExecute(node);
         } catch (QueryExecutionException e) {
@@ -98,14 +102,14 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         }
     }
 
-    public @Nonnull Results doExecute(@Nonnull QueryOp node) {
+    public @Nonnull Results doExecute(@Nonnull EndpointQueryOp node) {
         CQuery q = node.getQuery();
         TPEndpoint ep = node.getEndpoint();
         Set<SPARQLFilter> filters = node.modifiers().filters();
         boolean isSPARQL = ep.hasSPARQLCapabilities();
         boolean canFilter = isSPARQL || ep.hasCapability(Capability.SPARQL_FILTER);
         boolean hasCapabilities = isSPARQL || q.getModifiers().stream()
-                .allMatch(m -> ep.hasCapability(m.getCapability()))
+                .allMatch(m -> m.equals(Optional.INSTANCE) || ep.hasCapability(m.getCapability()))
                 && (filters.isEmpty() || canFilter) ;
 
         MutableCQuery mq = new MutableCQuery(q);
@@ -116,13 +120,20 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
                         "Offending query: {}", removed.size(), ep, removed, q);
             assert false : "Attempted to execute query with input vars in filters";
         }
+        boolean isOptional = mq.mutateModifiers().remove(Optional.INSTANCE);
+        assert mq.getModifiers().optional() == null;
+        assert !isOptional || node.modifiers().optional() != null; //do not affect input!
 
         if (hasCapabilities) {
-            return ep.query(mq);
+            Results r = ep.query(mq);
+            if (isOptional)
+                r.setOptional(true);
+            return r;
         } else { // endpoint cannot handle some modifiers, not even locally
             mq.mutateModifiers().removeIf(m -> !ep.hasCapability(m.getCapability()));
             Results r = ep.query(mq);
-
+            if (isOptional)
+                r.setOptional(true);
             if (!ep.hasCapability(Capability.DISTINCT))
                 r = HashDistinctResults.applyIf(r, q);
             if (!canFilter)
@@ -133,12 +144,13 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
             if (!ep.hasCapability(Capability.ASK))
                 r  = AskResults.applyIf(r, q);
 
+            assert !isOptional || r.isOptional();
             return r;
         }
     }
 
     @CheckReturnValue
-    public @Nonnull Results executeAsMultiQuery(@Nonnull Op node) {
+    public @Nonnull Results executeAsUnion(@Nonnull Op node) {
         if (node.getChildren().isEmpty())
             return new CollectionResults(Collections.emptyList(), node.getResultVars());
         ArrayList<Results> resultList = new ArrayList<>(node.getChildren().size());
@@ -146,7 +158,9 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         Set<SPARQLFilter> unionFilters = node.modifiers().filters();
         for (Op child : node.getChildren())
             resultList.add(executor.executeNode(pushingFilters(child, unionFilters)));
-        return resultsExecutor.async(resultList, node.getResultVars());
+        Results results = resultsExecutor.async(resultList, node.getResultVars());
+        results.setOptional(node.modifiers().optional() != null);
+        return results;
     }
 
     private @Nonnull Op pushingFilters(@Nonnull Op original,
@@ -160,7 +174,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
 
     @Override
     public @Nonnull Results execute(@Nonnull UnionOp node) {
-        return executeAsMultiQuery(node);
+        return executeAsUnion(node);
     }
 
     /**
@@ -169,6 +183,6 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
      */
     @Override
     public @Nonnull Results execute(@Nonnull CartesianOp node) {
-        return executeAsMultiQuery(node);
+        return executeAsUnion(node);
     }
 }

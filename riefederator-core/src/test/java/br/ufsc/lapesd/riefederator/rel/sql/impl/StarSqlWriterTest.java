@@ -67,15 +67,15 @@ public class StarSqlWriterTest implements TestContext {
     @DataProvider
     public static @Nonnull Object[][] writeSqlData() {
         return Stream.of(
-                asList(createQuery(x, aaT, name, u, aaCu, Projection.advised("u")),
+                asList(createQuery(x, aaT, name, u, aaCu, Projection.of("u")),
                                   "T AS star_0"),
                 asList(createQuery(x, aaT, name, u, aaCu, x, aaT, age, i23, aaCv,
-                                   Projection.required("u")),
+                                   Projection.of("u")),
                        "(SELECT T.cu AS $ FROM T WHERE T.cv = 23) AS star_0"),
                 asList(createQuery(x, aaT, name, u, aaCu,
                                    x, aaT, age, i23, aaCv,
                                    x, aaT, ageEx, i24, aaCo,
-                                   Projection.required("u")),
+                                   Projection.of("u")),
                        "(SELECT T.cu AS $ FROM T WHERE T.cv = 23 AND T.co = 24) AS star_0"),
                 asList(createQuery(x, aaT, age, v, aaCv),
                                    "T AS star_0"),
@@ -83,26 +83,26 @@ public class StarSqlWriterTest implements TestContext {
                                    "(SELECT T.cv AS $, T.cu AS $ " +
                                    "FROM T WHERE (T.cv < 23)) AS star_0"),
                 // first case with multiple AtomAnnotations on subject
-                asList(createQuery(x, aaT, aaKu, name, u, aaCu, Projection.advised("u")),
+                asList(createQuery(x, aaT, aaKu, name, u, aaCu, Projection.of("u")),
                         "T AS star_0"),
                 // tolerate TableTag on subject atom
-                asList(createQuery(x, aaT, aaKu, name, u, aaCu2, Projection.advised("u")),
+                asList(createQuery(x, aaT, aaKu, name, u, aaCu2, Projection.of("u")),
                         "T AS star_0"),
                 // tolerate two ColumnTags on object atom
-                asList(createQuery(x, aaT, name, u, aaCu3, Projection.advised("u")),
+                asList(createQuery(x, aaT, name, u, aaCu3, Projection.of("u")),
                         "T AS star_0"),
                 // tolerate ColumnTag on subject atom
-                asList(createQuery(x, aaT2, name, u, aaCu3, Projection.advised("u")),
+                asList(createQuery(x, aaT2, name, u, aaCu3, Projection.of("u")),
                         "T AS star_0"),
                 //tolerate table tag on object and column tag on subject
                 asList(createQuery(x, aaT2, name,   u,  aaCu2,
                                    x, aaT2, age,   i23, aaCv2,
-                                   Projection.required("u")),
+                                   Projection.of("u")),
                         "(SELECT T.cu AS $ FROM T WHERE T.cv = 23) AS star_0"),
                 // tolerate unrelated column tag on object
                 asList(createQuery(x, aaT2, name,   u,  aaCu3,
                                    x, aaT2, age,   i23, aaCv3,
-                                   Projection.required("u")),
+                                   Projection.of("u")),
                         "(SELECT T.cu AS $ FROM T WHERE T.cv = 23) AS star_0")
         ).map(List::toArray).toArray(Object[][]::new);
     }

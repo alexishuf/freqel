@@ -35,6 +35,14 @@ public class MapProjectingResults implements Results {
         return false;
     }
 
+    @Override public boolean isOptional() {
+        return false;
+    }
+
+    @Override public void setOptional(boolean value) {
+        throw new UnsupportedOperationException();
+    }
+
     @Override
     public @Nullable String getNodeName() {
         return nodeName;

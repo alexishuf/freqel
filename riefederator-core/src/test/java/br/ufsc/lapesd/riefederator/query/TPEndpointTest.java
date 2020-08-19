@@ -211,7 +211,7 @@ public class TPEndpointTest extends EndpointTestBase {
     @Test(dataProvider = "fixtureFactories")
     public void testSingleObjectWithLimit(Function<InputStream, Fixture<TPEndpoint>> f) {
         queryResourceTest(f, "../rdf-1.nt", new Triple(Alice, knows, x),
-                          singleton(MapSolution.build(x, Bob)), Limit.required(10));
+                          singleton(MapSolution.build(x, Bob)), Limit.of(10));
     }
 
     @Test(dataProvider = "fixtureFactories")
@@ -223,7 +223,7 @@ public class TPEndpointTest extends EndpointTestBase {
     @Test(dataProvider = "fixtureFactories")
     public void testSingleObjectPollWithLimit(Function<InputStream, Fixture<TPEndpoint>> f) {
         queryResourceTest(f, "../rdf-1.nt", new Triple(Alice, knows, x),
-                singleton(MapSolution.build(x, Bob)), true, Limit.required(10));
+                singleton(MapSolution.build(x, Bob)), true, Limit.of(10));
     }
 
     @Test(dataProvider = "fixtureFactories")
@@ -278,7 +278,7 @@ public class TPEndpointTest extends EndpointTestBase {
                         MapSolution.build(p, age),
                         MapSolution.build(p, name)
                         ),
-                Distinct.ADVISED, Projection.advised("p"));
+                Distinct.INSTANCE, Projection.of("p"));
     }
 
     @Test(dataProvider = "fixtureFactories")
@@ -290,14 +290,14 @@ public class TPEndpointTest extends EndpointTestBase {
                         MapSolution.build(p, name)
                 ),
                 true,
-                Distinct.ADVISED, Projection.advised("p"));
+                Distinct.INSTANCE, Projection.of("p"));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testLimit(Function<InputStream, Fixture<TPEndpoint>> f) {
         try (Fixture<TPEndpoint> fixture = f.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
             if (!fixture.endpoint.hasCapability(LIMIT)) return; //silently skip
-            CQuery qry = createQuery(x, knows, y, Limit.required(1));
+            CQuery qry = createQuery(x, knows, y, Limit.of(1));
             List<Solution> list = new ArrayList<>();
             fixture.endpoint.query(qry).forEachRemainingThenClose(list::add);
             assertEquals(list.size(), 1);
@@ -311,7 +311,7 @@ public class TPEndpointTest extends EndpointTestBase {
     public void testForceAskWithVars(Function<InputStream, Fixture<TPEndpoint>> f) {
         InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
-            CQuery cQuery = createQuery(s, p, o, Ask.REQUIRED);
+            CQuery cQuery = createQuery(s, p, o, Ask.INSTANCE);
             try (Results results = fix.endpoint.query(cQuery)) {
                 assertTrue(results.hasNext());
                 assertFalse(results.next().has(p.getName()));
@@ -323,7 +323,7 @@ public class TPEndpointTest extends EndpointTestBase {
     public void testForceAskWithVarsNegative(Function<InputStream, Fixture<TPEndpoint>> f) {
         InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
-            CQuery cQuery = createQuery(s, primaryTopic, o, Ask.REQUIRED);
+            CQuery cQuery = createQuery(s, primaryTopic, o, Ask.INSTANCE);
             try (Results results = fix.endpoint.query(cQuery)) {
                 assertFalse(results.hasNext());
             }
@@ -334,7 +334,7 @@ public class TPEndpointTest extends EndpointTestBase {
     public void testForceAskWithVarsNegativePoll(Function<InputStream, Fixture<TPEndpoint>> f) {
         InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
-            CQuery cQuery = createQuery(s, primaryTopic, o, Ask.REQUIRED);
+            CQuery cQuery = createQuery(s, primaryTopic, o, Ask.INSTANCE);
             try (Results results = fix.endpoint.query(cQuery)) {
                 assertFalse(results.hasNext(0)); //timeout or exhausted
                 assertFalse(results.hasNext()); //exhausted

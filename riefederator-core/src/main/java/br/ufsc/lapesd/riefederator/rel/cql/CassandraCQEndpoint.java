@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.rel.cql;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
@@ -464,8 +464,8 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
             MutableCQuery cQuery = MutableCQuery.from(star.getTriples());
             cQuery.mutateModifiers().addAll(star.getFilters());
             if (distinct)
-                cQuery.mutateModifiers().add(Distinct.ADVISED);
-            leaves.add(new QueryOp(this, cQuery));
+                cQuery.mutateModifiers().add(Distinct.INSTANCE);
+            leaves.add(new EndpointQueryOp(this, cQuery));
         }
         // optimize as usual, then execute under the inner federation
         Planner planner = SingletonSourceFederation.getInjector().getInstance(Planner.class);

@@ -4,7 +4,7 @@ import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,18 +26,21 @@ public class ParallelInMemoryHashJoinResults extends AbstractResults implements 
     private boolean stop = false;
     private final @Nonnull ExecutorService executorService;
     private final @Nonnull BlockingQueue<Solution> queue = new ArrayBlockingQueue<>(1024);
+    private final @Nonnull ArraySolution.ValueFactory solFac;
 
     private class Side {
         private Future<?> task = null;
         private final @Nonnull CrudeSolutionHashTable table;
         private final @Nonnull Results results;
-        private boolean complete = false;
+        private boolean complete = false, optional;
         private final int idx;
 
         public Side(@Nonnull Collection<String> joinVars, @Nonnull Results results, int idx) {
             this.results = results;
             this.idx = idx;
-            table = new CrudeSolutionHashTable(joinVars,  512);
+            this.table = new CrudeSolutionHashTable(joinVars,  512);
+            this.table.recordFetches();
+            this.optional = results.isOptional();
         }
 
         public void start() {
@@ -47,24 +50,39 @@ public class ParallelInMemoryHashJoinResults extends AbstractResults implements 
         protected void fetchTask() {
             int otherIdx = (idx + 1) % 2;
             try {
+                Side otherSide = sides[otherIdx];
                 while (!stop && results.hasNext()) {
                     Solution next = results.next();
                     synchronized (ParallelInMemoryHashJoinResults.this) {
-                        if (!sides[otherIdx].complete)
-                            table.add(next);
-                        for (Solution sol : sides[otherIdx].table.getAll(next)) {
-                            MapSolution.Builder builder = MapSolution.builder();
-                            for (String name : varNames)
-                                builder.put(name, next.get(name, sol.get(name)));
-                            queue.add(builder.build());
+                        CrudeSolutionHashTable.AddedHandle handle = null;
+                        if (!otherSide.complete || otherSide.optional)
+                            handle = table.add(next);
+                        Collection<Solution> otherSolutions = otherSide.table.getAll(next);
+                        for (Solution otherSolution : otherSolutions)
+                            queue.add(solFac.fromSolutions(next, otherSolution));
+                        if (!otherSolutions.isEmpty()) {
                             ParallelInMemoryHashJoinResults.this.notify();
+                            if (handle != null)
+                                handle.markFetched();
                         }
                     }
                 }
                 if (!stop) {
                     synchronized (ParallelInMemoryHashJoinResults.this) {
                         complete = true;
-                        sides[otherIdx].table.clear();
+                        if (otherSide.complete) { //add optional solutions
+                            if (otherSide.optional)
+                                table.forEachNotFetched(s -> queue.add(solFac.fromSolution(s)));
+                            if (optional) {
+                                otherSide.table.forEachNotFetched(
+                                        s -> queue.add(solFac.fromSolution(s)));
+                            }
+                            table.clear();
+                            otherSide.table.clear();
+                        }
+                        // clear tables early if not OPTIONAL
+                        if (!optional)
+                            otherSide.table.clear();
                         ParallelInMemoryHashJoinResults.this.notifyAll();
                     }
                 }
@@ -108,8 +126,9 @@ public class ParallelInMemoryHashJoinResults extends AbstractResults implements 
                                             right.getVarNames().stream()).collect(toSet());
         Preconditions.checkArgument(allVars.containsAll(joinVars));
         Preconditions.checkArgument(allVars.containsAll(resultVars));
+        solFac = ArraySolution.forVars(resultVars);
 
-        this.executorService = new ThreadPoolExecutor(0, 2,
+        executorService = new ThreadPoolExecutor(0, 2,
                 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(8));
         sides = new Side[] {new Side(joinVars, left, 0), new Side(joinVars, right, 1)};
         sides[0].start();

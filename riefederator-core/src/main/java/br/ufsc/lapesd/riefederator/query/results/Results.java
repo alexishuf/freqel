@@ -27,6 +27,20 @@ public interface Results extends Iterator<Solution>, AutoCloseable {
     boolean isDistinct();
 
     /**
+     * Indicates whether the existence of solutions in this results should be considered optional.
+     *
+     * When optional, the lack of solutions does not cause result elimination: A join with
+     * optional arguments becomes a (left/right) outer join and a cartesian product returns one
+     * of the sides instead of zero solutions if one of the sides is optional and has no solutions.
+     */
+    boolean isOptional();
+
+    /**
+     * Set the optional flag reported by {@link Results#isOptional()}.
+     */
+    void setOptional(boolean value);
+
+    /**
      * Wait for availability of a next() element for at most the given ammount of milliseconds.
      *
      * If the timeout expires, returns false. <b>Note that this does not means the Results

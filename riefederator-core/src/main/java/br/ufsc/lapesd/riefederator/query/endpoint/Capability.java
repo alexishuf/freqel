@@ -10,7 +10,8 @@ public enum  Capability {
     DISTINCT,
     LIMIT,
     SPARQL_FILTER,
-    VALUES;
+    VALUES,
+    OPTIONAL;
 
     public boolean isUniqueModifier() {
         switch (this) {
@@ -19,9 +20,45 @@ public enum  Capability {
             case DISTINCT:
             case PROJECTION:
             case VALUES:
+            case OPTIONAL:
                 return true;
             default:
                 return false;
+        }
+    }
+
+    /**
+     * Indicates whether it is safe to add a modifier from a query a into query b when query
+     * b does not have such modifier or has it with a different value.
+     *
+     * - OPTIONAL is unsafe as doing so would apply OPTIONAL semantics to a query that was
+     * not OPTIONAL
+     * - LIMIT is unsafe as the number of results from the join cannot be foreseen
+     * - ASK is unsafe since the receiving query was not under ASK semantics and results are lost
+     * - DISTINCT is unsafe since it can cause result eliminations
+     */
+    public boolean isMergeUnsafe() {
+        switch (this) {
+            case VALUES:
+            case PROJECTION:
+            case SPARQL_FILTER:
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    /**
+     * Indicates if modifiers have parameters, such as values, bindings, etc.
+     */
+    public boolean hasParameter() {
+        switch (this) {
+            case ASK:
+            case DISTINCT:
+            case OPTIONAL:
+                return false;
+            default:
+                return true;
         }
     }
 

@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.decomp;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -39,12 +39,12 @@ public class FilterAssigner {
     }
 
     /**
-     * Tries to place as many {@link SPARQLFilter} as possible in each {@link QueryOp}.
+     * Tries to place as many {@link SPARQLFilter} as possible in each {@link EndpointQueryOp}.
      *
      * Insertions will be registered on the placement map.
      *
      * @param list list of {@link ProtoQueryOp}s, without nulls
-     * @return List of {@link QueryOp}s or {@link UnionOp}s, without nulls
+     * @return List of {@link EndpointQueryOp}s or {@link UnionOp}s, without nulls
      */
     public @Nonnull List<Op> placeFiltersOnLeaves(@Nonnull List<ProtoQueryOp> list) {
         List<Op> result = new ArrayList<>(list.size());
@@ -61,11 +61,11 @@ public class FilterAssigner {
     }
 
     private static void addFilter(@Nonnull Op node, @Nonnull SPARQLFilter filter) {
-        if (node instanceof QueryOp) {
+        if (node instanceof EndpointQueryOp) {
             node.modifiers().add(filter);
         } else if (node instanceof UnionOp) {
             for (Op child : node.getChildren()) {
-                assert child instanceof QueryOp : "Expected MultiNode of QueryNodes";
+                assert child instanceof EndpointQueryOp : "Expected MultiNode of QueryNodes";
                 assert canFilter(child, filter)
                         : "Filter has variables which do not occur in the alternative node";
                 child.modifiers().add(filter);
@@ -110,7 +110,7 @@ public class FilterAssigner {
                     : "MultiQueryNode as whole accepts "+annotation+" but no child accepts!";
             assert count == node.getChildren().size()
                     : "Not all children of a MultiQueryNode could receive "+annotation;
-        } else if (node instanceof QueryOp) {
+        } else if (node instanceof EndpointQueryOp) {
             node.modifiers().add(annotation);
         } else {
             boolean done = false;

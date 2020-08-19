@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.AskDescription;
 import br.ufsc.lapesd.riefederator.description.Description;
@@ -21,9 +21,7 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinal
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.EvenDecomposer;
 import br.ufsc.lapesd.riefederator.federation.decomp.StandardDecomposer;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinOpExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.EagerCartesianOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedHashJoinOpExecutor;
@@ -34,11 +32,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InM
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
-import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.OuterPlannerTest;
-import br.ufsc.lapesd.riefederator.federation.planner.Planner;
-import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.*;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.linkedator.Linkedator;
 import br.ufsc.lapesd.riefederator.linkedator.LinkedatorResult;
@@ -96,6 +90,7 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.OverridingMethodsMustInvokeSuper;
+import javax.inject.Provider;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -550,14 +545,14 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     private static abstract class TestModule extends AbstractModule {
         private final boolean canBindJoin;
         private boolean storingPerformanceListener;
-        private Class<? extends OuterPlanner> op;
+        private Class<? extends Provider<? extends PrePlanner>> opSupplierClass;
         private Class<? extends Planner> ip;
         private Class<? extends JoinOrderPlanner> jo;
         private Class<? extends DecompositionStrategy> ds;
         private Class<? extends PerformanceListener> pl;
 
         protected TestModule(boolean canBindJoin,
-                          Class<? extends OuterPlanner> op,
+                          Class<? extends Provider<? extends PrePlanner>> opSupplierClass,
                           Class<? extends Planner> ip,
                           Class<? extends JoinOrderPlanner> jo,
                           Class<? extends DecompositionStrategy> ds,
@@ -565,7 +560,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             this.canBindJoin = canBindJoin;
             this.storingPerformanceListener =
                     PerformanceListenerTest.storingClasses.contains(pl);
-            this.op = op;
+            this.opSupplierClass = opSupplierClass;
             this.ip = ip;
             this.jo = jo;
             this.ds = ds;
@@ -582,7 +577,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
         @Override @OverridingMethodsMustInvokeSuper
         protected void configure() {
-            bind(OuterPlanner.class).to(op);
+            bind(PrePlanner.class).toProvider(opSupplierClass);
             bind(Planner.class).to(ip);
             bind(JoinOrderPlanner.class).to(jo);
             bind(DecompositionStrategy.class).to(ds);
@@ -598,7 +593,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     .append(jo.getSimpleName()).append('+')
                     .append(ds.getSimpleName()).append('+')
                     .append(pl.getSimpleName()).append('+')
-                    .append(op.getSimpleName()).append('+')
+                    .append(opSupplierClass.getSimpleName()).append('+')
                     .append(isSlowModule() ? "(fast)" : "(slow)")
                     .toString();
         }
@@ -606,7 +601,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
     @FunctionalInterface
     private interface ModuleFactory {
-        TestModule apply(Class<? extends OuterPlanner> outerPlanner,
+        TestModule apply(Class<? extends Provider<? extends PrePlanner>> outerPlannerSupplierClass,
                          Class<? extends Planner> planner,
                          Class<? extends JoinOrderPlanner> joinOrder,
                          Class<? extends DecompositionStrategy> decompositionStrategy,
@@ -677,16 +672,6 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 }
                 @Override
                 public String toString() { return asString(InMemoryHashJoinResults.class); }
-            },
-            (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(CartesianOpExecutor.class).to(EagerCartesianOpExecutor.class);
-                    configureCardinalityEstimation(binder(), 0);
-                }
-                @Override
-                public String toString() { return asString(EagerCartesianOpExecutor.class); }
             },
             (op, ip, opt, dec, pl) -> new TestModule(false, op, ip, opt, dec, pl) {
                 @Override
@@ -766,7 +751,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             fastDecomposerClasses = Collections.singletonList(StandardDecomposer.class);
 
     private static final @Nonnull List<TestModule> moduleList =
-            OuterPlannerTest.classes.stream()
+            PrePlannerTest.providerClasses.stream()
                 .flatMap(op -> PlannerTest.plannerClasses.stream()
                     .flatMap(ip -> PlannerTest.joinOrderPlannerClasses.stream()
                         .flatMap(jo -> decomposerClasses.stream()
@@ -843,7 +828,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                        newHashSet(MapSolution.builder().put(x, ex("books/1"))
                                                        .put(y, ex("authors/1")).build())),
                 asList(new SetupBookShop(0),
-                        createQuery(x, author, y, y, nameEx, author1, Projection.advised("x")),
+                        createQuery(x, author, y, y, nameEx, author1, Projection.of("x")),
                         newHashSet(MapSolution.build(x, ex("books/1")))),
                 asList(new SetupBookShop(0),
                         CQuery.from(asList(new Triple(x, author, y),
@@ -857,13 +842,13 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                         createQuery(x, author, y,
                                     x, genre, z,
                                     y, nameEx, author1,
-                                    z, genreName, genre1, Projection.advised("x")),
+                                    z, genreName, genre1, Projection.of("x")),
                         newHashSet(MapSolution.build(x, ex("books/1")))),
                 asList(new SetupBookShop(0),
                         createQuery(x, author, y,
                                     x, genre, z,
                                     y, nameEx, author1,
-                                    z, genreName, genre1, Projection.advised("y")),
+                                    z, genreName, genre1, Projection.of("y")),
                         newHashSet(MapSolution.build(y, ex("authors/1")))),
                 asList(new SetupBookShop(0),
                        CQuery.from(asList(new Triple(x, title, title1),
@@ -875,7 +860,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 asList(new SetupBookShop(0),
                        createQuery(x, title, title1,
                                    x, genre, y,
-                                   y, genreName, z, Projection.advised("x")),
+                                   y, genreName, z, Projection.of("x")),
                        newHashSet(MapSolution.build(x, ex("books/1"))))
         );
     }
@@ -1010,7 +995,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         federation.initAllSources(5, TimeUnit.MINUTES);
 //        Stopwatch sw = Stopwatch.createStarted();
         Op query = queryObject instanceof Op ? (Op)queryObject
-                                             : new FreeQueryOp((CQuery) queryObject);
+                                             : new QueryOp((CQuery) queryObject);
         Op oldQuery = TreeUtils.deepCopy(query);
         int oldQueryHash = query.hashCode();
         assertEquals(oldQuery, query);

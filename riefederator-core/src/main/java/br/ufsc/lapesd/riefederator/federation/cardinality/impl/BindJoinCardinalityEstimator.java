@@ -1,12 +1,12 @@
 package br.ufsc.lapesd.riefederator.federation.cardinality.impl;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinInfo;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 
@@ -36,8 +36,8 @@ public class BindJoinCardinalityEstimator implements JoinCardinalityEstimator {
     }
 
     private @Nonnull Collection<Triple> getTriples(@Nonnull Op node) {
-        if (node instanceof QueryOp)
-            return ((QueryOp) node).getQuery();
+        if (node instanceof EndpointQueryOp)
+            return ((EndpointQueryOp) node).getQuery();
         if (node instanceof UnionOp) {
             LinkedHashSet<Triple> set = new LinkedHashSet<>();
             node.getChildren().stream().flatMap(n -> getTriples(n).stream()).forEach(set::add);

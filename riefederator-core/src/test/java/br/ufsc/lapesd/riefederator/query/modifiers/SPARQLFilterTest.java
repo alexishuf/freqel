@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.modifiers;
 
 import br.ufsc.lapesd.riefederator.TestContext;
-import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
@@ -9,7 +8,6 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import com.google.common.collect.Sets;
-import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.core.Var;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -88,7 +86,7 @@ public class SPARQLFilterTest implements TestContext {
         SPARQLFilter bound = filter.bind(MapSolution.build(u, lit(23)));
         assertEquals(bound.getVars(), singleton("x"));
         assertEquals(bound.getVarTerms(), singleton(x));
-        assertEquals(bound.getTerms(), Sets.newHashSet(x, integer(23)));
+        assertEquals(bound.getTerms(), Sets.newHashSet(x, lit(23)));
     }
 
     @Test
@@ -283,7 +281,7 @@ public class SPARQLFilterTest implements TestContext {
 
     @DataProvider
     public static @Nonnull Object[][] bindData() {
-        Lit i23 = JenaWrappers.fromJena(ResourceFactory.createTypedLiteral(23));
+        Lit i23 = StdLit.fromUnescaped("23", xsdInteger);
         return Stream.of(
                 asList(SPARQLFilter.build("?x < ?y"), MapSolution.build(y, i23),
                        SPARQLFilter.build("?x < 23")),

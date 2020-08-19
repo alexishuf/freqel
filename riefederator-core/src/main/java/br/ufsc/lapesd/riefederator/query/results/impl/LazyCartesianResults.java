@@ -14,13 +14,16 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Function;
 
+import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 public class LazyCartesianResults extends AbstractResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(LazyCartesianResults.class);
+    private static final Set<Solution> EMPTY_SINGLETON = singleton(ArraySolution.EMPTY);
 
     private final @Nonnull ResultsList<Results> inputs;
+    private @Nullable ResultsList<Results> emptyOptionals = null;
     private final @Nonnull ArraySolution.ValueFactory factory;
     private final @Nonnull Solution[] solutions;
     private @Nullable Solution current;
@@ -29,7 +32,6 @@ public class LazyCartesianResults extends AbstractResults implements Results {
     public LazyCartesianResults(@Nonnull Collection<Results> ins,
                                 @Nonnull Set<String> varNames) {
         this(ins, varNames, Function.identity());
-
     }
 
     public LazyCartesianResults(@Nonnull Collection<Results> ins, @Nonnull Set<String> varNames,
@@ -102,7 +104,7 @@ public class LazyCartesianResults extends AbstractResults implements Results {
                 solutions[i] = r.next();
                 return true; // done, can assemble a new solution
             } else if (i > 0) {
-                ((BufferedResults)r).reset(true);
+                ((BufferedResults) r).reset(true);
                 solutions[i] = r.next();
                 // continue iteration
             }
@@ -120,6 +122,13 @@ public class LazyCartesianResults extends AbstractResults implements Results {
             Results r = inputs.get(i);
             if (r.hasNext()) {
                 solutions[i] = r.next();
+            } else if (r.isOptional()) {
+                if (emptyOptionals == null)
+                    emptyOptionals = new ResultsList<>();
+                emptyOptionals.add(r); // save for later close()
+                CollectionResults filler = new CollectionResults(EMPTY_SINGLETON, r.getVarNames());
+                inputs.set(i, filler);
+                solutions[i] = filler.next();
             } else { // no solutions possible, ever
                 exhausted = true;
                 return false; // avoid hasNext() calls

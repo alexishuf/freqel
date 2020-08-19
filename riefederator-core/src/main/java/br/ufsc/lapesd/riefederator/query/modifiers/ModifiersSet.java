@@ -215,6 +215,77 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         return change;
     }
 
+    private boolean mergeWith(@Nonnull Collection<Modifier> collection,
+                             @Nonnull Collection<String> fallbackProjection,
+                             @Nonnull Collection<String> collectionFallbackProjection,
+                             boolean safe) throws UnsafeMergeException {
+        boolean change = false, gotProjection = false;
+        if (safe)
+            checkCanMergeWith(collection);
+        for (Modifier modifier : collection) {
+            // merge modifiers
+            if (modifier instanceof Projection) {
+                gotProjection = true;
+                Projection theirs = (Projection)modifier;
+                Projection mine = projection();
+                Collection<String> myVars = mine == null ? fallbackProjection : mine.getVarNames();
+                change |= add(new Projection(union(myVars, theirs.getVarNames())));
+            } else {
+                change = mergeNonProjection(modifier, change);
+            }
+        }
+        Projection p = projection();
+        if (!gotProjection && p != null && !collectionFallbackProjection.isEmpty()) {
+            Set<String> vars = union(p.getVarNames(), collectionFallbackProjection);
+            change |= add(new Projection(vars));
+        }
+        return change;
+    }
+
+    private @Nullable UnsafeMergeException getUnsafeMergeException(@Nonnull Collection<Modifier> collection) {
+        List<Modifier> list = null;
+        for (Modifier modifier : collection) {
+            Capability capability = modifier.getCapability();
+            if (capability.isMergeUnsafe()) {
+                Set<Modifier> curr = d.sets.get(capability.ordinal());
+                if (capability.hasParameter() ? !curr.contains(modifier) : curr.isEmpty()) {
+                    if (list == null) list = new ArrayList<>();
+                    list.add(modifier);
+                }
+            }
+        }
+        return list != null ? new UnsafeMergeException(list) : null;
+    }
+
+    private boolean mergeNonProjection(@Nonnull Modifier modifier, boolean change) {
+        if (modifier instanceof ValuesModifier) {
+            ValuesModifier theirs = (ValuesModifier) modifier;
+            ValuesModifier mine = valueModifier();
+            if (mine != null) {
+                Set<String> all = union(mine.getVarNames(), theirs.getVarNames());
+                Set<String> shared = intersect(mine.getVarNames(), theirs.getVarNames());
+                Results mergeResults, mr = mine.createResults(), tr = theirs.createResults();
+                if (shared.isEmpty())
+                    mergeResults = new LazyCartesianResults(asList(mr, tr), all);
+                else
+                    mergeResults = new InMemoryHashJoinResults(mr, tr, shared, all);
+                change |= add(ValuesModifier.fromResults(mergeResults));
+            } else {
+                change |= add(theirs);
+            }
+        } else if (modifier instanceof Limit) {
+            int theirs = ((Limit) modifier).getValue();
+            Limit mine = limit();
+            int value = Math.min(mine == null ? Integer.MAX_VALUE : mine.getValue(), theirs);
+            change |= add(new Limit(value));
+        } else {
+            assert !modifier.getCapability().isUniqueModifier()
+                    || !modifier.getCapability().hasParameter();
+            change |= add(modifier);
+        }
+        return change;
+    }
+
     /**
      * Merge all given modifiers with this set, assuming both this and the given
      * collection apply to query fragments that are being combined by conjunction or
@@ -234,56 +305,48 @@ public class ModifiersSet extends AbstractSet<Modifier> {
      * @param collectionFallbackProjection if this set has a projection and collection does
      *                                     not contain a Projection, consider this as the
      *                                     Projection of collection with non-required status.
-     * @return true if this set was modified, false otherwise
+     *
+     * @return true if this set was modified, false otherwise.
      */
-    public boolean mergeWith(@Nonnull Collection<Modifier> collection,
-                             @Nonnull Collection<String> fallbackProjection,
-                             @Nonnull Collection<String> collectionFallbackProjection) {
-        boolean change = false, gotProjection = false;
-        for (Modifier modifier : collection) {
-            if (modifier instanceof Projection) {
-                gotProjection = true;
-                Projection theirs = (Projection)modifier;
-                Projection mine = projection();
-                Set<String> union = union(mine == null ? fallbackProjection : mine.getVarNames(),
-                                          theirs.getVarNames());
-                boolean required = (mine != null && mine.isRequired()) || theirs.isRequired();
-                change |= add(new Projection(union, required));
-            } else if (modifier instanceof ValuesModifier) {
-                ValuesModifier theirs = (ValuesModifier) modifier;
-                ValuesModifier mine = valueModifier();
-                if (mine != null) {
-                    Set<String> all = union(mine.getVarNames(), theirs.getVarNames());
-                    Set<String> shared = intersect(mine.getVarNames(), theirs.getVarNames());
-                    Results mergeResults, mr = mine.createResults(), tr = theirs.createResults();
-                    if (shared.isEmpty())
-                        mergeResults = new LazyCartesianResults(asList(mr, tr), all);
-                    else
-                        mergeResults = new InMemoryHashJoinResults(mr, tr, shared, all);
-                    change |= add(ValuesModifier.fromResults(mergeResults));
-                } else {
-                    change |= add(theirs);
-                }
-            } else if (modifier instanceof Limit) {
-                int theirs = ((Limit) modifier).getValue();
-                Limit mine = limit();
-                boolean required = (mine != null && mine.isRequired()) || modifier.isRequired();
-                int value = Math.min(mine == null ? Integer.MAX_VALUE : mine.getValue(), theirs);
-                change |= add(new Limit(value, required));
-            } else if (modifier instanceof Ask) {
-                Ask mine = ask();
-                boolean mineRequired = mine != null && mine.isRequired();
-                change |= add(new Ask(mineRequired || modifier.isRequired()));
-            } else {
-                change |= add(modifier);
-            }
-        }
-        Projection p = projection();
-        if (!gotProjection && p != null && !collectionFallbackProjection.isEmpty()) {
-            Set<String> vars = union(p.getVarNames(), collectionFallbackProjection);
-            change |= add(new Projection(vars, p.isRequired()));
-        }
-        return change;
+    public boolean unsafeMergeWith(@Nonnull Collection<Modifier> collection,
+                                   @Nonnull Collection<String> fallbackProjection,
+                                   @Nonnull Collection<String> collectionFallbackProjection) {
+        return mergeWith(collection, fallbackProjection, collectionFallbackProjection, false);
+    }
+
+    /**
+     * Behaves as {@link ModifiersSet#unsafeMergeWith(Collection, Collection, Collection)}, but
+     * throws an exception if the merge operation would potentially cause loss of solutions.
+     *
+     * @throws UnsafeMergeException if safe is true and an unsafe modifier not yet
+     *                              present on this set would be added.
+     * @return true if this set was modified, false otherwise.
+     */
+    public boolean safeMergeWith(@Nonnull Collection<Modifier> collection,
+                                 @Nonnull Collection<String> fallbackProjection,
+                                 @Nonnull Collection<String> collectionFallbackProjection) {
+        return mergeWith(collection, fallbackProjection, collectionFallbackProjection, true);
+    }
+
+    /**
+     * Check if a call to {@link ModifiersSet#safeMergeWith(Collection, Collection, Collection)}
+     * with the given modifiers would fail with {@link UnsafeMergeException}.
+     *
+     * @return true if the merge would succeed, false if would throw {@link UnsafeMergeException}.
+     */
+    public boolean canMergeWith(@Nonnull Collection<Modifier> collection) {
+        return getUnsafeMergeException(collection) == null;
+    }
+
+    /**
+     * Same as {@link ModifiersSet#canMergeWith(Collection)}, but throws instead of returning false.
+     *
+     * @throws UnsafeMergeException if the merge is not safe
+     */
+    public void checkCanMergeWith(@Nonnull Collection<Modifier> collection) {
+        UnsafeMergeException ex = getUnsafeMergeException(collection);
+        if (ex != null)
+            throw ex;
     }
 
     public boolean isLocked() {
@@ -320,6 +383,9 @@ public class ModifiersSet extends AbstractSet<Modifier> {
     }
     public @Nullable Limit limit() {
         return getSingleton(Capability.LIMIT, Limit.class);
+    }
+    public @Nullable Optional optional() {
+        return getSingleton(Capability.OPTIONAL, Optional.class);
     }
     public @Nonnull Set<SPARQLFilter> filters() {
         return d.filtersView;

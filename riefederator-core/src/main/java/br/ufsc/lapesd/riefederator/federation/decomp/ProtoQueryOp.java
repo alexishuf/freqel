@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.decomp;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.QueryRelevantTermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.QueryRelevantTripleAnnotation;
@@ -31,18 +31,18 @@ public class ProtoQueryOp {
         this.alternatives = alternatives;
     }
 
-    public ProtoQueryOp(@Nonnull QueryOp queryOp) {
+    public ProtoQueryOp(@Nonnull EndpointQueryOp queryOp) {
         this(queryOp.getEndpoint(), queryOp.getQuery());
     }
 
     public @Nonnull Op toOp() {
         if (!hasAlternatives()) {
-            return new QueryOp(endpoint, matchedQuery);
+            return new EndpointQueryOp(endpoint, matchedQuery);
         } else {
             UnionOp.Builder b = UnionOp.builder();
-            b.add(new QueryOp(endpoint, matchedQuery));
+            b.add(new EndpointQueryOp(endpoint, matchedQuery));
             for (CQuery alternative : alternatives)
-                b.add(new QueryOp(endpoint, alternative));
+                b.add(new EndpointQueryOp(endpoint, alternative));
             return b.build();
         }
     }

@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,10 +26,11 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
 
     private final @Nonnull Results smaller, larger;
     private final @Nonnull CrudeSolutionHashTable hashTable;
-    private boolean stop = false;
+    private boolean stop = false, fetchedNonFetched = false;
     private final  @Nullable ExecutorService executorService;
     private final  @Nonnull Future<?> fetchTask;
     private final  @Nonnull ArrayDeque<Solution> queue;
+    private final ArraySolution.ValueFactory factory;
 
     public static class Factory implements HashJoinResultsFactory {
         private boolean useThread = true;
@@ -68,6 +69,7 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
         this.smaller = smaller;
         this.larger = larger;
         this.queue = new ArrayDeque<>();
+        this.factory = ArraySolution.forVars(getVarNames());
         if (useThread) {
             this.executorService = Executors.newSingleThreadExecutor();
             this.fetchTask = executorService.submit(this::fetchAll);
@@ -85,6 +87,7 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
             while (!stop && smaller.hasNext()) {
                 hashTable.add(smaller.next());
             }
+            hashTable.recordFetches();
         } catch (Exception e) {
             logger.error("Fetch Task for {} dying with exception", smaller, e);
         }
@@ -107,6 +110,11 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
                 if (tryJoin(larger.next()))
                     return true;
             }
+            if (!fetchedNonFetched && larger.isOptional()) {
+                fetchedNonFetched = true;
+                hashTable.forEachNotFetched(s -> queue.add(factory.fromSolution(s)));
+                return !queue.isEmpty();
+            }
             return false;
         } finally {
             if (interrupted)
@@ -115,15 +123,14 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
     }
 
     private boolean tryJoin(@Nonnull Solution fromLarger) {
-        boolean joined = false;
-        for (Solution fromSmaller : hashTable.getAll(fromLarger)) {
-            MapSolution.Builder builder = MapSolution.builder();
-            for (String name : varNames)
-                builder.put(name, fromSmaller.get(name, fromLarger.get(name)));
-            MapSolution result = builder.build();
-            queue.add(result);
+        Collection<Solution> leftSolutions = hashTable.getAll(fromLarger);
+        boolean joined = !leftSolutions.isEmpty();
+        if (!joined && smaller.isOptional()) {
+            queue.add(factory.fromSolution(fromLarger));
             joined = true;
         }
+        for (Solution fromSmaller : leftSolutions)
+            queue.add(factory.fromSolutions(fromSmaller, fromLarger));
         return joined;
     }
 

@@ -32,6 +32,8 @@ public class SimpleEmptyOpExecutor implements EmptyOpExecutor {
 
     @Override
     public @Nonnull Results execute(@Nonnull EmptyOp node) {
-        return new CollectionResults(Collections.emptyList(), node.getResultVars());
+        Results r = new CollectionResults(Collections.emptyList(), node.getResultVars());
+        r.setOptional(node.modifiers().optional() != null);
+        return r;
     }
 }

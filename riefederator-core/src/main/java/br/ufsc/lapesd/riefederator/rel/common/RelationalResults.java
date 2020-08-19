@@ -78,8 +78,8 @@ public abstract class RelationalResults extends AbstractResults {
                 Term core = rw.getStar(i).getCore();
                 if (core.isVar() && projection.contains(core.asVar().getName())) {
                     b.add(new Triple(core, p, o));
-                    b.mutateModifiers().add(Projection.required(core.asVar().getName()));
-                    b.mutateModifiers().add(Distinct.REQUIRED);
+                    b.mutateModifiers().add(Projection.of(core.asVar().getName()));
+                    b.mutateModifiers().add(Distinct.INSTANCE);
                 } else { // no work on our side, skip it
                     jenaStars.add(null);
                     jenaVars.add(Collections.emptySet());

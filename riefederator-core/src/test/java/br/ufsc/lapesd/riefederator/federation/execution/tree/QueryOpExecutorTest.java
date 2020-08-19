@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree;
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleQueryOpExecutor;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
@@ -134,7 +134,7 @@ public class QueryOpExecutorTest implements TestContext {
     @Test(dataProvider = "testData")
     public void testExecuteQuery(Supplier<QueryOpExecutor> supplier, TPEndpoint ep) {
         QueryOpExecutor executor = supplier.get();
-        Results results = executor.execute(new QueryOp(ep, createQuery(x, knows, Bob)));
+        Results results = executor.execute(new EndpointQueryOp(ep, createQuery(x, knows, Bob)));
         Set<Solution> actual = new HashSet<>();
         results.forEachRemainingThenClose(actual::add);
 
@@ -146,7 +146,7 @@ public class QueryOpExecutorTest implements TestContext {
         QueryOpExecutor executor = supplier.get();
         CQuery qry = createQuery(x, name, y, SPARQLFilter.build("REGEX(?y, \"^b.*\")"));
 
-        Results results = executor.execute(new QueryOp(ep, qry));
+        Results results = executor.execute(new EndpointQueryOp(ep, qry));
         Set<Solution> actual = new HashSet<>();
         results.forEachRemainingThenClose(actual::add);
         assertEquals(actual, Sets.newHashSet(
@@ -158,7 +158,7 @@ public class QueryOpExecutorTest implements TestContext {
     @Test(dataProvider = "testData")
     public void testPushesNodeFilterToQuery(Supplier<QueryOpExecutor> supplier, TPEndpoint ep) {
         QueryOpExecutor executor = supplier.get();
-        QueryOp node = new QueryOp(ep, createQuery(x, name, y));
+        EndpointQueryOp node = new EndpointQueryOp(ep, createQuery(x, name, y));
         node.modifiers().add(SPARQLFilter.build("REGEX(?y, \"^b.*\")"));
 
         Results results = executor.execute(node);
@@ -174,7 +174,7 @@ public class QueryOpExecutorTest implements TestContext {
     public void testFiltersInBothPlaces(Supplier<QueryOpExecutor> supplier, TPEndpoint ep) {
         QueryOpExecutor executor = supplier.get();
         CQuery qry = createQuery(x, name, y, SPARQLFilter.build("REGEX(?y, \"^b.*$\")"));
-        QueryOp node = new QueryOp(ep, qry);
+        EndpointQueryOp node = new EndpointQueryOp(ep, qry);
         node.modifiers().add(SPARQLFilter.build("REGEX(?y, \".*o$\")"));
 
         Results results = executor.execute(node);

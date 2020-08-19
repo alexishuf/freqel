@@ -8,7 +8,8 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinal
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -18,6 +19,8 @@ import static br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability.UPPER_
 import static br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityUtils.multiply;
 
 public class DefaultJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
+    private static final Logger logger = LoggerFactory.getLogger(DefaultJoinOpExecutor.class);
+
     private @Nonnull final DefaultHashJoinOpExecutor hashExecutor;
     private @Nonnull final FixedBindJoinOpExecutor bindExecutor;
     private @Nonnull final CardinalityComparator comparator;
@@ -42,9 +45,18 @@ public class DefaultJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
     }
 
     @Override
-    public @Nonnull Results execute(@Nonnull JoinOp node) {
-        if (node.getLeft().hasInputs() || node.getRight().hasInputs()) {
-            return bindExecutor.execute(node);
+    protected @Nonnull Results innerExecute(@Nonnull JoinOp node) {
+        boolean leftOptional = node.getLeft().modifiers().optional() != null;
+        boolean rightOptional = node.getLeft().modifiers().optional() != null;
+        boolean leftInputs = node.getLeft().hasInputs();
+        boolean rightInputs = node.getRight().hasInputs();
+        boolean rightReqInputs = node.getRight().hasRequiredInputs();
+        boolean leftReqInputs = node.getLeft().hasRequiredInputs();
+
+        if (leftOptional && rightOptional && !leftReqInputs && !rightReqInputs) {
+            return hashExecutor.innerExecute(node);
+        } else if (leftInputs || rightInputs) {
+            return bindExecutor.innerExecute(node);
         } else {
             Cardinality lc = node.getLeft().getCardinality(), rc = node.getRight().getCardinality();
             int diff = comparator.compare(lc, rc);
@@ -52,7 +64,7 @@ public class DefaultJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
             Cardinality.Reliability lr = lc.getReliability(), rr = rc.getReliability();
             if (lr.isAtLeast(UPPER_BOUND) && rr.isAtLeast(UPPER_BOUND)) {
                 if (minC.getValue(Integer.MAX_VALUE) < 1024)
-                    return SPARQLFilterResults.applyIf(hashExecutor.execute(node), node);
+                    return hashExecutor.innerExecute(node);
             }
 
             Op m = comparator.compare(rc, lc) >= 0 ? node.getRight() : node.getLeft();
@@ -60,9 +72,9 @@ public class DefaultJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
             Cardinality askDegenCeil = comparator.min(Cardinality.guess(2000),
                                                       multiply(minC, 2));
             if (askDegenerate && comparator.compare(m.getCardinality(), askDegenCeil) <= 0)
-                return SPARQLFilterResults.applyIf(hashExecutor.execute(node), node);
+                return hashExecutor.innerExecute(node);
 
-            return SPARQLFilterResults.applyIf(bindExecutor.execute(node), node);
+            return bindExecutor.innerExecute(node);
         }
     }
 }

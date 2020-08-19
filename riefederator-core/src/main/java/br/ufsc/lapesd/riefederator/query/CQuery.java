@@ -61,7 +61,7 @@ public class CQuery implements  List<Triple> {
     /* ~~~ constructor, builder & factories ~~~ */
 
     protected CQuery(@Nonnull CQueryData d, @Nullable PrefixDict prefixDict) {
-        this.d = d.attach();
+        this.d = d;
         this.prefixDict = prefixDict;
 
         if (CQuery.class.desiredAssertionStatus()) {
@@ -88,7 +88,7 @@ public class CQuery implements  List<Triple> {
     @CheckReturnValue
     public static @Nonnull CQuery from(@Nonnull Collection<Triple> query) {
         if (query instanceof CQuery)
-            return new CQuery(((CQuery) query).d, ((CQuery) query).prefixDict);
+            return new CQuery(((CQuery) query).d.attach(), ((CQuery) query).prefixDict);
         List<Triple> list = query instanceof List ? (List<Triple>)query : new ArrayList<>(query);
         return new CQuery(new CQueryData(list), null);
     }
@@ -99,11 +99,11 @@ public class CQuery implements  List<Triple> {
     }
 
     public @Nonnull CQuery withPrefixDict(@Nullable PrefixDict dict) {
-        return new CQuery(d, dict);
+        return new CQuery(d.attach(), dict);
     }
 
     public @Nonnull CQuery withModifiers(@Nonnull Collection<Modifier> modifiers) {
-        CQueryData d2 = d.toExclusive().attach();
+        CQueryData d2 = d.toExclusive();
         d2.modifiers.addAll(modifiers);
         return new CQuery(d2, prefixDict);
     }
@@ -392,9 +392,8 @@ public class CQuery implements  List<Triple> {
                     .append(t.getObject().toString(dict)).append(" .\n");
             firstTriple = false;
         }
-        for (Modifier modifier : d.modifiers) {
-            if (modifier instanceof SPARQLFilter)
-                b.append("  ").append(modifier.toString()).append("\n");
+        for (SPARQLFilter modifier : d.modifiers.filters()) {
+            b.append("  ").append(modifier).append("\n");
         }
         b.setLength(b.length()-1);
         return b.append(" }").toString();

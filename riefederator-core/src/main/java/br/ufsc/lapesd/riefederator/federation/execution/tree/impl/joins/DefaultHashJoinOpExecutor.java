@@ -9,7 +9,6 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InM
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
-import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -33,7 +32,7 @@ public class DefaultHashJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
     }
 
     @Override
-    public @Nonnull Results execute(@Nonnull JoinOp node) {
+    protected @Nonnull Results innerExecute(@Nonnull JoinOp node) {
         PlanExecutor exec = getPlanExecutor();
         assert node.getChildren().size() == 2;
         try (ResultsList<Results> list = new ResultsList<>()) {
@@ -52,7 +51,7 @@ public class DefaultHashJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
                                                       joinVars, resultVars);
             }
             list.clear();
-            return SPARQLFilterResults.applyIf(results, node);
+            return results;
         }
     }
 }

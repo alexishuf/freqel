@@ -1,17 +1,20 @@
 package br.ufsc.lapesd.riefederator.federation.planner;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.*;
+import br.ufsc.lapesd.riefederator.federation.planner.inner.ArbitraryJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.inner.GreedyJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.inner.JoinPathsPlanner;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
@@ -124,7 +127,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
     public static void assertPlanAnswers(@Nonnull Op root, @Nonnull CQuery query,
                                          boolean allowEmptyNode, boolean forgiveFilters) {
-        assertPlanAnswers(root, new FreeQueryOp(query), allowEmptyNode, forgiveFilters);
+        assertPlanAnswers(root, new QueryOp(query), allowEmptyNode, forgiveFilters);
     }
     public static void assertPlanAnswers(@Nonnull Op root, @Nonnull Op query,
                                          boolean allowEmptyNode, boolean forgiveFilters) {
@@ -134,7 +137,10 @@ public class PlannerTest implements TransparencyServiceTestContext {
         assertTrue(isAcyclic(root));
 
         if (!allowEmptyNode) {
-            assertFalse(root instanceof EmptyOp, "EmptyNode is not an answer!");
+            assertEquals(root.modifiers().optional(), query.modifiers().optional());
+            if (query.modifiers().optional() == null)
+                assertFalse(root instanceof EmptyOp, "EmptyOp is not an answer!");
+            // tolerate EmptyOp x if x is a child of a union that has a non-EmptyOp child
             Set<RefEquals<Op>> tolerate = new HashSet<>();
             streamPreOrder(root).filter(UnionOp.class::isInstance)
                     .forEach(o -> {
@@ -144,15 +150,18 @@ public class PlannerTest implements TransparencyServiceTestContext {
                                            .map(RefEquals::of).forEach(tolerate::add);
                         }
                     });
-            assertEquals(streamPreOrder(root).filter(o -> o instanceof EmptyOp
-                                                       && !tolerate.contains(RefEquals.of(o)))
-                                             .count(),
-                         0, "There are EmptyNodes in the plan as leaves");
+            // tolerate EmptyOp x if x is marked optional
+            streamPreOrder(root)
+                    .filter(o -> o instanceof EmptyOp && o.modifiers().optional() != null)
+                    .forEach(o -> tolerate.add(RefEquals.of(o)));
+            assertEquals(streamPreOrder(root).filter(EmptyOp.class::isInstance)
+                            .filter(o -> !tolerate.contains(RefEquals.of(o))).count(),
+                         0, "There are non-tolerable EmptyOp in the plan as leaves");
         }
 
         // any query node should only match triples in the query
         List<Op> bad = streamPreOrder(root)
-                .filter(n -> n instanceof QueryOp
+                .filter(n -> n instanceof EndpointQueryOp
                         && !triples.containsAll(n.getMatchedTriples()))
                 .collect(toList());
         assertEquals(bad, emptyList());
@@ -183,20 +192,20 @@ public class PlannerTest implements TransparencyServiceTestContext {
         // equivalent as this would be wasteful. Comparison must use the CQuery instead of
         // Set<Triple> since it may make sense to send the same triples with distinct
         // QueryRelevantTermAnnotations (e.g., WebAPICQEndpoint and JDBCCQEndpoint)
-        List<Set<QueryOp>> equivSets = multiQueryNodes(root).stream()
+        List<Set<EndpointQueryOp>> equivSets = multiQueryNodes(root).stream()
                 .map(n -> {
-                    Set<QueryOp> equiv = new HashSet<>();
-                    ListMultimap<CQuery, QueryOp> mm;
+                    Set<EndpointQueryOp> equiv = new HashSet<>();
+                    ListMultimap<CQuery, EndpointQueryOp> mm;
                     mm = MultimapBuilder.hashKeys().arrayListValues().build();
                     for (Op child : n.getChildren()) {
-                        if (child instanceof QueryOp)
-                            mm.put(((QueryOp) child).getQuery(), (QueryOp) child);
+                        if (child instanceof EndpointQueryOp)
+                            mm.put(((EndpointQueryOp) child).getQuery(), (EndpointQueryOp) child);
                     }
                     for (CQuery key : mm.keySet()) {
                         for (int i = 0; i < mm.get(key).size(); i++) {
-                            QueryOp outer = mm.get(key).get(i);
+                            EndpointQueryOp outer = mm.get(key).get(i);
                             for (int j = i + 1; j < mm.get(key).size(); j++) {
-                                QueryOp inner = mm.get(key).get(j);
+                                EndpointQueryOp inner = mm.get(key).get(j);
                                 if (outer.getEndpoint().isAlternative(inner.getEndpoint()) ||
                                         inner.getEndpoint().isAlternative(outer.getEndpoint())) {
                                     equiv.add(outer);
@@ -262,8 +271,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
 
         if (!forgiveFilters) {
             Set<String> allVars = TreeUtils.streamPreOrder(query)
-                    .filter(FreeQueryOp.class::isInstance)
-                    .flatMap(o -> ((FreeQueryOp)o).getQuery().attr().tripleVarNames().stream())
+                    .filter(QueryOp.class::isInstance)
+                    .flatMap(o -> ((QueryOp)o).getQuery().attr().tripleVarNames().stream())
                     .collect(toSet());
             List<SPARQLFilter> allFilters = streamPreOrder(query)
                     .flatMap(o -> o.modifiers().filters().stream())
@@ -277,8 +286,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
             //all filters are placed somewhere
             List<SPARQLFilter> missingFilters = allFilters.stream()
                     .filter(f -> streamPreOrder(root).noneMatch(n -> {
-                        if (n instanceof FreeQueryOp) {
-                            if (((FreeQueryOp)n).getQuery().getModifiers().contains(f))
+                        if (n instanceof QueryOp) {
+                            if (((QueryOp)n).getQuery().getModifiers().contains(f))
                                 return true;
                         }
                         return n.modifiers().contains(f);
@@ -298,8 +307,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
 
             // same as previous, but checks filters within CQuery instances
             badFilterAssignments = streamPreOrder(root)
-                    .filter(FreeQueryOp.class::isInstance)
-                    .map(n -> (FreeQueryOp)n)
+                    .filter(QueryOp.class::isInstance)
+                    .map(n -> (QueryOp)n)
                     .flatMap(n -> n.getQuery().getModifiers().stream()
                                               .filter(SPARQLFilter.class::isInstance)
                                               .map(f -> ImmutablePair.of(n, (SPARQLFilter)f)))
@@ -337,7 +346,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testSingleQuery(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
-        QueryOp queryOp = new QueryOp(empty1, query);
+        EndpointQueryOp queryOp = new EndpointQueryOp(empty1, query);
         Op node = planner.plan(query, singleton(queryOp));
         assertSame(node, queryOp);
         assertPlanAnswers(node, query);
@@ -347,8 +356,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testDuplicateQuery(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
-        QueryOp node1 = new QueryOp(empty1, query);
-        QueryOp node2 = new QueryOp(empty2, query);
+        EndpointQueryOp node1 = new EndpointQueryOp(empty1, query);
+        EndpointQueryOp node2 = new EndpointQueryOp(empty2, query);
         Op root = planner.plan(query, asList(node1, node2));
         assertEquals(root.getResultVars(), singleton("x"));
         assertFalse(root.isProjected());
@@ -365,8 +374,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
                                    new Triple(x, knows, y));
         CQuery q1 = CQuery.from(query.get(0));
         CQuery q2 = CQuery.from(query.get(1));
-        QueryOp node1 = new QueryOp(empty1, q1);
-        QueryOp node2 = new QueryOp(empty1, q2);
+        EndpointQueryOp node1 = new EndpointQueryOp(empty1, q1);
+        EndpointQueryOp node2 = new EndpointQueryOp(empty1, q2);
         Op root = planner.plan(query, asList(node1, node2));
         assertEquals(root.getResultVars(), asList("x", "y"));
 
@@ -388,8 +397,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
         );
         CQuery q1 = CQuery.from(query.get(0), query.get(1));
         CQuery q2 = CQuery.from(query.get(2));
-        Op root = planner.plan(query, asList(new QueryOp(empty1, q1),
-                                                   new QueryOp(empty2, q2)));
+        Op root = planner.plan(query, asList(new EndpointQueryOp(empty1, q1),
+                                                   new EndpointQueryOp(empty2, q2)));
 
         assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinOp).count(), 1);
         assertEquals(streamPreOrder(root)
@@ -405,7 +414,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         CQuery query = CQuery.from(new Triple(Alice, knows, x), new Triple(y, knows, Bob));
         CQuery q1 = CQuery.from(query.get(0));
         CQuery q2 = CQuery.from(query.get(1));
-        QueryOp node1 = new QueryOp(empty1, q1), node2 = new QueryOp(empty1, q2);
+        EndpointQueryOp node1 = new EndpointQueryOp(empty1, q1), node2 = new EndpointQueryOp(empty1, q2);
         Op root = planner.plan(query, asList(node1, node2));
         assertEquals(root.getResultVars(), Sets.newHashSet("x", "y"));
 
@@ -434,19 +443,19 @@ public class PlannerTest implements TransparencyServiceTestContext {
         CQuery q3 = CQuery.from(query.get(2));
         CQuery q4 = CQuery.from(query.get(3));
 
-        List<QueryOp> leaves = asList(new QueryOp(empty1, q1), new QueryOp(empty2, q1),
-                                        new QueryOp(empty1, q2),
-                                        new QueryOp(empty1, q3),
-                                        new QueryOp(empty1, q4), new QueryOp(empty2, q4));
+        List<EndpointQueryOp> leaves = asList(new EndpointQueryOp(empty1, q1), new EndpointQueryOp(empty2, q1),
+                                        new EndpointQueryOp(empty1, q2),
+                                        new EndpointQueryOp(empty1, q3),
+                                        new EndpointQueryOp(empty1, q4), new EndpointQueryOp(empty2, q4));
         Random random = new Random(79812531);
         for (int i = 0; i < 16; i++) {
             ArrayList<Op> shuffled = new ArrayList<>(leaves);
             Collections.shuffle(shuffled, random);
             Op root = planner.plan(query, shuffled);
 
-            Set<QueryOp> observed = streamPreOrder(root)
-                                               .filter(n -> n instanceof QueryOp)
-                                               .map(n -> (QueryOp) n).collect(toSet());
+            Set<EndpointQueryOp> observed = streamPreOrder(root)
+                                               .filter(n -> n instanceof EndpointQueryOp)
+                                               .map(n -> (EndpointQueryOp) n).collect(toSet());
             assertEquals(observed, new HashSet<>(shuffled));
             List<JoinOp> joinOps = streamPreOrder(root)
                                                 .filter(n -> n instanceof JoinOp)
@@ -486,16 +495,16 @@ public class PlannerTest implements TransparencyServiceTestContext {
         CQuery query = CQuery.from(new Triple(x, title, title1),
                                    new Triple(x, genre, y),
                                    new Triple(y, genreName, z));
-        QueryOp q1 = new QueryOp(empty1, CQuery.from(query.get(0)));
-        QueryOp q2 = new QueryOp(empty1, CQuery.from(query.get(1)));
-        QueryOp q3 = new QueryOp(empty2, CQuery.from(query.get(2)));
+        EndpointQueryOp q1 = new EndpointQueryOp(empty1, CQuery.from(query.get(0)));
+        EndpointQueryOp q2 = new EndpointQueryOp(empty1, CQuery.from(query.get(1)));
+        EndpointQueryOp q3 = new EndpointQueryOp(empty2, CQuery.from(query.get(2)));
         Op root = planner.plan(query, asList(q1, q2, q3));
 
         assertEquals(streamPreOrder(root).filter(n -> n instanceof CartesianOp).count(), 0);
         assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinOp).count(), 2);
 
-        Set<CQuery> queries = streamPreOrder(root).filter(n -> n instanceof QueryOp)
-                .map(n -> ((QueryOp) n).getQuery()).collect(toSet());
+        Set<CQuery> queries = streamPreOrder(root).filter(n -> n instanceof EndpointQueryOp)
+                .map(n -> ((EndpointQueryOp) n).getQuery()).collect(toSet());
         HashSet<CQuery> expectedQueries = Sets.newHashSet(
                 createQuery(x, title, title1),
                 createQuery(x, genre, y),
@@ -509,15 +518,15 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testSameQuerySameEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
-        QueryOp q1 = new QueryOp(empty1, CQuery.from(query.get(0)));
-        QueryOp q2 = new QueryOp(empty1, CQuery.from(query.get(0)));
-        QueryOp q3 = new QueryOp(empty1, CQuery.from(query.get(1)));
+        EndpointQueryOp q1 = new EndpointQueryOp(empty1, CQuery.from(query.get(0)));
+        EndpointQueryOp q2 = new EndpointQueryOp(empty1, CQuery.from(query.get(0)));
+        EndpointQueryOp q3 = new EndpointQueryOp(empty1, CQuery.from(query.get(1)));
 
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(asList((Op)q1, q2, q3))) {
             Op plan = planner.plan(query, permutation);
             Set<Op> qns = streamPreOrder(plan)
-                    .filter(QueryOp.class::isInstance).collect(toSet());
+                    .filter(EndpointQueryOp.class::isInstance).collect(toSet());
             assertTrue(qns.contains(q3));
             assertEquals(qns.size(), 2);
             assertPlanAnswers(plan, query);
@@ -528,14 +537,14 @@ public class PlannerTest implements TransparencyServiceTestContext {
     public void testSameQueryEquivalentEp(@Nonnull Supplier<Planner> supplier) {
         Planner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
-        QueryOp q1 = new QueryOp(empty3a, CQuery.from(query.get(0)));
-        QueryOp q2 = new QueryOp(empty3b, CQuery.from(query.get(0)));
-        QueryOp q3 = new QueryOp(empty1 , CQuery.from(query.get(1)));
+        EndpointQueryOp q1 = new EndpointQueryOp(empty3a, CQuery.from(query.get(0)));
+        EndpointQueryOp q2 = new EndpointQueryOp(empty3b, CQuery.from(query.get(0)));
+        EndpointQueryOp q3 = new EndpointQueryOp(empty1 , CQuery.from(query.get(1)));
 
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(asList((Op)q1, q2, q3))) {
             Op plan = planner.plan(query, permutation);
-            Set<Op> qns = streamPreOrder(plan).filter(QueryOp.class::isInstance).collect(toSet());
+            Set<Op> qns = streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance).collect(toSet());
             assertTrue(qns.contains(q3));
             assertEquals(qns.size(), 2);
         }
@@ -544,8 +553,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     @Test(dataProvider = "suppliersData", groups={"fast"})
     public void booksByAuthorWithIncompatibleService(Supplier<Planner> supplier) {
         Planner planner = supplier.get();
-        QueryOp q1 = new QueryOp(empty1, createQuery(y, name, author1));
-        QueryOp q2 = new QueryOp(empty2,
+        EndpointQueryOp q1 = new EndpointQueryOp(empty1, createQuery(y, name, author1));
+        EndpointQueryOp q2 = new EndpointQueryOp(empty2,
                 createQuery(x, AtomInputAnnotation.asRequired(Book, "Book").get(),
                                 author, y, AtomAnnotation.of(Person)));
         CQuery query = CQuery.from(new Triple(y, name, author1), new Triple(x, author, y));
@@ -564,12 +573,12 @@ public class PlannerTest implements TransparencyServiceTestContext {
         CQEndpoint e2 = markAsAlternatives ? empty3a : empty2;
         CQEndpoint e3 = markAsAlternatives ? empty3b : empty4;
 
-        QueryOp q1 = new QueryOp(empty1, createQuery(y, name, author1));
+        EndpointQueryOp q1 = new EndpointQueryOp(empty1, createQuery(y, name, author1));
         assertEquals(q1.getStrictResultVars(), singleton("y"));
-        QueryOp q2 = new QueryOp(e2,
+        EndpointQueryOp q2 = new EndpointQueryOp(e2,
                 createQuery(x, AtomInputAnnotation.asRequired(Book, "Book").get(),
                                 author, y, AtomAnnotation.of(Person)));
-        QueryOp q3 = new QueryOp(e3,
+        EndpointQueryOp q3 = new EndpointQueryOp(e3,
                 createQuery(x, AtomAnnotation.of(Book),
                                 author, y, AtomInputAnnotation.asRequired(Person, "Person").get()));
         List<Op> nodes = addFromSubject ? asList(q1, q2, q3) : asList(q1, q3);
@@ -580,7 +589,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         for (List<Op> permutation : permutations(nodes)) {
             Op root = planner.plan(query, permutation);
             Set<Op> leaves = streamPreOrder(root)
-                    .filter(n -> n instanceof QueryOp).collect(toSet());
+                    .filter(n -> n instanceof EndpointQueryOp).collect(toSet());
             assertEquals(leaves, Sets.newHashSet(q1, q3));
             assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinOp).count(), 1);
             assertTrue(streamPreOrder(root).count() <= 4);
@@ -604,7 +613,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     private static class TwoServicePathsNodes {
-        QueryOp q1, q2, q3, p1, p2, p3;
+        EndpointQueryOp q1, q2, q3, p1, p2, p3;
         List<Op> all, fromAlice, fromBob, fromAlice2, fromBob2;
         Set<Set<Op>> allowedAnswers;
         CQuery query;
@@ -614,20 +623,20 @@ public class PlannerTest implements TransparencyServiceTestContext {
             query = CQuery.from(new Triple(Alice, knows, x),
                                 new Triple(x, knows, y),
                                 new Triple(y, knows, Bob));
-            q1 = new QueryOp(epFromAlice, createQuery(
+            q1 = new EndpointQueryOp(epFromAlice, createQuery(
                     Alice, AtomInputAnnotation.asRequired(Person, "Person").get(),
                             knows, x, AtomAnnotation.of(KnownPerson)));
-            q2 = new QueryOp(epFromAlice, createQuery(
+            q2 = new EndpointQueryOp(epFromAlice, createQuery(
                     x, AtomInputAnnotation.asRequired(Person, "Person").get(),
                             knows, y, AtomAnnotation.of(KnownPerson)));
-            q3 = new QueryOp(epFromAlice, createQuery(y, AtomInputAnnotation.asRequired(Person, "Person").get(),
+            q3 = new EndpointQueryOp(epFromAlice, createQuery(y, AtomInputAnnotation.asRequired(Person, "Person").get(),
                             knows, Bob, AtomAnnotation.of(KnownPerson)));
 
-            p1 = new QueryOp(epFromBob, createQuery(Alice, AtomAnnotation.of(Person),
+            p1 = new EndpointQueryOp(epFromBob, createQuery(Alice, AtomAnnotation.of(Person),
                             knows, x, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()));
-            p2 = new QueryOp(epFromBob, createQuery(x, AtomAnnotation.of(Person),
+            p2 = new EndpointQueryOp(epFromBob, createQuery(x, AtomAnnotation.of(Person),
                             knows, y, AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()));
-            p3 = new QueryOp(epFromBob, createQuery(y, AtomAnnotation.of(Person), knows, Bob,
+            p3 = new EndpointQueryOp(epFromBob, createQuery(y, AtomAnnotation.of(Person), knows, Bob,
                     AtomInputAnnotation.asRequired(KnownPerson, "KnownPerson").get()));
             all = asList(q1, q2, q3, p1, p2, p3);
             fromAlice  = asList(q1, q2, q3);
@@ -651,8 +660,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(f.all)) {
             Op plan = planner.plan(f.query, permutation);
-            Set<QueryOp> qns = streamPreOrder(plan).filter(QueryOp.class::isInstance)
-                    .map(n -> (QueryOp)n).collect(toSet());
+            Set<EndpointQueryOp> qns = streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance)
+                    .map(n -> (EndpointQueryOp)n).collect(toSet());
             assertTrue(f.allowedAnswers.contains(qns), "qns="+qns);
             assertEquals(streamPreOrder(plan).filter(JoinOp.class::isInstance).count(), 2);
             assertPlanAnswers(plan, f.query);
@@ -676,7 +685,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(f.all)) {
             Op plan = planner.plan(f.query, permutation);
-            assertEquals(streamPreOrder(plan).filter(QueryOp.class::isInstance).collect(toSet()),
+            assertEquals(streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance).collect(toSet()),
                          new HashSet<>(f.all));
             assertTrue(streamPreOrder(plan).filter(n -> n == f.q1).count() <= 3);
             assertTrue(streamPreOrder(plan).filter(n -> n == f.p1).count() <= 1);
@@ -694,9 +703,9 @@ public class PlannerTest implements TransparencyServiceTestContext {
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(nodes)) {
             Op plan = planner.plan(f.query, permutation);
-            assertEquals(streamPreOrder(plan).filter(QueryOp.class::isInstance).collect(toSet()),
+            assertEquals(streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance).collect(toSet()),
                          Sets.newHashSet(f.fromAlice));
-            assertEquals(streamPreOrder(plan).filter(QueryOp.class::isInstance).count(), 3);
+            assertEquals(streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance).count(), 3);
             assertPlanAnswers(plan, f.query);
         }
     }
@@ -718,22 +727,22 @@ public class PlannerTest implements TransparencyServiceTestContext {
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testNonLinearPath(@Nonnull Supplier<Planner> supplier) {
-        QueryOp orgByDesc = new QueryOp(empty1, CQuery.from(
+        EndpointQueryOp orgByDesc = new EndpointQueryOp(empty1, CQuery.from(
                 new Triple(x, p1, t)
         ));
-        QueryOp contract = new QueryOp(empty1, createQuery(
+        EndpointQueryOp contract = new EndpointQueryOp(empty1, createQuery(
                 y, p2, b,
                 y, p3, c,
                 y, p4, t, AtomInputAnnotation.asRequired(new Atom("A1"), "A1").get()));
-        QueryOp contractById = new QueryOp(empty1, createQuery(
+        EndpointQueryOp contractById = new EndpointQueryOp(empty1, createQuery(
                 b, AtomInputAnnotation.asRequired(new Atom("A2"), "A2").get(), p5, o3));
-        QueryOp contractorByName = new QueryOp(empty1, createQuery(
+        EndpointQueryOp contractorByName = new EndpointQueryOp(empty1, createQuery(
                 c, AtomInputAnnotation.asRequired(new Atom("A3"), "A3").get(), p6, s));
-        QueryOp procurementsOfContractor = new QueryOp(empty1, createQuery(
+        EndpointQueryOp procurementsOfContractor = new EndpointQueryOp(empty1, createQuery(
                 s, AtomInputAnnotation.asRequired(new Atom("A4"), "A4").get(), p7, a));
-        QueryOp procurementById = new QueryOp(empty1, createQuery(
+        EndpointQueryOp procurementById = new EndpointQueryOp(empty1, createQuery(
                 a, AtomInputAnnotation.asRequired(new Atom("A5"), "A5").get(), p8, d));
-        QueryOp modalities = new QueryOp(empty1, createQuery(z, p9, d));
+        EndpointQueryOp modalities = new EndpointQueryOp(empty1, createQuery(z, p9, d));
 
         CQuery query = createQuery(
                 x, p1, t,
@@ -791,8 +800,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
         WebAPICQEndpoint webEp = TransparencyService.getProcurementsOptClient(fakeTarget);
 
         CQuery arqQuery = createQuery(x, p1, v);
-        QueryOp n1 = new QueryOp(arqEp, arqQuery);
-        QueryOp n2 = new QueryOp(webEp, webQuery);
+        EndpointQueryOp n1 = new EndpointQueryOp(arqEp, arqQuery);
+        EndpointQueryOp n2 = new EndpointQueryOp(webEp, webQuery);
 
         JoinInfo info = JoinInfo.getJoinability(n1, n2);
         assertTrue(info.isValid());

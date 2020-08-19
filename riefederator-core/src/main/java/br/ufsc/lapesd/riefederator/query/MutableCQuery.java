@@ -8,13 +8,12 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -34,7 +33,7 @@ public class MutableCQuery extends CQuery {
     private static final Logger logger = LoggerFactory.getLogger(MutableCQuery.class);
 
     public MutableCQuery(@Nonnull CQuery query) {
-        super(query.d, query.prefixDict);
+        super(query.d.attach(), query.prefixDict);
     }
 
     protected MutableCQuery(@Nonnull List<Triple> list) {
@@ -50,11 +49,13 @@ public class MutableCQuery extends CQuery {
     }
 
     public static @CheckReturnValue @Nonnull MutableCQuery
-    from(@Nonnull Collection<Triple> collection) {
-        if (collection instanceof CQuery)
-            return new MutableCQuery((CQuery)collection);
-        return new MutableCQuery(collection instanceof List ? (List<Triple>)collection
-                                                            : new ArrayList<>(collection));
+    from(@Nonnull Collection<Triple> c) {
+        if (c instanceof CQuery)
+            return new MutableCQuery((CQuery)c);
+        if (c instanceof IndexedSet || c instanceof ImmutableList)
+            c = new ArrayList<>(c); // do not use a immutable list as storage
+        return new MutableCQuery(c instanceof List ? (List<Triple>)c
+                                                            : new ArrayList<>(c));
     }
 
     public static @CheckReturnValue @Nonnull MutableCQuery from(@Nonnull Triple... triples) {
@@ -272,18 +273,21 @@ public class MutableCQuery extends CQuery {
     public @CanIgnoreReturnValue
     boolean deannotateTripleIf(@Nonnull Triple triple,
                                @Nonnull Predicate<TripleAnnotation> predicate) {
-        boolean change = false;
-        Iterator<TripleAnnotation> it = d.tripleAnnotations.get(triple).iterator();
-        while (it.hasNext()) {
-            TripleAnnotation ann = it.next();
+        List<TripleAnnotation> victims = null;
+        for (TripleAnnotation ann : d.tripleAnnotations.get(triple)) {
             if (predicate.test(ann)) {
-                if (!change) makeExclusive();
-                change = true;
-                it.remove();
-                d.cache.notifyTripleAnnotationChange(ann.getClass());
+                if (victims == null)
+                    victims = new ArrayList<>();
+                victims.add(ann);
             }
         }
-        return change;
+        if (victims != null) {
+            makeExclusive();
+            d.tripleAnnotations.get(triple).removeAll(victims);
+            for (TripleAnnotation ann : victims)
+                d.cache.notifyTripleAnnotationChange(ann.getClass());
+        }
+        return victims != null;
     }
 
     /**
@@ -340,18 +344,20 @@ public class MutableCQuery extends CQuery {
      */
     public @CanIgnoreReturnValue
     boolean deannotateTermIf(@Nonnull Term term, @Nonnull Predicate<TermAnnotation> predicate) {
-        boolean change = false;
-        Iterator<TermAnnotation> it = d.termAnnotations.get(term).iterator();
-        while (it.hasNext()) {
-            TermAnnotation ann = it.next();
+        List<TermAnnotation> victims = null;
+        for (TermAnnotation ann : d.termAnnotations.get(term)) {
             if (predicate.test(ann)) {
-                if (!change) makeExclusive();
-                change = true;
-                it.remove();
-                d.cache.notifyTermAnnotationChange(ann.getClass());
+                if (victims == null) victims = new ArrayList<>();
+                victims.add(ann);
             }
         }
-        return change;
+        if (victims != null) {
+            makeExclusive();
+            d.termAnnotations.get(term).removeAll(victims);
+            for (TermAnnotation annotation : victims)
+                d.cache.notifyTermAnnotationChange(annotation.getClass());
+        }
+        return victims != null;
     }
 
     /**
@@ -378,6 +384,20 @@ public class MutableCQuery extends CQuery {
     /* --- --- --- Query-level mutations --- --- --- */
 
     /**
+     * Checks if a merge with the given query would not throw {@link UnsafeMergeException}.
+     *
+     * If this returns true, a call to {@link MutableCQuery#mergeWith(CQuery)} may still return
+     * false due to no changes being made.
+     *
+     * @param other tentative argument to {@link MutableCQuery#mergeWith(CQuery)}.
+     * @return true if {@link MutableCQuery#mergeWith(CQuery)}  would not throw
+     *         {@link UnsafeMergeException}, false otherwise
+     */
+    public boolean canMergeWith(@Nonnull CQuery other) {
+        return d.modifiers.canMergeWith(other.getModifiers());
+    }
+
+    /**
      * Adds all triples, annotations and modifiers of the given query into this.
      *
      * If a triple from other is already present at this, then annotations on the triple or
@@ -390,9 +410,14 @@ public class MutableCQuery extends CQuery {
      * adds no triple, annotation or modifier and has no Projection modifier,
      * the {@link Projection} of this query, if exists, will not be modified.
      *
+     *
+     * @throws UnsafeMergeException if the merge is unsafe (see
+     *                              {@link Capability#isMergeUnsafe()}).
      * @return true if this query was changed (new triples, annotations or modifiers).
      */
-    public @CanIgnoreReturnValue boolean mergeWith(@Nonnull CQuery other) {
+    @CanIgnoreReturnValue
+    public boolean mergeWith(@Nonnull CQuery other) throws UnsafeMergeException {
+        d.modifiers.checkCanMergeWith(other.getModifiers());
         boolean change = false, triplesChange = false;
         IndexedSet<String> oldPublicVars = attr().publicVarNames();
         IndexedSet<Triple> oldSet = attr().getSet();
@@ -419,8 +444,14 @@ public class MutableCQuery extends CQuery {
                 }
             }
         }
-        change |= d.modifiers.mergeWith(other.getModifiers(), oldPublicVars,
-                                        other.attr().publicVarNames());
+
+        try {
+            change |= d.modifiers.safeMergeWith(other.getModifiers(), oldPublicVars,
+                    other.attr().publicVarNames());
+        } catch (UnsafeMergeException e) {
+            assert false : "Earlier check failed to throw, query is already mutated!";
+            throw e;
+        }
         return change;
     }
 
@@ -456,28 +487,22 @@ public class MutableCQuery extends CQuery {
             assert cursor >= 0;
             return cursor < size();
         }
-
-        @Override public Triple next() {
-            return get(nextIndex());
-        }
-
-        @Override public int nextIndex() {
-            if (!hasNext()) throw new NoSuchElementException();
-            return lastReturned = cursor++;
-        }
-
         @Override public boolean hasPrevious() {
+            assert cursor >= 0;
             return cursor > 0 && !isEmpty();
         }
 
+        @Override public Triple next() {
+            if (!hasNext()) throw new NoSuchElementException();
+            return get(lastReturned = cursor++);
+        }
         @Override public Triple previous() {
-            return get(previousIndex());
+            if (!hasPrevious()) throw new NoSuchElementException();
+            return get(lastReturned = --cursor);
         }
 
-        @Override public int previousIndex() {
-            if (!hasPrevious()) throw new NoSuchElementException();
-            return lastReturned = --cursor;
-        }
+        @Override public int nextIndex() { return cursor; }
+        @Override public int previousIndex() { return cursor - 1; }
 
         @Override public void remove() {
             checkState(lastReturned >= -1, "Cannot remove(): add() called");
@@ -585,18 +610,16 @@ public class MutableCQuery extends CQuery {
     @Override
     public boolean addAll(int index, @Nonnull Collection<? extends Triple> c) {
         IndexedSet<Triple> set = attr().getSet();
-        boolean change = false;
-        for (Triple triple : c) {
-            if (!set.contains(triple)) {
-                if (!change)
-                    makeExclusive(); // only call this once confirmed there will be a change
-                change = true;
+        boolean change = c.stream().anyMatch(t -> !set.contains(t));
+        if (change) {
+            makeExclusive();
+            for (Triple triple : c) {
+                if (set.contains(triple)) continue;
                 d.list.add(index, triple);
                 ++index; //adjust for next insertion
             }
-        }
-        if (change)
             d.cache.invalidateTriples();
+        }
         return change;
     }
     @Override
@@ -663,8 +686,8 @@ public class MutableCQuery extends CQuery {
 
     /* --- --- --- Internals --- --- ---  */
 
-    protected void makeExclusive() {
-        this.d = d.toExclusive().attach();
+    protected synchronized void makeExclusive() {
+        this.d = d.toExclusive();
     }
 
     protected @Nonnull Var nextHidden() {
@@ -679,7 +702,7 @@ public class MutableCQuery extends CQuery {
         IndexedSubset<String> fixed = allowed.subset(current);
         if (fixed.size() == current.size())
             return false; // no change
-        boolean change = d.modifiers.add(new Projection(fixed, p.isRequired()));
+        boolean change = d.modifiers.add(new Projection(fixed));
         assert change;
         return true;
     }
@@ -688,6 +711,7 @@ public class MutableCQuery extends CQuery {
         Set<SPARQLFilter> filters = d.modifiers.filters();
         if (filters.isEmpty())
             return Collections.emptySet();
+        makeExclusive();
         Set<SPARQLFilter> set = Sets.newHashSetWithExpectedSize(filters.size());
         IndexedSet<String> tripleVars = attr().tripleVarNames();
         for (Iterator<Modifier> it = d.modifiers.iterator(); it.hasNext(); ){

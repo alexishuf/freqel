@@ -43,7 +43,7 @@ public class AskDescription implements Description {
                     @Override
                     public Boolean load(@Nonnull Triple triple) {
                         MutableCQuery query = MutableCQuery.from(triple);
-                        query.mutateModifiers().add(Ask.ADVISED);
+                        query.mutateModifiers().add(Ask.INSTANCE);
                         try (Results results = endpoint.query(query)) {
                             return results.hasNext();
                         }

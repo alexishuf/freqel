@@ -50,11 +50,6 @@ public class ValuesModifier implements Modifier {
     }
 
     @Override
-    public boolean isRequired() {
-        return true;
-    }
-
-    @Override
     public @Nonnull String toString() {
         StringBuilder b = new StringBuilder("VALUES (")
                 .append(String.join(", ", varNames)).append(") {\n");

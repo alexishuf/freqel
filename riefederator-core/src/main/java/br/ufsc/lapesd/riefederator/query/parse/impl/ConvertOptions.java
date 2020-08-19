@@ -1,19 +1,10 @@
 package br.ufsc.lapesd.riefederator.query.parse.impl;
 
 public class ConvertOptions {
-    private boolean eraseOptionals = false;
     private boolean eraseGroupBy = false;
     private boolean eraseOffset = false;
     private boolean eraseOrderBy = false;
     private boolean allowExtraProjections = false;
-
-    public boolean getEraseOptionals() {
-        return eraseOptionals;
-    }
-
-    public void setEraseOptionals(boolean eraseOptionals) {
-        this.eraseOptionals = eraseOptionals;
-    }
 
     public boolean getEraseGroupBy() {
         return eraseGroupBy;

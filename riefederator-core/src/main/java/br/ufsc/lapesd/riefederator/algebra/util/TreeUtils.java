@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -46,7 +46,7 @@ public class TreeUtils {
         queue.add(node);
         while (!queue.isEmpty()) {
             Op n = queue.remove();
-            if (!forgiveQueryNodes || !(n instanceof QueryOp)) {
+            if (!forgiveQueryNodes || !(n instanceof EndpointQueryOp)) {
                 if (visited.put(n, true) != null)
                     return false; //cycle found
             }
@@ -106,15 +106,15 @@ public class TreeUtils {
             InnerOp op = (InnerOp)stack.pop();
             boolean change = false;
             try (TakenChildren children = op.takeChildren()) {
-                for (ListIterator<Op> it = children.listIterator(); it.hasNext(); ) {
-                    Op child = it.next();
-                    Op replacement = memoized.apply(child);
-                    change |= replacement != child;
-                    it.set(replacement);
+                for (int i = 0, size = children.size(); i < size; i++) {
+                    Op replacement = memoized.apply(children.get(i));
+                    if (children.set(i, replacement) != replacement)
+                        change = true;
                     if (replacement instanceof InnerOp)
                         stack.push(replacement);
                 }
-                children.setHasChanges(change);
+                if (!change)
+                    children.setNoContentChange();
             }
             if (change && cardinality != null)
                 op.setCardinality(cardinality.compute(op));
@@ -133,8 +133,7 @@ public class TreeUtils {
                 Projection p = (Projection) modifier;
                 HashSet<String> set = new HashSet<>(p.getVarNames());
                 if (set.removeAll(solution.getVarNames())) {
-                    Projection p2 = new Projection(set, p.isRequired());
-                    change |= out.add(p2);
+                    change |= out.add(new Projection(set));
                 } else {
                     change |= out.add(p);
                 }
@@ -245,17 +244,17 @@ public class TreeUtils {
         node = flattenMultiQuery(node);
         if (!(node instanceof UnionOp)) return node;
 
-        ListMultimap<CQuery, QueryOp> mm;
+        ListMultimap<CQuery, EndpointQueryOp> mm;
         mm = MultimapBuilder.hashKeys().arrayListValues().build();
         List<Op> children = node.getChildren();
         for (Op child : children) {
-            if (child instanceof QueryOp)
-                mm.put(((QueryOp) child).getQuery(), (QueryOp) child);
+            if (child instanceof EndpointQueryOp)
+                mm.put(((EndpointQueryOp) child).getQuery(), (EndpointQueryOp) child);
         }
 
         BitSet mkd = new BitSet(children.size());
         for (CQuery key : mm.keySet()) {
-            List<QueryOp> list = mm.get(key);
+            List<EndpointQueryOp> list = mm.get(key);
             for (int i = 0; i < list.size(); i++) {
                 if (mkd.get(i)) continue;
                 TPEndpoint outer = list.get(i).getEndpoint();
@@ -290,8 +289,8 @@ public class TreeUtils {
                 child.setCardinality(estimate(child, ensemble, adder));
             return node.getChildren().stream().map(Op::getCardinality)
                                      .reduce(adder).orElse(Cardinality.EMPTY);
-        } else if (node instanceof QueryOp) {
-            QueryOp qn = (QueryOp) node;
+        } else if (node instanceof EndpointQueryOp) {
+            EndpointQueryOp qn = (EndpointQueryOp) node;
             return ensemble.estimate(qn.getQuery(), qn.getEndpoint());
         }
         return node.getCardinality();
@@ -332,7 +331,7 @@ public class TreeUtils {
             if (node instanceof JoinOp) {
                 ++joins;
                 node.setName("Join-"+joins);
-            } else if (node instanceof QueryOp) {
+            } else if (node instanceof EndpointQueryOp) {
                 ++queryNodes;
                 node.setName("Query-"+queryNodes);
             } else if (node instanceof UnionOp) {

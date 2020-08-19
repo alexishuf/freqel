@@ -6,7 +6,6 @@ import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
-import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -29,7 +28,7 @@ public class FixedHashJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
     }
 
     @Override
-    public @Nonnull Results execute(@Nonnull JoinOp node) {
+    protected  @Nonnull Results innerExecute(@Nonnull JoinOp node) {
         PlanExecutor exec = getPlanExecutor();
         try (ResultsList<Results> list = new ResultsList<>()) {
             for (Op child : node.getChildren()) list.add(exec.executeNode(child));
@@ -37,7 +36,7 @@ public class FixedHashJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
             Results results = factory.createResults(list.get(0), list.get(1),
                                                     node.getJoinVars(), node.getResultVars());
             list.clear(); // ownership transferred
-            return SPARQLFilterResults.applyIf(results, node);
+            return results;
         }
     }
 }

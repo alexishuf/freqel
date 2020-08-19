@@ -212,7 +212,7 @@ public class CassandraCQEndpointTest implements TestContext {
                 // enumerate a column, do not inspect subject
                 asList("other_ks", createQuery(
                                 x, aaOtherPerson, nameEx, u, aaOtherPerson_name,
-                                Projection.required("u")),
+                                Projection.of("u")),
                         newHashSet(
                                 MapSolution.build(u, Alice),
                                 MapSolution.build(u, Bob),
@@ -233,7 +233,7 @@ public class CassandraCQEndpointTest implements TestContext {
                 asList("other_ks",
                         createQuery(x, aaOtherPerson, nameEx,     Alice, aaOtherPerson_name,
                                     x, aaOtherPerson, university, u, aaOtherPerson_university,
-                                   Projection.required("u")),
+                                   Projection.of("u")),
                         singleton(MapSolution.build(u, Stanford))),
                 // who is in the same university as alice?
                 // one object-object join, project-out subjects
@@ -242,7 +242,7 @@ public class CassandraCQEndpointTest implements TestContext {
                                     x, university, u,
                                     y, university, u,
                                     y, nameEx,     v,
-                                    Projection.required("v")),
+                                    Projection.of("v")),
                         newHashSet(MapSolution.build(v, Alice), MapSolution.build(v, Bob))),
                 // same as above, but annotated
                 // this cannot be done in a single CQL query and is broken down
@@ -251,13 +251,13 @@ public class CassandraCQEndpointTest implements TestContext {
                                     x, aaOtherPerson, university, u, aaOtherPerson_university,
                                     y, aaOtherPerson, university, u, aaOtherPerson_university,
                                     y, aaOtherPerson, nameEx,     v, aaOtherPerson_name,
-                                    Projection.required("v")),
+                                    Projection.of("v")),
                         newHashSet(MapSolution.build(v, Alice), MapSolution.build(v, Bob))),
                 // Simple filter: gets ids of two oldest
                 asList("other_ks",
                         createQuery(x, idEx, v,
                                     x, ageEx, u, SPARQLFilter.build("?u >= 25"),
-                                    Projection.required("v")),
+                                    Projection.of("v")),
                         newHashSet(MapSolution.build(v, i4), MapSolution.build(v, i5))),
                 // Expression filter (||):  get the oldest and youngest
                 // || is not supported by cassandra, so the filter is executed by the mediator
@@ -265,7 +265,7 @@ public class CassandraCQEndpointTest implements TestContext {
                         createQuery(x, nameEx, v,
                                     x, ageEx, u,
                                     SPARQLFilter.build("?u > 25 || ?u < 23"),
-                                    Projection.required("v")),
+                                    Projection.of("v")),
                         newHashSet(MapSolution.build(v, Alice), MapSolution.build(v, Eddie))),
                 // Expression filter (&&):  get the oldest
                 // This filter is foolish but gets pushed to cassandra, unlike the previous
@@ -273,17 +273,17 @@ public class CassandraCQEndpointTest implements TestContext {
                         createQuery(x, nameEx, v,
                                     x, ageEx, u,
                                     SPARQLFilter.build("?u > 25 && ?u > 23"),
-                                    Projection.required("v")),
+                                    Projection.of("v")),
                         singleton(MapSolution.build(v, Eddie))),
                 // Positive ask query with single star
                 asList("other_ks",
                         createQuery(x, nameEx, u,
-                                    x, ageEx, v, SPARQLFilter.build("?v > 20"), Ask.REQUIRED),
+                                    x, ageEx, v, SPARQLFilter.build("?v > 20"), Ask.INSTANCE),
                         singleton(ArraySolution.EMPTY)),
                 // Negative ask query with single star
                 asList("other_ks",
                         createQuery(x, nameEx, u,
-                                    x, ageEx, v, SPARQLFilter.build("?v < 18"), Ask.REQUIRED),
+                                    x, ageEx, v, SPARQLFilter.build("?v < 18"), Ask.INSTANCE),
                         emptySet()),
                 // Positive ask with two stars: someone older than Alice in same university?
                 asList("other_ks",
@@ -291,7 +291,7 @@ public class CassandraCQEndpointTest implements TestContext {
                                     x, ageEx,      v,
                                     x, university, u,
                                     y, university, u,
-                                    y, ageEx,      o, SPARQLFilter.build("?o > ?v"), Ask.REQUIRED),
+                                    y, ageEx,      o, SPARQLFilter.build("?o > ?v"), Ask.INSTANCE),
                         singleton(ArraySolution.EMPTY)),
                 // Negative ask with two stars: someone **younger** than Alice in same university?
                 asList("other_ks",
@@ -299,35 +299,35 @@ public class CassandraCQEndpointTest implements TestContext {
                                     x, ageEx,      v,
                                     x, university, u,
                                     y, university, u,
-                                    y, ageEx,      o, SPARQLFilter.build("?o < ?v"), Ask.REQUIRED),
+                                    y, ageEx,      o, SPARQLFilter.build("?o < ?v"), Ask.INSTANCE),
                         emptySet()),
                 // Single star on a multi-table keyspace
                 asList("def_ks",
                         createQuery(x, nameEx, Alice,
-                                    x, ageEx, v, Projection.required("v")),
+                                    x, ageEx, v, Projection.of("v")),
                         singleton(MapSolution.build(v, i22))),
                 // Two tables have the predicates: University and Person
                 // this leads to an ambiguity: both Person and University satisfy this
                 asList("def_ks",
                         createQuery(x, idEx, v,
-                                    x, nameEx, MIT, Projection.required("v")),
+                                    x, nameEx, MIT, Projection.of("v")),
                         singleton(MapSolution.build(v, i2))),
                 // Explore a near case of the previous ambiguity. University matches
                 // but is eliminated during planning
                 asList("def_ks",
                         createQuery(x, idEx, v,
                                     x, nameEx, Alice,
-                                    x, ageEx, u, Projection.required("v", "u")),
+                                    x, ageEx, u, Projection.of("v", "u")),
                         singleton(MapSolution.builder().put(v, i1).put(u, i22).build())),
                 // A simple match on Paper (more of a self-test)
                 asList("def_ks",
                         createQuery(x, idEx, v,
-                                    x, titleEx, title2, Projection.required("v")),
+                                    x, titleEx, title2, Projection.of("v")),
                         singleton(MapSolution.build(v, i2))),
                 // A simple match on Authorship (more of a self-test)
                 asList("def_ks",
                         createQuery(x, paper_id, i1,
-                                    x, author_id, v, Projection.required("v")),
+                                    x, author_id, v, Projection.of("v")),
                         newHashSet(MapSolution.build(v, i1), MapSolution.build(v, i2))),
                 // Path-style 3-table join. Title of papers authored by Charlie
                 asList("def_ks",
@@ -336,7 +336,7 @@ public class CassandraCQEndpointTest implements TestContext {
                                     y, author_id, u,
                                     y, paper_id,  v,
                                     z, idEx,      v,
-                                    z, titleEx,   o, Projection.required("o")),
+                                    z, titleEx,   o, Projection.of("o")),
                         singleton(MapSolution.build(o, title2))),
                 // regression test: this becomes a CQL ask, but is not an SPARQL ask
                 asList("other_ks",
@@ -350,7 +350,7 @@ public class CassandraCQEndpointTest implements TestContext {
                                     y, author_id, u,
                                     y, paper_id,  v,
                                     z, idEx,      v,
-                                    z, titleEx,   o, Projection.required("o")),
+                                    z, titleEx,   o, Projection.of("o")),
                         singleton(MapSolution.build(o, title2))),
                 // Join all 4 tables: get papers with authors from both universities
                 asList("def_ks",
@@ -368,7 +368,7 @@ public class CassandraCQEndpointTest implements TestContext {
                                     z2, paper_id,       s,
                                     w, idEx,            s,
                                     w, titleEx,         p,
-                                    Projection.required("p")),
+                                    Projection.of("p")),
                         singleton(MapSolution.build(p, title2)))
         ).map(List::toArray).toArray(Object[][]::new);
     }

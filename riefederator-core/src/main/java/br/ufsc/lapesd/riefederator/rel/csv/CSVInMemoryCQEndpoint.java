@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.rel.csv;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
@@ -301,7 +301,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             for (StarSubQuery star : stars) {
                 MutableCQuery q = MutableCQuery.from(star.getTriples());
                 q.mutateModifiers().addAll(star.getFilters());
-                leaves.add(new QueryOp(this, q));
+                leaves.add(new EndpointQueryOp(this, q));
             }
             Planner planner = SingletonSourceFederation.getInjector().getInstance(Planner.class);
             return getFederation().execute(query, planner.plan(query, leaves));

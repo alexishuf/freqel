@@ -6,7 +6,7 @@ import java.util.Set;
 public abstract class DelegatingResults extends AbstractResults {
     protected @Nonnull Results in;
 
-    public DelegatingResults(@Nonnull Set<String> varNames, @Nonnull Results in) {
+    protected DelegatingResults(@Nonnull Set<String> varNames, @Nonnull Results in) {
         super(varNames);
         this.in = in;
     }
@@ -19,6 +19,10 @@ public abstract class DelegatingResults extends AbstractResults {
     @Override
     public boolean isAsync() {
         return in.isAsync();
+    }
+
+    @Override public boolean isOptional() {
+        return super.isOptional() || in.isOptional();
     }
 
     @Override

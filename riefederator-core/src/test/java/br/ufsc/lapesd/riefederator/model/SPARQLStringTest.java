@@ -156,7 +156,7 @@ public class SPARQLStringTest implements TestContext {
     public void testDistinct() {
         StdVar s = new StdVar("s"), o = new StdVar("o");
         Set<Triple> qry = singleton(new Triple(s, knows, o));
-        String str = new SPARQLString(qry, EMPTY, singleton(Distinct.REQUIRED)).toString();
+        String str = new SPARQLString(qry, EMPTY, singleton(Distinct.INSTANCE)).toString();
         assertTrue(Pattern.compile("SELECT +DISTINCT +").matcher(str).find());
     }
 
@@ -164,14 +164,14 @@ public class SPARQLStringTest implements TestContext {
     public void testProjection() {
         StdVar s = new StdVar("s"), o = new StdVar("o");
         Set<Triple> qry = singleton(new Triple(s, knows, o));
-        Projection mod = Projection.builder().add("o").build();
+        Projection mod = Projection.of("o");
         String str = new SPARQLString(qry, EMPTY, singleton(mod)).toString();
         assertTrue(Pattern.compile("SELECT +\\?o +WHERE").matcher(str).find());
     }
 
     @Test
     public void testLimit() {
-        CQuery qry = createQuery(Alice, knows, x, Limit.required(10));
+        CQuery qry = createQuery(Alice, knows, x, Limit.of(10));
         SPARQLString ss = new SPARQLString(qry);
         assertEquals(ss.getPublicVarNames(), singleton("x"));
         assertTrue(ss.getString().contains("LIMIT 10"));
@@ -180,7 +180,7 @@ public class SPARQLStringTest implements TestContext {
 
     @Test
     public void testLimitFast() {
-        CQuery qry = createQuery(Alice, knows, x, Limit.required(10));
+        CQuery qry = createQuery(Alice, knows, x, Limit.of(10));
         FastSPARQLString ss = new FastSPARQLString(qry);
         assertEquals(ss.getVarNames(), singleton("x"));
         assertTrue(ss.getSparql().contains("LIMIT 10"));
@@ -191,7 +191,7 @@ public class SPARQLStringTest implements TestContext {
     public void testAskWithVars() {
         StdVar s = new StdVar("s"), o = new StdVar("o");
         Set<Triple> qry = singleton(new Triple(s, knows, o));
-        String str = new SPARQLString(qry, EMPTY, singleton(Ask.REQUIRED)).toString();
+        String str = new SPARQLString(qry, EMPTY, singleton(Ask.INSTANCE)).toString();
         assertTrue(Pattern.compile("ASK +\\{").matcher(str).find());
     }
 

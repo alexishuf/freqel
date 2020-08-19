@@ -4,16 +4,13 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
-import java.util.Objects;
 
 @Immutable
 public class Ask implements Modifier {
-    public static Ask REQUIRED = new Ask(true);
-    public static Ask ADVISED = new Ask(false);
-    private final boolean required;
+    public static Ask INSTANCE = new Ask();
 
-    public Ask(boolean required) {
-        this.required = required;
+    protected Ask() {
+
     }
 
     @Override
@@ -22,25 +19,17 @@ public class Ask implements Modifier {
     }
 
     @Override
-    public boolean isRequired() {
-        return required;
-    }
-
-    @Override
     public @Nonnull String toString() {
-        return "ASK" + (isRequired() ? "[required]" : "[advised]");
+        return "ASK";
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Ask)) return false;
-        Ask ask = (Ask) o;
-        return isRequired() == ask.isRequired();
+        return o instanceof Ask;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(isRequired());
+        return getClass().hashCode();
     }
 }

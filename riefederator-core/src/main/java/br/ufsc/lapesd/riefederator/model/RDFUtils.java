@@ -6,14 +6,24 @@ import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
+import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
+import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import org.apache.jena.vocabulary.XSD;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromURIResource;
 
 @SuppressWarnings("WeakerAccess")
 public class RDFUtils {
@@ -24,6 +34,8 @@ public class RDFUtils {
     private static final @Nonnull String xsdDouble = "http://www.w3.org/2001/XMLSchema#double";
     private static final @Nonnull String xsdDecimal = "http://www.w3.org/2001/XMLSchema#decimal";
     private static final @Nonnull String xsdBoolean = "http://www.w3.org/2001/XMLSchema#boolean";
+
+    private static final @Nonnull URI xsdIntegerURI = new StdURI(xsdInteger);
 
     private static final @Nonnull Pattern INTEGER_SHORT_RX =
             Pattern.compile("^[+-]?[0-9]+$");
@@ -40,6 +52,25 @@ public class RDFUtils {
             Pattern.compile("(?:\"|\"\"\")(.*)(?:\"|\"\"\")\\^\\^<([^>]+)>");
     private static final @Nonnull Pattern LANG_RX =
             Pattern.compile("(?:\"|\"\"\")(.*)(?:\"|\"\"\")@(\\w+)");
+
+    private static final @Nonnull Set<URI> INTEGER_DTS;
+
+    static {
+        Set<URI> set = new HashSet<>();
+        set.add(fromURIResource(XSD.nonPositiveInteger));
+        set.add(fromURIResource(XSD.nonNegativeInteger));
+        set.add(fromURIResource(XSD.xlong));
+        set.add(fromURIResource(XSD.negativeInteger));
+        set.add(fromURIResource(XSD.unsignedLong));
+        set.add(fromURIResource(XSD.positiveInteger));
+        set.add(fromURIResource(XSD.xint));
+        set.add(fromURIResource(XSD.xshort));
+        set.add(fromURIResource(XSD.xbyte));
+        set.add(fromURIResource(XSD.unsignedInt));
+        set.add(fromURIResource(XSD.unsignedShort));
+        set.add(fromURIResource(XSD.unsignedByte));
+        INTEGER_DTS = set;
+    }
 
     /**
      * Escapes [1] a lexical form string.
@@ -191,5 +222,25 @@ public class RDFUtils {
                 .replace("\"", "%22").replace("'", "%27")
                 .replace("|", "%7C").replace(" ", "%20");
         return dict.shorten(string).toString("<"+ string +">");
+    }
+
+    public static @Nonnull Solution generalizeLiterals(@Nonnull Solution solution) {
+        boolean[] has = {false};
+        solution.forEach((n, t) -> {
+            if (!has[0] && t.isLiteral() && INTEGER_DTS.contains(t.asLiteral().getDatatype()))
+                has[0] = true;
+        });
+        if (!has[0])
+            return solution;
+        IndexedSet<String> vars = IndexedSet.fromDistinct(solution.getVarNames());
+        Term[] values = new Term[vars.size()];
+        int i = 0;
+        for (String var : vars) {
+            Term t = solution.get(var);
+            if (t != null && t.isLiteral() && INTEGER_DTS.contains(t.asLiteral().getDatatype()))
+                t = StdLit.fromUnescaped(t.asLiteral().getLexicalForm(), xsdIntegerURI);
+            values[i++] = t;
+        }
+        return new ArraySolution(vars, values);
     }
 }

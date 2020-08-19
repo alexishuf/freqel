@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.linkedator;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.linkedator.strategies.APIMoleculeInputsLinkedatorStrategy;
@@ -138,8 +138,8 @@ public class Linkedator {
         CQuery query;
         try {
             Op root = SPARQLParser.strict().parse(queryString);
-            if (root instanceof FreeQueryOp) {
-                query = ((FreeQueryOp) root).getQuery();
+            if (root instanceof QueryOp) {
+                query = ((QueryOp) root).getQuery();
             } else {
                 throw new ResultParseException("Link templates must expand to conjunctive " +
                                                "queries. Query: " + queryString);

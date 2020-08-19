@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.federation;
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
@@ -11,8 +11,9 @@ import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
-import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.TemplateExpander;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
@@ -48,7 +49,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(Federation.class);
 
-    private final @Nonnull OuterPlanner outerPlanner;
+    private final @Nonnull PrePlanner prePlanner;
     private final @Nonnull DecompositionStrategy strategy;
     private final @Nonnull PlanExecutor executor;
     private final @Nonnull PerformanceListener performanceListener;
@@ -57,13 +58,13 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private @Nonnull TemplateExpander templateExpander;
 
     @Inject
-    public Federation(@Nonnull OuterPlanner outerPlanner,
+    public Federation(@Nonnull PrePlanner prePlanner,
                       @Nonnull DecompositionStrategy strategy,
                       @Nonnull PlanExecutor executor,
                       @Nonnull PerformanceListener performanceListener,
                       @Nonnull InnerCardinalityComputer cardinalityComputer,
                       @Nonnull ResultsExecutor resultsExecutor) {
-        this.outerPlanner = outerPlanner;
+        this.prePlanner = prePlanner;
         this.strategy = strategy;
         this.executor = executor;
         this.performanceListener = performanceListener;
@@ -138,7 +139,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
-        return query(new FreeQueryOp(query));
+        return query(new QueryOp(query));
     }
 
     public @Nonnull Results query(@Nonnull Op query) {
@@ -155,7 +156,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public @Nonnull Results execute(@Nonnull CQuery query, Op plan) {
-        return execute(new FreeQueryOp(query), plan);
+        return execute(new QueryOp(query), plan);
     }
 
     public @Nonnull Results execute(@Nonnull Op query, Op plan) {
@@ -172,22 +173,25 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     @VisibleForTesting
     @Nonnull Op expandTemplates(@Nonnull Op query) {
         return TreeUtils.replaceNodes(query, null, op -> {
-            if (!(op instanceof FreeQueryOp)) return null;
-            FreeQueryOp queryOp = (FreeQueryOp) op;
-            return queryOp.withQuery(templateExpander.apply(queryOp.getQuery()));
+            if (!(op instanceof QueryOp)) return null;
+            QueryOp queryOp = (QueryOp) op;
+            MutableCQuery old = queryOp.getQuery();
+            CQuery expanded = templateExpander.apply(old);
+            return expanded == old ? null : queryOp.withQuery(expanded);
         });
     }
 
     private @Nonnull Op planComponents(@Nonnull Op root, @Nonnull Op query,
                                         @Nonnull InnerCardinalityComputer cardinalityComputer) {
         return TreeUtils.replaceNodes(root, cardinalityComputer, op -> {
-            if (op.getClass().equals(FreeQueryOp.class)) {
-                FreeQueryOp component = (FreeQueryOp) op;
+            if (op.getClass().equals(QueryOp.class)) {
+                QueryOp component = (QueryOp) op;
                 Op componentPlan = strategy.decompose(component.getQuery());
-                if (componentPlan instanceof EmptyOp) {
-                    logger.info("Query is unsatisfiable because one component extracted by " +
-                                "the OuterPlanner is unsatisfiable. Query: {}. Component: {}",
-                                query.prettyPrint(), component.getQuery());
+                if (componentPlan instanceof EmptyOp && component.modifiers().optional() == null) {
+                    logger.info("Non-optional query component is unsatisfiable." +
+                                "\n  Component:\n    {}\n  Whole query:\n    {}",
+                                component.prettyPrint().replace("\n", "\n    "),
+                                query.prettyPrint().replace("\n", "\n    "));
                 }
                 return componentPlan;
             }
@@ -196,14 +200,14 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public @Nonnull Op plan(@Nonnull CQuery query) {
-        return plan(new FreeQueryOp(query));
+        return plan(new QueryOp(query));
     }
 
     public @Nonnull Op plan(@Nonnull Op query) {
         try (TimeSampler ignored = Metrics.FULL_PLAN_MS.createThreadSampler(performanceListener)) {
             Stopwatch sw = Stopwatch.createStarted();
-            Op root = query instanceof FreeQueryOp ? query : TreeUtils.deepCopy(query);
-            root = outerPlanner.plan(root);
+            Op root = query instanceof QueryOp ? query : TreeUtils.deepCopy(query);
+            root = prePlanner.plan(root);
             root = planComponents(root, query, cardinalityComputer);
             TreeUtils.nameNodes(root);
             if (logger.isDebugEnabled()) {

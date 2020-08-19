@@ -22,9 +22,9 @@ public class ModifiersSetTest implements TestContext {
     @Test
     public void testAllSubsets() {
         Set<Modifier> all = newHashSet(
-                Projection.required("x"),
-                Ask.REQUIRED,
-                Limit.required(23),
+                Projection.of("x"),
+                Ask.INSTANCE,
+                Limit.of(23),
                 new ValuesModifier(singleton("x"), singleton(MapSolution.build(x, Alice))),
                 SPARQLFilter.build("?u > 23"),
                 SPARQLFilter.build("?v > 23")
@@ -100,13 +100,13 @@ public class ModifiersSetTest implements TestContext {
     @Test
     public void testEnforceUniqueCapabilities() {
         ModifiersSet set = new ModifiersSet();
-        assertTrue(set.add(Projection.required("x")));
+        assertTrue(set.add(Projection.of("x")));
         assertTrue(set.add(SPARQLFilter.build("?u > 23")));
-        assertTrue(set.add(Projection.required("y")));
-        assertFalse(set.add(Projection.required("y")));
+        assertTrue(set.add(Projection.of("y")));
+        assertFalse(set.add(Projection.of("y")));
 
         assertEquals(set.size(), 2);
-        assertEquals(set, newHashSet(Projection.required("y"),
+        assertEquals(set, newHashSet(Projection.of("y"),
                                           SPARQLFilter.build("?u > 23")));
     }
 
@@ -123,24 +123,24 @@ public class ModifiersSetTest implements TestContext {
             }
         });
 
-        set.add(Projection.advised("x"));
+        set.add(Projection.of("x"));
         assertEquals(adds.get(), 1);
         assertEquals(removes.get(), 0);
 
         // operation with no effect: do not notify
-        assertFalse(set.remove(Limit.advised(23)));
+        assertFalse(set.remove(Limit.of(23)));
         assertEquals(adds.get(), 1);
         assertEquals(removes.get(), 0);
 
         // operation with no effect: do not notify
-        assertFalse(set.add(Projection.advised("x")));
+        assertFalse(set.add(Projection.of("x")));
         assertEquals(adds.get(), 1);
         assertEquals(removes.get(), 0);
 
         // modifying copy does not notify source
         ModifiersSet copy = new ModifiersSet(set);
         assertEquals(copy, set);
-        copy.add(Ask.ADVISED);
+        copy.add(Ask.INSTANCE);
         assertEquals(adds.get(), 1);
         assertEquals(removes.get(), 0);
 
@@ -154,7 +154,7 @@ public class ModifiersSetTest implements TestContext {
                 copyRemoves.incrementAndGet();
             }
         });
-        assertTrue(set.remove(Projection.advised("x")));
+        assertTrue(set.remove(Projection.of("x")));
         assertEquals(adds.get(), 1);
         assertEquals(removes.get(), 1); //set's listener is notified
         assertEquals(copyAdds.get(), 0);
@@ -205,11 +205,11 @@ public class ModifiersSetTest implements TestContext {
             }
         });
 
-        assertTrue(set.add(Limit.advised(23)));
-        assertFalse(set.add(Limit.advised(23)));
-        assertTrue(set.add(Limit.advised(5)));
+        assertTrue(set.add(Limit.of(23)));
+        assertFalse(set.add(Limit.of(23)));
+        assertTrue(set.add(Limit.of(5)));
 
-        assertEquals(added, asList(Limit.advised(23), Limit.advised(5)));
+        assertEquals(added, asList(Limit.of(23), Limit.of(5)));
         assertEquals(removed, emptyList());
     }
 
@@ -231,8 +231,8 @@ public class ModifiersSetTest implements TestContext {
         });
         ModifiersSet view2 = set.getLockedView();
         ModifiersSet copy1 = new ModifiersSet(set);
-        assertTrue(set.add(Projection.advised("x")));
-        assertTrue(set.add(Limit.advised(23)));
+        assertTrue(set.add(Projection.of("x")));
+        assertTrue(set.add(Limit.of(23)));
         ModifiersSet copy2 = new ModifiersSet(set);
 
         ModifiersSet.Listener otherListener = new ModifiersSet.Listener() {
@@ -258,7 +258,7 @@ public class ModifiersSetTest implements TestContext {
         assertFalse(it.hasNext());
 
         assertEquals(removed, asList(victim1, victim2));
-        assertEquals(added, asList(Projection.advised("x"), Limit.advised(23)));
+        assertEquals(added, asList(Projection.of("x"), Limit.of(23)));
         assertEquals(otherAdded, emptyList());
         assertEquals(otherRemoved, emptyList());
     }
@@ -266,29 +266,29 @@ public class ModifiersSetTest implements TestContext {
     @Test
     public void testMergeProjection() {
         ModifiersSet a = new ModifiersSet(), ex = new ModifiersSet();
-        a.add(Projection.required("x"));
-        assertTrue(a.mergeWith(singleton(Projection.advised("y")), singleton("x"), singleton("y")));
+        a.add(Projection.of("x"));
+        assertTrue(a.safeMergeWith(singleton(Projection.of("y")), singleton("x"), singleton("y")));
 
-        ex.add(Projection.required("x", "y"));
+        ex.add(Projection.of("x", "y"));
         assertEquals(a, ex);
     }
 
     @Test
     public void testMergeProjectionWithoutPrevious() {
         ModifiersSet a = new ModifiersSet(), ex = new ModifiersSet();
-        assertTrue(a.mergeWith(singleton(Projection.advised("x")), singleton("y"), singleton("x")));
+        assertTrue(a.safeMergeWith(singleton(Projection.of("x")), singleton("y"), singleton("x")));
 
-        ex.add(Projection.advised("x", "y"));
+        ex.add(Projection.of("x", "y"));
         assertEquals(a, ex);
     }
 
     @Test
     public void tetMergeProjectionNoOp() {
         ModifiersSet a = new ModifiersSet(), ex = new ModifiersSet();
-        a.add(Projection.required("x"));
-        assertFalse(a.mergeWith(singleton(Projection.required("x")), singleton("x"), singleton("x")));
+        a.add(Projection.of("x"));
+        assertFalse(a.safeMergeWith(singleton(Projection.of("x")), singleton("x"), singleton("x")));
 
-        ex.add(Projection.required("x"));
+        ex.add(Projection.of("x"));
         assertEquals(a, ex);
     }
 
@@ -308,13 +308,13 @@ public class ModifiersSetTest implements TestContext {
         ));
 
         ModifiersSet a = new ModifiersSet(), b = new ModifiersSet(), ex = new ModifiersSet();
-        a.add(Projection.required("y"));
+        a.add(Projection.of("y"));
         a.add(valuesA);
         b.add(valuesB);
 
-        assertTrue(a.mergeWith(b, singleton("x"), newHashSet("y", "z")));
+        assertTrue(a.safeMergeWith(b, singleton("x"), newHashSet("y", "z")));
 
-        ex.add(Projection.required("y", "z"));
+        ex.add(Projection.of("y", "z"));
         ex.add(valuesEx);
         assertEquals(a, ex);
     }
@@ -333,13 +333,13 @@ public class ModifiersSetTest implements TestContext {
         ));
 
         ModifiersSet a = new ModifiersSet(), b = new ModifiersSet(), ex = new ModifiersSet();
-        a.add(Projection.required("y"));
+        a.add(Projection.of("y"));
         a.add(valuesA);
         b.add(valuesB);
 
-        assertTrue(a.mergeWith(b, singleton("x"), newHashSet("y", "z")));
+        assertTrue(a.safeMergeWith(b, singleton("x"), newHashSet("y", "z")));
 
-        ex.add(Projection.required("y", "z"));
+        ex.add(Projection.of("y", "z"));
         ex.add(valuesEx);
         assertEquals(a, ex);
     }
@@ -347,12 +347,60 @@ public class ModifiersSetTest implements TestContext {
     @Test
     public void testMergeLimit() {
         ModifiersSet a = new ModifiersSet(), ex = new ModifiersSet();
-        a.add(Limit.required(23));
-        assertFalse(a.mergeWith(singleton(Limit.required(27)), singleton("x"), singleton("x")));
-        assertEquals(a.limit(), Limit.required(23));
-        assertTrue(a.mergeWith(singleton(Limit.required(5)), singleton("x"), singleton("x")));
+        a.add(Limit.of(23));
+        assertFalse(a.unsafeMergeWith(singleton(Limit.of(27)), singleton("x"), singleton("x")));
+        assertEquals(a.limit(), Limit.of(23));
+        assertTrue(a.unsafeMergeWith(singleton(Limit.of(5)), singleton("x"), singleton("x")));
 
-        ex.add(Limit.required(5));
+        ex.add(Limit.of(5));
         assertEquals(a, ex);
+    }
+
+    @Test
+    public void testThrowIfUnsafeMerge() {
+        Set<String> proj = singleton("x");
+        ModifiersSet e = new ModifiersSet(), g = new ModifiersSet();
+
+        g.add(Ask.INSTANCE);
+        assertFalse(e.canMergeWith(g));
+        assertThrows(UnsafeMergeException.class, () -> e.safeMergeWith(g, proj, proj));
+        g.add(Ask.INSTANCE);
+        assertFalse(e.canMergeWith(g));
+        assertThrows(UnsafeMergeException.class, () -> e.safeMergeWith(g, proj, proj));
+
+        g.clear();
+        g.add(Optional.INSTANCE);
+        assertFalse(e.canMergeWith(g));
+        assertThrows(UnsafeMergeException.class, () -> e.safeMergeWith(g, proj, proj));
+
+        g.clear();
+        g.add(Distinct.INSTANCE);
+        assertFalse(e.canMergeWith(g));
+        assertThrows(UnsafeMergeException.class, () -> e.safeMergeWith(g, proj, proj));
+        g.add(Distinct.INSTANCE);
+        assertFalse(e.canMergeWith(g));
+        assertThrows(UnsafeMergeException.class, () -> e.safeMergeWith(g, proj, proj));
+
+        g.clear();
+        g.add(Limit.of(23));
+        assertFalse(e.canMergeWith(g));
+        assertThrows(UnsafeMergeException.class, () -> e.safeMergeWith(g, proj, proj));
+        g.add(Limit.of(23));
+        assertFalse(e.canMergeWith(g));
+        assertThrows(UnsafeMergeException.class, () -> e.safeMergeWith(g, proj, proj));
+
+        ModifiersSet a = new ModifiersSet();
+        a.add(Limit.of(7));
+        g.clear();
+        g.add(Limit.of(23));
+        assertFalse(a.canMergeWith(g));
+        assertThrows(UnsafeMergeException.class, () -> a.safeMergeWith(g, proj, proj));
+        g.add(Limit.of(23));
+        assertFalse(a.canMergeWith(g));
+        assertThrows(UnsafeMergeException.class, () -> a.safeMergeWith(g, proj, proj));
+
+        g.add(Limit.of(7));
+        assertTrue(a.canMergeWith(g));
+        assertFalse(a.safeMergeWith(g, proj, proj)); // no change
     }
 }

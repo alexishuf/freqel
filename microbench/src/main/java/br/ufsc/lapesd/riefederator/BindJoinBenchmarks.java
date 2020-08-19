@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator;
 
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
@@ -145,7 +145,7 @@ public class BindJoinBenchmarks {
 
     @Benchmark
     public Set<Solution> pathJoinWithValuesLocal() {
-        QueryOp rightTree = new QueryOp(rightLocalEp, rightQuery);
+        EndpointQueryOp rightTree = new EndpointQueryOp(rightLocalEp, rightQuery);
         SimpleBindJoinResults joinResults = new SimpleBindJoinResults(planExecutor,
                 leftLocalEp.query(leftQuery), rightTree,
                 joinVars, resultVars, resultsExec, valuesRows);
@@ -156,7 +156,7 @@ public class BindJoinBenchmarks {
 
     @Benchmark
     public Set<Solution> pathJoinWithValuesSequentialExecutorLocal() {
-        QueryOp rightTree = new QueryOp(rightLocalEp, rightQuery);
+        EndpointQueryOp rightTree = new EndpointQueryOp(rightLocalEp, rightQuery);
         SimpleBindJoinResults joinResults = new SimpleBindJoinResults(planExecutor,
                 leftLocalEp.query(leftQuery), rightTree,
                 joinVars, resultVars, seqResultsExec, valuesRows);
@@ -167,7 +167,7 @@ public class BindJoinBenchmarks {
 
     @Benchmark
     public Set<Solution> pathJoinWithValues() {
-        QueryOp rightTree = new QueryOp(rightEp, rightQuery);
+        EndpointQueryOp rightTree = new EndpointQueryOp(rightEp, rightQuery);
         SimpleBindJoinResults joinResults = new SimpleBindJoinResults(planExecutor,
                 leftEp.query(leftQuery), rightTree,
                 joinVars, resultVars, resultsExec, valuesRows);
@@ -178,7 +178,7 @@ public class BindJoinBenchmarks {
 
     @Benchmark
     public Set<Solution> pathJoinWithValuesSequentialExecutor() {
-        QueryOp rightTree = new QueryOp(rightEp, rightQuery);
+        EndpointQueryOp rightTree = new EndpointQueryOp(rightEp, rightQuery);
         SimpleBindJoinResults joinResults = new SimpleBindJoinResults(planExecutor,
                 leftEp.query(leftQuery), rightTree,
                 joinVars, resultVars, seqResultsExec, valuesRows);
@@ -189,7 +189,7 @@ public class BindJoinBenchmarks {
 
     @Benchmark
     public Set<Solution> pathJoinWithoutValues() {
-        QueryOp rightTree = new QueryOp(rightEpCannotValues, rightQuery);
+        EndpointQueryOp rightTree = new EndpointQueryOp(rightEpCannotValues, rightQuery);
         SimpleBindJoinResults joinResults = new SimpleBindJoinResults(planExecutor,
                 leftEp.query(leftQuery), rightTree,
                 joinVars, resultVars, resultsExec, valuesRows);
@@ -200,7 +200,7 @@ public class BindJoinBenchmarks {
 
     @Benchmark
     public Set<Solution> pathJoinWithoutValuesWithSequentialExecutor() {
-        QueryOp rightTree = new QueryOp(rightEpCannotValues, rightQuery);
+        EndpointQueryOp rightTree = new EndpointQueryOp(rightEpCannotValues, rightQuery);
         SimpleBindJoinResults joinResults = new SimpleBindJoinResults(planExecutor,
                 leftEp.query(leftQuery), rightTree,
                 joinVars, resultVars, seqResultsExec, valuesRows);

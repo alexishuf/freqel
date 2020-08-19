@@ -151,14 +151,14 @@ public class CQueryContextTest implements TestContext {
     @Test
     public void testAddDistinctModifier() {
         CQuery query;
-        query = createQuery(Alice, p1, x, Distinct.REQUIRED);
-        assertEquals(query.getModifiers(), singletonList(Distinct.REQUIRED));
+        query = createQuery(Alice, p1, x, Distinct.INSTANCE);
+        assertEquals(query.getModifiers(), singletonList(Distinct.INSTANCE));
 
-        query = createQuery(Distinct.REQUIRED, Alice, p1, x);
-        assertEquals(query.getModifiers(), singletonList(Distinct.REQUIRED));
+        query = createQuery(Distinct.INSTANCE, Alice, p1, x);
+        assertEquals(query.getModifiers(), singletonList(Distinct.INSTANCE));
 
-        query = createQuery(Alice, Distinct.REQUIRED, p1, x);
-        assertEquals(query.getModifiers(), singletonList(Distinct.REQUIRED));
+        query = createQuery(Alice, Distinct.INSTANCE, p1, x);
+        assertEquals(query.getModifiers(), singletonList(Distinct.INSTANCE));
     }
 
     @Test

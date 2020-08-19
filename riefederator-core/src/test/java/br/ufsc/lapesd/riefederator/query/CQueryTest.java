@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.TestContext;
-import br.ufsc.lapesd.riefederator.algebra.leaf.FreeQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
@@ -196,9 +196,9 @@ public class CQueryTest implements TestContext {
         Triple triple = new Triple(x, knows, y);
         CQuery plain1 = CQuery.from(triple);
         CQuery plain2 = CQuery.from(triple);
-        CQuery distinct1 = createQuery(triple, Distinct.ADVISED);
-        CQuery distinct2 = createQuery(triple, Distinct.ADVISED);
-        CQuery projected = createQuery(triple, Projection.advised("y"));
+        CQuery distinct1 = createQuery(triple, Distinct.INSTANCE);
+        CQuery distinct2 = createQuery(triple, Distinct.INSTANCE);
+        CQuery projected = createQuery(triple, Projection.of("y"));
 
         assertEquals(plain1, plain2);
         assertEquals(distinct1, distinct2);
@@ -386,7 +386,7 @@ public class CQueryTest implements TestContext {
                 Alice, name, y, AtomInputAnnotation.asOptional(A2, "a2").get(),
                     SPARQLFilter.build("regex(str(?y), \"^Alice.*\")"),
                 x, age, u, SPARQLFilter.build("?u > 23"),
-                Projection.required("x", "y"));
+                Projection.of("x", "y"));
         CQuery sub = query.containing(x, Triple.Position.SUBJ, Triple.Position.OBJ);
         assertEquals(sub.attr().getSet(), Sets.newHashSet(
                 new Triple(Alice, knows, x),
@@ -394,7 +394,7 @@ public class CQueryTest implements TestContext {
         ));
 
         assertEquals(sub.getModifiers(), Sets.newHashSet(
-                SPARQLFilter.build("?u > 23"), Projection.required("x")));
+                SPARQLFilter.build("?u > 23"), Projection.of("x")));
         assertEquals(sub.getTermAnnotations(x),
                      singleton(AtomInputAnnotation.asRequired(A1, "a1").get()));
         assertEquals(sub.getTermAnnotations(y), emptySet());
@@ -425,7 +425,7 @@ public class CQueryTest implements TestContext {
     @Test(dataProvider = "isJoinConnectedData")
     public void testIsJoinConnected(@Nonnull Object queryObj, boolean expected) {
         CQuery query = queryObj instanceof CQuery ? (CQuery)queryObj
-                                                  : ((FreeQueryOp)queryObj).getQuery();
+                                                  : ((QueryOp)queryObj).getQuery();
         assertEquals(query.attr().isJoinConnected(), expected);
     }
 

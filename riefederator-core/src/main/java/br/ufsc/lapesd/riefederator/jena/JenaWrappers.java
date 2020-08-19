@@ -187,6 +187,7 @@ public class JenaWrappers {
     public static Node toJenaNode(Term term) {
         if (term == null) return null;
         else if (term instanceof JenaBlank) return toJenaNode((JenaBlank)term);
+        else if (term instanceof JenaBlankNode) return ((JenaBlankNode)term).getNode();
         else if (term.isVar()) return toJenaNode(term.asVar());
         else if (term.isURI()) return toJenaNode(term.asURI());
         else if (term.isLiteral()) return toJenaNode(term.asLiteral());
@@ -208,6 +209,7 @@ public class JenaWrappers {
 
     @Contract(value = "null -> null; !null -> new", pure = true)
     public static Triple fromJena(Statement statement) {
+        if (statement == null) return null;
         JenaRes s = fromJena(statement.getSubject());
         JenaRes p = fromJena(statement.getPredicate());
         JenaTerm o = fromJena(statement.getObject());

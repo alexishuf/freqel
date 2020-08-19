@@ -11,17 +11,20 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinal
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.StandardDecomposer;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
-import br.ufsc.lapesd.riefederator.federation.planner.OuterPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.Planner;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.GreedyJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.JoinPathsPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.impl.NaiveOuterPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.inner.GreedyJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.inner.JoinPathsPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.outer.PhasedPrePlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.outer.steps.*;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.Binder;
 import com.google.inject.multibindings.Multibinder;
 
 import javax.annotation.Nonnull;
+import javax.inject.Inject;
+import javax.inject.Provider;
 
 public class SimpleFederationModule extends SimpleExecutionModule {
     private int estimatePolicy = EstimatePolicy.local(100);
@@ -47,7 +50,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
     @Override
     protected void configure() {
         super.configure();
-        bind(OuterPlanner.class).to(NaiveOuterPlanner.class);
+        configurePrePlanner();
         bind(DecompositionStrategy.class).to(StandardDecomposer.class);
         bind(Planner.class).to(JoinPathsPlanner.class);
         bind(JoinOrderPlanner.class).to(GreedyJoinOrderPlanner.class);
@@ -69,5 +72,32 @@ public class SimpleFederationModule extends SimpleExecutionModule {
 
     private void configureCardinalityEstimation() {
         configureCardinalityEstimation(binder(), estimatePolicy);
+    }
+
+    public static class DefaultPrePlannerProvider implements Provider<PrePlanner> {
+        private @Nonnull JoinOrderPlanner joinOrderPlanner;
+        private @Nonnull PerformanceListener performanceListener;
+
+        @Inject
+        public DefaultPrePlannerProvider(@Nonnull JoinOrderPlanner joinOrderPlanner,
+                                         @Nonnull PerformanceListener performanceListener) {
+            this.joinOrderPlanner = joinOrderPlanner;
+            this.performanceListener = performanceListener;
+        }
+
+        @Override public @Nonnull PrePlanner get() {
+            return new PhasedPrePlanner(performanceListener)
+                    .appendPhase1(new FlattenStep())
+                    .appendPhase1(new CartesianIntroductionStep())
+                    .appendPhase1(new FlattenStep())
+                    .appendPhase2(new UnionDistributionStep())
+                    .appendPhase2(new CartesianDistributionStep())
+                    .appendPhase3(new ConjunctionReplaceStep(joinOrderPlanner))
+                    .appendPhase3(new FlattenStep());
+        }
+    }
+
+    protected void configurePrePlanner() {
+        bind(PrePlanner.class).toProvider(DefaultPrePlannerProvider.class);
     }
 }
