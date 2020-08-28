@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.Federation;
@@ -39,6 +40,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import static br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation.createFederation;
 import static br.ufsc.lapesd.riefederator.testgen.LargeRDFBenchTestResourcesGenerator.parseResults;
@@ -304,6 +307,26 @@ public class LargeRDFBenchSelfTest {
             actual.forEachRemainingThenClose(actualList::add);
             assertTrue(actualList.containsAll(expected.getCollection()), "Missing solutions");
             assertTrue(expected.getCollection().containsAll(actualList), "Unexpected solutions");
+        }
+    }
+
+    @Test
+    public void testParseAllQueries() throws Exception {
+        SPARQLParser parser = SPARQLParser.tolerant();
+        try (InputStream in = getClass().getResourceAsStream("LargeRDFBench-all-queries.zip")) {
+            ZipInputStream zip = new ZipInputStream(in);
+            for (ZipEntry e = zip.getNextEntry(); e != null; e = zip.getNextEntry()) {
+                if (e.isDirectory()) continue;
+                String name = e.getName();
+                String sparql = IOUtils.toString(zip, UTF_8);
+                Op query;
+                try {
+                    query = parser.parse(sparql);
+                    assertFalse(query instanceof EmptyOp, "query="+name+" parsed into an EmptyOp");
+                } catch (SPARQLParseException ex) {
+                    fail("Failed to parse query="+name, ex);
+                }
+            }
         }
     }
 
