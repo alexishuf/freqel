@@ -29,11 +29,6 @@ public class JenaURINode extends JenaNodeTerm implements URI {
     }
 
     @Override
-    public String toString() {
-        return toString(StdPrefixDict.DEFAULT);
-    }
-
-    @Override
     public boolean equals(Object o) {
         if (!(o instanceof URI)) return false;
         String uri = getURI();

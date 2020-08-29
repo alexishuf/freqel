@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilterExecutor;
 import br.ufsc.lapesd.riefederator.query.results.DelegatingResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -22,6 +23,7 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(SPARQLFilterResults.class);
 
     private final @Nonnull Collection<SPARQLFilter> filters;
+    private final @Nonnull SPARQLFilterExecutor filterExecutor = new SPARQLFilterExecutor();
     private final @Nonnull ArrayDeque<Solution> ready = new ArrayDeque<>();
     private int included = 0, excluded = 0;
 
@@ -85,7 +87,7 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
         for (int i = 0; in.hasNext() && (i < minConsumption || found == 0); i++) {
             Solution solution = in.next();
             for (SPARQLFilter filter : filters) {
-                if (!filter.evaluate(solution)) {
+                if (!filterExecutor.evaluate(filter, solution)) {
                     ++excluded;
                     continue outer;
                 }

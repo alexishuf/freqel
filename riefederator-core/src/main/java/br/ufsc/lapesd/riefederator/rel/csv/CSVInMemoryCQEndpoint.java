@@ -25,6 +25,7 @@ import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilterExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
@@ -84,6 +85,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
     private @Nonnull final Molecule molecule;
     private @Nonnull final MoleculeMatcher moleculeMatcher;
     private @Nullable Federation federation;
+    private @Nonnull final SPARQLFilterExecutor filterExecutor = new SPARQLFilterExecutor();
 
     /* --- --- --- Constructor & loader/parser --- --- --- */
 
@@ -350,7 +352,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
         return new CollectionResults(solutions, sb.vars);
     }
 
-    private static class SolutionBuilder {
+    private class SolutionBuilder {
         final IndexedSet<String> vars;
         final IndexedSubset<String> matched;
         final ArraySolution.ValueFactory factory;
@@ -399,9 +401,9 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
         }
 
         public @Nullable Solution getSolution() {
-            ArraySolution solution = factory.fromValues(values);
-            boolean ok = star.getFilters().stream().allMatch(f -> f.evaluate(solution));
-            return ok ? solution : null;
+            ArraySolution s = factory.fromValues(values);
+            boolean ok = star.getFilters().stream().allMatch(f ->  filterExecutor.evaluate(f, s));
+            return ok ? s : null;
         }
     }
 

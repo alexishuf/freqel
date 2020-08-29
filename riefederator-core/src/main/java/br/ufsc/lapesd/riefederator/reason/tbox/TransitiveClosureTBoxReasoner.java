@@ -40,7 +40,7 @@ public class TransitiveClosureTBoxReasoner implements TBoxReasoner {
             return Stream.empty();
         Resource resource;
         if (start instanceof JenaTerm)
-            resource = ((JenaTerm) start).getNode().asResource();
+            resource = ((JenaTerm) start).getModelNode().asResource();
         else if (start instanceof Blank)
             return Stream.empty();
         else

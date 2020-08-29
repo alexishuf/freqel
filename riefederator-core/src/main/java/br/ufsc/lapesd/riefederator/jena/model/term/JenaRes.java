@@ -15,7 +15,7 @@ public abstract class JenaRes extends JenaTerm implements Res {
     }
 
     public @Nonnull Resource getResource() {
-        return getNode().asResource();
+        return getModelNode().asResource();
     }
 
     @Override

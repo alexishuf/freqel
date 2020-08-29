@@ -74,15 +74,15 @@ public class JenaWrappers {
     /* ~~~~~~~~~ toJena(JenaTerm) ~~~~~~~~~ */
 
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static RDFNode toJena(JenaTerm   t) {return t == null ? null : t.getNode(); }
+    public static RDFNode toJena(JenaTerm   t) {return t == null ? null : t.getModelNode(); }
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Resource toJena(JenaRes   t) {return t == null ? null : t.getNode().asResource();}
+    public static Resource toJena(JenaRes   t) {return t == null ? null : t.getModelNode().asResource();}
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Resource toJena(JenaBlank t) {return t == null ? null : t.getNode().asResource();}
+    public static Resource toJena(JenaBlank t) {return t == null ? null : t.getModelNode().asResource();}
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Resource toJena(JenaURI   t) {return t == null ? null : t.getNode().asResource();}
+    public static Resource toJena(JenaURI   t) {return t == null ? null : t.getModelNode().asResource();}
     @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Literal  toJena(JenaLit   t) {return t == null ? null : t.getNode().asLiteral(); }
+    public static Literal  toJena(JenaLit   t) {return t == null ? null : t.getModelNode().asLiteral(); }
 
     /* ~~~~~~~~~ toJena(Term) ~~~~~~~~~ */
 
@@ -145,30 +145,24 @@ public class JenaWrappers {
     @Contract(value = "null -> null; !null -> new", pure = true)
     public static Node_Variable toJenaNode(Var var) {
         if (var == null) return null;
-        if (var instanceof JenaVar)
-            return (Node_Variable) ((JenaVar) var).getGraphNode();
+        else if (var instanceof JenaBaseTerm)
+            return (Node_Variable) ((JenaBaseTerm) var).getGraphNode();
         return (Node_Variable) NodeFactory.createVariable(var.getName());
-    }
-
-    @Contract(value = "null -> null; !null -> new", pure = true)
-    public static Node_Blank toJenaNode(JenaBlank term) {
-        if (term == null) return null;
-        return (Node_Blank) term.getGraphNode();
     }
 
     @Contract(value = "null -> null; !null -> new", pure = true)
     public static Node_URI toJenaNode(URI term) {
         if (term == null) return null;
-        if (term instanceof JenaURI)
-            return (Node_URI) ((JenaURI) term).getGraphNode();
+        else if (term instanceof JenaBaseTerm)
+            return (Node_URI) ((JenaBaseTerm) term).getGraphNode();
         return  (Node_URI) NodeFactory.createURI(term.getURI());
     }
 
     @Contract(value = "null -> null; !null -> new", pure = true)
     public static Node_Literal toJenaNode(Lit term) {
         if (term == null) return null;
-        if (term instanceof JenaLit)
-            return (Node_Literal) ((JenaLit) term).getGraphNode();
+        else if (term instanceof JenaBaseTerm)
+            return (Node_Literal) ((JenaBaseTerm) term).getGraphNode();
 
         String langTag = term.getLangTag();
         if (langTag != null)
@@ -186,8 +180,7 @@ public class JenaWrappers {
     @Contract(value = "null -> null; !null -> new", pure = true)
     public static Node toJenaNode(Term term) {
         if (term == null) return null;
-        else if (term instanceof JenaBlank) return toJenaNode((JenaBlank)term);
-        else if (term instanceof JenaBlankNode) return ((JenaBlankNode)term).getNode();
+        else if (term instanceof JenaBaseTerm) return ((JenaBaseTerm)term).getGraphNode();
         else if (term.isVar()) return toJenaNode(term.asVar());
         else if (term.isURI()) return toJenaNode(term.asURI());
         else if (term.isLiteral()) return toJenaNode(term.asLiteral());

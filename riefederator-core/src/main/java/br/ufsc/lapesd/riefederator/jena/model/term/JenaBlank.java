@@ -24,7 +24,7 @@ public class JenaBlank extends JenaRes implements Blank {
 
     @Override
     public @Nonnull Object getId() {
-        return getNode().asResource().getId();
+        return getModelNode().asResource().getId();
     }
 
     @Override

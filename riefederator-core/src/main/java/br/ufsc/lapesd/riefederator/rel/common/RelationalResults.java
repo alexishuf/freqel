@@ -11,6 +11,7 @@ import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilterExecutor;
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -55,6 +56,7 @@ public abstract class RelationalResults extends AbstractResults {
     private final @Nonnull List<Set<String>> jVars;
     private final @Nonnull List<Set<String>> jrVars;
     private final @Nullable ArraySolution.ValueFactory projector;
+    private final @Nonnull SPARQLFilterExecutor filterExecutor = new SPARQLFilterExecutor();
 
     protected RelationalResults(@Nonnull RelationalRewriting rw,
                                 @Nonnull RelationalMapping mapping) {
@@ -207,7 +209,7 @@ public abstract class RelationalResults extends AbstractResults {
         while (results.hasNext()) {
             Solution solution = results.next();
             for (SPARQLFilter filter : rewriting.getPendingFilters()) {
-                if (!filter.evaluate(solution))
+                if (!filterExecutor.evaluate(filter, solution))
                     continue rs_loop;
             }
             if (projector != null) queue.add(projector.fromSolution(solution));

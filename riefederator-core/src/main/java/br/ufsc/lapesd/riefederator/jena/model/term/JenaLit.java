@@ -22,23 +22,23 @@ public class JenaLit extends JenaTerm implements Lit {
     }
 
     public @Nonnull Literal getLiteral() {
-        return super.getNode().asLiteral();
+        return super.getModelNode().asLiteral();
     }
     @Override
-    public @Nonnull RDFNode getNode() {
+    public @Nonnull RDFNode getModelNode() {
         return getLiteral();
     }
 
     @Override
     public @Nonnull String getLexicalForm() {
-        return getNode().asLiteral().getLexicalForm();
+        return getModelNode().asLiteral().getLexicalForm();
     }
 
     @Override
     public @Nonnull JenaURI getDatatype() {
         JenaURI local = dtURI;
         if (local == null) {
-            String uri = getNode().asLiteral().getDatatypeURI();
+            String uri = getModelNode().asLiteral().getDatatypeURI();
             if (uri == null)
                 uri = XSDDatatype.XSDstring.getURI();
             local = dtURI = JenaURICache.getInstance().getURI(uri);
@@ -49,7 +49,7 @@ public class JenaLit extends JenaTerm implements Lit {
     @Nullable
     @Override
     public String getLangTag() {
-        String lang = getNode().asLiteral().getLanguage();
+        String lang = getModelNode().asLiteral().getLanguage();
         return lang.equals("") ? null : lang;
     }
 

@@ -8,13 +8,13 @@ import org.apache.jena.rdf.model.RDFNode;
 import javax.annotation.Nonnull;
 
 @Immutable
-public abstract class JenaTerm implements Term {
+public abstract class JenaTerm implements JenaBaseTerm, Term {
     @SuppressWarnings("Immutable")
     protected final RDFNode node;
     @SuppressWarnings("Immutable")
     protected final @Nonnull Node graphNode;
 
-    public JenaTerm(@Nonnull RDFNode node) {
+    protected JenaTerm(@Nonnull RDFNode node) {
         this.node = node;
         this.graphNode = node.asNode();
     }
@@ -27,12 +27,14 @@ public abstract class JenaTerm implements Term {
         this.graphNode = graphNode;
     }
 
-    public @Nonnull RDFNode getNode() {
+    @Override
+    public @Nonnull RDFNode getModelNode() {
         if (node == null)
             throw new UnsupportedOperationException(this +" has no representation as RDFNode");
         return node;
     }
 
+    @Override
     public @Nonnull Node getGraphNode() {
         return graphNode;
     }

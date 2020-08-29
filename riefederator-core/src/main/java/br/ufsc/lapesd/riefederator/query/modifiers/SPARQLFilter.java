@@ -65,22 +65,6 @@ public class SPARQLFilter implements Modifier {
     private @SuppressWarnings("Immutable") @Nonnull @LazyInit SoftReference<Set<Term>> terms
             = new SoftReference<>(null);
 
-    @SuppressWarnings("Immutable") @LazyInit
-    private @Nonnull SoftReference<ExecutionContext> executionContext
-            = new SoftReference<>(null);
-
-    private static class ExecutionContext {
-        DatasetGraph dsg;
-        Context context;
-        FunctionEnvBase functionEnv;
-
-        public ExecutionContext() {
-            dsg = DatasetFactory.create().asDatasetGraph();
-            context = Context.setupContextForDataset(ARQ.getContext(), dsg);
-            functionEnv = new FunctionEnvBase(context, dsg.getDefaultGraph(), dsg);
-        }
-    }
-
     /* --- --- --- Constructor & builder --- --- --- */
 
     SPARQLFilter(@Nonnull String filter, @Nonnull Expr expr,
@@ -265,7 +249,7 @@ public class SPARQLFilter implements Modifier {
     public @Nullable Boolean getTrivialResult() {
         if (!isTrivial())
             return null;
-        return evaluate(ArraySolution.EMPTY);
+        return new SPARQLFilterExecutor().evaluate(this, ArraySolution.EMPTY);
     }
 
     public @Nonnull String getFilterString() {
@@ -637,41 +621,6 @@ public class SPARQLFilter implements Modifier {
      */
     public SubsumptionResult areResultsSubsumedBy(@Nonnull SPARQLFilter other) {
         return new SubsumedVisitor(this, other).areResultsSubsumedBy();
-    }
-
-    /* --- --- --- Evaluation --- --- --- */
-
-    public @Nonnull ExecutionContext getExecutionContext() {
-        ExecutionContext strong = this.executionContext.get();
-        if (strong == null) {
-            strong = new ExecutionContext();
-            executionContext = new SoftReference<>(strong);
-        }
-        return strong;
-    }
-
-    private static @Nonnull Binding toJenaBinding(@Nonnull Solution solution) {
-        BindingHashMap b = new BindingHashMap();
-        solution.forEach((v, t) -> {
-            Node value = toJenaNode(t);
-            if (value != null)
-                b.add(org.apache.jena.sparql.core.Var.alloc(v), value);
-        });
-        return b;
-    }
-
-    /**
-     * Evaluate the filter given assignment for variables.
-     *
-     * @param solution A set of values ({@link Term}s) associated to varables. The variables
-     *                 of the solution are associated to the {@link Term}s given in the
-     *                 constructor which are then mapped to actual variables in the
-     *                 filter expression.
-     * @return true iff the variable assignment from solution satisfies the filter
-     */
-    public boolean evaluate(@Nonnull Solution solution) {
-        ExecutionContext context = getExecutionContext();
-        return expr.isSatisfied(toJenaBinding(solution), context.functionEnv);
     }
 
     /* --- --- --- Variable Binding --- --- --- */

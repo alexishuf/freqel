@@ -92,9 +92,10 @@ public class SPARQLFilterTest implements TestContext {
     @Test
     public void testParseDate() {
         SPARQLFilter filter = SPARQLFilter.build("?u >= \"2019-11-01\"^^xsd:date");
-        assertTrue(filter.evaluate(MapSolution.build(u, date("2019-11-02"))));
-        assertFalse(filter.evaluate(MapSolution.build(u, date("2018-11-02"))));
-        assertFalse(filter.evaluate(MapSolution.build(u, date("2019-10-12"))));
+        SPARQLFilterExecutor executor = new SPARQLFilterExecutor();
+        assertTrue(executor.evaluate(filter, MapSolution.build(u, date("2019-11-02"))));
+        assertFalse(executor.evaluate(filter, MapSolution.build(u, date("2018-11-02"))));
+        assertFalse(executor.evaluate(filter, MapSolution.build(u, date("2019-10-12"))));
     }
 
     @Test
