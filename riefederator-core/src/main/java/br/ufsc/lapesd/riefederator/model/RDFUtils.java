@@ -48,8 +48,7 @@ public class RDFUtils {
 
     private static final @Nonnull String ESCAPES = "tbnrf\"'\\";
     private static final @Nonnull String ESCAPEE = "\t\b\n\r\f\"'\\";
-    private static final @Nonnull Pattern LIT_RX =
-            Pattern.compile("(?:\"|\"\"\")(.*)(?:\"|\"\"\")\\^\\^<([^>]+)>");
+    private static final @Nonnull Pattern LIT_DT_RX = Pattern.compile("\\^\\^<([^>]+)>$");
     private static final @Nonnull Pattern LANG_RX =
             Pattern.compile("(?:\"|\"\"\")(.*)(?:\"|\"\"\")@(\\w+)");
 
@@ -164,8 +163,24 @@ public class RDFUtils {
         else if (first == '"' && last == '"')
             return termFactory.createLit(string.substring(1, string.length()-1), xsdString);
 
-        Matcher matcher = LIT_RX.matcher(string);
-        if (!matcher.matches()) {
+        Matcher matcher = LIT_DT_RX.matcher(string);
+        if (matcher.find()) {
+            // Pattern fails to match some groups when there are \n's even with ?m flag
+            String lexical = string.substring(0, matcher.start());
+            if (lexical.startsWith("\"\"\""))
+                lexical = lexical.substring(3);
+            else if (lexical.startsWith("\""))
+                lexical = lexical.substring(1);
+            else
+                throw new NTParseException("Literal has ^^<URI> but no opening \":" + string);
+            if (lexical.endsWith("\"\"\""))
+                lexical = lexical.substring(0, lexical.length()-3);
+            else if (lexical.endsWith("\""))
+                lexical = lexical.substring(0, lexical.length()-1);
+            else
+                throw new NTParseException("Literal has ^^<URI> but no closing \":" + string);
+            return termFactory.createLit(lexical, matcher.group(1), true);
+        } else {
             matcher = LANG_RX.matcher(string);
             if (!matcher.matches()) {
                 try {
@@ -177,7 +192,6 @@ public class RDFUtils {
             }
             return termFactory.createLangLit(matcher.group(1), matcher.group(2), true);
         }
-        return termFactory.createLit(matcher.group(1), matcher.group(2), true);
     }
 
     public static @Nullable Term

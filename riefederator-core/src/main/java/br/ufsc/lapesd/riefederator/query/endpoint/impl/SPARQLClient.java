@@ -705,7 +705,8 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         private final @Nonnull BitSet includedColumns = new BitSet();
         private int nullColumnsCount = 0;
         private int records = -1;
-        private boolean csvFormat = false, gotReturn = false;
+        private boolean csvFormat = false, gotReturn = false, inQuotes = false, inTerm = false;
+        private int innerQuotes = 0;
         private final @Nonnull TermFactory termFactory = new StdTermFactory();
 
         public TSVResults(@Nonnull Collection<String> varNames,
@@ -721,15 +722,41 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
 
         @CanIgnoreReturnValue
         private boolean parseChar(char c) {
-            if (c == '\r') {
+            if (c == '"') {
+                if (!inTerm) {
+                    inQuotes = true;
+                } else {
+                    ++innerQuotes;
+                    if (innerQuotes == 2)
+                        innerQuotes = 0;
+                    assert innerQuotes < 2;
+                }
+            } else if (inQuotes && innerQuotes == 1) {
+                innerQuotes = 0;
+                if (c != '\t' && c != '\r' && c != '\n') {
+                    logger.error("Bad closing \" mark. Closes a term but is followed by " +
+                                 "'{}' (int value: {}). Current line buffer: {}", c,
+                                 Character.getNumericValue(c), line.toString());
+                } else {
+                    inQuotes = false; //effectively close the quotation
+                }
+            } else {
+                assert innerQuotes == 0;
+            }
+            inTerm = true;
+
+            if (c == '\r' && !inQuotes) {
                 if (gotReturn)
                     line.append('\r');
                 gotReturn = true;
-            } else if (c == '\n') {
+            } else if (c == '\n' && !inQuotes) {
                 boolean parsed = parseLine();
                 gotReturn = false;
+                inTerm = false;
                 return parsed; //true if queued a new solution
             } else {
+                if (c == '\t' && !inQuotes)
+                    inTerm = false;
                 gotReturn = false;
                 line.append(c);
             }
