@@ -6,6 +6,7 @@ import com.google.common.collect.Sets;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -17,6 +18,31 @@ import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
 public class ModifiersSetTest implements TestContext {
+
+    private interface Listener {
+        void added(@Nonnull Modifier modifier);
+        void removed(@Nonnull Modifier modifier);
+    }
+
+    private static class ModifiersSetWithListeners extends ModifiersSet {
+        private final @Nonnull Set<Listener> listeners = new HashSet<>();
+
+        public ModifiersSetWithListeners(@Nullable Collection<? extends Modifier> collection) {
+            super(collection);
+        }
+
+        public void addListener(@Nonnull Listener listener) {
+            listeners.add(listener);
+        }
+
+        @Override protected void added(@Nonnull Modifier modifier) {
+            listeners.forEach(l -> l.added(modifier));
+        }
+
+        @Override protected void removed(@Nonnull Modifier modifier) {
+            listeners.forEach(l -> l.removed(modifier));
+        }
+    }
 
     @SuppressWarnings({"WhileLoopReplaceableByForEach", "UseBulkOperation"})
     @Test
@@ -113,15 +139,14 @@ public class ModifiersSetTest implements TestContext {
     @Test
     public void testNotifyAddAndRemove() {
         AtomicInteger adds = new AtomicInteger(), removes = new AtomicInteger();
-        ModifiersSet set = new ModifiersSet();
-        set.addListener(new ModifiersSet.Listener() {
+        ModifiersSet set = new ModifiersSet() {
             @Override public void added(@Nonnull Modifier modifier) {
                 adds.incrementAndGet();
             }
             @Override public void removed(@Nonnull Modifier modifier) {
                 removes.incrementAndGet();
             }
-        });
+        };
 
         set.add(Projection.of("x"));
         assertEquals(adds.get(), 1);
@@ -138,7 +163,7 @@ public class ModifiersSetTest implements TestContext {
         assertEquals(removes.get(), 0);
 
         // modifying copy does not notify source
-        ModifiersSet copy = new ModifiersSet(set);
+        ModifiersSetWithListeners copy = new ModifiersSetWithListeners(set);
         assertEquals(copy, set);
         copy.add(Ask.INSTANCE);
         assertEquals(adds.get(), 1);
@@ -146,7 +171,7 @@ public class ModifiersSetTest implements TestContext {
 
         // modifying source does not notify copy
         AtomicInteger copyAdds = new AtomicInteger(), copyRemoves = new AtomicInteger();
-        copy.addListener(new ModifiersSet.Listener() {
+        copy.addListener(new Listener() {
             @Override public void added(@Nonnull Modifier modifier) {
                 copyAdds.incrementAndGet();
             }
@@ -176,34 +201,28 @@ public class ModifiersSetTest implements TestContext {
         // view does not notify changes in source
         AtomicInteger viewAdds = new AtomicInteger(), viewRemoves = new AtomicInteger();
         ModifiersSet view = set.getLockedView();
-        view.addListener(new ModifiersSet.Listener() {
-            @Override public void added(@Nonnull Modifier modifier) {
-                viewAdds.incrementAndGet();
-            }
-            @Override public void removed(@Nonnull Modifier modifier) {
-                viewRemoves.incrementAndGet();
-            }
-        });
         assertTrue(set.add(SPARQLFilter.build("?x < 23")));
         assertTrue(set.remove(SPARQLFilter.build("?x < 23")));
         assertEquals(adds.get(), 2);
         assertEquals(removes.get(), 2);
-        assertEquals(viewAdds.get(), 0);
-        assertEquals(viewRemoves.get(), 0);
+
+        // view does reflect changed in source
+        ArrayList<Modifier> viewExpected = new ArrayList<>(set);
+        assertTrue(view.containsAll(viewExpected));
+        assertTrue(viewExpected.containsAll(view));
     }
 
     @Test
     public void testReplaceLimitNotification() {
         List<Modifier> added = new ArrayList<>(), removed = new ArrayList<>();
-        ModifiersSet set = new ModifiersSet();
-        set.addListener(new ModifiersSet.Listener() {
+        ModifiersSet set = new ModifiersSet() {
             @Override public void added(@Nonnull Modifier modifier) {
                 added.add(modifier);
             }
             @Override public void removed(@Nonnull Modifier modifier) {
                 removed.add(modifier);
             }
-        });
+        };
 
         assertTrue(set.add(Limit.of(23)));
         assertFalse(set.add(Limit.of(23)));
@@ -218,24 +237,22 @@ public class ModifiersSetTest implements TestContext {
         List<Modifier> added = new ArrayList<>(), removed = new ArrayList<>();
         List<Modifier> otherAdded = new ArrayList<>(), otherRemoved = new ArrayList<>();
 
-        ModifiersSet set = new ModifiersSet();
-        ModifiersSet view1 = set.getLockedView();
-        set.addListener(new ModifiersSet.Listener() {
+        ModifiersSet set = new ModifiersSet() {
             @Override public void added(@Nonnull Modifier modifier) {
                 added.add(modifier);
             }
-
             @Override public void removed(@Nonnull Modifier modifier) {
                 removed.add(modifier);
             }
-        });
+        };
+        ModifiersSet view1 = set.getLockedView();
         ModifiersSet view2 = set.getLockedView();
-        ModifiersSet copy1 = new ModifiersSet(set);
+        ModifiersSetWithListeners copy1 = new ModifiersSetWithListeners(set);
         assertTrue(set.add(Projection.of("x")));
         assertTrue(set.add(Limit.of(23)));
-        ModifiersSet copy2 = new ModifiersSet(set);
+        ModifiersSetWithListeners copy2 = new ModifiersSetWithListeners(set);
 
-        ModifiersSet.Listener otherListener = new ModifiersSet.Listener() {
+        Listener otherListener = new Listener() {
             @Override public void added(@Nonnull Modifier modifier) {
                 otherAdded.add(modifier);
             }
@@ -243,9 +260,6 @@ public class ModifiersSetTest implements TestContext {
                 otherRemoved.add(modifier);
             }
         };
-
-        view1.addListener(otherListener);
-        view2.addListener(otherListener);
         copy1.addListener(otherListener);
         copy2.addListener(otherListener);
 
@@ -261,6 +275,9 @@ public class ModifiersSetTest implements TestContext {
         assertEquals(added, asList(Projection.of("x"), Limit.of(23)));
         assertEquals(otherAdded, emptyList());
         assertEquals(otherRemoved, emptyList());
+
+        assertEquals(view1, set);
+        assertEquals(view2, set);
     }
 
     @Test

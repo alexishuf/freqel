@@ -348,7 +348,7 @@ public class TreeUtilsTest implements TestContext {
                 .getChildren().get(0); //query
         MutableCQuery cQuery = op.getQuery();
         assertEquals(cQuery.remove(1), new Triple(x, age, u1));
-        op.setQuery(cQuery); //notify change
+        op.purgeCaches();
 
         //change is visible on copy tree
         assertEquals(op.getResultVars(), singleton("x"));

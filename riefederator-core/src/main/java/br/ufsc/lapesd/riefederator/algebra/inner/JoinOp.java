@@ -31,13 +31,14 @@ public class JoinOp extends AbstractInnerOp {
     }
 
     @Override
-    protected void clearVarsCaches() {
+    public void purgeCachesShallow() {
         List<Op> children = getChildren();
         checkState(children.size() == 2, "JoinOp does not have 2 children anymore");
         JoinInfo info = JoinInfo.getJoinability(children.get(0), children.get(1));
         checkArgument(info.isValid(), "Current children of JoinOp cannot be joined!");
         this.joinInfo = info;
-        super.clearVarsCaches();
+        super.purgeCachesShallow();
+        //noinspection AssertWithSideEffects
         assert assertAllInvariants(!joinInfo.equals(info));
     }
 
@@ -72,11 +73,13 @@ public class JoinOp extends AbstractInnerOp {
 
     @Override
     public @Nonnull Set<String> getRequiredInputVars() {
+        cacheHit = true;
         return joinInfo.getPendingRequiredInputs();
     }
 
     @Override
     public @Nonnull Set<String> getOptionalInputVars() {
+        cacheHit = true;
         return joinInfo.getPendingOptionalInputs();
     }
 
@@ -87,7 +90,6 @@ public class JoinOp extends AbstractInnerOp {
     public @Nonnull Op getRight() {
         return getChildren().get(1);
     }
-
 
     @Override
     public @Nonnull Op setChild(int index, @Nonnull Op replacement) {

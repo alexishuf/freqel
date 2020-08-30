@@ -65,7 +65,7 @@ public class UnionDistributionStep extends AbstractDistributionStep {
                     if (matches.contains(RefEquals.of(grandchild))) {
                         MutableCQuery query = ((QueryOp) grandchild).getQuery();
                         query.mergeWith(outerQuery); //die if unsafe
-                        ((QueryOp) grandchild).setQuery(query);
+                        grandchild.purgeCaches();
                     }
                     unionBuilder.add(grandchild);
                 }

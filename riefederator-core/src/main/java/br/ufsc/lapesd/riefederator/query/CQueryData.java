@@ -26,22 +26,17 @@ public class CQueryData {
     private @Nullable AtomicInteger nextHiddenId;
     public final @Nonnull CQueryCache cache;
 
-    private class ModifierListener extends ModifiersSet.Listener {
-        @Override
-        public void added(@Nonnull Modifier modifier) {
-            cache.notifyModifierChange(modifier.getClass());
+    private class NotifyingModifierSet extends ModifiersSet {
+        public NotifyingModifierSet(@Nullable Collection<? extends Modifier> collection) {
+            super(collection);
         }
 
-        @Override
-        public void removed(@Nonnull Modifier modifier) {
+        @Override protected void added(@Nonnull Modifier modifier) {
             cache.notifyModifierChange(modifier.getClass());
         }
-    }
-
-    private @Nonnull ModifiersSet createModifierSet(@Nullable Collection<Modifier> collection) {
-        ModifiersSet set = new ModifiersSet(collection);
-        set.addListener(new ModifierListener());
-        return set;
+        @Override protected void removed(@Nonnull Modifier modifier) {
+            cache.notifyModifierChange(modifier.getClass());
+        }
     }
 
     public CQueryData(@Nonnull List<Triple> list) {
@@ -54,7 +49,7 @@ public class CQueryData {
                       @Nullable SetMultimap<Triple, TripleAnnotation> tripleAnn) {
         this.references = 1;
         this.list = list;
-        this.modifiers = createModifierSet(modifiers);
+        this.modifiers = new NotifyingModifierSet(modifiers);
         this.modifiersView = this.modifiers.getLockedView();
         this.termAnnotations = termAnn == null ? HashMultimap.create() : termAnn;
         this.queryAnnotations = queryAnn == null ? new HashSet<>() : queryAnn;
@@ -65,7 +60,7 @@ public class CQueryData {
     public CQueryData(@Nonnull CQueryData other) {
         this.references = 1;
         this.list = new ArrayList<>(other.list);
-        this.modifiers = createModifierSet(other.modifiers);
+        this.modifiers = new NotifyingModifierSet(other.modifiers);
         this.modifiersView = this.modifiers.getLockedView();
         this.queryAnnotations = new HashSet<>(other.queryAnnotations);
         this.termAnnotations = HashMultimap.create(other.termAnnotations);

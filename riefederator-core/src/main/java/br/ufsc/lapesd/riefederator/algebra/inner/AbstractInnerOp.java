@@ -1,6 +1,9 @@
 package br.ufsc.lapesd.riefederator.algebra.inner;
 
-import br.ufsc.lapesd.riefederator.algebra.*;
+import br.ufsc.lapesd.riefederator.algebra.AbstractOp;
+import br.ufsc.lapesd.riefederator.algebra.InnerOp;
+import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
@@ -17,38 +20,23 @@ import static com.google.common.base.Preconditions.*;
 import static java.util.stream.Collectors.toSet;
 
 public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
-    protected  @Nullable Set<String> allVarsCache;
-    protected @Nullable Set<String> resultVarsCache, reqInputsCache, optInputsCache;
+    protected @Nullable Set<String> allVarsCache, resultVarsCache, reqInputsCache, optInputsCache;
     private  @Nullable List<Op> children;
     private @Nullable Set<Triple> matchedTriples;
     private @Nonnull final ModifiersSet modifiers = new ModifiersSet();
 
-    protected final @Nonnull OpChangeListener changeListener = new OpChangeListener() {
-        @Override
-        public void matchedTriplesChanged(@Nonnull Op op) {
-            matchedTriples = null;
-            for (OpChangeListener l : listeners)
-                l.matchedTriplesChanged(AbstractInnerOp.this);
-        }
-
-        @Override
-        public void varsChanged(@Nonnull Op op) {
-            notifyVarsChanged();
-        }
-    };
-
     protected AbstractInnerOp(@Nonnull Collection<Op> children) {
         this.children = children instanceof List ? (List<Op>)children
                                                  : new ArrayList<>(children);
-        modifiers.addListener(modifiersListener);
         for (Op child : this.children)
-            child.attachListener(changeListener);
+            child.attachTo(this);
     }
 
     @Override
-    protected void clearVarsCaches() {
-        super.clearVarsCaches();
-        resultVarsCache = reqInputsCache = optInputsCache = null;
+    public void purgeCachesShallow() {
+        super.purgeCachesShallow();
+        allVarsCache = resultVarsCache = reqInputsCache = optInputsCache = null;
+        matchedTriples = null;
     }
 
     @Override
@@ -59,6 +47,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     @Override
     public @Nonnull Set<String> getAllVars() {
         if (allVarsCache == null) {
+            cacheHit = true;
             assert children != null;
             allVarsCache = children.stream().flatMap(n -> n.getPublicVars().stream())
                                             .collect(toSet());
@@ -69,6 +58,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     @Override
     public @Nonnull Set<String> getResultVars() {
         if (resultVarsCache == null) {
+            cacheHit = true;
             assert children != null;
             Projection projection = modifiers().projection();
             if (projection != null)
@@ -82,6 +72,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     @Override
     public @Nonnull Set<String> getRequiredInputVars() {
         if (reqInputsCache == null) {
+            cacheHit = true;
             assert children != null;
             reqInputsCache = CollectionUtils.union(children, Op::getRequiredInputVars);
             assert reqInputsCache.isEmpty() || hasInputs();
@@ -92,6 +83,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     @Override
     public @Nonnull Set<String> getOptionalInputVars() {
         if (optInputsCache == null) {
+            cacheHit = true;
             assert children != null;
             Set<String> required = getRequiredInputVars();
             optInputsCache = children.stream().flatMap(n -> n.getOptionalInputVars().stream())
@@ -105,6 +97,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     @Override
     public @Nonnull Set<Triple> getMatchedTriples() {
         if (matchedTriples == null) {
+            cacheHit = true;
             assert children != null;
             matchedTriples = CollectionUtils.union(children, Op::getMatchedTriples);
         }
@@ -124,10 +117,8 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         Op old = children.set(index, replacement);
         if (old == replacement) //compare by ==
             return old; // no effect
-        old.detachListener(changeListener);
-        changeListener.matchedTriplesChanged(this);
-        notifyVarsChanged();
-        replacement.attachListener(changeListener);
+        old.detachFrom(this);
+        replacement.attachTo(this);
         return old;
     }
 
@@ -141,35 +132,20 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
 
     @Override
     public @Nonnull List<Op> setChildren(@Nonnull List<Op> children) {
-        return setChildren(children, true, true);
+        List<Op> old = this.children == null ? Collections.emptyList() : this.children;
+        this.children = children;
+        for (Op child : children)
+            child.attachTo(this);
+        return old;
     }
 
     @Override
     public void detachChildren() {
         if (children != null) {
             for (Op child : children)
-                child.detachListener(changeListener);
+                child.detachFrom(this);
             children = null;
         }
-    }
-
-    public @Nonnull List<Op> setChildren(@Nonnull List<Op> children,
-                                         boolean refChanged, boolean contentChanged) {
-        List<Op> old = this.children == null ? Collections.emptyList() : this.children;
-        if (refChanged) {
-            for (Op op : old)
-                op.detachListener(changeListener);
-        }
-        this.children = children;
-        if (refChanged) {
-            for (Op child : children)
-                child.attachListener(changeListener);
-        }
-        if (contentChanged) {
-            changeListener.matchedTriplesChanged(this);
-            notifyVarsChanged();
-        }
-        return old;
     }
 
     @Override
@@ -177,8 +153,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         checkState(children != null, "Previous takeChildren() handle not closed");
         checkArgument(!children.contains(child), "addChild(child): child is already a child");
         children.add(child);
-        changeListener.matchedTriplesChanged(this);
-        notifyVarsChanged();
+        child.attachTo(this);
     }
 
     @Override

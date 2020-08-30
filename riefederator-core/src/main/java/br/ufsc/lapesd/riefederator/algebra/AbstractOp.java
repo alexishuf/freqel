@@ -1,17 +1,11 @@
 package br.ufsc.lapesd.riefederator.algebra;
 
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 import static java.util.Objects.requireNonNull;
@@ -20,34 +14,11 @@ public abstract class AbstractOp implements Op {
     protected @Nullable Set<String> strictResultVarsCache, publicVarsCache, allInputVarsCache;
     protected @Nonnull String name;
     private @Nonnull Cardinality cardinality = Cardinality.UNSUPPORTED;
-    protected @Nonnull Set<OpChangeListener> listeners = new HashSet<>();
-
-    protected final @Nonnull ModifiersSet.Listener modifiersListener = new ModifiersSet.Listener() {
-        @Override
-        public void added(@Nonnull Modifier modifier) {
-            if (modifier instanceof Projection)
-                notifyVarsChanged();
-        }
-
-        @Override
-        public void removed(@Nonnull Modifier modifier) {
-            if (modifier instanceof Projection)
-                notifyVarsChanged();
-        }
-    };
+    protected @Nonnull List<Op> parents = new ArrayList<>();
+    protected boolean cacheHit = false;
 
     protected AbstractOp() {
         this.name = "n-"+Integer.toHexString(System.identityHashCode(this));
-    }
-
-    protected void clearVarsCaches() {
-        strictResultVarsCache  = publicVarsCache  = allInputVarsCache = null;
-    }
-
-    protected void notifyVarsChanged() {
-        clearVarsCaches();
-        for (OpChangeListener listener : listeners)
-            listener.varsChanged(this);
     }
 
     @Override
@@ -65,6 +36,7 @@ public abstract class AbstractOp implements Op {
     }
 
     protected boolean assertAllInvariants(boolean test) {
+        boolean oldCacheHit = this.cacheHit;
         if (!test || !AbstractOp.class.desiredAssertionStatus())
             return true;
         Projection projection = modifiers().projection();
@@ -75,13 +47,15 @@ public abstract class AbstractOp implements Op {
         assert getInputVars().containsAll(getOptionalInputVars());
         assert getResultVars().containsAll(getStrictResultVars());
         assert getStrictResultVars().stream().noneMatch(getInputVars()::contains);
-        clearVarsCaches();
+        purgeCachesShallow();
+        cacheHit = oldCacheHit;
         return true;
     }
 
     @Override
     public @Nonnull Set<String> getStrictResultVars() {
         if (strictResultVarsCache == null) {
+            cacheHit = true;
             if (hasInputs())
                 strictResultVarsCache = CollectionUtils.setMinus(getResultVars(), getInputVars());
             else
@@ -95,15 +69,19 @@ public abstract class AbstractOp implements Op {
 
     @Override
     public @Nonnull Set<String> getPublicVars() {
-        if (publicVarsCache == null)
+        if (publicVarsCache == null) {
+            cacheHit = true;
             publicVarsCache = union(getResultVars(), getInputVars());
+        }
         return publicVarsCache;
     }
 
     @Override
     public @Nonnull Set<String> getInputVars() {
-        if (allInputVarsCache == null)
+        if (allInputVarsCache == null) {
+            cacheHit = true;
             allInputVarsCache = union(getRequiredInputVars(), getOptionalInputVars());
+        }
         return allInputVarsCache;
     }
 
@@ -133,13 +111,59 @@ public abstract class AbstractOp implements Op {
     }
 
     @Override
-    public void attachListener(@NotNull OpChangeListener listener) {
-        listeners.add(listener);
+    public @Nonnull List<Op> getParents() {
+        return parents;
     }
 
     @Override
-    public void detachListener(@NotNull OpChangeListener listener) {
-        listeners.remove(listener);
+    public void attachTo(@Nonnull Op parent) {
+        if (parent == this) throw new IllegalArgumentException("Node cannot be its own parent");
+        for (Op old : parents) {
+            if (parent == old) {
+                assert false : "already attached to parent";
+                return; // on production ignore
+            }
+        }
+        parents.add(parent);
+    }
+
+    @Override
+    public void detachFrom(@Nonnull Op parent) {
+        boolean found = false;
+        for (Iterator<Op> it = parents.iterator(); it.hasNext(); ) {
+            if (it.next() == parent) {
+                found = true;
+                it.remove();
+                break;
+            }
+        }
+        assert found : "parent does not appear in parents list";
+        assert parents.stream().noneMatch(o -> o == parent) : "parent appears twice in parents list";
+    }
+
+    @Override
+    public void purgeCachesShallow() {
+        strictResultVarsCache = publicVarsCache = allInputVarsCache = null;
+        cacheHit = false;
+    }
+
+    @Override
+    public void purgeCaches() {
+        if (!cacheHit)
+            return; // do not propagate if nobody queried this node since last cache purge
+        ArrayDeque<Op> stack = new ArrayDeque<>();
+        stack.push(this);
+        while (!stack.isEmpty()) {
+            Op op = stack.pop();
+            op.purgeCachesShallow();
+            op.getChildren().forEach(stack::push);
+        }
+        getParents().forEach(stack::push);
+        while (!stack.isEmpty()) {
+            Op op = stack.pop();
+            op.purgeCachesShallow();
+            op.getParents().forEach(stack::push);
+        }
     }
 
     @Override

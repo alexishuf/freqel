@@ -41,9 +41,7 @@ public class TakenChildrenTest implements TestContext {
         Op replacement = qn(Bob, knows, x);
         InnerOp parent = parent(qn(Alice, knows, x), n2);
         try (TakenChildren children = parent.takeChildren()) {
-            assertFalse(children.hasRefsChange());
             assertEquals(children.set(1, replacement), n2);
-            assertTrue(children.hasRefsChange());
         }
         assertSame(parent.getChildren().get(1), replacement);
     }
@@ -53,13 +51,10 @@ public class TakenChildrenTest implements TestContext {
         Op n1 = qn(Alice, knows, x), n2 = qn(x, knows, y);
         InnerOp parent = parent(n1, n2);
         try (TakenChildren children = parent.takeChildren()) {
-            assertFalse(children.hasRefsChange());
             Iterator<Op> it = children.iterator();
             assertTrue(it.hasNext());
             assertSame(it.next(), n1);
-            assertFalse(children.hasRefsChange());
             it.remove();
-            assertTrue(children.hasRefsChange());
             assertEquals(children, Collections.singletonList(n2));
             assertSame(children.get(0), n2);
         }
@@ -78,9 +73,7 @@ public class TakenChildrenTest implements TestContext {
             assertSame(it.next(), n1);
             assertTrue(it.hasNext());
             assertSame(it.next(), n2);
-            assertFalse(children.hasRefsChange());
             it.set(replacement);
-            assertTrue(children.hasRefsChange());
             assertEquals(children.size(), 2);
             assertSame(children.get(0), n1);
             assertSame(children.get(1), replacement);
@@ -98,7 +91,6 @@ public class TakenChildrenTest implements TestContext {
         try (TakenChildren children = parent.takeChildren()) {
             ListIterator<Op> it = children.listIterator(children.size());
             assertTrue(children.hasContentChange());
-            assertFalse(children.hasRefsChange());
             assertTrue(it.hasPrevious());
             assertSame(it.previous(), n2);
             assertTrue(it.hasPrevious());
@@ -106,7 +98,6 @@ public class TakenChildrenTest implements TestContext {
             assertEquals(it.previousIndex(), 0); // does not change iterator state
             assertSame(it.previous(), n1);
             it.set(replacement);
-            assertTrue(children.hasRefsChange());
             assertEquals(children.size(), 2);
             assertSame(children.get(0), replacement);
             assertSame(children.get(1), n2);
@@ -123,12 +114,10 @@ public class TakenChildrenTest implements TestContext {
         InnerOp parent = parent(n1);
         try (TakenChildren children = parent.takeChildren()) {
             assertTrue(children.hasContentChange());
-            assertFalse(children.hasRefsChange());
             children.setNoContentChange();
             assertFalse(children.hasContentChange());
             assertTrue(children.add(n2));
             assertFalse(children.hasContentChange());
-            assertTrue(children.hasRefsChange());
             assertEquals(children.size(), 2);
             assertEquals(children.get(0), n1);
             assertEquals(children.get(1), n2);

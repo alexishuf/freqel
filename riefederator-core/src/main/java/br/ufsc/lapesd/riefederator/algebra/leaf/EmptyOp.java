@@ -35,16 +35,19 @@ public class EmptyOp extends AbstractOp {
 
     @Override
     public @Nonnull Set<String> getAllVars() {
+        cacheHit = true;
         return resultVars;
     }
 
     @Override
     public @Nonnull Set<String> getResultVars() {
+        cacheHit = true;
         return resultVars;
     }
 
     @Override
     public @Nonnull Set<Triple> getMatchedTriples() {
+        cacheHit = true;
         return query == null ? emptySet() : query.getMatchedTriples();
     }
 

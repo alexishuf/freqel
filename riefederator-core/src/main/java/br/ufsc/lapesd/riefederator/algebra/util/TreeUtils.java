@@ -61,7 +61,7 @@ public class TreeUtils {
     public static @Nonnull Op deepCopy(@Nonnull Op root) {
         Op copy = root.flatCopy();
         if (copy instanceof InnerOp) {
-            try (TakenChildren children = ((InnerOp) copy).takeChildren()) {
+            try (TakenChildren children = ((InnerOp) copy).takeChildren().setNoContentChange()) {
                 for (ListIterator<Op> it = children.listIterator(); it.hasNext(); ) {
                     it.set(deepCopy(it.next()));
                 }

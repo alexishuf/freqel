@@ -46,6 +46,7 @@ public class CartesianDistributionStep extends AbstractDistributionStep {
         if (merged == null)
             return parent; // no change
         queryOp.setQuery(query); //notify query changes
+        queryOp.purgeCaches();
         return raiseProduct((ConjunctionOp) parent, queryOp, hasExtra, merged);
     }
 

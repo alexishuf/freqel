@@ -9,6 +9,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -92,17 +93,29 @@ public interface Op {
     @Nonnull List<Op> getChildren();
 
     /**
-     * Send change notifications to the given listener when they occur.
-     *
-     * This is an idempotent operation: multiple attachments will not cause multiple
-     * notifications. The order of notification has no relation to the order of attachment.
+     * A distinct collection of parent {@link Op} instances registered with {@link Op#attachTo(Op)}.
      */
-    void attachListener(@Nonnull OpChangeListener listener);
+    @Nonnull Collection<Op> getParents();
 
     /**
-     * Stop sending notifications to the given listener, if it was previously attached.
+     * Record the given parent so it is notified by {@link Op#purgeCaches()}.
      */
-    void detachListener(@Nonnull OpChangeListener listener);
+    void attachTo(@Nonnull Op parent);
+
+    /**
+     * De-register parent as a parent. Further calls to {@link Op#purgeCaches()} will not notify it.
+     */
+    void detachFrom(@Nonnull Op parent);
+
+    /**
+     * Invalidate all caches held internally by this node and any of its parents or children.
+     */
+    void purgeCaches();
+
+    /**
+     * Version of {@link Op#purgeCaches()} that does not propagate to parents nor children.
+     */
+    void purgeCachesShallow();
 
     @Nonnull Cardinality getCardinality();
 

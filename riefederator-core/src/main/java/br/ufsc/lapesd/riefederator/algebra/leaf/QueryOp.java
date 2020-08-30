@@ -2,13 +2,11 @@ package br.ufsc.lapesd.riefederator.algebra.leaf;
 
 import br.ufsc.lapesd.riefederator.algebra.AbstractOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.OpChangeListener;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.CQueryData;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
@@ -39,25 +37,8 @@ public class QueryOp extends AbstractOp {
     }
 
     public void setQuery(@Nonnull CQuery query) {
-        if (query != this.query) {
-            if (this.query != null)
-                this.query.mutateModifiers().removeListener(modifiersListener);
-            this.query = new MutableCQuery(query) {
-                @Override
-                protected void makeExclusive() {
-                    CQueryData exclusive = d.toExclusive();
-                    if (exclusive != d) {
-                        d.modifiers.removeListener(modifiersListener);
-                        d = exclusive;
-                        d.modifiers.addListener(modifiersListener);
-                    }
-                }
-            };
-            this.query.mutateModifiers().addListener(modifiersListener);
-        }
-        for (OpChangeListener listener : listeners)
-            listener.matchedTriplesChanged(this);
-        notifyVarsChanged();
+        if (query != this.query)
+            this.query = new MutableCQuery(query);
     }
 
     public @Nonnull QueryOp withQuery(@Nonnull CQuery query) {
@@ -66,22 +47,27 @@ public class QueryOp extends AbstractOp {
 
     @Override
     public @Nonnull Set<String> getAllVars() {
+        cacheHit = true;
         return query.attr().allVarNames();
     }
     @Override
     public @Nonnull Set<String> getResultVars() {
+        cacheHit = true;
         return query.attr().publicTripleVarNames();
     }
     @Override
     public @Nonnull Set<String> getRequiredInputVars() {
+        cacheHit = true;
         return query.attr().reqInputVarNames();
     }
     @Override
     public @Nonnull Set<String> getOptionalInputVars() {
+        cacheHit = true;
         return query.attr().optInputVarNames();
     }
     @Override
     public @Nonnull Set<String> getInputVars() {
+        cacheHit = false;
         return query.attr().inputVarNames();
     }
 
@@ -138,6 +124,7 @@ public class QueryOp extends AbstractOp {
 
     @Override
     public @Nonnull Set<Triple> getMatchedTriples() {
+        cacheHit = true;
         return getQuery().attr().matchedTriples();
     }
 

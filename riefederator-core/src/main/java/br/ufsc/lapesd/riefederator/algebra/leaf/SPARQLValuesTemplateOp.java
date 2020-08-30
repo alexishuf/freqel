@@ -117,16 +117,19 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
 
     @Override
     public @Nonnull Set<String> getResultVars() {
+        cacheHit = true;
         return vars;
     }
 
     @Override
     public @Nonnull Set<String> getAllVars() {
+        cacheHit = true;
         return vars;
     }
 
     @Override
     public @Nonnull Set<Triple> getMatchedTriples() {
+        cacheHit = true;
         throw new UnsupportedOperationException();
     }
 

@@ -30,7 +30,7 @@ public class FlattenStep implements OuterPlannerStep {
         InnerOp io = (InnerOp) root;
         boolean ioShared = locked.contains(RefEquals.of(io));
         Set<String> resultVars = io.getResultVars();
-        try (TakenChildren children = io.takeChildren()) {
+        try (TakenChildren children = io.takeChildren().setNoContentChange()) {
             for (ListIterator<Op> it = children.listIterator(); it.hasNext(); )
                 it.set(plan(it.next(), locked));
             if (io instanceof ConjunctionOp || io instanceof CartesianOp || io instanceof UnionOp)

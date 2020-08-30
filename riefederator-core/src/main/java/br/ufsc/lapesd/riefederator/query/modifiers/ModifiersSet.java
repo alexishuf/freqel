@@ -43,7 +43,6 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         }
     }
     private final @Nonnull Data d;
-    private final @Nonnull Set<Listener> listeners = new HashSet<>();
     private boolean locked = false;
 
     public static final @Nonnull ModifiersSet EMPTY = new ModifiersSet().getLockedView();
@@ -67,29 +66,9 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         }
     }
 
-    public static class Listener {
-        public void added(@Nonnull Modifier modifier) {}
-        public void removed(@Nonnull Modifier modifier) {}
-    }
+    protected void added(@Nonnull Modifier modifier) { }
 
-    public void addListener(@Nonnull Listener listener) {
-        if (locked)
-            logger.warn("addListener({}) on locked view: will never notify", listener);
-        listeners.add(listener);
-    }
-    public void removeListener(@Nonnull Listener listener) {
-        if (locked)
-            logger.warn("removeListener({}) on locked view: will never notify", listener);
-        listeners.remove(listener);
-    }
-
-    protected void added(@Nonnull Modifier modifier) {
-        for (Listener listener : listeners) listener.added(modifier);
-    }
-
-    protected void removed(@Nonnull Modifier modifier) {
-        for (Listener listener : listeners) listener.removed(modifier);
-    }
+    protected void removed(@Nonnull Modifier modifier) { }
 
     @Override
     public int size() {
@@ -355,13 +334,6 @@ public class ModifiersSet extends AbstractSet<Modifier> {
 
     public @Nonnull ModifiersSet getLockedView() {
         return new ModifiersSet(d);
-    }
-
-    private @Nonnull <T extends Modifier> Set<T> get(@Nonnull Capability capability,
-                                                    @Nonnull Class<T> modifierClass) {
-        //noinspection unchecked
-        Set<T> set = (Set<T>)d.sets.get(capability.ordinal());
-        return locked ? unmodifiableSet(set) : set;
     }
 
     private @Nullable <T extends Modifier> T getSingleton(@Nonnull Capability cap,
