@@ -7,7 +7,7 @@ import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
-import br.ufsc.lapesd.riefederator.federation.planner.Planner;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -32,10 +32,10 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     private static final Logger logger
             = LoggerFactory.getLogger(SourcesListAbstractDecomposer.class);
     protected final @Nonnull List<Source> sources = new ArrayList<>();
-    protected final @Nonnull Planner planner;
+    protected final @Nonnull ConjunctivePlanner planner;
     protected final @Nonnull PerformanceListener performance;
 
-    protected SourcesListAbstractDecomposer(@Nonnull Planner planner,
+    protected SourcesListAbstractDecomposer(@Nonnull ConjunctivePlanner planner,
                                          @Nonnull PerformanceListener performance) {
         this.planner = planner;
         this.performance = performance;

@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.impl.SimpleMetric;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.impl.SimpleTimeMetric;
+import br.ufsc.lapesd.riefederator.federation.planner.PostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -46,12 +47,18 @@ public class Metrics {
      * Double with milliseconds spent on the {@link PrePlanner} (not including
      * planning triggered for the leaves).
      */
-    public static final @Nonnull SimpleTimeMetric OUT_PLAN_MS
-            = new SimpleTimeMetric("OUT_PLAN_MS");
+    public static final @Nonnull SimpleTimeMetric PRE_PLAN_MS
+            = new SimpleTimeMetric("PRE_PLAN_MS");
+
+    /**
+     * Double with milliseconds spent on the {@link PostPlanner}.
+     */
+    public static final @Nonnull SimpleTimeMetric POST_PLAN_MS
+            = new SimpleTimeMetric("POST_PLAN_MS");
 
     /**
      * Double with number of milliseconds spent planning (Planner and
-     * FilterPlacement) values <strong>do not</strong> include {@link Metrics#OUT_PLAN_MS},
+     * FilterPlacement) values <strong>do not</strong> include {@link Metrics#PRE_PLAN_MS},
      * but <strong>do include</strong> {@link Metrics#OPT_MS}.
      */
     public static @Nonnull SimpleTimeMetric PLAN_MS = new SimpleTimeMetric("PLAN_MS");

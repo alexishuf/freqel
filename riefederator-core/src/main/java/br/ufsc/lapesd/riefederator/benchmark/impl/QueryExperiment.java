@@ -335,7 +335,7 @@ public class QueryExperiment {
                 perf.getValue(Metrics.INIT_SOURCES_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.SELECTION_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.FULL_PLAN_MS, (double)Integer.MIN_VALUE),
-                perf.getValue(Metrics.OUT_PLAN_MS, (double)Integer.MIN_VALUE),
+                perf.getValue(Metrics.PRE_PLAN_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.PLAN_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.OPT_MS, (double)Integer.MIN_VALUE),
                 perf.getValue(Metrics.EXEC_MS, (double)Integer.MIN_VALUE),

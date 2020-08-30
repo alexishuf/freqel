@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.inner;
+package br.ufsc.lapesd.riefederator.federation.planner.conjunctive;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
@@ -8,8 +8,8 @@ import br.ufsc.lapesd.riefederator.algebra.util.RelativeCardinalityAdder;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.DefaultInnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.JoinComponent;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinComponent;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -45,7 +45,7 @@ import static org.testng.Assert.*;
 
 
 @SuppressWarnings("UnstableApiUsage")
-public class JoinPathsPlannerTest implements TestContext {
+public class JoinPathsConjunctivePlannerTest implements TestContext {
     private static final Atom Person = new Atom("Person"), Atom1 = new Atom("Atom1");
 
     private static final EmptyEndpoint e1 = new EmptyEndpoint("e1"), e1a = new EmptyEndpoint("e1a"),
@@ -71,8 +71,8 @@ public class JoinPathsPlannerTest implements TestContext {
         Preconditions.checkArgument(Arrays.stream(nodes).allMatch(Objects::nonNull));
         return UnionOp.builder().addAll(stream(nodes).collect(toList())).build();
     }
-    private static @Nonnull JoinPathsPlanner createPathsPlanner() {
-        return new JoinPathsPlanner(new ArbitraryJoinOrderPlanner(),
+    private static @Nonnull JoinPathsConjunctivePlanner createPathsPlanner() {
+        return new JoinPathsConjunctivePlanner(new ArbitraryJoinOrderPlanner(),
                 new DefaultInnerCardinalityComputer(ThresholdCardinalityComparator.DEFAULT,
                                                     RelativeCardinalityAdder.DEFAULT));
     }
@@ -242,7 +242,7 @@ public class JoinPathsPlannerTest implements TestContext {
     @Test(dataProvider = "groupNodesData", groups = {"fast"})
     public void testGroupNodes(Collection<Op> in, Collection<Op> expected) {
         for (List<Op> permutation : permutations(in)) {
-            JoinPathsPlanner planner = createPathsPlanner();
+            JoinPathsConjunctivePlanner planner = createPathsPlanner();
             List<Op> grouped = planner.groupNodes(permutation);
             assertEquals(grouped.size(), expected.size());
             for (Op expectedNode : expected) {
@@ -378,7 +378,7 @@ public class JoinPathsPlannerTest implements TestContext {
         int count = 0;
         for (List<Op> permutation : permutations(nodes)) {
             JoinGraph g = new JoinGraph(IndexedSet.fromDistinct(permutation));
-            JoinPathsPlanner planner = createPathsPlanner();
+            JoinPathsConjunctivePlanner planner = createPathsPlanner();
             Stopwatch sw = Stopwatch.createStarted();
             List<JoinComponent> paths = planner.getPaths(fromDistinctCopy(query.attr().matchedTriples()), g);
             sum += sw.elapsed(TimeUnit.MICROSECONDS)/1000.0;
@@ -446,7 +446,7 @@ public class JoinPathsPlannerTest implements TestContext {
         assertTrue(paths.stream().noneMatch(Objects::isNull));
         List<JoinComponent> oldPaths = new ArrayList<>(paths);
 
-        JoinPathsPlanner planner = createPathsPlanner();
+        JoinPathsConjunctivePlanner planner = createPathsPlanner();
         IndexedSet<Op> set = planner.getNodesIndexedSetFromPaths(paths);
 
         //all nodes are in set
@@ -526,7 +526,7 @@ public class JoinPathsPlannerTest implements TestContext {
     @Test(dataProvider = "removeAlternativePathsData", groups = {"fast"})
     public void testRemoveAlternativePaths(List<Collection<Op>> nodesList,
                                            List<List<Integer>> equivIndices) {
-        JoinPathsPlanner planner = createPathsPlanner();
+        JoinPathsConjunctivePlanner planner = createPathsPlanner();
         //setup
         IndexedSet<Op> nodes = IndexedSet.fromDistinct(
                 nodesList.stream().flatMap(Collection::stream).collect(toSet()));

@@ -9,7 +9,7 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import javax.annotation.Nonnull;
 import java.util.Collection;
 
-public interface Planner {
+public interface ConjunctivePlanner {
     /**
      * Builds a plan, as a tree, for the given {@link Op}s which are treated as components
      * of a conjunctive query (i.e., the planner will attempt to join them all under a single

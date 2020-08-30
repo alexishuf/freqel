@@ -11,11 +11,11 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinal
 import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.StandardDecomposer;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.GreedyJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.JoinPathsPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.PhasedPrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.steps.*;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -52,7 +52,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         super.configure();
         configurePrePlanner();
         bind(DecompositionStrategy.class).to(StandardDecomposer.class);
-        bind(Planner.class).to(JoinPathsPlanner.class);
+        bind(ConjunctivePlanner.class).to(JoinPathsConjunctivePlanner.class);
         bind(JoinOrderPlanner.class).to(GreedyJoinOrderPlanner.class);
         configureCardinalityEstimation();
     }

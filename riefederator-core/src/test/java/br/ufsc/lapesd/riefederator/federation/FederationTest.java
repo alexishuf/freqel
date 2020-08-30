@@ -546,14 +546,14 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         private final boolean canBindJoin;
         private boolean storingPerformanceListener;
         private Class<? extends Provider<? extends PrePlanner>> opSupplierClass;
-        private Class<? extends Planner> ip;
+        private Class<? extends ConjunctivePlanner> ip;
         private Class<? extends JoinOrderPlanner> jo;
         private Class<? extends DecompositionStrategy> ds;
         private Class<? extends PerformanceListener> pl;
 
         protected TestModule(boolean canBindJoin,
                           Class<? extends Provider<? extends PrePlanner>> opSupplierClass,
-                          Class<? extends Planner> ip,
+                          Class<? extends ConjunctivePlanner> ip,
                           Class<? extends JoinOrderPlanner> jo,
                           Class<? extends DecompositionStrategy> ds,
                           Class<? extends PerformanceListener> pl) {
@@ -569,7 +569,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         public boolean cannotBindJoin() { return !canBindJoin; }
         public boolean isSlowModule() { return true; }
         protected boolean canBeFast() {
-            return PlannerTest.isFast(ip, jo) && fastDecomposerClasses.contains(ds);
+            return ConjunctivePlannerTest.isFast(ip, jo) && fastDecomposerClasses.contains(ds);
         }
         public boolean hasStoringPerformanceListener() {
             return storingPerformanceListener;
@@ -578,7 +578,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         @Override @OverridingMethodsMustInvokeSuper
         protected void configure() {
             bind(PrePlanner.class).toProvider(opSupplierClass);
-            bind(Planner.class).to(ip);
+            bind(ConjunctivePlanner.class).to(ip);
             bind(JoinOrderPlanner.class).to(jo);
             bind(DecompositionStrategy.class).to(ds);
             bind(PerformanceListener.class).toInstance(new NamedSupplier<>(pl).get());
@@ -602,7 +602,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     @FunctionalInterface
     private interface ModuleFactory {
         TestModule apply(Class<? extends Provider<? extends PrePlanner>> outerPlannerSupplierClass,
-                         Class<? extends Planner> planner,
+                         Class<? extends ConjunctivePlanner> planner,
                          Class<? extends JoinOrderPlanner> joinOrder,
                          Class<? extends DecompositionStrategy> decompositionStrategy,
                          Class<? extends PerformanceListener> performance);
@@ -751,9 +751,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             fastDecomposerClasses = Collections.singletonList(StandardDecomposer.class);
 
     private static final @Nonnull List<TestModule> moduleList =
-            PrePlannerTest.providerClasses.stream()
-                .flatMap(op -> PlannerTest.plannerClasses.stream()
-                    .flatMap(ip -> PlannerTest.joinOrderPlannerClasses.stream()
+            PreConjunctivePlannerTest.providerClasses.stream()
+                .flatMap(op -> ConjunctivePlannerTest.plannerClasses.stream()
+                    .flatMap(ip -> ConjunctivePlannerTest.joinOrderPlannerClasses.stream()
                         .flatMap(jo -> decomposerClasses.stream()
                             .flatMap(ds -> PerformanceListenerTest.classes.stream()
                                 .flatMap(pl -> moduleProtoList.stream().map(p -> p.apply(op, ip, jo, ds, pl))))
@@ -1006,7 +1006,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         assertEquals(query, oldQuery);
 //        if (sw.elapsed(TimeUnit.MILLISECONDS) > 20)
 //            System.out.printf("Slow plan: %f\n", sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
-        PlannerTest.assertPlanAnswers(plan, query);
+        ConjunctivePlannerTest.assertPlanAnswers(plan, query);
 
         // expected may be null telling us that we shouldn't execute, only check the plan
         if (expected != null) {
@@ -1063,7 +1063,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         double initSourcesMs = perf.getValue(Metrics.INIT_SOURCES_MS, -1.0);
         double selectionMs = perf.getValue(Metrics.SELECTION_MS, -1.0);
         double agglutinationMs = perf.getValue(Metrics.AGGLUTINATION_MS, -1.0);
-        double outPlanMs = perf.getValue(Metrics.OUT_PLAN_MS, -1.0);
+        double outPlanMs = perf.getValue(Metrics.PRE_PLAN_MS, -1.0);
         double planMs = perf.getValue(Metrics.PLAN_MS, -1.0);
         double optMs = perf.getValue(Metrics.OPT_MS, -1.0);
 
@@ -1088,7 +1088,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             assertEquals(perf.getValue(Metrics.INIT_SOURCES_MS), initSourcesMs);
             assertEquals(perf.getValue(Metrics.SELECTION_MS), selectionMs);
             assertEquals(perf.getValue(Metrics.AGGLUTINATION_MS), agglutinationMs);
-            assertEquals(perf.getValue(Metrics.OUT_PLAN_MS), outPlanMs);
+            assertEquals(perf.getValue(Metrics.PRE_PLAN_MS), outPlanMs);
             assertEquals(perf.getValue(Metrics.PLAN_MS), planMs);
             assertEquals(perf.getValue(Metrics.OPT_MS), optMs);
 
@@ -1221,7 +1221,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         setup.accept(federation, target().getUri().toString());
         federation.initAllSources(5, TimeUnit.MINUTES);
         Op plan = federation.plan(query);
-        PlannerTest.assertPlanAnswers(plan, query);
+        ConjunctivePlannerTest.assertPlanAnswers(plan, query);
 
         Set<Solution> actual = new HashSet<>();
         Results results = federation.execute(query, plan);

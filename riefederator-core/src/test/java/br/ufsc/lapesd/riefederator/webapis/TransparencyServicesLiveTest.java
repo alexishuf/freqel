@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.webapis;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.Federation;
-import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
 import br.ufsc.lapesd.riefederator.model.term.Term;
@@ -43,7 +43,7 @@ public class TransparencyServicesLiveTest implements TransparencyServiceTestCont
         Federation federation = getBudgetFederation();
         Op query = loadQuery("live/procurements-of-contract.sparql");
         Op plan = federation.plan(query);
-        PlannerTest.assertPlanAnswers(plan, query);
+        ConjunctivePlannerTest.assertPlanAnswers(plan, query);
     }
 
     @Test(enabled = false)

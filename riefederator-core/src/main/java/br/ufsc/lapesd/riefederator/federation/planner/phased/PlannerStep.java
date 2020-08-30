@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.pre;
+package br.ufsc.lapesd.riefederator.federation.planner.phased;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
@@ -8,7 +8,7 @@ import javax.annotation.Nonnull;
 import java.util.Set;
 
 @Immutable
-public interface PrePlannerStep {
+public interface PlannerStep {
     /**
      * Mutates the tree (in-place) to achieve a specific goal (e.g., applying some optimization).
      *

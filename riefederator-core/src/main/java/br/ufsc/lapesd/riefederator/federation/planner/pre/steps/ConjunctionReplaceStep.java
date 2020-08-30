@@ -6,8 +6,8 @@ import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.JoinGraph;
-import br.ufsc.lapesd.riefederator.federation.planner.pre.PrePlannerStep;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
@@ -18,7 +18,7 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.*;
 
-public class ConjunctionReplaceStep implements PrePlannerStep {
+public class ConjunctionReplaceStep implements PlannerStep {
     private static final Logger logger = LoggerFactory.getLogger(ConjunctionReplaceStep.class);
 
     private final @Nonnull JoinOrderPlanner joinOrderPlanner;

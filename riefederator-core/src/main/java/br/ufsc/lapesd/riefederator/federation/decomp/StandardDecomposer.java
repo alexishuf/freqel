@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
-import br.ufsc.lapesd.riefederator.federation.planner.Planner;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -31,7 +31,7 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
     private static final Logger logger = LoggerFactory.getLogger(StandardDecomposer.class);
 
     @Inject
-    public StandardDecomposer(@Nonnull Planner planner, @Nonnull PerformanceListener performance) {
+    public StandardDecomposer(@Nonnull ConjunctivePlanner planner, @Nonnull PerformanceListener performance) {
         super(planner, performance);
     }
 

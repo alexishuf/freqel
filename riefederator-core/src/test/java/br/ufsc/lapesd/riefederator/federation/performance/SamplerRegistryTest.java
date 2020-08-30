@@ -84,10 +84,10 @@ public class SamplerRegistryTest {
         SamplerRegistry r = supplier.get();
         assertTrue(Metrics.OPT_MS.isContainedBy(Metrics.PLAN_MS));
         assertTrue(Metrics.PLAN_MS.contains(Metrics.OPT_MS));
-        assertFalse(Metrics.OUT_PLAN_MS.contains(Metrics.PLAN_MS));
-        assertFalse(Metrics.OUT_PLAN_MS.contains(Metrics.OPT_MS));
+        assertFalse(Metrics.PRE_PLAN_MS.contains(Metrics.PLAN_MS));
+        assertFalse(Metrics.PRE_PLAN_MS.contains(Metrics.OPT_MS));
 
-        try (TimeSampler outSampler = r.createSampler(Metrics.OUT_PLAN_MS, listener)) {
+        try (TimeSampler outSampler = r.createSampler(Metrics.PRE_PLAN_MS, listener)) {
             Thread.sleep(200);
             try (TimeSampler planSampler = r.createSampler(Metrics.PLAN_MS, listener)) {
                 Thread.sleep(200);
@@ -111,7 +111,7 @@ public class SamplerRegistryTest {
         assertTrue(listener.getValues(Metrics.PLAN_MS).get(0) <=  500);
         assertTrue(listener.getValues(Metrics.PLAN_MS).get(0) >=  350);
 
-        assertEquals(listener.getValues(Metrics.OUT_PLAN_MS).size(), 1); // should be ~200
-        assertTrue(listener.getValues(Metrics.OUT_PLAN_MS).get(0) <=  300);
+        assertEquals(listener.getValues(Metrics.PRE_PLAN_MS).size(), 1); // should be ~200
+        assertTrue(listener.getValues(Metrics.PRE_PLAN_MS).get(0) <=  300);
     }
 }

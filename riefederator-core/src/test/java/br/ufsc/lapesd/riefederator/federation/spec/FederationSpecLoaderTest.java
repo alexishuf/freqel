@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.spec;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.Federation;
-import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.TPEndpointTest;
@@ -93,7 +93,7 @@ public class FederationSpecLoaderTest implements TestContext {
             assertTrue(federation.initAllSources(0, TimeUnit.SECONDS));
             CQuery query = createQuery(x, knows, Bob);
             Op plan = federation.plan(query); // no exception
-            PlannerTest.assertPlanAnswers(plan, query); //not an EmptyNode
+            ConjunctivePlannerTest.assertPlanAnswers(plan, query); //not an EmptyNode
         }
     }
 

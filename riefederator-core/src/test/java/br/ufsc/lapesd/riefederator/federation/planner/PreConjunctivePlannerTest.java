@@ -37,7 +37,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 @Test(groups = {"fast"})
-public class PrePlannerTest implements TestContext {
+public class PreConjunctivePlannerTest implements TestContext {
 
     public static @Nonnull List<Provider<? extends PrePlanner>> providers = singletonList(
             new NamedSupplier<>("default",
@@ -133,7 +133,7 @@ public class PrePlannerTest implements TestContext {
                 .filter(QueryOp.class::isInstance).collect(toSet());
         assertTrue(leaves.stream().allMatch(QueryOp.class::isInstance));
         assertTrue(leaves.stream().noneMatch(EndpointQueryOp.class::isInstance));
-        PlannerTest.assertPlanAnswers(plan, asTree);
+        ConjunctivePlannerTest.assertPlanAnswers(plan, asTree);
 
         Set<CQuery> actual = leaves.stream().map(n -> ((QueryOp) n).getQuery()).collect(toSet());
         

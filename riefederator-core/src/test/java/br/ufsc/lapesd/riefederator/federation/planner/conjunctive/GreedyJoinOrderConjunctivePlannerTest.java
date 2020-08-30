@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.inner;
+package br.ufsc.lapesd.riefederator.federation.planner.conjunctive;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
@@ -11,7 +11,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.*;
 import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -43,7 +43,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
-public class GreedyJoinOrderPlannerTest implements TestContext {
+public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
     private static final Var t = new StdVar("t");
     private static final Var b = new StdVar("b");
     private static final Var k = new StdVar("k");

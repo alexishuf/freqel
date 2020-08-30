@@ -7,7 +7,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.riefederator.federation.planner.pre.PrePlannerStep;
+import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.modifiers.UnsafeMergeException;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
-public class FlattenStep implements PrePlannerStep {
+public class FlattenStep implements PlannerStep {
     private static Logger logger = LoggerFactory.getLogger(FlattenStep.class);
 
     @Override

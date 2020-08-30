@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.inner;
+package br.ufsc.lapesd.riefederator.federation.planner.conjunctive;
 
 import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.algebra.Op;
@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListene
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 

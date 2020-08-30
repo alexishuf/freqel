@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.inner.paths;
+package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;

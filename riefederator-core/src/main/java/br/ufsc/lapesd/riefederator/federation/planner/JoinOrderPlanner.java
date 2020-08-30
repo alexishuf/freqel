@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.planner;
 import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;

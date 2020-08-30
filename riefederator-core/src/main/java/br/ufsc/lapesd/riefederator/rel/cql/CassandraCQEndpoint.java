@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.federation.planner.Planner;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -62,7 +62,7 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
     private @Nonnull final RelationalMapping mapping;
     private @Nonnull final CqlGenerator cqlGenerator;
     private @Nullable Federation federation;
-    private @Nullable Planner planner;
+    private @Nullable ConjunctivePlanner planner;
 
     /* --- --- --- Constructor and builder --- --- --- */
 
@@ -468,7 +468,7 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
             leaves.add(new EndpointQueryOp(this, cQuery));
         }
         // optimize as usual, then execute under the inner federation
-        Planner planner = SingletonSourceFederation.getInjector().getInstance(Planner.class);
+        ConjunctivePlanner planner = SingletonSourceFederation.getInjector().getInstance(ConjunctivePlanner.class);
         Op plan = planner.plan(query, leaves);
         return getFederation().execute(query, plan);
     }

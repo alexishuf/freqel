@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
-import br.ufsc.lapesd.riefederator.federation.planner.Planner;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import org.slf4j.Logger;
@@ -23,7 +23,7 @@ public class EvenDecomposer extends SourcesListAbstractDecomposer {
     private static final Logger logger = LoggerFactory.getLogger(EvenDecomposer.class);
 
     @Inject
-    public EvenDecomposer(@Nonnull Planner planner, @Nonnull PerformanceListener performance) {
+    public EvenDecomposer(@Nonnull ConjunctivePlanner planner, @Nonnull PerformanceListener performance) {
         super(planner, performance);
     }
 

@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.inner;
+package br.ufsc.lapesd.riefederator.federation.planner.conjunctive;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.JoinInterface;

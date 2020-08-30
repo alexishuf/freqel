@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.inner;
+package br.ufsc.lapesd.riefederator.federation.planner.conjunctive;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.JoinInterface;
@@ -9,12 +9,12 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.Planner;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.JoinComponent;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.JoinGraph;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.SubPathAggregation;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinComponent;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.SubPathAggregation;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -39,15 +39,15 @@ import static br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation.g
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.*;
 
-public class JoinPathsPlanner implements Planner {
-    private static final Logger logger = LoggerFactory.getLogger(JoinPathsPlanner.class);
+public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
+    private static final Logger logger = LoggerFactory.getLogger(JoinPathsConjunctivePlanner.class);
     private static final int PATHS_PAR_THRESHOLD = 10;
     private final @Nonnull JoinOrderPlanner joinOrderPlanner;
     private final @Nonnull InnerCardinalityComputer innerCardComputer;
 
     @Inject
-    public JoinPathsPlanner(@Nonnull JoinOrderPlanner joinOrderPlanner,
-                            @Nonnull InnerCardinalityComputer innerCardComputer) {
+    public JoinPathsConjunctivePlanner(@Nonnull JoinOrderPlanner joinOrderPlanner,
+                                       @Nonnull InnerCardinalityComputer innerCardComputer) {
         this.joinOrderPlanner = joinOrderPlanner;
         this.innerCardComputer = innerCardComputer;
     }
@@ -66,7 +66,7 @@ public class JoinPathsPlanner implements Planner {
             return new EmptyOp(new QueryOp(query));
         }
         IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.attr().matchedTriples());
-        if (JoinPathsPlanner.class.desiredAssertionStatus()) {
+        if (JoinPathsConjunctivePlanner.class.desiredAssertionStatus()) {
             checkArgument(qns.stream().allMatch(n -> full.containsAll(n.getMatchedTriples())),
                           "Some QueryNodes match triples not in query");
         }
@@ -111,7 +111,7 @@ public class JoinPathsPlanner implements Planner {
 
     private void assertValidJoinComponents(@Nonnull Collection<JoinComponent> components,
                                            @Nonnull IndexedSet<Triple> full) {
-        if (!JoinPathsPlanner.class.desiredAssertionStatus())
+        if (!JoinPathsConjunctivePlanner.class.desiredAssertionStatus())
             return;
         for (JoinComponent component : components) {
             for (Op i : component.getNodes()) {

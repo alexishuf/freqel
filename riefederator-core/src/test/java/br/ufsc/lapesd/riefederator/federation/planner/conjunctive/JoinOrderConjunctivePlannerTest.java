@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.inner;
+package br.ufsc.lapesd.riefederator.federation.planner.conjunctive;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
@@ -14,9 +14,9 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.PlannerTest;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -51,7 +51,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
-public class JoinOrderPlannerTest implements TestContext {
+public class JoinOrderConjunctivePlannerTest implements TestContext {
     private static final URI o1 = new StdURI("http://example.org/o1");
     private static final URI o2 = new StdURI("http://example.org/o2");
     private static final URI o3 = new StdURI("http://example.org/o3");
@@ -110,7 +110,7 @@ public class JoinOrderPlannerTest implements TestContext {
 
         // more general tests from PlannerTest
         CQuery query = CQuery.from(allTriples);
-        PlannerTest.assertPlanAnswers(root, query);
+        ConjunctivePlannerTest.assertPlanAnswers(root, query);
 
         // no duplicate leaves (QueryNodes)
         List<Op> leaves = streamPreOrder(root)

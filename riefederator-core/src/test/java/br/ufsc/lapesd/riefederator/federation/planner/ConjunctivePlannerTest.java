@@ -12,9 +12,9 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.ArbitraryJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.GreedyJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.JoinPathsPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArbitraryJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
@@ -62,7 +62,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.apache.jena.rdf.model.ResourceFactory.*;
 import static org.testng.Assert.*;
 
-public class PlannerTest implements TransparencyServiceTestContext {
+public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
     public static final @Nonnull StdLit title1 = StdLit.fromEscaped("title 1", "en");
     public static final @Nonnull StdLit author1 = StdLit.fromUnescaped("author 1", "en");
 
@@ -74,30 +74,30 @@ public class PlannerTest implements TransparencyServiceTestContext {
     private static final Var s = new StdVar("s");
     private static final Var t = new StdVar("t");
 
-    public static @Nonnull List<Class<? extends Planner>> plannerClasses
-            = singletonList(JoinPathsPlanner.class);
+    public static @Nonnull List<Class<? extends ConjunctivePlanner>> plannerClasses
+            = singletonList(JoinPathsConjunctivePlanner.class);
     public static @Nonnull List<Class<? extends JoinOrderPlanner>> joinOrderPlannerClasses
             = asList(ArbitraryJoinOrderPlanner.class, GreedyJoinOrderPlanner.class);
 
-    public static boolean isFast(@Nonnull Class<? extends Planner> planner,
+    public static boolean isFast(@Nonnull Class<? extends ConjunctivePlanner> planner,
                                  @Nonnull Class<? extends JoinOrderPlanner> joinPlanner) {
-        return planner.equals(JoinPathsPlanner.class)
+        return planner.equals(JoinPathsConjunctivePlanner.class)
                 && !joinPlanner.equals(ArbitraryJoinOrderPlanner.class);
     }
 
-    public static @Nonnull List<Supplier<Planner>> suppliers;
+    public static @Nonnull List<Supplier<ConjunctivePlanner>> suppliers;
 
     static {
         suppliers = new ArrayList<>();
-        for (Class<? extends Planner> p : plannerClasses) {
+        for (Class<? extends ConjunctivePlanner> p : plannerClasses) {
             for (Class<? extends JoinOrderPlanner> op : joinOrderPlannerClasses) {
-                Supplier<Planner> supplier = () -> Guice.createInjector(new AbstractModule() {
+                Supplier<ConjunctivePlanner> supplier = () -> Guice.createInjector(new AbstractModule() {
                             @Override
                             protected void configure() {
-                                bind(Planner.class).to(p);
+                                bind(ConjunctivePlanner.class).to(p);
                                 bind(JoinOrderPlanner.class).to(op);
                             }
-                        }).getInstance(Planner.class);
+                        }).getInstance(ConjunctivePlanner.class);
                 String name = p.getSimpleName() + "+" + op.getSimpleName();
                 suppliers.add(new NamedSupplier<>(name, supplier));
             }
@@ -343,8 +343,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testSingleQuery(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testSingleQuery(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
         EndpointQueryOp queryOp = new EndpointQueryOp(empty1, query);
         Op node = planner.plan(query, singleton(queryOp));
@@ -353,8 +353,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testDuplicateQuery(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testDuplicateQuery(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
         EndpointQueryOp node1 = new EndpointQueryOp(empty1, query);
         EndpointQueryOp node2 = new EndpointQueryOp(empty2, query);
@@ -368,8 +368,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testSingleJoin(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testSingleJoin(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(Alice, knows, x),
                                    new Triple(x, knows, y));
         CQuery q1 = CQuery.from(query.get(0));
@@ -390,8 +390,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testDoNotJoinSameVarsDifferentQueries(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testDoNotJoinSameVarsDifferentQueries(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         CQuery query = CQuery.from(
                 new Triple(x, knows, Alice), new Triple(x, knows, y), new Triple(x, manages, y)
         );
@@ -409,8 +409,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testCartesianProduct(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testCartesianProduct(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(Alice, knows, x), new Triple(y, knows, Bob));
         CQuery q1 = CQuery.from(query.get(0));
         CQuery q2 = CQuery.from(query.get(1));
@@ -430,8 +430,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testLargeTree(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testLargeTree(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         CQuery query = CQuery.from(
                 new Triple(Alice, knows, x),
                 new Triple(x, knows, y),
@@ -489,8 +489,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testBookShop(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testBookShop(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
 
         CQuery query = CQuery.from(new Triple(x, title, title1),
                                    new Triple(x, genre, y),
@@ -515,8 +515,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testSameQuerySameEp(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testSameQuerySameEp(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
         EndpointQueryOp q1 = new EndpointQueryOp(empty1, CQuery.from(query.get(0)));
         EndpointQueryOp q2 = new EndpointQueryOp(empty1, CQuery.from(query.get(0)));
@@ -534,8 +534,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testSameQueryEquivalentEp(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testSameQueryEquivalentEp(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
         EndpointQueryOp q1 = new EndpointQueryOp(empty3a, CQuery.from(query.get(0)));
         EndpointQueryOp q2 = new EndpointQueryOp(empty3b, CQuery.from(query.get(0)));
@@ -551,8 +551,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void booksByAuthorWithIncompatibleService(Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void booksByAuthorWithIncompatibleService(Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         EndpointQueryOp q1 = new EndpointQueryOp(empty1, createQuery(y, name, author1));
         EndpointQueryOp q2 = new EndpointQueryOp(empty2,
                 createQuery(x, AtomInputAnnotation.asRequired(Book, "Book").get(),
@@ -568,7 +568,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
     }
 
-    public void booksByAuthorWithServiceTest(@Nonnull Planner planner, boolean markAsAlternatives,
+    public void booksByAuthorWithServiceTest(@Nonnull ConjunctivePlanner planner, boolean markAsAlternatives,
                                              boolean addFromSubject) {
         CQEndpoint e2 = markAsAlternatives ? empty3a : empty2;
         CQEndpoint e3 = markAsAlternatives ? empty3b : empty4;
@@ -598,17 +598,17 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testBooksByAuthorARQWithService(@Nonnull Supplier<Planner> supplier) {
+    public void testBooksByAuthorARQWithService(@Nonnull Supplier<ConjunctivePlanner> supplier) {
         booksByAuthorWithServiceTest(supplier.get(), false, false);
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testBooksByAuthorAlternativeService(@Nonnull Supplier<Planner> supplier) {
+    public void testBooksByAuthorAlternativeService(@Nonnull Supplier<ConjunctivePlanner> supplier) {
         booksByAuthorWithServiceTest(supplier.get(), true, true);
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testBooksByAuthorLeftoverService(@Nonnull Supplier<Planner> supplier) {
+    public void testBooksByAuthorLeftoverService(@Nonnull Supplier<ConjunctivePlanner> supplier) {
         booksByAuthorWithServiceTest(supplier.get(), false, true);
     }
 
@@ -651,7 +651,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         }
     }
 
-    private void onePathTwoDirectionsWithServicesTest(@Nonnull Planner planner,
+    private void onePathTwoDirectionsWithServicesTest(@Nonnull ConjunctivePlanner planner,
                                                       boolean useAlternative) {
         EmptyEndpoint ep1 = useAlternative ? empty3a : empty1;
         EmptyEndpoint ep2 = useAlternative ? empty3b : empty1;
@@ -669,18 +669,18 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", invocationCount = 4)
-    public void testOnePathTwoDirectionsWithServicesSameEp(@Nonnull Supplier<Planner> supplier) {
+    public void testOnePathTwoDirectionsWithServicesSameEp(@Nonnull Supplier<ConjunctivePlanner> supplier) {
         onePathTwoDirectionsWithServicesTest(supplier.get(), false);
     }
 
     @Test(dataProvider = "suppliersData", invocationCount = 4)
-    public void testOnePathTwoDirectionsWithServicesAlternativeEp(@Nonnull Supplier<Planner> supplier) {
+    public void testOnePathTwoDirectionsWithServicesAlternativeEp(@Nonnull Supplier<ConjunctivePlanner> supplier) {
         onePathTwoDirectionsWithServicesTest(supplier.get(), true);
     }
 
     @Test(dataProvider = "suppliersData", invocationCount = 4)
-    public void testOnePathTwoDirectionsUnrelatedEndpoints(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testOnePathTwoDirectionsUnrelatedEndpoints(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(f.all)) {
@@ -696,8 +696,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testDiscardMiddleNodeInPath(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testDiscardMiddleNodeInPath(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
         List<Op> nodes = asList(f.q1, f.q2, f.q3, f.p2);
         //noinspection UnstableApiUsage
@@ -711,8 +711,8 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testUnsatisfiablePlan(@Nonnull Supplier<Planner> supplier) {
-        Planner planner = supplier.get();
+    public void testUnsatisfiablePlan(@Nonnull Supplier<ConjunctivePlanner> supplier) {
+        ConjunctivePlanner planner = supplier.get();
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty1);
         List<Op> nodes = asList(f.q1, f.p2, f.q3);
         //noinspection UnstableApiUsage
@@ -726,7 +726,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testNonLinearPath(@Nonnull Supplier<Planner> supplier) {
+    public void testNonLinearPath(@Nonnull Supplier<ConjunctivePlanner> supplier) {
         EndpointQueryOp orgByDesc = new EndpointQueryOp(empty1, CQuery.from(
                 new Triple(x, p1, t)
         ));
@@ -756,7 +756,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
                 z, p9, d
         );
 
-        Planner planner = supplier.get();
+        ConjunctivePlanner planner = supplier.get();
         List<Op> nodes = asList(contractorByName, procurementsOfContractor,
                 contractById, modalities, procurementById, orgByDesc, contract);
         assertTrue(nodes.stream().allMatch(n -> query.attr().getSet().containsAll(n.getMatchedTriples())));
@@ -790,7 +790,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
     }
 
     @Test(dataProvider = "optionalQueriesData", groups={"fast"})
-    public void testJoinArqWithOptionalInputs(@Nonnull Supplier<Planner> supplier,
+    public void testJoinArqWithOptionalInputs(@Nonnull Supplier<ConjunctivePlanner> supplier,
                                               @Nonnull CQuery webQuery) throws IOException {
         Model model = ModelFactory.createDefaultModel();
         model.add(createResource(EX+"Dummy"), createProperty(EX+"p1"), createTypedLiteral(20000));
@@ -806,7 +806,7 @@ public class PlannerTest implements TransparencyServiceTestContext {
         JoinInfo info = JoinInfo.getJoinability(n1, n2);
         assertTrue(info.isValid());
 
-        Planner planner = supplier.get();
+        ConjunctivePlanner planner = supplier.get();
         CQuery wholeQuery = CQuery.merge(arqQuery, webQuery);
         Op plan = planner.plan(wholeQuery, asList(n1, n2));
         assertPlanAnswers(plan, wholeQuery, false, true);

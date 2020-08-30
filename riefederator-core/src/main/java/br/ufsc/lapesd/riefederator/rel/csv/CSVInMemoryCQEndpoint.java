@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.federation.planner.Planner;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.model.term.node.JenaNodeTermFactory;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
@@ -305,7 +305,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
                 q.mutateModifiers().addAll(star.getFilters());
                 leaves.add(new EndpointQueryOp(this, q));
             }
-            Planner planner = SingletonSourceFederation.getInjector().getInstance(Planner.class);
+            ConjunctivePlanner planner = SingletonSourceFederation.getInjector().getInstance(ConjunctivePlanner.class);
             return getFederation().execute(query, planner.plan(query, leaves));
         }
     }

@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.inner.paths;
+package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
@@ -6,8 +6,8 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.ArbitraryJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.inner.JoinOrderPlannerTest;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArbitraryJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinOrderConjunctivePlannerTest;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -280,7 +280,7 @@ public class SubPathAggregationTest implements TestContext {
 
     @DataProvider
     public static Object[][] joinOrderPlannerData() {
-        return JoinOrderPlannerTest.suppliers.stream().map(s -> new Object[]{s})
+        return JoinOrderConjunctivePlannerTest.suppliers.stream().map(s -> new Object[]{s})
                 .toArray(Object[][]::new);
     }
 

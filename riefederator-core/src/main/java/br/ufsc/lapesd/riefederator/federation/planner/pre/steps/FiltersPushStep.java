@@ -4,7 +4,7 @@ import br.ufsc.lapesd.riefederator.algebra.InnerOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
-import br.ufsc.lapesd.riefederator.federation.planner.pre.PrePlannerStep;
+import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -13,7 +13,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
-public class FiltersPushStep implements PrePlannerStep {
+public class FiltersPushStep implements PlannerStep {
 
     /**
      * Walks the tree attempting to push any {@link SPARQLFilter} as deep as possible toward leaves.
