@@ -733,7 +733,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                 }
             } else if (inQuotes && innerQuotes == 1) {
                 innerQuotes = 0;
-                if (c != '\t' && c != '\r' && c != '\n') {
+                if (c != '\t' && c != '\r' && c != '\n' && c != '^') {
                     logger.error("Bad closing \" mark. Closes a term but is followed by " +
                                  "'{}' (int value: {}). Current line buffer: {}", c,
                                  Character.getNumericValue(c), line.toString());
