@@ -27,17 +27,16 @@ import static org.testng.Assert.assertTrue;
 public class FilterAssignerTest implements TestContext {
     private @Nonnull CQEndpoint ep1 = new EmptyEndpoint(), ep2 = new EmptyEndpoint();
 
-    private void checkAllFilters(@Nonnull CQuery query, @Nonnull Op root) {
-        Set<SPARQLFilter> modifiers = new HashSet<>();
-        query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
-                .forEach(m -> modifiers.add((SPARQLFilter)m));
+    private void checkAllFilters(@Nonnull Set<SPARQLFilter> filters,
+                                 @Nonnull Op root) {
+        Set<SPARQLFilter> pendingFilters = new HashSet<>(filters);
 
         ArrayDeque<List<Op>> stack = new ArrayDeque<>();
         stack.push(Collections.singletonList(root));
         while (!stack.isEmpty()) {
             List<Op> path = stack.pop();
             Op node = path.get(path.size() - 1);
-            modifiers.removeAll(node.modifiers().filters());
+            pendingFilters.removeAll(node.modifiers().filters());
             // no filter is present in any ancestor
             for (Op ancestor : path.subList(0, path.size() - 1)) {
                 assertEquals(intersect(node.modifiers().filters(), ancestor.modifiers().filters()),
@@ -51,7 +50,7 @@ public class FilterAssignerTest implements TestContext {
             }
         }
 
-        assertEquals(modifiers, emptySet(), "Some filters were not observed in the plan");
+        assertEquals(pendingFilters, emptySet(), "Some filters were not observed in the plan");
     }
 
     @Test
@@ -78,7 +77,7 @@ public class FilterAssignerTest implements TestContext {
             assertEquals(annotated.get(i).getQuery(), queryOps.get(i).getQuery());
 
         assigner.placeBottommost(root);
-        checkAllFilters(fullQuery, root);
+        checkAllFilters(fullQuery.getModifiers().filters(), root);
     }
 
     @Test
@@ -93,7 +92,7 @@ public class FilterAssignerTest implements TestContext {
                 .build();
         FilterAssigner assigner = new FilterAssigner(query);
         assigner.placeBottommost(node);
-        checkAllFilters(query, node);
+        checkAllFilters(query.getModifiers().filters(), node);
     }
 
     @Test
@@ -111,11 +110,11 @@ public class FilterAssignerTest implements TestContext {
         List<EndpointQueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
                 .map(n -> (EndpointQueryOp)n).collect(toList());
         for (EndpointQueryOp queryOp : queryOps)
-            checkAllFilters(query, queryOp);
+            checkAllFilters(query.getModifiers().filters(), queryOp);
 
         Op multi = UnionOp.builder().addAll(queryOps).build();
         assigner.placeBottommost(multi);
-        checkAllFilters(query, multi);
+        checkAllFilters(query.getModifiers().filters(), multi);
     }
 
     @Test
@@ -156,7 +155,7 @@ public class FilterAssignerTest implements TestContext {
 
         assertEquals(joinLeft.modifiers().filters(), singleton(annGreater));
         assertEquals(joinRight.modifiers().filters(), singleton(annGreater));
-        checkAllFilters(fullQuery, rightDeep);
-        checkAllFilters(fullQuery, leftDeep);
+        checkAllFilters(fullQuery.getModifiers().filters(), rightDeep);
+        checkAllFilters(fullQuery.getModifiers().filters(), leftDeep);
     }
 }

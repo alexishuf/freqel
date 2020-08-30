@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.results.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,9 +23,14 @@ public class LimitResults extends DelegatingResults implements BufferedResults {
     private boolean buffering = true;
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
-        int limit = query.attr().limit();
-        if (limit > 0)
-            return new LimitResults(in, limit);
+        return applyIf(in, query.getModifiers());
+    }
+
+    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull ModifiersSet modifiers) {
+        Limit limit = modifiers.limit();
+        int value = limit == null ? 0 : limit.getValue();
+        if (value > 0)
+            return new LimitResults(in, value);
         return in;
     }
 

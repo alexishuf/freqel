@@ -31,12 +31,6 @@ public class LazyCartesianOpExecutor extends SimpleOpExecutor implements Cartesi
         this.comp = comparator;
     }
 
-    public LazyCartesianOpExecutor(@Nonnull PlanExecutor planExecutor,
-                                   @Nonnull CardinalityComparator comparator) {
-        super(planExecutor);
-        this.comp = comparator;
-    }
-
     @Override
     public @Nonnull Results execute(@Nonnull CartesianOp node) {
         PlanExecutor planExecutor = getPlanExecutor();

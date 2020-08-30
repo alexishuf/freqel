@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
@@ -10,6 +11,7 @@ import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.jena.query.JenaSolution;
 import br.ufsc.lapesd.riefederator.query.TPEndpointTest;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -36,16 +38,15 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation.createFederation;
 import static br.ufsc.lapesd.riefederator.testgen.LargeRDFBenchTestResourcesGenerator.parseResults;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
@@ -327,6 +328,35 @@ public class LargeRDFBenchSelfTest {
                     fail("Failed to parse query="+name, ex);
                 }
             }
+        }
+    }
+
+    @Test
+    public void testB4FilterPushedDown() throws IOException, SPARQLParseException {
+        try (Federation federation = Federation.createDefault()) {
+            for (String filename : DATA_FILENAMES) {
+                ARQEndpoint ep = ARQEndpoint.forModel(loadData(filename));
+                federation.addSource(new Source(new SelectDescription(ep), ep));
+            }
+            Op query = loadQuery("B4");
+
+            Op plan = federation.plan(query);
+            assertTrue(plan instanceof UnionOp);
+            assertEquals(plan.modifiers().filters(), emptySet());
+            assertEquals(plan.getChildren().size(), 2);
+            SPARQLFilter filter = SPARQLFilter.build("REGEX(?country,\"Brazil|Argentina\", \"i\")");
+
+            long inLeft = streamPreOrder(plan.getChildren().get(0))
+                    .filter(o -> o.modifiers().contains(filter)).count();
+            long inRight = streamPreOrder(plan.getChildren().get(1))
+                    .filter(o -> o.modifiers().contains(filter)).count();
+            assertTrue(inLeft > 0);
+            assertTrue(inRight > 0);
+
+            Set<Solution> actual = new HashSet<>(), expected = new HashSet<>();
+            federation.execute(query, plan).forEachRemainingThenClose(actual::add);
+            loadResults("B4").forEachRemaining(expected::add);
+            assertEquals(actual, expected);
         }
     }
 
