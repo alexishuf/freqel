@@ -37,7 +37,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
 @Test(groups = {"fast"})
-public class PreConjunctivePlannerTest implements TestContext {
+public class PrePlannerTest implements TestContext {
 
     public static @Nonnull List<Provider<? extends PrePlanner>> providers = singletonList(
             new NamedSupplier<>("default",

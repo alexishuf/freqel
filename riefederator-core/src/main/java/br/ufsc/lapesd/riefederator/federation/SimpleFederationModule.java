@@ -13,9 +13,12 @@ import br.ufsc.lapesd.riefederator.federation.decomp.StandardDecomposer;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.PostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.post.PhasedPostPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.post.steps.PipeCleanerStep;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.PhasedPrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.steps.*;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -51,6 +54,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
     protected void configure() {
         super.configure();
         configurePrePlanner();
+        configurePostPlanner();
         bind(DecompositionStrategy.class).to(StandardDecomposer.class);
         bind(ConjunctivePlanner.class).to(JoinPathsConjunctivePlanner.class);
         bind(JoinOrderPlanner.class).to(GreedyJoinOrderPlanner.class);
@@ -98,7 +102,24 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         }
     }
 
+    public static class DefaultPostPlannerProvider implements Provider<PostPlanner> {
+        private @Nonnull final PerformanceListener performanceListener;
+
+        @Inject
+        public DefaultPostPlannerProvider(@Nonnull PerformanceListener performanceListener) {
+            this.performanceListener = performanceListener;
+        }
+
+        @Override public PostPlanner get() {
+            return new PhasedPostPlanner(performanceListener).appendPhase1(new PipeCleanerStep());
+        }
+    }
+
     protected void configurePrePlanner() {
         bind(PrePlanner.class).toProvider(DefaultPrePlannerProvider.class);
+    }
+
+    protected void configurePostPlanner() {
+        bind(PostPlanner.class).toProvider(DefaultPostPlannerProvider.class);
     }
 }

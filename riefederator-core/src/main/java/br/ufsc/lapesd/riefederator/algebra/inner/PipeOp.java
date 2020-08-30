@@ -5,11 +5,12 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Collections.singletonList;
 
 public class PipeOp extends AbstractInnerOp {
     protected PipeOp(@Nonnull Collection<Op> children) {
@@ -18,7 +19,7 @@ public class PipeOp extends AbstractInnerOp {
     }
 
     public PipeOp(@Nonnull Op child) {
-        this(Collections.singletonList(child));
+        this(new ArrayList<>(singletonList(child)));
     }
 
     @Override public @Nonnull List<Op> setChildren(@Nonnull List<Op> children) {

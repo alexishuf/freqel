@@ -28,7 +28,7 @@ public class RefEquals<T> {
 
     @Override
     public int hashCode() {
-        return obj.hashCode();
+        return System.identityHashCode(obj);
     }
 
     @Override

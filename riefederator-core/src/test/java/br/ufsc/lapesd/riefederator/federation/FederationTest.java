@@ -545,14 +545,16 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     private static abstract class TestModule extends AbstractModule {
         private final boolean canBindJoin;
         private boolean storingPerformanceListener;
-        private Class<? extends Provider<? extends PrePlanner>> opSupplierClass;
+        private Class<? extends Provider<? extends PrePlanner>> prePlannerSupplierClass;
+        private Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass;
         private Class<? extends ConjunctivePlanner> ip;
         private Class<? extends JoinOrderPlanner> jo;
         private Class<? extends DecompositionStrategy> ds;
         private Class<? extends PerformanceListener> pl;
 
         protected TestModule(boolean canBindJoin,
-                          Class<? extends Provider<? extends PrePlanner>> opSupplierClass,
+                          Class<? extends Provider<? extends PrePlanner>> prePlannerSupplierClass,
+                          Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass,
                           Class<? extends ConjunctivePlanner> ip,
                           Class<? extends JoinOrderPlanner> jo,
                           Class<? extends DecompositionStrategy> ds,
@@ -560,7 +562,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             this.canBindJoin = canBindJoin;
             this.storingPerformanceListener =
                     PerformanceListenerTest.storingClasses.contains(pl);
-            this.opSupplierClass = opSupplierClass;
+            this.prePlannerSupplierClass = prePlannerSupplierClass;
+            this.postPlannerSupplierClass = postPlannerSupplierClass;
             this.ip = ip;
             this.jo = jo;
             this.ds = ds;
@@ -577,7 +580,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
         @Override @OverridingMethodsMustInvokeSuper
         protected void configure() {
-            bind(PrePlanner.class).toProvider(opSupplierClass);
+            bind(PrePlanner.class).toProvider(prePlannerSupplierClass);
+            bind(PostPlanner.class).toProvider(postPlannerSupplierClass);
             bind(ConjunctivePlanner.class).to(ip);
             bind(JoinOrderPlanner.class).to(jo);
             bind(DecompositionStrategy.class).to(ds);
@@ -593,7 +597,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     .append(jo.getSimpleName()).append('+')
                     .append(ds.getSimpleName()).append('+')
                     .append(pl.getSimpleName()).append('+')
-                    .append(opSupplierClass.getSimpleName()).append('+')
+                    .append(prePlannerSupplierClass.getSimpleName()).append('+')
                     .append(isSlowModule() ? "(fast)" : "(slow)")
                     .toString();
         }
@@ -602,6 +606,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     @FunctionalInterface
     private interface ModuleFactory {
         TestModule apply(Class<? extends Provider<? extends PrePlanner>> outerPlannerSupplierClass,
+                         Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass,
                          Class<? extends ConjunctivePlanner> planner,
                          Class<? extends JoinOrderPlanner> joinOrder,
                          Class<? extends DecompositionStrategy> decompositionStrategy,
@@ -609,7 +614,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     private static final @Nonnull List<ModuleFactory> moduleProtoList = asList(
-            (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
+            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -619,7 +624,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(NoCardinalityEnsemble.class); }
             },
-            (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
+            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -637,7 +642,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(GeneralSelectivityHeuristic.class, BufferedResultsExecutor.class); }
             },
-            (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
+            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -647,7 +652,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(SequentialResultsExecutor.class); }
             },
-            (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
+            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -661,7 +666,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(BufferedResultsExecutor.class); }
             },
-            (op, ip, opt, dec, pl) -> new TestModule(false, op, ip, opt, dec, pl) {
+            (op, pp, ip, opt, dec, pl) -> new TestModule(false, op, pp, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -673,7 +678,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(InMemoryHashJoinResults.class); }
             },
-            (op, ip, opt, dec, pl) -> new TestModule(false, op, ip, opt, dec, pl) {
+            (op, pp, ip, opt, dec, pl) -> new TestModule(false, op, pp, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -685,7 +690,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(InMemoryHashJoinResults.class); }
             },
-            (op, ip, opt, dec, pl) -> new TestModule(false, op, ip, opt, dec, pl) {
+            (op, pp, ip, opt, dec, pl) -> new TestModule(false, op, pp, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -697,7 +702,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(ParallelInMemoryHashJoinResults.class); }
             },
-            (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
+            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -709,7 +714,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(SimpleBindJoinResults.class); }
             },
-            (op, ip, opt, dec, pl) -> new TestModule(true, op, ip, opt, dec, pl) {
+            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -751,13 +756,15 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             fastDecomposerClasses = Collections.singletonList(StandardDecomposer.class);
 
     private static final @Nonnull List<TestModule> moduleList =
-            PreConjunctivePlannerTest.providerClasses.stream()
-                .flatMap(op -> ConjunctivePlannerTest.plannerClasses.stream()
-                    .flatMap(ip -> ConjunctivePlannerTest.joinOrderPlannerClasses.stream()
-                        .flatMap(jo -> decomposerClasses.stream()
-                            .flatMap(ds -> PerformanceListenerTest.classes.stream()
-                                .flatMap(pl -> moduleProtoList.stream().map(p -> p.apply(op, ip, jo, ds, pl))))
-                            )))
+            PrePlannerTest.providerClasses.stream()
+                .flatMap(op -> PostPlannerTest.providerClasses.stream()
+                    .flatMap(pp -> ConjunctivePlannerTest.plannerClasses.stream()
+                        .flatMap(ip -> ConjunctivePlannerTest.joinOrderPlannerClasses.stream()
+                            .flatMap(jo -> decomposerClasses.stream()
+                                .flatMap(ds -> PerformanceListenerTest.classes.stream()
+                                    .flatMap(pl -> moduleProtoList.stream().map(p -> p.apply(op, pp, ip, jo, ds, pl)))
+                                )))))
+
             .collect(toList());
 
     private static @Nonnull Object[][] prependModules(List<List<Object>> in) {

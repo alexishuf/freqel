@@ -11,6 +11,7 @@ import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
+import br.ufsc.lapesd.riefederator.federation.planner.PostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
@@ -50,6 +51,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(Federation.class);
 
     private final @Nonnull PrePlanner prePlanner;
+    private final @Nonnull PostPlanner postPlanner;
     private final @Nonnull DecompositionStrategy strategy;
     private final @Nonnull PlanExecutor executor;
     private final @Nonnull PerformanceListener performanceListener;
@@ -59,12 +61,14 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
     @Inject
     public Federation(@Nonnull PrePlanner prePlanner,
+                      @Nonnull PostPlanner postPlanner,
                       @Nonnull DecompositionStrategy strategy,
                       @Nonnull PlanExecutor executor,
                       @Nonnull PerformanceListener performanceListener,
                       @Nonnull InnerCardinalityComputer cardinalityComputer,
                       @Nonnull ResultsExecutor resultsExecutor) {
         this.prePlanner = prePlanner;
+        this.postPlanner = postPlanner;
         this.strategy = strategy;
         this.executor = executor;
         this.performanceListener = performanceListener;
@@ -208,6 +212,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
             Stopwatch sw = Stopwatch.createStarted();
             Op root = query instanceof QueryOp ? query : TreeUtils.deepCopy(query);
             root = prePlanner.plan(root);
+            root = postPlanner.plan(root);
             root = planComponents(root, query, cardinalityComputer);
             TreeUtils.nameNodes(root);
             if (logger.isDebugEnabled()) {
