@@ -80,6 +80,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     private static final String XSD_STRING_SUFFIX = "^^<http://www.w3.org/2001/XMLSchema#string>";
     private static final Pattern CSV_URI_RX = Pattern.compile("^\"?\\w+:");
     private static final Pattern DISTINCT_RX = Pattern.compile("(?i)^SELECT\\W*DISTINCT");
+    private static final String POST_QUOTE = "@^\t\r\n";
 
     private final @Nonnull HttpHost host;
     private final @Nonnull String uri;
@@ -733,7 +734,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
                 }
             } else if (inQuotes && innerQuotes == 1) {
                 innerQuotes = 0;
-                if (c != '\t' && c != '\r' && c != '\n') {
+                if (POST_QUOTE.indexOf(c) < 0) {
                     logger.error("Bad closing \" mark. Closes a term but is followed by " +
                                  "'{}' (int value: {}). Current line buffer: {}", c,
                                  Character.getNumericValue(c), line.toString());
