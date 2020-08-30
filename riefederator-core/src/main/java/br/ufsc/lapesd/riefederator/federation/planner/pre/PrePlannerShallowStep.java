@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.outer;
+package br.ufsc.lapesd.riefederator.federation.planner.pre;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
@@ -8,7 +8,7 @@ import javax.annotation.Nonnull;
 import java.util.Set;
 
 @Immutable
-public interface OuterPlannerShallowStep {
+public interface PrePlannerShallowStep {
     /**
      * Mutate or replace a node, without applying this same step in the {@link Op} children.
      *

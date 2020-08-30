@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.outer.steps;
+package br.ufsc.lapesd.riefederator.federation.planner.pre.steps;
 
 import br.ufsc.lapesd.riefederator.algebra.InnerOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.riefederator.federation.planner.outer.OuterPlannerStep;
+import br.ufsc.lapesd.riefederator.federation.planner.pre.PrePlannerStep;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
@@ -24,7 +24,7 @@ import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.hasIntersect;
 
-public class CartesianIntroductionStep implements OuterPlannerStep {
+public class CartesianIntroductionStep implements PrePlannerStep {
     private static final Logger logger = LoggerFactory.getLogger(CartesianIntroductionStep.class);
 
     @Override

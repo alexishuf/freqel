@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.outer.steps;
+package br.ufsc.lapesd.riefederator.federation.planner.pre.steps;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;

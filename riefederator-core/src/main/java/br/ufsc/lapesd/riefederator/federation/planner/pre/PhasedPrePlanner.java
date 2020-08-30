@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.outer;
+package br.ufsc.lapesd.riefederator.federation.planner.pre;
 
 import br.ufsc.lapesd.riefederator.algebra.InnerOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
@@ -21,26 +21,26 @@ import static java.lang.String.format;
 
 public class PhasedPrePlanner implements PrePlanner {
     private final @Nonnull PerformanceListener performance;
-    private final @Nonnull List<OuterPlannerStep> phase1deep = new ArrayList<>(),
+    private final @Nonnull List<PrePlannerStep> phase1deep = new ArrayList<>(),
                                                   phase3deep = new ArrayList<>();
-    private final @Nonnull List<OuterPlannerShallowStep> phase2shallow = new ArrayList<>();
+    private final @Nonnull List<PrePlannerShallowStep> phase2shallow = new ArrayList<>();
 
     @Inject
     public PhasedPrePlanner(@Nonnull PerformanceListener performance) {
         this.performance = performance;
     }
 
-    public @Nonnull PhasedPrePlanner appendPhase1(@Nonnull OuterPlannerStep step) {
+    public @Nonnull PhasedPrePlanner appendPhase1(@Nonnull PrePlannerStep step) {
         phase1deep.add(step);
         return this;
     }
 
-    public @Nonnull PhasedPrePlanner appendPhase2(@Nonnull OuterPlannerShallowStep step) {
+    public @Nonnull PhasedPrePlanner appendPhase2(@Nonnull PrePlannerShallowStep step) {
         phase2shallow.add(step);
         return this;
     }
 
-    public @Nonnull PhasedPrePlanner appendPhase3(@Nonnull OuterPlannerStep step) {
+    public @Nonnull PhasedPrePlanner appendPhase3(@Nonnull PrePlannerStep step) {
         phase3deep.add(step);
         return this;
     }
@@ -54,10 +54,10 @@ public class PhasedPrePlanner implements PrePlanner {
     public @Nonnull Op plan(@Nonnull Op tree) {
         try (TimeSampler ignored = Metrics.OUT_PLAN_MS.createThreadSampler(performance)) {
             Set<RefEquals<Op>> shared = TreeUtils.findSharedNodes(tree  );
-            for (OuterPlannerStep step : phase1deep)
+            for (PrePlannerStep step : phase1deep)
                 tree = step.plan(tree, shared);
             tree = phase2(tree, shared);
-            for (OuterPlannerStep step : phase3deep)
+            for (PrePlannerStep step : phase3deep)
                 tree = step.plan(tree, shared);
             return tree;
         }
@@ -71,7 +71,7 @@ public class PhasedPrePlanner implements PrePlanner {
                     it.set(phase2(it.next(), locked));
             }
         }
-        for (OuterPlannerShallowStep step : phase2shallow) // do shallow visit
+        for (PrePlannerShallowStep step : phase2shallow) // do shallow visit
             root = step.visit(root, locked);
         return root;
     }
