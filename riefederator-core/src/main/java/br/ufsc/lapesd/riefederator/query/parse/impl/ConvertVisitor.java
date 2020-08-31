@@ -6,9 +6,9 @@ import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
-import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import br.ufsc.lapesd.riefederator.jena.query.JenaBindingSolution;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
@@ -70,8 +70,11 @@ public class ConvertVisitor implements QueryVisitor {
         allVars = new HashSet<>();
     }
     @Override
-    public void visitPrologue(Prologue prologue) {
-        prefixDict = new PrefixMappingDict(prologue.getPrefixMapping());
+    public void visitPrologue(Prologue p) {
+        StdPrefixDict.Builder b = StdPrefixDict.builder();
+        for (Map.Entry<String, String> e : p.getPrefixMapping().getNsPrefixMap().entrySet())
+            b.put(e.getKey(), e.getValue());
+        prefixDict = b.build();
     }
     @Override
     public void visitResultForm(Query query) { }
