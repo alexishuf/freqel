@@ -41,10 +41,10 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJena;
-import static br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict.EMPTY;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 import static org.testng.Assert.*;
 
@@ -70,51 +70,46 @@ public class SPARQLStringTest implements TestContext {
     @Test(dataProvider = "term2SPARQLData")
     public void testTerm2SPARQL(@Nonnull Term term, @Nullable String expected) {
         PrefixDict dict = StdPrefixDict.STANDARD;
-        if (expected == null)
-            expectThrows(IllegalArgumentException.class, () -> SPARQLString.term2SPARQL(term, dict));
-        else
+        if (expected == null) {
+            expectThrows(IllegalArgumentException.class,
+                         () -> SPARQLString.term2SPARQL(term, dict));
+        } else {
             assertEquals(SPARQLString.term2SPARQL(term, dict), expected);
+        }
     }
 
     @Test
     public void testTripleASK() {
-        SPARQLString s = new SPARQLString(singleton(new Triple(Alice, knows, Bob)), EMPTY);
-        assertEquals(s.getType(), SPARQLString.Type.ASK);
+        SPARQLString s = new SPARQLString(createQuery(Alice, knows, Bob));
+        assertTrue(s.isAsk());
         assertEquals(s.getVarNames(), emptySet());
     }
 
     @Test
     public void testConjunctiveASK() {
-        SPARQLString s = new SPARQLString(asList(
-                new Triple(Alice, knows, Bob), new Triple(Alice, knows, Alice)
-        ), EMPTY);
-        assertEquals(s.getType(), SPARQLString.Type.ASK);
+        SPARQLString s = new SPARQLString(createQuery(Alice, knows, Bob, Alice, knows, Alice));
+        assertTrue(s.isAsk());
         assertEquals(s.getVarNames(), emptySet());
     }
 
     @Test
     public void testTripleSELECT() {
-        SPARQLString s = new SPARQLString(
-                singleton(new Triple(Alice, knows, new StdVar("who"))), EMPTY);
-        assertEquals(s.getType(), SPARQLString.Type.SELECT);
+        SPARQLString s = new SPARQLString(createQuery(Alice, knows, new StdVar("who")));
+        assertFalse(s.isAsk());
         assertEquals(s.getVarNames(), singleton("who"));
     }
 
     @Test
     public void testSELECTWithFilter() {
         SPARQLString sparqlString = new SPARQLString(
-                createQuery(x, age, TestContext.y, SPARQLFilter.build("?y > 23")),
-                EMPTY
-        );
-        assertEquals(sparqlString.getFilters(),
-                     singleton(SPARQLFilter.build("?y > 23")));
-        assertEquals(sparqlString.getType(), SPARQLString.Type.SELECT);
+                createQuery(x, age, y, SPARQLFilter.build("?y > 23")));
+        assertFalse(sparqlString.isAsk());
 
         Model model = ModelFactory.createDefaultModel();
         model.add(toJena(Alice), FOAF.age, createTypedLiteral(24));
         model.add(toJena(Bob), FOAF.age, createTypedLiteral(22));
 
-        String sparql = sparqlString.getString();
+        String sparql = sparqlString.getSparql();
         try (QueryExecution execution = QueryExecutionFactory.create(sparql, model)) {
             ResultSet results = execution.execSelect();
             assertTrue(results.hasNext());
@@ -129,9 +124,9 @@ public class SPARQLStringTest implements TestContext {
     public void testConjunctiveSELECTWithPureDescriptive() {
         Triple descriptive = new Triple(x, knows, Bob);
         CQuery query = createQuery(descriptive, PureDescriptive.INSTANCE, x, knows, Alice);
-        SPARQLString string = new SPARQLString(query, EMPTY, emptyList());
-        assertEquals(string.getType(), SPARQLString.Type.SELECT);
-        String sparql = string.getString();
+        SPARQLString string = new SPARQLString(query);
+        assertFalse(string.isAsk());
+        String sparql = string.getSparql();
         assertFalse(sparql.contains("Bob"));
     }
 
@@ -141,12 +136,11 @@ public class SPARQLStringTest implements TestContext {
                 Alice, knows, x,
                 x, age, y,
                 x, name, z, AtomInputAnnotation.asRequired(A1, "name").missingInResult().get());
-        SPARQLString string = new SPARQLString(query, EMPTY, emptyList());
-        assertEquals(string.getType(), SPARQLString.Type.SELECT);
+        SPARQLString string = new SPARQLString(query);
+        assertFalse(string.isAsk());
         assertEquals(string.getVarNames(), Sets.newHashSet("x", "y"));
-        assertEquals(string.getFilters(), emptySet());
 
-        CQuery parsed = SPARQLParser.strict().parseConjunctive(string.getString());
+        CQuery parsed = SPARQLParser.strict().parseConjunctive(string.getSparql());
         assertEquals(parsed.attr().getSet(), Sets.newHashSet(
                 new Triple(Alice, knows, x),
                 new Triple(x, age, y)));
@@ -154,34 +148,19 @@ public class SPARQLStringTest implements TestContext {
 
     @Test
     public void testDistinct() {
-        StdVar s = new StdVar("s"), o = new StdVar("o");
-        Set<Triple> qry = singleton(new Triple(s, knows, o));
-        String str = new SPARQLString(qry, EMPTY, singleton(Distinct.INSTANCE)).toString();
+        String str = new SPARQLString(createQuery(s, knows, o, Distinct.INSTANCE)).getSparql();
         assertTrue(Pattern.compile("SELECT +DISTINCT +").matcher(str).find());
     }
 
     @Test
     public void testProjection() {
-        StdVar s = new StdVar("s"), o = new StdVar("o");
-        Set<Triple> qry = singleton(new Triple(s, knows, o));
-        Projection mod = Projection.of("o");
-        String str = new SPARQLString(qry, EMPTY, singleton(mod)).toString();
+        String str = new SPARQLString(createQuery(s, knows, o, Projection.of("o"))).getSparql();
         assertTrue(Pattern.compile("SELECT +\\?o +WHERE").matcher(str).find());
     }
 
     @Test
     public void testLimit() {
-        CQuery qry = createQuery(Alice, knows, x, Limit.of(10));
-        SPARQLString ss = new SPARQLString(qry);
-        assertEquals(ss.getPublicVarNames(), singleton("x"));
-        assertTrue(ss.getString().contains("LIMIT 10"));
-        QueryFactory.create(ss.getString()); //throws if invalid syntax
-    }
-
-    @Test
-    public void testLimitFast() {
-        CQuery qry = createQuery(Alice, knows, x, Limit.of(10));
-        FastSPARQLString ss = new FastSPARQLString(qry);
+        SPARQLString ss = new SPARQLString(createQuery(Alice, knows, x, Limit.of(10)));
         assertEquals(ss.getVarNames(), singleton("x"));
         assertTrue(ss.getSparql().contains("LIMIT 10"));
         QueryFactory.create(ss.getSparql()); //throws if invalid syntax
@@ -189,9 +168,7 @@ public class SPARQLStringTest implements TestContext {
 
     @Test
     public void testAskWithVars() {
-        StdVar s = new StdVar("s"), o = new StdVar("o");
-        Set<Triple> qry = singleton(new Triple(s, knows, o));
-        String str = new SPARQLString(qry, EMPTY, singleton(Ask.INSTANCE)).toString();
+        String str = new SPARQLString(createQuery(s, knows, o, Ask.INSTANCE)).getSparql();
         assertTrue(Pattern.compile("ASK +\\{").matcher(str).find());
     }
 
@@ -210,7 +187,7 @@ public class SPARQLStringTest implements TestContext {
         ValuesModifier m = new ValuesModifier(singleton("y"),
                                               singleton(MapSolution.build(y, lit(23))));
         CQuery query = createQuery(x, age, y, m);
-        String sparql = new SPARQLString(query).getString();
+        String sparql = new SPARQLString(query).getSparql();
         Set<Term> actual = new HashSet<>();
         try (QueryExecution ex = QueryExecutionFactory.create(sparql, rdf2)) {
             ResultSet set = ex.execSelect();
@@ -230,7 +207,7 @@ public class SPARQLStringTest implements TestContext {
                 MapSolution.builder().put(y, Person).put(z, lit(24)).build() //no result
         ));
         CQuery query = createQuery(x, type, y, x, age, z, m);
-        String sparql = new SPARQLString(query).getString();
+        String sparql = new SPARQLString(query).getSparql();
         Set<Solution> actual = new HashSet<>();
         try (QueryExecution ex = QueryExecutionFactory.create(sparql, rdf2)) {
             ResultSet set = ex.execSelect();

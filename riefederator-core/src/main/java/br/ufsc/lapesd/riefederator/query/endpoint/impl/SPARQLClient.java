@@ -2,9 +2,9 @@ package br.ufsc.lapesd.riefederator.query.endpoint.impl;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
-import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
+import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
@@ -389,7 +389,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             Stopwatch sw = Stopwatch.createStarted();
             if (sparqlQuery == null) {
                 assert query != null;
-                FastSPARQLString ss = new FastSPARQLString(query);
+                SPARQLString ss = new SPARQLString(query);
                 sparqlQuery = ss.getSparql();
                 distinct = ss.isDistinct();
             } else {

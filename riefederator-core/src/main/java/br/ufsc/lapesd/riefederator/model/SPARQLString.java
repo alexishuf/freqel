@@ -8,207 +8,185 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
-import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.util.CollectionUtils;
+import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.SetMultimap;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.XSD;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
-import java.util.regex.Pattern;
 
-import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.ASK;
-import static br.ufsc.lapesd.riefederator.query.endpoint.Capability.PROJECTION;
 import static java.util.stream.Collectors.joining;
 
 public class SPARQLString {
-    public enum Type {
-        ASK, SELECT
-    }
-
-    static final @Nonnull Pattern SPARQL_VAR_NAME = Pattern.compile("^[a-zA-Z_0-9\\-]+$");
     private static final @Nonnull URI rdfType = JenaWrappers.fromURIResource(RDF.type);
     private static final @Nonnull URI xsdString = JenaWrappers.fromURIResource(XSD.xstring);
 
-    private final @Nonnull Type type;
-    private final @Nonnull String string;
-    private final int triplesCount;
-    private boolean distinct;
-    private final @Nonnull ImmutableSet<String> varNames, publicVarNames;
-    private final @Nonnull ImmutableSet<SPARQLFilter> filters;
+    private final boolean distinct, ask;
+    private final int limit;
+    private final @Nonnull Set<String> varNames;
+    private final @Nonnull String sparql;
 
-    private static boolean keepTriple(@Nonnull Triple triple, @Nonnull CQuery query) {
-        if (query.getTripleAnnotations(triple).contains(PureDescriptive.INSTANCE))
-            return false;
-        boolean missing = triple.stream().anyMatch(t
-                -> query.getTermAnnotations(t).stream().anyMatch(a
-                    -> a instanceof InputAnnotation && ((InputAnnotation) a).isMissingInResult()));
-        return !missing;
-    }
-
-    private static @Nonnull Collection<Triple>
-    removePureDescriptive(@Nonnull Collection<Triple> triples) {
-        if (triples instanceof CQuery) {
-            CQuery query = (CQuery) triples;
-            List<Triple> list = new ArrayList<>(query.size());
-            for (Triple triple : query) {
-                if (keepTriple(triple, query))
-                    list.add(triple);
-            }
-            if (list.size() != query.size())
-                return list;
-        }
-        return triples;
+    public SPARQLString(boolean distinct, boolean ask, int limit, @Nonnull Set<String> varNames,
+                        @Nonnull String sparql) {
+        assert !distinct || !ask : "If DISTINCT, cannot be ASK";
+        assert !ask || varNames.isEmpty() : "If ASK, cannot have vars";
+        assert !varNames.isEmpty() || ask : "If no vars, should be ASK";
+        this.distinct = distinct;
+        this.ask = ask;
+        this.limit = limit;
+        this.varNames = varNames;
+        this.sparql = sparql;
     }
 
     public SPARQLString(@Nonnull CQuery query) {
-        this(query, query.getPrefixDict(StdPrefixDict.STANDARD));
-    }
+        ask = query.attr().isAsk();
+        distinct = query.getModifiers().distinct() != null;
+        limit = query.attr().limit();
+        PrefixDict dict = query.getPrefixDict(StdPrefixDict.STANDARD);
+        IndexedSet<String> varNamesIndexedSet = query.attr().publicTripleVarNames();
 
-    public SPARQLString(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict) {
-        this(triples, dict,
-             triples instanceof CQuery ? ((CQuery)triples).getModifiers() : ImmutableList.of());
-    }
-
-    public SPARQLString(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict,
-                        @Nonnull Collection<Modifier> modifiers) {
-        triples = removePureDescriptive(triples);
-        Preconditions.checkArgument(!triples.isEmpty(), "triples cannot be empty");
-        triplesCount = triples.size();
-        // find var names
-        Set<String> varNames = new HashSet<>(triples.size() * 2);
-        for (Triple triple : triples)
-            triple.forEach(t -> {if (t.isVar()) varNames.add(t.asVar().getName());});
-        this.varNames = ImmutableSet.copyOf(varNames);
-        filters = getFilters(triples);
-
-        // add prefixes
-        StringBuilder b = new StringBuilder(triples.size()*32);
-        dict.forEach((name, uri) -> {
-            if (SPARQL_VAR_NAME.matcher(name).matches())
-                b.append("PREFIX ").append(name).append(": <").append(uri).append("> \n");
-        });
-        if (b.length() > 0) b.append('\n');
-
-        // add query command
-        type = this.varNames.isEmpty() || ModifierUtils.getFirst(ASK, modifiers) != null
-                ? Type.ASK : Type.SELECT;
-        if (type == Type.ASK) {
-            b.append("ASK {\n");
-            this.publicVarNames = ImmutableSet.of();
+        StringBuilder b = new StringBuilder(query.size()*60);
+        // write body to discover which variables in publicTripleVarNames should be removed
+        IndexedSubset<String> missing = varNamesIndexedSet.fullSubset();
+        writeTriples(b, query, dict, missing);
+        if (!missing.isEmpty()) {
+            Set<String> actualVars = varNamesIndexedSet.fullSubset();
+            actualVars.removeAll(missing);
+            this.varNames = Collections.unmodifiableSet(actualVars);
         } else {
-            b.append("SELECT");
-            if (ModifierUtils.getFirst(Capability.DISTINCT, modifiers) != null) {
-                b.append(" DISTINCT");
-                distinct = true;
-            }
-            Projection project = (Projection)ModifierUtils.getFirst(PROJECTION, modifiers);
-            if (project != null) {
-                this.publicVarNames = ImmutableSet.copyOf(
-                        CollectionUtils.intersect(project.getVarNames(), this.varNames));
-                for (String name : this.publicVarNames)
-                    b.append(" ?").append(name);
-            } else {
-                this.publicVarNames = this.varNames;
-                for (String name : this.varNames) b.append(" ?").append(name);
-            }
-            b.append(" WHERE {\n");
+            this.varNames = varNamesIndexedSet;
         }
+        String body = b.toString();
 
-        // add BGP
-        ValuesModifier values = ModifierUtils.getFirst(ValuesModifier.class, modifiers);
-        if (values != null && !values.getVarNames().isEmpty()) {
-            b.append("  {\n");
-            writeBGP(triples, dict, b, "    ");
-            b.append("  } ");
-            writeAssignments(values, dict, b, "  ");
-        } else {
-            writeBGP(triples, dict, b, "  ");
+        b.setLength(0); //start over
+        writePrefixes(b, dict);
+        writeHeader(b, ask, distinct, varNames);
+        b.append(body); //add the body
+        writeFilters(b, query.getModifiers().filters());
+        ValuesModifier values = query.getModifiers().valueModifier();
+        if (values != null)
+            writeValues(b, values.getVarNames(), values.getAssignments(), dict);
+        b.append('}'); // ends SELECT/ASK
+        if (limit > 0)
+            b.append(" LIMIT ").append(limit);
+        sparql = b.toString();
+    }
+
+    public boolean isDistinct() {
+        return distinct;
+    }
+
+    public boolean isAsk() {
+        return ask;
+    }
+
+    public boolean hasLimit() {
+        return limit > 0;
+    }
+
+    public int getLimit() {
+        if (limit <= 0) throw new NoSuchElementException("No LIMIT defined");
+        return limit;
+    }
+
+    public @Nonnull Set<String> getVarNames() {
+        return varNames;
+    }
+
+    public @Nonnull String getSparql() {
+        return sparql;
+    }
+
+    public static void writePrefixes(@Nonnull StringBuilder b, @Nonnull PrefixDict dict) {
+        for (Map.Entry<String, String> e : dict.entries())
+            b.append("PREFIX ").append(e.getKey()).append(": <").append(e.getValue()).append(">\n");
+    }
+
+    public static void writeHeader(@Nonnull StringBuilder b, boolean ask, boolean distinct,
+                                   @Nonnull Collection<String> varNames) {
+        assert !ask || varNames.isEmpty() : "If ASK, cannot have vars";
+        assert !varNames.isEmpty() || ask : "If has no vars, should be ASK";
+        assert !distinct || !ask : "If DISTINCT, cannot be ASk";
+        b.append(ask ? "ASK " : "SELECT ");
+        if (distinct) b.append("DISTINCT ");
+        for (String n : varNames)
+            b.append('?').append(n).append(' ');
+        b.append(ask ? "{" : "WHERE {");
+    }
+
+    public static void writeTriples(@Nonnull StringBuilder b, @Nonnull CQuery query,
+                                    @Nonnull PrefixDict dict, @Nullable Set<String> missing) {
+        assert !query.isEmpty();
+        for (Triple triple : query) {
+            if (omitTriple(triple, query))
+                continue;
+            removeVarName(triple.getSubject(), missing);
+            removeVarName(triple.getPredicate(), missing);
+            removeVarName(triple.getObject(), missing);
+            b.append(term2SPARQL(triple.getSubject(), dict)).append(' ');
+            b.append(term2SPARQL(triple.getPredicate(), dict)).append(' ');
+            b.append(term2SPARQL(triple.getObject(), dict)).append(" . ");
+        }
+    }
+
+    private static void removeVarName(@Nonnull Term term, @Nullable Set<String> varNames) {
+        if (varNames != null && term.isVar()) varNames.remove(term.asVar().getName());
+    }
+
+    public static boolean omitTriple(@Nonnull Triple triple, @Nonnull CQuery query) {
+        if (query.getTripleAnnotations(triple).contains(PureDescriptive.INSTANCE))
+            return true;
+        return omitTerm(triple.getSubject(), query) || omitTerm(triple.getPredicate(), query)
+                                                    || omitTerm(triple.getObject(), query);
+    }
+
+    private static boolean omitTerm(@Nonnull Term term, @Nonnull CQuery query) {
+        for (TermAnnotation ann : query.getTermAnnotations(term)) {
+            if (ann instanceof InputAnnotation && ((InputAnnotation)ann).isMissingInResult())
+                return true;
+        }
+        return false;
+    }
+
+    public static void writeFilters(@Nonnull StringBuilder b,
+                                     @Nonnull Collection<SPARQLFilter> filters) {
+        for (SPARQLFilter filter : filters)
+            b.append(filter.getSparqlFilter()).append(' ');
+    }
+
+    public static void writeValues(@Nonnull StringBuilder b,
+                                   @Nonnull Collection<String> varNames,
+                                   @Nonnull Collection<Solution> assignments,
+                                   @Nonnull PrefixDict dict) {
+        String varList = varNames.stream().map(n -> "?" + n).collect(joining(" "));
+        b.append("VALUES ( ").append(varList).append(" ) {");
+        for (Solution assignment : assignments) {
+            b.append(' ').append("( ");
+            for (String var : varNames) {
+                Term term = assignment.get(var);
+                b.append(term == null ? "UNDEF" : term2SPARQL(term, dict));
+                b.append(' ');
+            }
+            b.append(')');
         }
         b.append('}');
-        Limit limit = ModifierUtils.getFirst(Limit.class, modifiers);
-        if (limit != null)
-            b.append("LIMIT ").append(limit.getValue());
-        this.string = b.append('\n').toString();
-    }
-
-    private void writeBGP(@Nonnull Collection<Triple> triples, @Nonnull PrefixDict dict,
-                          @Nonnull StringBuilder b, @Nonnull String indent) {
-        SetMultimap<Term, SPARQLFilter> term2filter = HashMultimap.create();
-        for (SPARQLFilter filter : filters)
-            filter.getTerms().forEach(t -> term2filter.put(t, filter));
-        Map<SPARQLFilter, Integer> filter2triple = new HashMap<>();
-        if (triples instanceof CQuery) {
-            CQuery query = (CQuery)triples;
-            int idx = -1;
-            for (Triple triple : query) {
-                int finalIdx = ++idx;
-                triple.forEach(t -> {
-                    for (SPARQLFilter filter : term2filter.get(t))
-                        filter2triple.put(filter, finalIdx);
-                });
-            }
-        }
-        List<List<SPARQLFilter>> annotations = new ArrayList<>(triples.size());
-        for (int i = 0; i < triples.size(); i++) annotations.add(new ArrayList<>());
-        for (Map.Entry<SPARQLFilter, Integer> e : filter2triple.entrySet())
-            annotations.get(e.getValue()).add(e.getKey());
-
-        Iterator<List<SPARQLFilter>> aIt = annotations.iterator();
-        for (Triple triple : triples) {
-            assert  aIt.hasNext();
-            b.append(indent);
-            triple.forEach(t -> b.append(term2SPARQL(t, dict)).append(" "));
-            List<SPARQLFilter> filters = aIt.next();
-            if (!filters.isEmpty()) {
-                String indent2 = indent + "  ";
-                b.append('\n');
-                filters.forEach(f -> b.append(indent2).append(f.getSparqlFilter()).append('\n'));
-                b.setLength(b.length()-1); //undo \n of last FILTER()
-            }
-            b.append(".\n");
-        }
-    }
-
-    static void writeAssignments(@Nonnull ValuesModifier values, @Nonnull PrefixDict dict,
-                                 @Nonnull StringBuilder b, @Nonnull String indent) {
-        assert !values.getVarNames().isEmpty();
-        String indent2 = indent + "  ";
-
-        String varList = values.getVarNames().stream().map(n -> "?" + n).collect(joining(" "));
-        b.append("VALUES ( ").append(varList).append(" ) {\n");
-        for (Solution assignment : values.getAssignments()) {
-            b.append(indent2).append("( ");
-            for (String var : values.getVarNames()) {
-                Term term = assignment.get(var);
-                b.append(term == null ? "UNDEF" : term2SPARQL(term, dict)).append(' ');
-            }
-            b.append(")\n");
-        }
-        b.append(indent).append("}\n");
-    }
-
-    static @Nonnull ImmutableSet<SPARQLFilter> getFilters(Collection<Triple> triples) {
-        if (!(triples instanceof CQuery)) return ImmutableSet.of();
-        return ImmutableSet.copyOf(((CQuery)triples).getModifiers().filters());
     }
 
     public static @Nonnull String term2SPARQL(@Nonnull Term t, @Nonnull PrefixDict dict) {
         if (t.isBlank()) {
             String name = t.asBlank().getName();
-            return name != null && SPARQL_VAR_NAME.matcher(name).matches() ? "_:"+name : "[]";
+            return name != null ? "_:"+name : "[]";
         } else if (t.isVar()) {
             String name = t.asVar().getName();
-            Preconditions.checkArgument(SPARQL_VAR_NAME.matcher(name).matches(),
-                    name+" cannot be used as a SPARQL variable name");
+            if (name.isEmpty() || name.charAt(0) == '?')
+                throw new IllegalArgumentException("Bad var name: '"+name+"'");
             return "?"+name;
         } else if (t.isLiteral()) {
             Lit lit = t.asLiteral();
@@ -220,33 +198,5 @@ public class SPARQLString {
             return RDFUtils.toTurtle(t.asURI(), dict);
         }
         throw new IllegalArgumentException("Cannot represent "+t+" in SPARQL");
-    }
-
-    public @Nonnull Type getType() {
-        return type;
-    }
-    public @Nonnull String getString() {
-        return string;
-    }
-    public int getTriplesCount() {
-        return triplesCount;
-    }
-    public boolean isDistinct() {
-        return distinct;
-    }
-    public @Nonnull ImmutableSet<String> getVarNames() {
-        return varNames;
-    }
-    public @Nonnull ImmutableSet<String> getPublicVarNames() {
-        return publicVarNames;
-    }
-
-    public @Nonnull ImmutableSet<SPARQLFilter> getFilters() {
-        return filters;
-    }
-
-    @Override
-    public @Nonnull String toString() {
-        return string;
     }
 }

@@ -4,15 +4,14 @@ import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.model.SPARQLString;
-import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
-import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -21,7 +20,6 @@ import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.util.LogUtils;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableSet;
 import org.apache.http.client.HttpClient;
 import org.apache.http.protocol.HttpContext;
 import org.apache.jena.query.*;
@@ -171,16 +169,14 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     public @Nonnull Results querySPARQL(@Nonnull String sparqlQuery, boolean isAsk,
                                         @Nonnull Collection<String> varNames) {
         Query query = QueryFactory.create(sparqlQuery);
-        SPARQLString.Type type = isAsk ? SPARQLString.Type.ASK : SPARQLString.Type.SELECT;
         Set<String> set = varNames instanceof Set ? (Set<String>)varNames : new HashSet<>(varNames);
-        return doQuery(query, type, set);
+        return doQuery(query, isAsk, set);
     }
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         ModifierUtils.check(this, query.getModifiers());
-        PrefixDict dict = query.getPrefixDict(StdPrefixDict.STANDARD);
-        SPARQLString sparql = new SPARQLString(query, dict, query.getModifiers());
+        SPARQLString sparql = new SPARQLString(query);
         if (transactional != null) {
             Results[] tmp = {null};
             Txn.executeRead(transactional,
@@ -193,25 +189,23 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     public @Nonnull Results doSPARQLQuery(@Nonnull String sparql) {
         Query query = QueryFactory.create(sparql);
-        SPARQLString.Type type = query.isAskType() ? SPARQLString.Type.ASK
-                                                   : SPARQLString.Type.SELECT;
         Set<String> varNames = query.getProjectVars().stream().map(Var::getVarName)
                                                      .collect(Collectors.toSet());
-        return doQuery(query, type, varNames);
+        return doQuery(query, query.isAskType(), varNames);
     }
 
     @Nonnull
     public Results doQuery(@Nonnull SPARQLString ss, @Nonnull CQuery cQuery) {
-        Query query = QueryFactory.create(ss.getString());
+        Query query = QueryFactory.create(ss.getSparql());
         Projection projection = cQuery.getModifiers().projection();
-        Set<String> vars = projection == null ? ss.getPublicVarNames() : projection.getVarNames();
-        return doQuery(query, ss.getType(), vars);
+        Set<String> vars = projection == null ? ss.getVarNames() : projection.getVarNames();
+        return doQuery(query, ss.isAsk(), vars);
     }
 
-    public @Nonnull Results doQuery(@Nonnull Query query, @Nonnull SPARQLString.Type type,
+    public @Nonnull Results doQuery(@Nonnull Query query, boolean isAsk,
                                     @Nonnull Set<String> vars) {
         Stopwatch sw = Stopwatch.createStarted();
-        if (type == SPARQLString.Type.ASK) {
+        if (isAsk) {
             try (QueryExecution exec = executionFactory.apply(query)) {
                 boolean ans = exec.execAsk();
                 Set<Solution> solutions = ans ? singleton(MapSolution.EMPTY) : emptySet();
@@ -254,19 +248,18 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         if (!isLocal() && !canRemote(policy))
             return Cardinality.UNSUPPORTED;
 
-        PrefixDict dict = query.getPrefixDict(StdPrefixDict.EMPTY);
-        Set<Modifier> mods = query.getModifiers();
+        MutableCQuery mQuery = new MutableCQuery(query);
         if ((isLocal() && !canQueryLocal(policy)) || (!isLocal() && !canQueryRemote(policy)))
-            mods = ImmutableSet.<Modifier>builder().addAll(mods).add(Ask.INSTANCE).build();
-
-        SPARQLString sparql = new SPARQLString(query, dict, mods);
-        if (sparql.getType() == SPARQLString.Type.ASK) {
-            try (QueryExecution exec = createExecution(sparql.getString())) {
+            mQuery.mutateModifiers().add(Ask.INSTANCE);
+        else if ((isLocal() && canAskLocal(policy)) || (!isLocal() && canAskRemote(policy)))
+            mQuery.mutateModifiers().add(Limit.of(Math.max(limit(policy), 4)));
+        SPARQLString sparql = new SPARQLString(mQuery);
+        if (sparql.isAsk()) {
+            try (QueryExecution exec = createExecution(sparql.getSparql())) {
                 return exec.execAsk() ? Cardinality.NON_EMPTY : Cardinality.EMPTY;
             }
         } else {
-            String withLimit = sparql.getString() + "LIMIT "+ Math.max(limit(policy), 4) +"\n";
-            try (QueryExecution exec = createExecution(withLimit)) {
+            try (QueryExecution exec = createExecution(sparql.getSparql())) {
                 ResultSet results = exec.execSelect();
                 int count = 0;
                 boolean exhausted = false;

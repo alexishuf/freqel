@@ -2,8 +2,10 @@ package br.ufsc.lapesd.riefederator.algebra.leaf;
 
 import br.ufsc.lapesd.riefederator.algebra.AbstractOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
+import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
@@ -24,6 +26,7 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
     private final @Nonnull TPEndpoint endpoint;
     private final @Nonnull String template;
     private final @Nonnull Set<String> vars;
+    private final @Nonnull PrefixDict dict;
     private final boolean ask, distinct;
     private @Nullable ValuesModifier values;
     private @Nullable Collection<String> varNames;
@@ -36,17 +39,21 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
         this.vars = vars;
         this.ask = vars.isEmpty();
         this.distinct = DISTINCT_RX.matcher(template).find();
+        this.dict = StdPrefixDict.EMPTY;
         assertAllInvariants();
     }
 
     public SPARQLValuesTemplateOp(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
         this.endpoint = endpoint;
+        this.dict = query.getPrefixDict(StdPrefixDict.EMPTY);
         StringBuilder b = new StringBuilder(query.size()*60);
         distinct = query.getModifiers().distinct() != null;
         ask = query.attr().isAsk();
-        vars = query.attr().publicTripleVarNames();
-        FastSPARQLString.writeHeader(b, ask, distinct, vars);
-        FastSPARQLString.writeTriples(b, query);
+        this.vars = query.attr().publicTripleVarNames();
+        SPARQLString.writePrefixes(b, dict);
+        SPARQLString.writeHeader(b, ask, distinct, this.vars);
+
+        SPARQLString.writeTriples(b, query, dict, null);
 
         for (SPARQLFilter filter : query.getModifiers().filters())
             b.append(filter.getSparqlFilter()).append(' ');
@@ -93,7 +100,7 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
         StringBuilder b = new StringBuilder(template.length() +
                                             assignments.size() * 40);
         b.append(template, 0, idx);
-        FastSPARQLString.writeValues(b, varNames, assignments);
+        SPARQLString.writeValues(b, varNames, assignments, dict);
         b.append(template, idx, template.length());
         return b.toString();
     }

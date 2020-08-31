@@ -26,8 +26,6 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.*;
 
-import static br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict.DEFAULT;
-
 public class Linkedator {
     private static final Logger logger = LoggerFactory.getLogger(Linkedator.class);
     private static final @Nonnull Linkedator INSTANCE;
@@ -74,8 +72,8 @@ public class Linkedator {
                 print.printf("  subject: %s\n", subject.asVar().getName());
                 print.printf("  object: %s\n", object.asVar().getName());
                 print.printf("  sparql: |\n");
-                SPARQLString sparqlString = new SPARQLString(tpl.getTemplate(), DEFAULT);
-                for (String line : Splitter.on('\n').split(sparqlString.getString()))
+                SPARQLString sparqlString = new SPARQLString(tpl.getTemplate());
+                for (String line : Splitter.on('\n').split(sparqlString.getSparql()))
                     print.printf("    %s\n", line);
                 print.println("---");
             }

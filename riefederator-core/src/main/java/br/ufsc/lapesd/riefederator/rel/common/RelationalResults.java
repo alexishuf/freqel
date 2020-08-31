@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.rel.common;
 
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.riefederator.jena.query.JenaBindingSolution;
-import br.ufsc.lapesd.riefederator.model.FastSPARQLString;
+import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -91,7 +91,7 @@ public abstract class RelationalResults extends AbstractResults {
                     continue;
                 }
             }
-            FastSPARQLString ss = new FastSPARQLString(b);
+            SPARQLString ss = new SPARQLString(b);
             jenaStars.add(QueryFactory.create(ss.getSparql()));
             jenaVars.add(ss.getVarNames());
             jenaSolutionFac.add(JenaBindingSolution.forVars(jenaVars.get(i)));

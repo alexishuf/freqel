@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.util;
 
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
-import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
@@ -40,11 +39,11 @@ public class DelayedARQEndpoint extends ARQEndpoint {
     }
 
     @Override
-    public @Nonnull Results doQuery(@Nonnull Query query, @Nonnull SPARQLString.Type type,
+    public @Nonnull Results doQuery(@Nonnull Query query, boolean isAsk,
                                     @Nonnull Set<String> vars) {
         try {
             if (delayMs >= 0) Thread.sleep(delayMs);
         } catch (InterruptedException ignored) { }
-        return super.doQuery(query, type, vars);
+        return super.doQuery(query, isAsk, vars);
     }
 }

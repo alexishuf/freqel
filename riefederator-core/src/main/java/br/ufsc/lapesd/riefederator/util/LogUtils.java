@@ -67,14 +67,14 @@ public class LogUtils {
     }
 
     public static @Nonnull String toString(CQuery query) {
-        return toString(new SPARQLString(query, StdPrefixDict.STANDARD));
+        return toString(new SPARQLString(query.withPrefixDict(StdPrefixDict.STANDARD)));
     }
     public static @Nonnull String toString(Query query) {
         return query.toString(Syntax.syntaxSPARQL_11);
     }
     public static @Nonnull String toString(SPARQLString query) {
         PrefixDict d = StdPrefixDict.DEFAULT;
-        boolean small = query.getTriplesCount() <= 2;
+        boolean small = query.getSparql().split("\n").length <= 4;
         StringBuilder builder = new StringBuilder();
         for (String line : Splitter.on('\n').omitEmptyStrings().splitToList(query.toString())) {
             Matcher matcher = PREFIX_RX.matcher(line);
