@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.endpoint.impl;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
@@ -10,10 +11,7 @@ import br.ufsc.lapesd.riefederator.model.term.factory.TermFactory;
 import br.ufsc.lapesd.riefederator.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
-import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
-import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
-import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
+import br.ufsc.lapesd.riefederator.query.endpoint.*;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -67,7 +65,7 @@ import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static java.util.Objects.requireNonNull;
 
-public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
+public class SPARQLClient extends AbstractTPEndpoint implements DQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(SPARQLClient.class);
 
     public static final String TSV_TYPE = "text/tab-separated-values";
@@ -312,6 +310,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
             case LIMIT:
             case SPARQL_FILTER:
             case VALUES:
+            case OPTIONAL:
             case ASK:
                 return true;
             default:
@@ -323,8 +322,6 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
     public boolean canQuerySPARQL() {
         return true;
     }
-
-
 
     @Override
     public @Nonnull Results querySPARQL(@Nonnull String sparqlQuery) {
@@ -345,12 +342,34 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         return results;
     }
 
+    @Override
+    public boolean canQuery(@Nonnull Op query) {
+        return true; //can handle any SPARQL query
+    }
+
+    @Override
+    public @Nonnull Results query(@Nonnull Op query) throws DQEndpointException,
+                                                            QueryExecutionException {
+        boolean isAsk = query.modifiers().ask() != null || query.getResultVars().size() == 0;
+        String accept = isAsk ? JSON_ACCEPT : TSV_ACCEPT;
+        Set<String> vars = query.getResultVars();
+        Connection connection = new Connection(query, isAsk, accept);
+        Future<Connection> future = connectExecutor.submit(connection);
+        BaseResults results = isAsk ? new AskResults(vars, future) : new TSVResults(vars, future);
+        results.setOptional(query.modifiers().optional() != null);
+        synchronized (this) {
+            activeResults.put(results, true);
+        }
+        return results;
+    }
+
     protected @Nonnull BaseResults execute(@Nonnull CQuery query, @Nonnull String accept,
                                            @Nonnull Set<String> vars,
                                            @Nonnull ResultsFactory resultsFactory) {
         Connection connection = new Connection(query, vars.isEmpty(), accept);
         Future<Connection> future = connectExecutor.submit(connection);
         BaseResults results = resultsFactory.create(vars, future);
+        results.setOptional(query.getModifiers().optional() != null);
         synchronized (this) {
             activeResults.put(results, true);
         }
@@ -366,11 +385,18 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         @Nullable HttpGet httpGet;
         @Nullable Reader reader;
         boolean distinct, ask;
+        @Nullable Op opQuery;
         @Nullable CQuery query;
         @Nullable String sparqlQuery;
 
         final @Nonnull String accept;
 
+
+        public Connection(@Nonnull Op query, boolean isAsk, @Nonnull String accept) {
+            this.opQuery = query;
+            this.accept = accept;
+            this.ask = isAsk;
+        }
 
         public Connection(@Nonnull CQuery query, boolean isAsk, @Nonnull String accept) {
             this.query = query;
@@ -388,8 +414,9 @@ public class SPARQLClient extends AbstractTPEndpoint implements CQEndpoint {
         public @Nonnull Connection call() throws QueryExecutionException {
             Stopwatch sw = Stopwatch.createStarted();
             if (sparqlQuery == null) {
-                assert query != null;
-                SPARQLString ss = new SPARQLString(query);
+                assert query != null || opQuery != null;
+                SPARQLString ss = opQuery != null ? SPARQLString.create(opQuery)
+                                                  : SPARQLString.create(query);
                 sparqlQuery = ss.getSparql();
                 distinct = ss.isDistinct();
             } else {

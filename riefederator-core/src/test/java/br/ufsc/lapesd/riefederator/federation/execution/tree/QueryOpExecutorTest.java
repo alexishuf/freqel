@@ -17,19 +17,15 @@ import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
+import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import com.google.common.collect.Sets;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFDataMgr;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
@@ -42,7 +38,8 @@ import java.util.stream.Stream;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.fail;
 
 @Test(groups = {"fast"})
 public class QueryOpExecutorTest implements TestContext {
@@ -85,15 +82,8 @@ public class QueryOpExecutorTest implements TestContext {
     static {
         resultExecutors = new ConcurrentLinkedQueue<>();
 
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        Model model = ModelFactory.createDefaultModel();
-        String resourcePath = "br/ufsc/lapesd/riefederator/rdf-1.nt";
-        try (InputStream in = cl.getResourceAsStream(resourcePath)) {
-            assertNotNull(in, "Resource " + resourcePath + "not found");
-            RDFDataMgr.read(model, in, Lang.NT);
-        } catch (IOException e) {
-            fail("Unexpected IOException", e);
-        }
+        Model model = new TBoxSpec().addResource(QueryOpExecutorTest.class, "../../../rdf-1.nt")
+                                    .loadModel();
         rdf1 = ARQEndpoint.forModel(model, "rdf-1.nt");
         rdf1WithoutFilters = new ARQEndpoint("rdf-1.nt (no FILTER)",
                 q -> QueryExecutionFactory.create(q, model), null,
@@ -184,5 +174,4 @@ public class QueryOpExecutorTest implements TestContext {
                 MapSolution.builder().put(x, Bob).put(y, lit("beto", "pt")).build()
         ));
     }
-
 }

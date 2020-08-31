@@ -9,6 +9,7 @@ import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 public interface PrefixDict {
@@ -88,6 +89,8 @@ public interface PrefixDict {
      */
     @Nonnull Iterable<Map.Entry<String, String>> entries();
 
+    int size();
+
     boolean isEmpty();
 
     default void forEach(BiConsumer<String, String> consumer) {
@@ -135,4 +138,23 @@ public interface PrefixDict {
      */
     @Contract("_, !null -> !null")
     String expand(@Nonnull String shortened, String fallback);
+
+    /**
+     * Indicates whether this PrefixMap has the same name -> URI prefix mappings as other.
+     *
+     * This relation is symmetric, reflexive and transitive. Ordering of mappings is ignored.
+     *
+     * @param other {@link PrefixDict} to compare against. If null, always returns false
+     * @return true if dicts have the same set of mappings.
+     */
+    @Contract("null -> false")
+    default boolean sameEntries(@Nullable PrefixDict other) {
+        if (other == null) return false;
+        if (size() != other.size()) return false;
+        for (Map.Entry<String, String> e : entries()) {
+            if (!Objects.equals(other.expandPrefix(e.getKey(), null), e.getValue()))
+                return false;
+        }
+        return true;
+    }
 }

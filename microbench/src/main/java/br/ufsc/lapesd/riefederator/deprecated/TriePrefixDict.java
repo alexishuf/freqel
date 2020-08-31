@@ -104,4 +104,8 @@ public class TriePrefixDict extends AbstractPrefixDict implements MutablePrefixD
             uri2Prefix.remove(uri);
         return uri;
     }
+
+    @Override public int size() {
+        return prefix2URI.size();
+    }
 }

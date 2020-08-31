@@ -72,7 +72,7 @@ public class Linkedator {
                 print.printf("  subject: %s\n", subject.asVar().getName());
                 print.printf("  object: %s\n", object.asVar().getName());
                 print.printf("  sparql: |\n");
-                SPARQLString sparqlString = new SPARQLString(tpl.getTemplate());
+                SPARQLString sparqlString = SPARQLString.create(tpl.getTemplate());
                 for (String line : Splitter.on('\n').split(sparqlString.getSparql()))
                     print.printf("    %s\n", line);
                 print.println("---");

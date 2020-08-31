@@ -49,6 +49,11 @@ public class SynchronizedMutablePrefixDict implements MutablePrefixDict {
     }
 
     @Override
+    public int size() {
+        return delegate.size();
+    }
+
+    @Override
     public boolean isEmpty() {
         return delegate.isEmpty();
     }
@@ -89,5 +94,14 @@ public class SynchronizedMutablePrefixDict implements MutablePrefixDict {
     @Contract("_, !null -> !null")
     public synchronized String expand(@Nonnull String shortened, String fallback) {
         return delegate.expand(shortened, fallback);
+    }
+
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+    @Override
+    public synchronized boolean sameEntries(@Nullable PrefixDict other) {
+        if (other == null) return false;
+        synchronized (other) {
+            return delegate.sameEntries(other);
+        }
     }
 }

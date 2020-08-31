@@ -27,6 +27,11 @@ public class PrefixMappingDict extends AbstractPrefixDict implements MutablePref
     }
 
     @Override
+    public int size() {
+        return mapping.numPrefixes();
+    }
+
+    @Override
     public boolean isEmpty() {
         return mapping.hasNoMappings();
     }

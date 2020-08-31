@@ -9,6 +9,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -86,6 +87,14 @@ public interface Op {
      * that yielded this plan (even when the plan includes rewritten triples).
      */
     @Nonnull Set<Triple> getMatchedTriples();
+
+    /**
+     * Same as {@link Op#getMatchedTriples()}, but will only return the set if it is
+     * already computed or if its computation is fast.
+     *
+     * @return the set of triples if it was cached or fast to compute, false otherwise.
+     */
+    @Nullable Set<Triple> getCachedMatchedTriples();
 
     /**
      * Returns an unmodifiable view of the list of children nodes.

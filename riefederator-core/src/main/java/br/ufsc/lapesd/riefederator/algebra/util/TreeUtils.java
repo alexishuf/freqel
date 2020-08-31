@@ -9,8 +9,11 @@ import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
+import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
@@ -348,5 +351,36 @@ public class TreeUtils {
                 node.setName("Other-"+oNodes);
             }
         }
+    }
+
+    public static @Nonnull PrefixDict getPrefixDict(@Nonnull Op root) {
+        PrefixDict singleDict = null;
+        Set<PrefixDict> dictSet = null;
+        for (Iterator<Op> it = iteratePreOrder(root); it.hasNext(); ) {
+            Op op = it.next();
+            if (!(op instanceof QueryOp)) continue;
+            PrefixDict dict = ((QueryOp) op).getQuery().getPrefixDict();
+            if (dict != null) {
+                if (singleDict == null) {
+                    singleDict = dict;
+                } else if (dictSet == null) {
+                    dictSet = new HashSet<>();
+                    dictSet.add(singleDict);
+                    dictSet.add(dict);
+                } else {
+                    dictSet.add(dict);
+                }
+            }
+        }
+        if (dictSet == null)
+            return singleDict == null ? StdPrefixDict.EMPTY : singleDict;
+        if (dictSet.size() == 1)
+            return dictSet.iterator().next();
+        StdPrefixDict.Builder b = StdPrefixDict.builder();
+        for (PrefixDict dict : dictSet) {
+            for (Map.Entry<String, String> e : dict.entries())
+                b.put(e.getKey(), e.getValue());
+        }
+        return b.build();
     }
 }

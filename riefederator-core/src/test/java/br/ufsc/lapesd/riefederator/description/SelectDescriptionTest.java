@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.description;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.federation.spec.source.SourceCache;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
-import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -27,10 +26,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -59,9 +55,10 @@ public class SelectDescriptionTest implements TestContext {
         }
 
         @Override
-        public @Nonnull Results doQuery(@Nonnull SPARQLString ss, @Nonnull CQuery cQuery) {
+        public @Nonnull  Results doQuery(@Nonnull Query query, boolean isAsk,
+                                         @Nonnull Set<String> vars) {
             ++queries;
-            return super.doQuery(ss, cQuery);
+            return super.doQuery(query, isAsk, vars);
         }
     }
 

@@ -96,7 +96,6 @@ public class SPARQLParser {
         }
     }
 
-
     public @Nonnull CQuery parseConjunctive(@Nonnull String sparql) throws SPARQLParseException {
         try {
             Op root = convert(QueryFactory.create(sparql));

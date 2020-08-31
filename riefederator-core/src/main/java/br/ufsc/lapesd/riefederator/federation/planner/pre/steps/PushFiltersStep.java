@@ -13,7 +13,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
-public class FiltersPushStep implements PlannerStep {
+public class PushFiltersStep implements PlannerStep {
 
     /**
      * Walks the tree attempting to push any {@link SPARQLFilter} as deep as possible toward leaves.

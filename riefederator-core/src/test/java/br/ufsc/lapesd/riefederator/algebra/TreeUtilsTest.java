@@ -10,12 +10,17 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
+import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
+import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
+import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
+import org.apache.jena.shared.impl.PrefixMappingImpl;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -365,5 +370,63 @@ public class TreeUtilsTest implements TestContext {
         assertEquals(root.getResultVars(), rootResultVars);
         assertEquals(root.getMatchedTriples(), rootMatchedTriples);
         assertEquals(root, expected); //root was not affected
+    }
+
+    @Test
+    public void testLeafNullPrefixDict() {
+        CQuery query = createQuery(Alice, knows, x);
+        QueryOp op = new QueryOp(query);
+        assertTrue(TreeUtils.getPrefixDict(op).sameEntries(query.getPrefixDict()));
+    }
+
+    @Test
+    public void testLeafWithPrefixDict() {
+        CQuery qry = createQuery(x, age, u, SPARQLFilter.build("?u > 23"), StdPrefixDict.DEFAULT);
+        EndpointQueryOp op = new EndpointQueryOp(ep, qry);
+        assertTrue(TreeUtils.getPrefixDict(op).sameEntries(StdPrefixDict.DEFAULT));
+        assertSame(TreeUtils.getPrefixDict(op), StdPrefixDict.DEFAULT);
+    }
+
+    @Test
+    public void testUnionWithSameDict() {
+        Op u = UnionOp.builder()
+                .add(new QueryOp(createQuery(x, knows, Alice, StdPrefixDict.DEFAULT)))
+                .add(new QueryOp(createQuery(x, knows, Bob, StdPrefixDict.DEFAULT)))
+                .build();
+        assertTrue(TreeUtils.getPrefixDict(u).sameEntries(StdPrefixDict.DEFAULT));
+        assertTrue(StdPrefixDict.DEFAULT.sameEntries(TreeUtils.getPrefixDict(u)));
+        assertSame(TreeUtils.getPrefixDict(u), StdPrefixDict.DEFAULT);
+    }
+
+
+    @Test
+    public void testUnionWithEqualDict() {
+        PrefixMappingDict copy = new PrefixMappingDict(new PrefixMappingImpl());
+        for (Map.Entry<String, String> e : StdPrefixDict.DEFAULT.entries())
+            copy.put(e.getKey(), e.getValue());
+        Op u = UnionOp.builder()
+                .add(new QueryOp(createQuery(x, knows, Alice, StdPrefixDict.DEFAULT)))
+                .add(new QueryOp(createQuery(x, knows, Bob, StdPrefixDict.DEFAULT)))
+                .build();
+        assertTrue(TreeUtils.getPrefixDict(u).sameEntries(copy));
+        assertTrue(copy.sameEntries(TreeUtils.getPrefixDict(u)));
+    }
+
+    @Test
+    public void testMergeDict() {
+        StdPrefixDict other = new StdPrefixDict();
+        other.put("ex2", EX+"2/");
+        JoinOp root = JoinOp.create(new QueryOp(createQuery(x, knows, y, StdPrefixDict.STANDARD)),
+                                    new QueryOp(createQuery(y, age, u, other)));
+        PrefixDict merged = TreeUtils.getPrefixDict(root);
+
+        StdPrefixDict.Builder expectedBuilder = StdPrefixDict.builder();
+        for (Map.Entry<String, String> e : StdPrefixDict.STANDARD.entries())
+            expectedBuilder.put(e.getKey(), e.getValue());
+        expectedBuilder.put("ex2", EX+"2/");
+        StdPrefixDict expected = expectedBuilder.build();
+
+        assertTrue(merged.sameEntries(expected));
+        assertTrue(expected.sameEntries(merged));
     }
 }

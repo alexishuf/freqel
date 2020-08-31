@@ -105,6 +105,11 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     }
 
     @Override
+    public @Nullable Set<Triple> getCachedMatchedTriples() {
+        return matchedTriples;
+    }
+
+    @Override
     public @Nonnull List<Op> getChildren() {
         checkState(children != null, "getChildren() before closing takeChildren() handle");
         return children;

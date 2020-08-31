@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.model;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
@@ -29,6 +30,7 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDFS;
+import org.apache.jena.vocabulary.XSD;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -36,10 +38,14 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJena;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
@@ -80,28 +86,28 @@ public class SPARQLStringTest implements TestContext {
 
     @Test
     public void testTripleASK() {
-        SPARQLString s = new SPARQLString(createQuery(Alice, knows, Bob));
+        SPARQLString s = SPARQLString.create(createQuery(Alice, knows, Bob));
         assertTrue(s.isAsk());
         assertEquals(s.getVarNames(), emptySet());
     }
 
     @Test
     public void testConjunctiveASK() {
-        SPARQLString s = new SPARQLString(createQuery(Alice, knows, Bob, Alice, knows, Alice));
+        SPARQLString s = SPARQLString.create(createQuery(Alice, knows, Bob, Alice, knows, Alice));
         assertTrue(s.isAsk());
         assertEquals(s.getVarNames(), emptySet());
     }
 
     @Test
     public void testTripleSELECT() {
-        SPARQLString s = new SPARQLString(createQuery(Alice, knows, new StdVar("who")));
+        SPARQLString s = SPARQLString.create(createQuery(Alice, knows, new StdVar("who")));
         assertFalse(s.isAsk());
         assertEquals(s.getVarNames(), singleton("who"));
     }
 
     @Test
     public void testSELECTWithFilter() {
-        SPARQLString sparqlString = new SPARQLString(
+        SPARQLString sparqlString = SPARQLString.create(
                 createQuery(x, age, y, SPARQLFilter.build("?y > 23")));
         assertFalse(sparqlString.isAsk());
 
@@ -124,7 +130,7 @@ public class SPARQLStringTest implements TestContext {
     public void testConjunctiveSELECTWithPureDescriptive() {
         Triple descriptive = new Triple(x, knows, Bob);
         CQuery query = createQuery(descriptive, PureDescriptive.INSTANCE, x, knows, Alice);
-        SPARQLString string = new SPARQLString(query);
+        SPARQLString string = SPARQLString.create(query);
         assertFalse(string.isAsk());
         String sparql = string.getSparql();
         assertFalse(sparql.contains("Bob"));
@@ -136,11 +142,12 @@ public class SPARQLStringTest implements TestContext {
                 Alice, knows, x,
                 x, age, y,
                 x, name, z, AtomInputAnnotation.asRequired(A1, "name").missingInResult().get());
-        SPARQLString string = new SPARQLString(query);
+        SPARQLString string = SPARQLString.create(query);
         assertFalse(string.isAsk());
-        assertEquals(string.getVarNames(), Sets.newHashSet("x", "y"));
+        assertEquals(string.getVarNames(), Sets.newHashSet("x", "y", "z"));
 
-        CQuery parsed = SPARQLParser.strict().parseConjunctive(string.getSparql());
+        SPARQLParser parser = new SPARQLParser().allowExtraProjections(true);
+        CQuery parsed = parser.parseConjunctive(string.getSparql());
         assertEquals(parsed.attr().getSet(), Sets.newHashSet(
                 new Triple(Alice, knows, x),
                 new Triple(x, age, y)));
@@ -148,19 +155,19 @@ public class SPARQLStringTest implements TestContext {
 
     @Test
     public void testDistinct() {
-        String str = new SPARQLString(createQuery(s, knows, o, Distinct.INSTANCE)).getSparql();
+        String str = SPARQLString.create(createQuery(s, knows, o, Distinct.INSTANCE)).getSparql();
         assertTrue(Pattern.compile("SELECT +DISTINCT +").matcher(str).find());
     }
 
     @Test
     public void testProjection() {
-        String str = new SPARQLString(createQuery(s, knows, o, Projection.of("o"))).getSparql();
+        String str = SPARQLString.create(createQuery(s, knows, o, Projection.of("o"))).getSparql();
         assertTrue(Pattern.compile("SELECT +\\?o +WHERE").matcher(str).find());
     }
 
     @Test
     public void testLimit() {
-        SPARQLString ss = new SPARQLString(createQuery(Alice, knows, x, Limit.of(10)));
+        SPARQLString ss = SPARQLString.create(createQuery(Alice, knows, x, Limit.of(10)));
         assertEquals(ss.getVarNames(), singleton("x"));
         assertTrue(ss.getSparql().contains("LIMIT 10"));
         QueryFactory.create(ss.getSparql()); //throws if invalid syntax
@@ -168,7 +175,7 @@ public class SPARQLStringTest implements TestContext {
 
     @Test
     public void testAskWithVars() {
-        String str = new SPARQLString(createQuery(s, knows, o, Ask.INSTANCE)).getSparql();
+        String str = SPARQLString.create(createQuery(s, knows, o, Ask.INSTANCE)).getSparql();
         assertTrue(Pattern.compile("ASK +\\{").matcher(str).find());
     }
 
@@ -187,7 +194,7 @@ public class SPARQLStringTest implements TestContext {
         ValuesModifier m = new ValuesModifier(singleton("y"),
                                               singleton(MapSolution.build(y, lit(23))));
         CQuery query = createQuery(x, age, y, m);
-        String sparql = new SPARQLString(query).getSparql();
+        String sparql = SPARQLString.create(query).getSparql();
         Set<Term> actual = new HashSet<>();
         try (QueryExecution ex = QueryExecutionFactory.create(sparql, rdf2)) {
             ResultSet set = ex.execSelect();
@@ -207,7 +214,7 @@ public class SPARQLStringTest implements TestContext {
                 MapSolution.builder().put(y, Person).put(z, lit(24)).build() //no result
         ));
         CQuery query = createQuery(x, type, y, x, age, z, m);
-        String sparql = new SPARQLString(query).getSparql();
+        String sparql = SPARQLString.create(query).getSparql();
         Set<Solution> actual = new HashSet<>();
         try (QueryExecution ex = QueryExecutionFactory.create(sparql, rdf2)) {
             ResultSet set = ex.execSelect();
@@ -227,5 +234,97 @@ public class SPARQLStringTest implements TestContext {
         ARQEndpoint ep = ARQEndpoint.forModel(rdf2);
         ep.query(query).forEachRemainingThenClose(actual::add);
         assertEquals(actual, expected);
+    }
+
+    @DataProvider
+    public static Object[][] reParseData() {
+        String prolog = "PREFIX ex: <"+ EX +">\n" +
+                "PREFIX foaf: <"+ FOAF.NS +">\n" +
+                "PREFIX xsd: <"+ XSD.NS +">\n";
+        return Stream.of(
+                // simple queries with projections ...
+                prolog+"SELECT * WHERE {?x ?p ?o .}",
+                prolog+"SELECT ?x WHERE {?x ?p ?o .}",
+                prolog+"SELECT ?x WHERE { ex:Alice foaf:knows ?x .}",
+                prolog+"SELECT ?name WHERE { ex:Alice foaf:knows ?name .}",
+                // filters ...
+                prolog+"SELECT * WHERE { ex:Alice foaf:knows ?name ; foaf:age ?u FILTER(?u > 23).}",
+                prolog+"SELECT ?name ?u WHERE { ex:Alice foaf:knows ?name ; foaf:age ?u FILTER(?u > 23).}",
+                // LIMIT+DISTINCT
+                prolog+"SELECT DISTINCT ?name WHERE {?x foaf:name ?name } LIMIT 10",
+                // OPTIONAL
+                prolog+"SELECT * WHERE {?x foaf:knows ?y . OPTIONAL {?y foaf:age ?u}}",
+                prolog+"SELECT ?x ?u WHERE {?x foaf:knows ?y . OPTIONAL {?y foaf:age ?u}}",
+                // UNION
+                prolog+"SELECT * WHERE {\n" +
+                        "  {\n" +
+                        "    ?x foaf:knows ex:Alice " +
+                        "  } UNION {\n" +
+                        "    ?x foaf:knows ex:Bob " +
+                        "  }\n" +
+                        "}",
+                // UNION with more triples and modifiers
+                prolog+"SELECT * WHERE {\n" +
+                        "  {\n" +
+                        "    ?x foaf:knows ex:Alice " +
+                        "  } UNION {\n" +
+                        "    ?x foaf:knows ex:Bob " +
+                        "  }\n" +
+                        "}",
+                // UNION with OPTIONAL within
+                prolog+"SELECT ?u ?name WHERE {\n" +
+                        "  {\n" +
+                        "    ?x foaf:knows ex:Alice; foaf:age ?u FILTER(?u > 23) .\n" +
+                        "  } UNION {\n" +
+                        "    ?x foaf:knows ex:Bob; foaf:age ?u .\n" +
+                        "    OPTIONAL { ?x foaf:name ?name }\n" +
+                        "  }\n" +
+                        "}",
+                // join with OPTIONAL AND UNION with 3 operands + paths
+                prolog+"SELECT ?x ?u ?thing ?type WHERE {\n" +
+                        "  { {\n" +
+                        "    ?x foaf:knows ex:Alice .\n" +
+                        "    ex:Alice foaf:knows ?x .\n" +
+                        "  } UNION {\n" +
+                        "    ?x foaf:knows ex:Bob ; foaf:age ?u FILTER (?u < ?v) .\n" +
+                        "    ex:Bob foaf:age ?v.\n" +
+                        "  } UNION {\n" +
+                        "    ?x foaf:knows ex:Charlie .\n" +
+                        "    ex:Charlie foaf:knows/foaf:age ?u .\n" +
+                        "  } } .\n" +
+                        "  ?x foaf:knows/foaf:knows ?x ;\n" +
+                        "     foaf:made ?thing .\n" +
+                        "  OPTIONAL {?thing a ?type.}\n" +
+                        "}"
+        ).map(s -> new Object[]{s}).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "reParseData")
+    public void testReParse(@Nonnull String sparql) throws Exception {
+        Op op = SPARQLParser.strict().parse(sparql);
+        SPARQLString ss = SPARQLString.create(op);
+        Op parsed = SPARQLParser.strict().parse(ss.getSparql());
+        // compare some quick aspects of the trees
+        assertEquals(parsed.getAllVars(), op.getAllVars());
+        assertEquals(parsed.getResultVars(), op.getResultVars());
+        assertEquals(parsed.getMatchedTriples(), op.getMatchedTriples());
+        assertEquals(streamPreOrder(parsed).count(), streamPreOrder(op).count());
+
+        // same histogram of Op classes
+        Map<Class<? extends Op>, Integer> exHist = new HashMap<>(), acHist = new HashMap<>();
+        streamPreOrder(op)
+                .forEach(o -> exHist.put(o.getClass(), exHist.getOrDefault(o.getClass(), 0)+1));
+        streamPreOrder(parsed)
+                .forEach(o -> acHist.put(o.getClass(), acHist.getOrDefault(o.getClass(), 0)+1));
+        assertEquals(acHist, exHist);
+
+        // no modifier was lost
+        Set<Modifier> exMods = new HashSet<>(), acMods = new HashSet<>();
+        streamPreOrder(op).forEach(o -> exMods.addAll(o.modifiers()));
+        streamPreOrder(parsed).forEach(o -> acMods.addAll(o.modifiers()));
+        assertEquals(acMods, exMods);
+
+        // full comparison. The previous tests serve mostly to help debug failures
+        assertEquals(parsed, op);
     }
 }

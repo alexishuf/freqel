@@ -25,7 +25,7 @@ import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
-public class FiltersPushStepTest implements TestContext {
+public class PushFiltersStepTest implements TestContext {
     private @Nonnull CQEndpoint ep1 = new EmptyEndpoint(), ep2 = new EmptyEndpoint();
 
     private void checkAllFilters(@Nonnull Set<SPARQLFilter> filters,
@@ -63,7 +63,7 @@ public class FiltersPushStepTest implements TestContext {
         JoinOp root = JoinOp.create(j1, q3);
 
         HashSet<SPARQLFilter> set = new HashSet<>(root.modifiers().filters());
-        Op replacement = new FiltersPushStep().plan(root, emptySet());
+        Op replacement = new PushFiltersStep().plan(root, emptySet());
         checkAllFilters(set, replacement);
     }
 
@@ -77,7 +77,7 @@ public class FiltersPushStepTest implements TestContext {
                 .add(new EndpointQueryOp(ep1, query))
                 .add(new EndpointQueryOp(ep2, query))
                 .build();
-        FiltersPushStep step = new FiltersPushStep();
+        PushFiltersStep step = new PushFiltersStep();
         Op replacement = step.plan(node, emptySet());
         checkAllFilters(singleton(SPARQLFilter.build("?u > 23")), replacement);
     }
@@ -92,7 +92,7 @@ public class FiltersPushStepTest implements TestContext {
                 .add(new EndpointQueryOp(ep2, query))
                 .add(SPARQLFilter.build("?u > 23"))
                 .build();
-        FiltersPushStep step = new FiltersPushStep();
+        PushFiltersStep step = new PushFiltersStep();
         Op replacement = step.plan(node, emptySet());
         checkAllFilters(singleton(SPARQLFilter.build("?u > 23")), replacement);
     }
@@ -115,7 +115,7 @@ public class FiltersPushStepTest implements TestContext {
         rtl.modifiers().add(eq);
         rtl.modifiers().add(greater);
 
-        FiltersPushStep step = new FiltersPushStep();
+        PushFiltersStep step = new PushFiltersStep();
         checkAllFilters(Sets.newHashSet(eq, greater), step.plan(ltr, emptySet()));
         checkAllFilters(Sets.newHashSet(eq, greater), step.plan(rtl, emptySet()));
     }
@@ -127,7 +127,7 @@ public class FiltersPushStepTest implements TestContext {
                 .add(new EndpointQueryOp(ep1, createQuery(Alice, age, u)))
                 .add(SPARQLFilter.build("?u > 23"))
                 .build();
-        Op replacement = new FiltersPushStep().plan(op, emptySet());
+        Op replacement = new PushFiltersStep().plan(op, emptySet());
         checkAllFilters(singleton(SPARQLFilter.build("?u > 23")), replacement);
     }
 
@@ -141,7 +141,7 @@ public class FiltersPushStepTest implements TestContext {
                 new EndpointQueryOp(ep1, createQuery(y, age, u, SPARQLFilter.build("?u > 23"))));
         op.modifiers().add(SPARQLFilter.build("?u > 23"));
 
-        Op replacement = new FiltersPushStep().plan(op, emptySet());
+        Op replacement = new PushFiltersStep().plan(op, emptySet());
         assertSame(replacement, op);
         checkAllFilters(singleton(SPARQLFilter.build("?u > 23")), replacement);
         assertEquals(op.getChildren().get(0).getChildren().get(1).modifiers().filters(),
@@ -158,7 +158,7 @@ public class FiltersPushStepTest implements TestContext {
         Op lockedNode = op.getRight();
         Set<RefEquals<Op>> lockedSet = singleton(RefEquals.of(lockedNode));
 
-        Op replacement = new FiltersPushStep().plan(op, lockedSet);
+        Op replacement = new PushFiltersStep().plan(op, lockedSet);
         assertSame(replacement, op);
         checkAllFilters(singleton(SPARQLFilter.build("?u > 23")), replacement);
 

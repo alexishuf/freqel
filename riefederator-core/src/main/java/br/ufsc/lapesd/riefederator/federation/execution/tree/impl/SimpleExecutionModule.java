@@ -27,7 +27,8 @@ public class SimpleExecutionModule extends AbstractModule {
     protected void configure() {
         configureResultsExecutor();
         bind(QueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
-        bind(MultiQueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
+        bind(DQueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
+        bind(UnionOpExecutor.class).to(SimpleQueryOpExecutor.class);
         bind(CartesianOpExecutor.class).to(LazyCartesianOpExecutor.class);
         bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
         if (allowHashJoins)

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.algebra;
 
+import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 
@@ -36,9 +37,9 @@ public abstract class AbstractOp implements Op {
     }
 
     protected boolean assertAllInvariants(boolean test) {
-        boolean oldCacheHit = this.cacheHit;
         if (!test || !AbstractOp.class.desiredAssertionStatus())
             return true;
+        boolean oldCacheHit = this.cacheHit;
         Projection projection = modifiers().projection();
         assert projection == null || projection.getVarNames().equals(getResultVars());
         assert getPublicVars().containsAll(getResultVars());
@@ -198,6 +199,11 @@ public abstract class AbstractOp implements Op {
     @Override
     public boolean isProjected() {
         return modifiers().projection() != null;
+    }
+
+    @Override
+    public @Nullable Set<Triple> getCachedMatchedTriples() {
+        return getMatchedTriples();
     }
 
     protected @Nonnull String getPiWithNames() {

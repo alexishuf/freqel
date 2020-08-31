@@ -16,7 +16,7 @@ import javax.inject.Inject;
 
 public class InjectedExecutor implements PlanExecutor {
     private final @Nonnull QueryOpExecutor queryNodeExecutor;
-    private final @Nonnull MultiQueryOpExecutor multiQueryNodeExecutor;
+    private final @Nonnull UnionOpExecutor multiQueryNodeExecutor;
     private final @Nonnull JoinOpExecutor joinNodeExecutor;
     private final @Nonnull CartesianOpExecutor cartesianNodeExecutor;
     private final @Nonnull EmptyOpExecutor emptyNodeExecutor;
@@ -24,7 +24,7 @@ public class InjectedExecutor implements PlanExecutor {
 
     @Inject
     public InjectedExecutor(@Nonnull QueryOpExecutor queryNodeExecutor,
-                            @Nonnull MultiQueryOpExecutor multiQueryNodeExecutor,
+                            @Nonnull UnionOpExecutor multiQueryNodeExecutor,
                             @Nonnull JoinOpExecutor joinNodeExecutor,
                             @Nonnull CartesianOpExecutor cartesianNodeExecutor,
                             @Nonnull EmptyOpExecutor emptyNodeExecutor,

@@ -5,6 +5,6 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 
 import javax.annotation.Nonnull;
 
-public interface MultiQueryOpExecutor extends OpExecutor {
+public interface UnionOpExecutor extends OpExecutor {
     @Nonnull Results execute(@Nonnull UnionOp node);
 }

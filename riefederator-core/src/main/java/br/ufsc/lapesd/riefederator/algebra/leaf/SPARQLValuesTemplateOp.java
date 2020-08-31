@@ -53,7 +53,7 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
         SPARQLString.writePrefixes(b, dict);
         SPARQLString.writeHeader(b, ask, distinct, this.vars);
 
-        SPARQLString.writeTriples(b, query, dict, null);
+        SPARQLString.writeTriples(b, query, dict);
 
         for (SPARQLFilter filter : query.getModifiers().filters())
             b.append(filter.getSparqlFilter()).append(' ');

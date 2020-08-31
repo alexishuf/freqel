@@ -39,13 +39,13 @@ import static org.testng.Assert.*;
 @Test(groups = {"fast"})
 public class UnionOpExecutorTest implements TestContext {
 
-    private static final List<NamedSupplier<MultiQueryOpExecutor>> suppliers = singletonList(
+    private static final List<NamedSupplier<UnionOpExecutor>> suppliers = singletonList(
             new NamedSupplier<>("SimpleQueryNodeExecutor",
                     () -> Guice.createInjector(Modules.override(new SimpleExecutionModule())
                             .with(new AbstractModule() {
                                     @Override
                                     protected void configure() {
-                                        bind(MultiQueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
+                                        bind(UnionOpExecutor.class).to(SimpleQueryOpExecutor.class);
                                     }
                                 })
                         ).getInstance(SimpleQueryOpExecutor.class))
@@ -78,8 +78,8 @@ public class UnionOpExecutorTest implements TestContext {
     }
 
     @Test(dataProvider = "testData")
-    public void testQueryBoth(Supplier<MultiQueryOpExecutor> supplier) {
-        MultiQueryOpExecutor executor = supplier.get();
+    public void testQueryBoth(Supplier<UnionOpExecutor> supplier) {
+        UnionOpExecutor executor = supplier.get();
         EndpointQueryOp qn1 = new EndpointQueryOp(rdf1, createQuery(x, knows, Bob));
         EndpointQueryOp qn2 = new EndpointQueryOp(rdf2, createQuery(x, knows, Bob));
 
@@ -93,8 +93,8 @@ public class UnionOpExecutorTest implements TestContext {
     }
 
     @Test(dataProvider = "testData")
-    public void testRunFilters(Supplier<MultiQueryOpExecutor> supplier) {
-        MultiQueryOpExecutor executor = supplier.get();
+    public void testRunFilters(Supplier<UnionOpExecutor> supplier) {
+        UnionOpExecutor executor = supplier.get();
         EndpointQueryOp qn1 = new EndpointQueryOp(rdf1, createQuery(x, age, y));
         EndpointQueryOp qn2 = new EndpointQueryOp(rdf2, createQuery(x, age, y));
         Op node = UnionOp.builder().add(qn1).add(qn2).build();

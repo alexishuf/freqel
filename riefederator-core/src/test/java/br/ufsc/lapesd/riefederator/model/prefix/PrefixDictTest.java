@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.model.prefix;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.jena.model.prefix.PrefixMappingDict;
 import org.apache.jena.shared.impl.PrefixMappingImpl;
 import org.testng.annotations.DataProvider;
@@ -10,13 +11,15 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
-public class PrefixDictTest {
+public class PrefixDictTest implements TestContext {
     public static List<NamedSupplier<? extends MutablePrefixDict>> nativeMutable, mutable;
 
     static {
@@ -200,4 +203,45 @@ public class PrefixDictTest {
             assertEquals(shortened.getLocalName(), "inst");
         }
     }
+
+    @DataProvider
+    public static @Nonnull Object[][] sameEntryData() {
+        String exA = EX + "a/", exB = EX + "b/";
+        return Stream.of(
+                asList(asList("a", exA), asList("a", exA), true),
+                asList(asList("b", exB), asList("a", exA), false),
+                asList(asList("a", exA), asList("b", exB), false),
+                asList(asList("a", exA), asList("a", exB), false),
+                asList(asList("a", exB), asList("a", exA), false),
+                asList(asList("a", exA), emptyList(),      false),
+                asList(emptyList(),      asList("a", exA), false),
+
+                asList(asList("a", exA), asList("a", exA, "b", exB), false),
+                asList(asList("a", exA, "b", exB), asList("a", exA), false),
+
+                asList(asList("a", exA, "b", exB), asList("a", exA, "b", exB), true),
+                asList(asList("a", exA, "b", exB), asList("b", exB, "a", exA), true),
+                asList(asList("b", exB, "a", exA), asList("a", exA, "b", exB), true)
+        ).flatMap(l -> mutable.stream().map(s -> {
+            ArrayList<Object> copy = new ArrayList<>(l);
+            copy.add(0, s);
+            return copy;
+        })).map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "sameEntryData")
+    public void testSameEntryData(Supplier<? extends MutablePrefixDict> supplier,
+                                  List<String> left, List<String> right, boolean expected) {
+        assertEquals(left.size() % 2, 0);
+        assertEquals(right.size() % 2, 0);
+        MutablePrefixDict leftDict = supplier.get(), rightDict = supplier.get();
+        for (int i = 0, size = left.size(); i < size; i += 2)
+            leftDict.put(left.get(i), left.get(i+1));
+        for (int i = 0, size = right.size(); i < size; i += 2)
+            rightDict.put(right.get(i), right.get(i+1));
+
+        assertEquals(leftDict.sameEntries(rightDict), expected);
+        assertEquals(rightDict.sameEntries(leftDict), expected);
+    }
+
 }

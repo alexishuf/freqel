@@ -91,7 +91,7 @@ public abstract class RelationalResults extends AbstractResults {
                     continue;
                 }
             }
-            SPARQLString ss = new SPARQLString(b);
+            SPARQLString ss = SPARQLString.create(b);
             jenaStars.add(QueryFactory.create(ss.getSparql()));
             jenaVars.add(ss.getVarNames());
             jenaSolutionFac.add(JenaBindingSolution.forVars(jenaVars.get(i)));

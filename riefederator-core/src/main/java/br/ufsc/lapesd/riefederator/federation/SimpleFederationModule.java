@@ -18,6 +18,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.post.PhasedPostPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.post.steps.EndpointPushStep;
 import br.ufsc.lapesd.riefederator.federation.planner.post.steps.PipeCleanerStep;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.PhasedPrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.steps.*;
@@ -98,7 +99,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
                     .appendPhase2(new CartesianDistributionStep())
                     .appendPhase3(new ConjunctionReplaceStep(joinOrderPlanner))
                     .appendPhase3(new FlattenStep())
-                    .appendPhase3(new FiltersPushStep());
+                    .appendPhase3(new PushFiltersStep());
         }
     }
 
@@ -111,7 +112,9 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         }
 
         @Override public PostPlanner get() {
-            return new PhasedPostPlanner(performanceListener).appendPhase1(new PipeCleanerStep());
+            return new PhasedPostPlanner(performanceListener)
+                    .appendPhase1(new PipeCleanerStep())
+                    .appendPhase1(new EndpointPushStep());
         }
     }
 

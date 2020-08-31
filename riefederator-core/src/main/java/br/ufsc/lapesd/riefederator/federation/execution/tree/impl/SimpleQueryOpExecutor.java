@@ -3,19 +3,17 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree.impl;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.DQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianOpExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.MultiQueryOpExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.QueryOpExecutor;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.SPARQLValuesTemplateOpExecutor;
+import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
-import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
-import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
-import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.*;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
@@ -37,7 +35,7 @@ import java.util.Set;
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 
 public class SimpleQueryOpExecutor extends SimpleOpExecutor
-        implements QueryOpExecutor, MultiQueryOpExecutor, CartesianOpExecutor,
+        implements QueryOpExecutor, UnionOpExecutor, DQueryOpExecutor, CartesianOpExecutor,
         SPARQLValuesTemplateOpExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SimpleQueryOpExecutor.class);
     private final @Nonnull ResultsExecutor resultsExecutor;
@@ -59,6 +57,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
     @Override
     public boolean canExecute(@Nonnull Class<? extends Op> nodeClass) {
         return EndpointQueryOp.class.isAssignableFrom(nodeClass)
+                || DQueryOpExecutor.class.isAssignableFrom(nodeClass)
                 || UnionOp.class.isAssignableFrom(nodeClass)
                 || CartesianOp.class.isAssignableFrom(nodeClass)
                 || SPARQLValuesTemplateOp.class.isAssignableFrom(nodeClass);
@@ -91,6 +90,53 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         }
     }
 
+    @Override public @Nonnull Results execute(@Nonnull DQueryOp node) {
+        try {
+            return doExecute(node);
+        } catch (QueryExecutionException e) {
+            logger.error("Failed execute query against endpoint {}. Cause: {}.\n  Query:\n    {}",
+                         node.getEndpoint(), e.getMessage(),
+                         node.getQuery().prettyPrint(new StringBuilder(), "    "));
+            return CollectionResults.empty(node.getResultVars());
+        }
+    }
+
+    protected @Nonnull Results doExecute(@Nonnull DQueryOp node) {
+        DQEndpoint endpoint = node.getEndpoint();
+        Op query = node.getQuery();
+        if (!endpoint.canQuery(query)) {
+            assert false : "Why did a non-executable plan got to this point!?";
+            throw new QueryExecutionException("Endpoint does not support query operations");
+        }
+        // if save all unsupported modifiers in pending
+        ModifiersSet pending = null;
+        for (Modifier m : query.modifiers()) {
+            Capability capability = m.getCapability();
+            if (!endpoint.hasCapability(capability))
+                (pending == null ? pending = new ModifiersSet() : pending).add(m);
+        }
+        if (pending != null) { // replace query to a copy with supported modifiers
+            Op copy = TreeUtils.deepCopy(query);
+            for (Modifier m : query.modifiers()) {
+                if (!pending.contains(m))
+                    copy.modifiers().add(m);
+            }
+            query = copy;
+        }
+
+        Results r = endpoint.query(query);
+        if (pending != null) { //apply modifiers locally
+            if (pending.optional() != null)
+                r.setOptional(true);
+            r = HashDistinctResults.applyIf(r, pending);
+            r = SPARQLFilterResults.applyIf(r, pending.filters());
+            r = LimitResults.applyIf(r, pending);
+            r = ProjectingResults.applyIf(r, pending);
+            r = AskResults.applyIf(r, pending);
+        }
+        return r;
+    }
+
     @Override
     public @Nonnull Results execute(@Nonnull EndpointQueryOp node) {
         try {
@@ -102,7 +148,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         }
     }
 
-    public @Nonnull Results doExecute(@Nonnull EndpointQueryOp node) {
+    protected @Nonnull Results doExecute(@Nonnull EndpointQueryOp node) {
         CQuery q = node.getQuery();
         TPEndpoint ep = node.getEndpoint();
         Set<SPARQLFilter> filters = node.modifiers().filters();

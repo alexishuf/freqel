@@ -67,7 +67,7 @@ public class LogUtils {
     }
 
     public static @Nonnull String toString(CQuery query) {
-        return toString(new SPARQLString(query.withPrefixDict(StdPrefixDict.STANDARD)));
+        return toString(SPARQLString.create(query.withPrefixDict(StdPrefixDict.STANDARD)));
     }
     public static @Nonnull String toString(Query query) {
         return query.toString(Syntax.syntaxSPARQL_11);

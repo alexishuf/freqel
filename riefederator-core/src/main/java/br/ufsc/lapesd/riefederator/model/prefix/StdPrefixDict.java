@@ -147,6 +147,11 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
     }
 
     @Override
+    public int size() {
+        return prefixNames.size();
+    }
+
+    @Override
     public boolean isEmpty() {
         return prefixNames.isEmpty();
     }

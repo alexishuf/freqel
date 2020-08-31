@@ -1,19 +1,16 @@
 package br.ufsc.lapesd.riefederator.jena.query;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
-import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
-import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
-import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
+import br.ufsc.lapesd.riefederator.query.endpoint.*;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
@@ -35,6 +32,9 @@ import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -46,7 +46,7 @@ import static java.util.Collections.singleton;
 import static org.apache.jena.query.QueryExecutionFactory.create;
 import static org.apache.jena.query.QueryExecutionFactory.sparqlService;
 
-public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
+public class ARQEndpoint extends AbstractTPEndpoint implements DQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(ARQEndpoint.class);
 
     @SuppressWarnings("Immutable")
@@ -141,6 +141,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             case LIMIT:
             case SPARQL_FILTER:
             case VALUES:
+            case OPTIONAL:
             case ASK:
                 return true;
             default:
@@ -155,51 +156,81 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results querySPARQL(@Nonnull String sparqlQuery) {
-        if (transactional != null) {
-            Results[] results = {null};
-            Txn.executeRead(transactional,
-                    () -> results[0] = CollectionResults.greedy(doSPARQLQuery(sparqlQuery)));
-            return results[0];
-        } else {
-            return doSPARQLQuery(sparqlQuery);
-        }
+        Query query = parseSparql(sparqlQuery);
+        Set<String> varNames = query.getProjectVars().stream().map(Var::getVarName)
+                                                     .collect(Collectors.toSet());
+        return doTransactional(() -> doQuery(query, query.isAskType(), varNames));
     }
 
     @Override
     public @Nonnull Results querySPARQL(@Nonnull String sparqlQuery, boolean isAsk,
                                         @Nonnull Collection<String> varNames) {
-        Query query = QueryFactory.create(sparqlQuery);
+        Query query = parseSparql(sparqlQuery);
         Set<String> set = varNames instanceof Set ? (Set<String>)varNames : new HashSet<>(varNames);
-        return doQuery(query, isAsk, set);
+        return doTransactional(() -> doQuery(query, isAsk, set));
     }
 
     @Override
-    public @Nonnull Results query(@Nonnull CQuery query) {
+    public boolean canQuery(@Nonnull Op query) {
+        return true; //can handle any SPARQL query
+    }
+
+    @Override
+    public @Nonnull Results query(@Nonnull Op query) throws DQEndpointException,
+                                                            QueryExecutionException {
+        ModifierUtils.check(this, query.modifiers());
+        SPARQLString ss = SPARQLString.create(query);
+        Query jenaQuery = parseSparql(ss.getSparql());
+        Results r = doTransactional(() -> doQuery(jenaQuery, ss.isAsk(), ss.getVarNames()));
+        r.setOptional(query.modifiers().optional() != null);
+        return r;
+    }
+
+    @Override
+    public @Nonnull Results query(@Nonnull CQuery query) throws QueryExecutionException {
         ModifierUtils.check(this, query.getModifiers());
-        SPARQLString sparql = new SPARQLString(query);
+        SPARQLString ss = SPARQLString.create(query);
+        Query jenaQuery = parseSparql(ss.getSparql());
+        Results r = doTransactional(() -> doQuery(jenaQuery, ss.isAsk(), ss.getVarNames()));
+        r.setOptional(query.getModifiers().optional() != null);
+        return r;
+    }
+
+    private @Nonnull Query parseSparql(@Nonnull String sparql) {
+        try {
+            return QueryFactory.create(sparql);
+        } catch (QueryException e) { throw new QueryExecutionException(e); }
+    }
+
+    private  @Nonnull Results doTransactional(@Nonnull Callable<Results> callable) {
         if (transactional != null) {
-            Results[] tmp = {null};
-            Txn.executeRead(transactional,
-                    () -> tmp[0] = CollectionResults.greedy(doQuery(sparql, query)));
-            return tmp[0];
+            CompletableFuture<Results> future = new CompletableFuture<>();
+            Txn.executeRead(transactional, () -> {
+                try {
+                    future.complete(CollectionResults.greedy(callable.call()));
+                } catch (Throwable t) {
+                    future.completeExceptionally(t);
+                }
+            });
+            try {
+                return future.get();
+            } catch (InterruptedException e) {
+                throw new RuntimeException("Interrupted while waiting for transaction");
+            } catch (ExecutionException e) {
+                if (e.getCause() instanceof RuntimeException)
+                    throw (RuntimeException)e.getCause();
+                throw new RuntimeException("Unexpected ExecutionException", e);
+            }
         } else {
-            return doQuery(sparql, query);
+            try {
+                return callable.call();
+            } catch (Exception e) {
+                if (e instanceof RuntimeException)
+                    throw (RuntimeException)e;
+                else
+                    throw new RuntimeException("Unexpected Exception", e);
+            }
         }
-    }
-
-    public @Nonnull Results doSPARQLQuery(@Nonnull String sparql) {
-        Query query = QueryFactory.create(sparql);
-        Set<String> varNames = query.getProjectVars().stream().map(Var::getVarName)
-                                                     .collect(Collectors.toSet());
-        return doQuery(query, query.isAskType(), varNames);
-    }
-
-    @Nonnull
-    public Results doQuery(@Nonnull SPARQLString ss, @Nonnull CQuery cQuery) {
-        Query query = QueryFactory.create(ss.getSparql());
-        Projection projection = cQuery.getModifiers().projection();
-        Set<String> vars = projection == null ? ss.getVarNames() : projection.getVarNames();
-        return doQuery(query, ss.isAsk(), vars);
     }
 
     public @Nonnull Results doQuery(@Nonnull Query query, boolean isAsk,
@@ -253,7 +284,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             mQuery.mutateModifiers().add(Ask.INSTANCE);
         else if ((isLocal() && canAskLocal(policy)) || (!isLocal() && canAskRemote(policy)))
             mQuery.mutateModifiers().add(Limit.of(Math.max(limit(policy), 4)));
-        SPARQLString sparql = new SPARQLString(mQuery);
+        SPARQLString sparql = SPARQLString.create(mQuery);
         if (sparql.isAsk()) {
             try (QueryExecution exec = createExecution(sparql.getSparql())) {
                 return exec.execAsk() ? Cardinality.NON_EMPTY : Cardinality.EMPTY;
