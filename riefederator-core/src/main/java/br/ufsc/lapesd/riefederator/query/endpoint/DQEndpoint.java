@@ -10,13 +10,9 @@ import javax.annotation.Nonnull;
  */
 public interface DQEndpoint extends CQEndpoint {
     /**
-     * Indicates whether this endpoint can answer the query without throwing a
-     * {@link DQEndpointException}
-     *
-     * @param query the root of the query to check
-     * @return true if the query is supported
+     * Get a profile of supported operations by {@link DQEndpoint#query(Op)}
      */
-    boolean canQuery(@Nonnull Op query);
+    @Nonnull DisjunctiveProfile getDisjunctiveProfile();
 
     /**
      * Executes the given disjunctive query and return a {@link Results} object.
@@ -25,7 +21,7 @@ public interface DQEndpoint extends CQEndpoint {
      * @return the handle for consuming the results
      * @throws DQEndpointException If the query has endpoints other than this or if this
      *                             endpoint does not support some of the {@link Op} nodes.
-     *                             See {@link DQEndpoint#canQuery(Op)}
+     *                             See {@link DQEndpoint#getDisjunctiveProfile()}
      * @throws QueryExecutionException If something goes wrong during query execution.
      */
     @Nonnull Results query(@Nonnull Op query) throws DQEndpointException, QueryExecutionException;

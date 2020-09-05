@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.post.steps;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.DQueryOp;
@@ -10,8 +11,14 @@ import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.DQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.DisjunctiveProfile;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLDisjunctiveProfile;
+import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -29,7 +36,16 @@ import static org.testng.Assert.assertSame;
 
 @Test(groups = {"fast"})
 public class EndpointPushStepTest implements TestContext {
+    private static Model emptyModel = ModelFactory.createDefaultModel();
+
     private static DQEndpoint dq1 = ARQEndpoint.forModel(ModelFactory.createDefaultModel());
+    private static DQEndpoint dq1NO = new ARQEndpoint(
+            "dq1NO", q -> QueryExecutionFactory.create(q, emptyModel),
+            null, () -> {}, true) {
+        @Override public @Nonnull DisjunctiveProfile getDisjunctiveProfile() {
+            return new SPARQLDisjunctiveProfile().forbidOptional();
+        }
+    };
     private static CQEndpoint cq1 = new EmptyEndpoint();
 
     private static @Nonnull EndpointQueryOp q(@Nonnull TPEndpoint endpoint, Object... args) {
@@ -68,7 +84,46 @@ public class EndpointPushStepTest implements TestContext {
                 asList(UnionOp.builder()
                                 .add(JoinOp.create(q(dq1, Alice, knows, x), q(cq1, x, knows, y)))
                                 .add(q(dq1, y, age, u)).build(),
-                       null)
+                       null),
+                // wrap cartesian
+                asList(CartesianOp.builder()
+                                .add(q(dq1, Alice, knows, y, y, age, u))
+                                .add(q(dq1, Alice, age, v))
+                                .add(SPARQLFilter.build("?y < ?u")).build(),
+                       new DQueryOp(dq1, CartesianOp.builder()
+                               .add(q(dq1, Alice, knows, y, y, age, u))
+                               .add(q(dq1, Alice, age, v))
+                               .add(SPARQLFilter.build("?y < ?u")).build())),
+                // do not wrap unfiltered cartesian root
+                asList(CartesianOp.builder()
+                                .add(q(dq1, Alice, knows, y, y, age, u))
+                                .add(q(dq1, Alice, age, v)).build(),
+                        null),
+                // wrap unfiltered cartesian child
+                asList(JoinOp.create(CartesianOp.builder()
+                                        .add(q(dq1, Alice, knows, x))
+                                        .add(q(dq1, Alice, knows, y)).build(),
+                                     q(dq1, x, knows, y)),
+                       new DQueryOp(dq1,
+                               JoinOp.create(CartesianOp.builder()
+                                               .add(q(dq1, Alice, knows, x))
+                                               .add(q(dq1, Alice, knows, y)).build(),
+                                             q(dq1, x, knows, y)))),
+                // wrap optional
+                asList(JoinOp.create(q(dq1, Alice, knows, x), q(dq1, x, age, u, Optional.INSTANCE)),
+                       new DQueryOp(dq1, JoinOp.create(q(dq1, Alice, knows, x),
+                                                       q(dq1, x, age, u, Optional.INSTANCE)))),
+                // do not wrap optional if forbidden
+                asList(JoinOp.create(q(dq1NO, Alice, knows, x),
+                                     q(dq1NO, x, age, u, Optional.INSTANCE)),
+                       null),
+                // wrap optional root even if forbidden
+                asList(UnionOp.builder().add(q(dq1NO, x, knows, Alice))
+                                        .add(q(dq1NO, x, knows, Bob))
+                                        .add(Optional.INSTANCE).build(),
+                       new DQueryOp(dq1NO, UnionOp.builder().add(q(dq1NO, x, knows, Alice))
+                                                            .add(q(dq1NO, x, knows, Bob))
+                                                            .add(Optional.INSTANCE).build()))
         ).map(List::toArray).toArray(Object[][]::new);
     }
 

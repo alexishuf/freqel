@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.DQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
+import br.ufsc.lapesd.riefederator.algebra.util.DQPushChecker;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.*;
@@ -102,17 +103,15 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
     }
 
     protected @Nonnull Results doExecute(@Nonnull DQueryOp node) {
-        DQEndpoint endpoint = node.getEndpoint();
+        DQEndpoint ep = node.getEndpoint();
         Op query = node.getQuery();
-        if (!endpoint.canQuery(query)) {
-            assert false : "Why did a non-executable plan got to this point!?";
-            throw new QueryExecutionException("Endpoint does not support query operations");
-        }
+        assert new DQPushChecker(ep.getDisjunctiveProfile()).setEndpoint(ep).canPush(query)
+               : "Why did a non-executable plan got to this point!?";
         // if save all unsupported modifiers in pending
         ModifiersSet pending = null;
         for (Modifier m : query.modifiers()) {
             Capability capability = m.getCapability();
-            if (!endpoint.hasCapability(capability))
+            if (!ep.hasCapability(capability))
                 (pending == null ? pending = new ModifiersSet() : pending).add(m);
         }
         if (pending != null) { // replace query to a copy with supported modifiers
@@ -124,7 +123,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
             query = copy;
         }
 
-        Results r = endpoint.query(query);
+        Results r = ep.query(query);
         if (pending != null) { //apply modifiers locally
             if (pending.optional() != null)
                 r.setOptional(true);

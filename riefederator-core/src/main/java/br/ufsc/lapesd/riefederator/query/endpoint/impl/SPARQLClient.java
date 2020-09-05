@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.query.endpoint.impl;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.util.DQPushChecker;
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
 import br.ufsc.lapesd.riefederator.model.RDFUtils;
@@ -343,13 +344,15 @@ public class SPARQLClient extends AbstractTPEndpoint implements DQEndpoint {
     }
 
     @Override
-    public boolean canQuery(@Nonnull Op query) {
-        return true; //can handle any SPARQL query
+    public @Nonnull DisjunctiveProfile getDisjunctiveProfile() {
+        return SPARQLDisjunctiveProfile.DEFAULT;
     }
 
     @Override
     public @Nonnull Results query(@Nonnull Op query) throws DQEndpointException,
                                                             QueryExecutionException {
+        assert query.modifiers().stream().allMatch(m -> hasCapability(m.getCapability()));
+        assert new DQPushChecker(getDisjunctiveProfile()).setEndpoint(this).canPush(query);
         boolean isAsk = query.modifiers().ask() != null || query.getResultVars().size() == 0;
         String accept = isAsk ? JSON_ACCEPT : TSV_ACCEPT;
         Set<String> vars = query.getResultVars();

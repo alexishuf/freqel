@@ -2,12 +2,14 @@ package br.ufsc.lapesd.riefederator.jena.query;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.util.DQPushChecker;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.model.SPARQLString;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.*;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLDisjunctiveProfile;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
 import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
@@ -171,14 +173,15 @@ public class ARQEndpoint extends AbstractTPEndpoint implements DQEndpoint {
     }
 
     @Override
-    public boolean canQuery(@Nonnull Op query) {
-        return true; //can handle any SPARQL query
+    public @Nonnull DisjunctiveProfile getDisjunctiveProfile() {
+        return SPARQLDisjunctiveProfile.DEFAULT;
     }
 
     @Override
     public @Nonnull Results query(@Nonnull Op query) throws DQEndpointException,
                                                             QueryExecutionException {
-        ModifierUtils.check(this, query.modifiers());
+        assert query.modifiers().stream().allMatch(m -> hasCapability(m.getCapability()));
+        assert new DQPushChecker(getDisjunctiveProfile()).setEndpoint(this).canPush(query);
         SPARQLString ss = SPARQLString.create(query);
         Query jenaQuery = parseSparql(ss.getSparql());
         Results r = doTransactional(() -> doQuery(jenaQuery, ss.isAsk(), ss.getVarNames()));
