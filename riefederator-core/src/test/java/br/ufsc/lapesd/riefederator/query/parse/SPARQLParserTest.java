@@ -152,7 +152,6 @@ public class SPARQLParserTest implements TestContext {
                         UnionOp.builder()
                                 .add(new QueryOp(createQuery(x, knows, Alice)))
                                 .add(new QueryOp(createQuery(x, knows, Bob)))
-                                .add(Distinct.INSTANCE)
                                 .build(), null),
                 // filter placement in nodes
                 asList(prolog+"SELECT * WHERE {\n" +
@@ -173,7 +172,6 @@ public class SPARQLParserTest implements TestContext {
                                                     x, age,   y,
                                                     SPARQLFilter.build("?y > 23")
                                         )))
-                                .add(Distinct.INSTANCE)
                                 .add(SPARQLFilter.build("REGEX(str(?x), \"^http:\")"))
                                 .add(SPARQLFilter.build("?y < 40"))
                                 .build(), null),
@@ -187,7 +185,6 @@ public class SPARQLParserTest implements TestContext {
                                 .add(UnionOp.builder()
                                         .add(new QueryOp(createQuery(x, knows, Alice)))
                                         .add(new QueryOp(createQuery(x, knows, Bob)))
-                                        .add(Distinct.INSTANCE)
                                         .build())
                                 .build(), null),
                 // create a conjunction between a union and a triple block with a path expression
@@ -211,7 +208,6 @@ public class SPARQLParserTest implements TestContext {
                                         .add(new QueryOp(createQuery(
                                                 x, knows, Bob,
                                                 SPARQLFilter.build("REGEX(str(?x), \"^http\")"))))
-                                        .add(Distinct.INSTANCE)
                                         .build())
                                 .add(new QueryOp(
                                         createQuery(x,         knows, spHidden0,
@@ -247,7 +243,6 @@ public class SPARQLParserTest implements TestContext {
                                                 SPARQLFilter.build("?u > 23"), Optional.INSTANCE
                                         ))).build())
                                 .add(new QueryOp(createQuery(x, knows, Bob)))
-                                .add(Distinct.INSTANCE)
                                 .build(), null),
                 // OPTIONAL in conjunction with UNION
                 asList(prolog+"SELECT ?x ?u WHERE {\n" +
@@ -264,7 +259,6 @@ public class SPARQLParserTest implements TestContext {
                                 .add(UnionOp.builder()
                                         .add(new QueryOp(createQuery(x, knows, Alice)))
                                         .add(new QueryOp(createQuery(x, knows, Bob)))
-                                        .add(Distinct.INSTANCE)
                                         .build())
                                 .add(new QueryOp(createQuery(
                                         x, name, y,

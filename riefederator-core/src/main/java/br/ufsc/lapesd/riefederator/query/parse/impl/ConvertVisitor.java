@@ -268,8 +268,6 @@ public class ConvertVisitor implements QueryVisitor {
                 op = oldOp;
             } else {
                 Op unionOp = UnionOp.build(list);
-                if (list.size() > 1)
-                    unionOp.modifiers().add(Distinct.INSTANCE);
                 if (oldOp instanceof ConjunctionOp) {
                     ((ConjunctionOp) oldOp).addChild(unionOp);
                     ConvertVisitor.this.op = oldOp;
