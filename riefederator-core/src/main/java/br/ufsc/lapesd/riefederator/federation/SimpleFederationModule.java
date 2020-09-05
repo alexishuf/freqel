@@ -99,7 +99,8 @@ public class SimpleFederationModule extends SimpleExecutionModule {
                     .appendPhase2(new CartesianDistributionStep())
                     .appendPhase3(new ConjunctionReplaceStep(joinOrderPlanner))
                     .appendPhase3(new FlattenStep())
-                    .appendPhase3(new PushFiltersStep());
+                    .appendPhase3(new PushFiltersStep())
+                    .appendPhase3(new PushDistinctStep());
         }
     }
 
