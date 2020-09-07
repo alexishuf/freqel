@@ -770,16 +770,16 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         List<Object[]> list = new ArrayList<>();
         for (Object[] row : suppliersData()) {
             list.add(new Object[]{row[0], createQuery(
-                    y, valor, v, SPARQLFilter.build("?v <= ?u"),
+                    y, valor, v, SPARQLFilter.build("?v <= 23"),
                     y, id, z
             )});
             list.add(new Object[]{row[0], createQuery(
-                    y, valor, v, SPARQLFilter.build("?v <= ?u"),
+                    y, valor, v, SPARQLFilter.build("?v <= 23"),
                     y, id, z,
                     y, dataAbertura, w //filter optionals, atom is used as output
             )});
             list.add(new Object[]{row[0], createQuery(
-                    y, valor, v, SPARQLFilter.build("?v <= ?u"),
+                    y, valor, v, SPARQLFilter.build("?v <= 23"),
                     y, id, z,
                     y, unidadeGestora, y1,
                     y1, orgaoVinculado, y2,

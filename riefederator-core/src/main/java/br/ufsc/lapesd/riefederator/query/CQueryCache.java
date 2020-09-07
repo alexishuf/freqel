@@ -144,6 +144,10 @@ public class CQueryCache {
             allVars = null;
             allVarNames = null;
             allTerms = null;
+            publicVarNames = null;
+            inputVarNames = null;
+            reqInputVarNames = null;
+            optInputVarNames = null;
         } else if (Limit.class.isAssignableFrom(modClass)) {
             limit = -1;
         } else if (Ask.class.isAssignableFrom(modClass)) {
@@ -285,16 +289,22 @@ public class CQueryCache {
 
     private @Nonnull ImmutableIndexedSubset<String> scanInputs(boolean required) {
         IndexedSubset<String> set = allVarNames().emptySubset();
+        IndexedSet<String> tripleVarNames = tripleVarNames();
         for (Var v : allVars()) {
+            String name = v.getName();
+            boolean hasAnnotation = false;
             for (TermAnnotation a : d.termAnnotations.get(v)) {
                 if (!(a instanceof AtomInputAnnotation))
                     continue;
+                hasAnnotation = true;
                 AtomInputAnnotation ia = (AtomInputAnnotation) a;
                 if (ia.isOverride() && requireNonNull(ia.getOverrideValue()).isGround())
                     continue; //not a input anymore
                 if (ia.isRequired() == required)
-                    set.add(v.getName());
+                    set.add(name);
             }
+            if (required && !hasAnnotation && !tripleVarNames.contains(name))
+                set.add(name); //FILTER input var
         }
         return ImmutableIndexedSubset.copyOf(set);
     }

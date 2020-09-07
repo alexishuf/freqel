@@ -90,9 +90,9 @@ public class QueryOpTest implements TestContext {
         assertFalse(node.isProjected());
         assertEquals(node.getResultVars(), Sets.newHashSet("x", "y"));
         assertEquals(node.getAllVars(), Sets.newHashSet("x", "y", "z"));
-        assertEquals(node.getPublicVars(), Sets.newHashSet("x", "y")); //z is not input
-        assertEquals(node.getInputVars(), emptySet());
-        assertEquals(node.getRequiredInputVars(), emptySet());
+        assertEquals(node.getPublicVars(), Sets.newHashSet("x", "y", "z"));
+        assertEquals(node.getInputVars(), singleton("z"));
+        assertEquals(node.getRequiredInputVars(), singleton("z"));
         assertEquals(node.getOptionalInputVars(), emptySet());
     }
 
