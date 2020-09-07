@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.model.Triple;
 import com.google.common.collect.Sets;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -16,7 +18,7 @@ import static java.util.stream.IntStream.range;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
-public class IndexedSetTest {
+public class IndexedSetTest implements TestContext {
     private static final int VALUES_BASE = 1000;
 
     private static @Nonnull IndexedSet<Integer> set(int... values) {
@@ -265,6 +267,7 @@ public class IndexedSetTest {
         IndexedSubset<Integer> empty = set.emptySubset();
         assertEquals(empty.getBitSet().cardinality(), 0);
         assertTrue(empty.isEmpty());
+        //noinspection ConstantConditions
         assertEquals(empty.size(), 0);
         assertFalse(empty.iterator().hasNext());
         //noinspection SimplifyStreamApiCallChains
@@ -730,5 +733,78 @@ public class IndexedSetTest {
         assertEquals(copy, singleton(11));
         subset.remove(11);
         assertEquals(copy, singleton(11));
+    }
+
+    @SuppressWarnings("SimplifiableAssertion") @Test
+    public void testEqualsWithSingleton() {
+        IndexedSet<Triple> a = IndexedSet.fromDistinct(asList(new Triple(Alice, age, u)));
+        Set<Triple> b = singleton(new Triple(Alice, age, u));
+        assertEquals(a, b);
+        assertTrue(a.equals(b));
+        assertTrue(b.equals(a));
+    }
+
+    @Test
+    public void testHashCodeConsistencySingleton() {
+        IndexedSet<Integer> a = IndexedSet.fromDistinct(singletonList(23));
+        Set<Integer> aSingleton = singleton(23);
+        HashSet<Integer> aStd = Sets.newHashSet(23);
+
+        assertEquals(a.hashCode(), aSingleton.hashCode());
+        assertEquals(a.hashCode(), aStd.hashCode());
+    }
+
+    @Test
+    public void testHashCodeOrderNeutral() {
+        IndexedSet<Integer> a = IndexedSet.fromDistinct(asList(1, 2, 3, 4));
+        IndexedSet<Integer> b = IndexedSet.fromDistinct(asList(2, 3, 4, 1));
+        IndexedSet<Integer> c = IndexedSet.fromDistinct(asList(3, 4, 1, 2));
+        IndexedSet<Integer> d = IndexedSet.fromDistinct(asList(4, 1, 2, 3));
+        IndexedSet<Integer> e = IndexedSet.fromDistinct(asList(2, 1, 4, 3));
+        IndexedSet<Integer> f = IndexedSet.fromDistinct(asList(3, 1, 4, 2));
+
+        List<Integer> codes = asList(a.hashCode(), b.hashCode(), c.hashCode(), d.hashCode(),
+                                     e.hashCode(), f.hashCode());
+        assertEquals(new HashSet<>(codes).size(), 1);
+    }
+
+    @Test
+    public void testHashCodeStdConsistent() {
+        IndexedSet<Integer> a1 = IndexedSet.fromDistinct(asList(1, 2, 3, 4));
+        HashSet<Integer> a2 = Sets.newHashSet(1, 2, 3, 4);
+        TreeSet<Integer> a3 = new TreeSet<>();
+        a3.addAll(asList(1, 2, 3, 4));
+        assertEquals(a1.hashCode(), a2.hashCode());
+        assertEquals(a1.hashCode(), a3.hashCode());
+
+        assertEquals(a1, a2);
+        assertEquals(a1, a3);
+    }
+
+    @SuppressWarnings("SimplifiableAssertion") @Test
+    public void testEqualsRegression() {
+        IndexedSet<Triple> a1 = IndexedSet.fromDistinct(asList(new Triple(Alice, age, u)));
+        IndexedSet<Triple> a2 = IndexedSet.fromDistinct(asList(new Triple(Alice, age, v)));
+        Set<Triple> b1 = singleton(new Triple(Alice, age, u));
+        Set<Triple> b2 = singleton(new Triple(Alice, age, v));
+        HashSet<Set<Triple>> a = new HashSet<>();
+        a.add(a1);
+        a.add(a2);
+        assertEquals(a.size(), 2);
+        assertTrue(a.contains(a1));
+        assertTrue(a.contains(a2));
+
+        //noinspection unchecked
+        HashSet<Set<Triple>> b = Sets.newHashSet(b1, b2);
+        assertEquals(b.size(), 2);
+        assertTrue(b.contains(b1));
+        assertTrue(b.contains(b2));
+
+        assertTrue(a.containsAll(b));
+        assertTrue(b.containsAll(a));
+
+        assertEquals(a, b);
+        assertTrue(a.equals(b));
+        assertTrue(b.equals(a));
     }
 }

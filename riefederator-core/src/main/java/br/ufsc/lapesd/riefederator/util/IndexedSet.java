@@ -241,11 +241,11 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     @Override
     public int hashCode() {
         if (hash == 0) {
-            int[] codes = new int[size()];
-            for (int i = 0; i < data.size(); i++)
-                codes[i] = Objects.hashCode(data.get(i));
-            Arrays.sort(codes);
-            hash = Arrays.hashCode(codes);
+            int local = 0;
+            for (T e : data) {
+                local += e.hashCode();
+            }
+            hash = local;
         }
         return hash;
     }
