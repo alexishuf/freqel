@@ -1,19 +1,21 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash;
 
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import com.google.common.base.Preconditions;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Consumer;
 
+import static java.util.Collections.singletonList;
+
 /**
  * A Simple HashMap for use during hash-joins that does not use memory for the keys
  */
 public class CrudeSolutionHashTable {
-    private final @Nonnull ArrayList<ArrayList<Solution>> buckets;
+    private final @Nonnull List<ArrayList<Solution>> buckets;
     private final @Nonnull Collection<String> varNames;
     private final int nBuckets, bucketCapacity;
     private @Nullable ArrayList<BitSet> fetched = null;
@@ -25,11 +27,17 @@ public class CrudeSolutionHashTable {
     public CrudeSolutionHashTable(@Nonnull Collection<String> varNames,
                                   int expectedValues, int bucketCapacity) {
         this.varNames = varNames;
-        this.nBuckets = Math.max((int)Math.ceil(expectedValues/(double)bucketCapacity), 64);
-        this.bucketCapacity = bucketCapacity;
-        this.buckets = new ArrayList<>(nBuckets);
-        for (int i = 0; i < nBuckets; i++)
-            this.buckets.add(new ArrayList<>(bucketCapacity));
+        if (varNames.isEmpty()) { // only a single bucket will ever be used
+            this.nBuckets = 1;
+            this.bucketCapacity = expectedValues;
+            this.buckets = singletonList(new ArrayList<>(expectedValues));
+        } else {
+            this.nBuckets = Math.max((int) Math.ceil(expectedValues / (double) bucketCapacity), 64);
+            this.bucketCapacity = bucketCapacity;
+            this.buckets = new ArrayList<>(nBuckets);
+            for (int i = 0; i < nBuckets; i++)
+                this.buckets.add(new ArrayList<>(bucketCapacity));
+        }
     }
 
     public void recordFetches() {
@@ -41,10 +49,12 @@ public class CrudeSolutionHashTable {
     }
 
     protected int getBucketIndex(@Nonnull Solution solution) {
-        HashCodeBuilder builder = new HashCodeBuilder();
-        for (String name : varNames)
-            builder.append(solution.get(name));
-        return Math.abs(builder.toHashCode()) % nBuckets;
+        int hash = 17;
+        for (String name : varNames) {
+            Term term = solution.get(name);
+            hash = 37*hash + (term == null ? 17 : term.hashCode());
+        }
+        return Math.abs(hash) % nBuckets;
     }
 
     public void clear() {
@@ -77,6 +87,12 @@ public class CrudeSolutionHashTable {
     }
 
     public @Nonnull Collection<Solution> getAll(@Nonnull Solution reference) {
+        if (varNames.isEmpty()) { // single large bucket special case
+            ArrayList<Solution> bucket = buckets.get(0);
+            if (fetched != null)
+                fetched.get(0).set(0, bucket.size()); //mark all as fetched
+            return Collections.unmodifiableList(bucket);
+        }
         ArrayList<Solution> list = new ArrayList<>(bucketCapacity);
         int bit = -1, bucketIndex = getBucketIndex(reference);
         BitSet bitset = fetched == null ? null : fetched.get(bucketIndex);

@@ -49,7 +49,7 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
         StringBuilder b = new StringBuilder(query.size()*60);
         distinct = query.getModifiers().distinct() != null;
         ask = query.attr().isAsk();
-        this.vars = query.attr().publicTripleVarNames();
+        this.vars = query.attr().publicVarNames();
         SPARQLString.writePrefixes(b, dict);
         SPARQLString.writeHeader(b, ask, distinct, this.vars);
 

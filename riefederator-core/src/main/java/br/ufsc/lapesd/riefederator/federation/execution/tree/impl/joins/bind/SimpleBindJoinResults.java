@@ -6,10 +6,12 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.CrudeSolutionHashTable;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.*;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
@@ -26,6 +28,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults.wrapSameVars;
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
@@ -89,8 +92,8 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
                                  @Nonnull Collection<String> resultVars,
                                  @Nullable ResultsExecutor resultsExecutor, int valuesRows) {
         super(resultVars);
-        checkArgument(rightTree.getResultVars().containsAll(joinVars),
-                "There are joinVars missing on rightTree");
+        checkArgument(rightTree.getPublicVars().containsAll(joinVars),
+                      "There are joinVars missing on rightTree");
         checkArgument(!smaller.isOptional(), "Cannot provide OPTIONAL semantics for left operand");
         this.planExecutor = planExecutor;
         this.rightTree = rightTree;
@@ -256,7 +259,14 @@ public class SimpleBindJoinResults extends AbstractResults implements Results {
             else
                 qn = (EndpointQueryOp) rightTree.getChildren().iterator().next();
             TPEndpoint ep = qn.getEndpoint();
-            template = new SPARQLValuesTemplateOp(ep, qn.getQuery());
+            MutableCQuery query = qn.getQuery();
+            Set<String> old = query.attr().publicVarNames();
+            if (!old.containsAll(joinVars)) {
+                query = new MutableCQuery(query);
+                query.mutateModifiers().add(Projection.of(union(old, joinVars)));
+            }
+            template = new SPARQLValuesTemplateOp(ep, query);
+            assert template.getResultVars().containsAll(joinVars);
         }
 
         private @Nonnull Op bind(@Nonnull Collection<String> varNames,

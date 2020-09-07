@@ -169,4 +169,52 @@ public class CrudeSolutionHashTableTest implements TestContext {
         assertEquals(nonFetched.size(), expected.size());
         assertEquals(new HashSet<>(nonFetched), expected);
     }
+
+    @Test
+    public void testNoVars() {
+        CrudeSolutionHashTable table = new CrudeSolutionHashTable(emptySet(), 128);
+        Set<MapSolution> expected = new HashSet<>();
+        for (int i = 0; i < 1024; i++) {
+            MapSolution solution = MapSolution.build(x, integer(i));
+            table.add(solution);
+            expected.add(solution);
+        }
+
+        assertEquals(new HashSet<>(table.getAll(MapSolution.build(y, integer(1)))), expected);
+
+        // x is ignored, as it was not in table's varNames
+        assertEquals(new HashSet<>(table.getAll(MapSolution.build(x, integer(1)))), expected);
+    }
+
+    @Test
+    public void testNoVarsFetchAll() {
+        CrudeSolutionHashTable table = new CrudeSolutionHashTable(emptySet(), 32);
+        for (int i = 0; i < 4; i++)
+            table.add(MapSolution.build(x, integer(i)));
+        table.recordFetches();
+
+        Collection<Solution> all = table.getAll(MapSolution.build(y, integer(1)));
+        Set<MapSolution> expected = new HashSet<>();
+        for (int i = 0; i < 4; i++)
+            expected.add(MapSolution.build(x, integer(i)));
+        assertEquals(new HashSet<>(all), expected);
+
+        List<Solution> nonFetched = new ArrayList<>();
+        table.forEachNotFetched(nonFetched::add);
+        assertEquals(nonFetched, emptyList());
+
+        table.add(MapSolution.build(x, integer(4)));
+        table.forEachNotFetched(nonFetched::add);
+        assertEquals(nonFetched, singletonList(MapSolution.build(x, integer(4))));
+
+        all = table.getAll(MapSolution.build(x, integer(23)));
+        expected.clear();
+        for (int i = 0; i < 5; i++)
+            expected.add(MapSolution.build(x, integer(i)));
+        assertEquals(new HashSet<>(all), expected);
+
+        nonFetched.clear();
+        table.forEachNotFetched(nonFetched::add);
+        assertEquals(nonFetched, emptyList());
+    }
 }
