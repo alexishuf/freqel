@@ -70,9 +70,11 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
             return execute((UnionOp)node);
         else if (node instanceof EndpointQueryOp)
             return execute((EndpointQueryOp)node);
+        else if (node instanceof DQueryOp)
+            return execute((DQueryOp) node);
         else if (node instanceof SPARQLValuesTemplateOp)
             return execute((SPARQLValuesTemplateOp)node);
-        throw new IllegalArgumentException("");
+        throw new IllegalArgumentException("Unexpected node class "+node.getClass());
     }
 
     @Override

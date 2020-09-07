@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.DQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
@@ -16,6 +17,7 @@ import javax.inject.Inject;
 
 public class InjectedExecutor implements PlanExecutor {
     private final @Nonnull QueryOpExecutor queryNodeExecutor;
+    private final @Nonnull DQueryOpExecutor dQueryOpExecutor;
     private final @Nonnull UnionOpExecutor multiQueryNodeExecutor;
     private final @Nonnull JoinOpExecutor joinNodeExecutor;
     private final @Nonnull CartesianOpExecutor cartesianNodeExecutor;
@@ -24,12 +26,14 @@ public class InjectedExecutor implements PlanExecutor {
 
     @Inject
     public InjectedExecutor(@Nonnull QueryOpExecutor queryNodeExecutor,
+                            @Nonnull DQueryOpExecutor dQueryOpExecutor,
                             @Nonnull UnionOpExecutor multiQueryNodeExecutor,
                             @Nonnull JoinOpExecutor joinNodeExecutor,
                             @Nonnull CartesianOpExecutor cartesianNodeExecutor,
                             @Nonnull EmptyOpExecutor emptyNodeExecutor,
                             @Nonnull SPARQLValuesTemplateOpExecutor sparqlValuesTemplateNodeExecutor) {
         this.queryNodeExecutor = queryNodeExecutor;
+        this.dQueryOpExecutor = dQueryOpExecutor;
         this.multiQueryNodeExecutor = multiQueryNodeExecutor;
         this.joinNodeExecutor = joinNodeExecutor;
         this.cartesianNodeExecutor = cartesianNodeExecutor;
@@ -50,6 +54,8 @@ public class InjectedExecutor implements PlanExecutor {
         Results results;
         if (EndpointQueryOp.class.isAssignableFrom(cls))
             results = queryNodeExecutor.execute(node);
+        else if (DQueryOp.class.isAssignableFrom(cls))
+            results = dQueryOpExecutor.execute(node);
         else if (UnionOp.class.isAssignableFrom(cls))
             results = multiQueryNodeExecutor.execute(node);
         else if (JoinOp.class.isAssignableFrom(cls))

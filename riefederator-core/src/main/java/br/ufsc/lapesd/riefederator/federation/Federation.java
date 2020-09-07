@@ -212,8 +212,8 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
             Stopwatch sw = Stopwatch.createStarted();
             Op root = query instanceof QueryOp ? query : TreeUtils.deepCopy(query);
             root = prePlanner.plan(root);
-            root = postPlanner.plan(root);
             root = planComponents(root, query, cardinalityComputer);
+            root = postPlanner.plan(root);
             TreeUtils.nameNodes(root);
             if (logger.isDebugEnabled()) {
                 logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",

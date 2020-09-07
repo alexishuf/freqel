@@ -37,7 +37,7 @@ public class BindJoinCardinalityEstimator implements JoinCardinalityEstimator {
 
     private @Nonnull Collection<Triple> getTriples(@Nonnull Op node) {
         if (node instanceof EndpointQueryOp)
-            return ((EndpointQueryOp) node).getQuery();
+            return ((EndpointQueryOp) node).getQuery().attr().getSet();
         if (node instanceof UnionOp) {
             LinkedHashSet<Triple> set = new LinkedHashSet<>();
             node.getChildren().stream().flatMap(n -> getTriples(n).stream()).forEach(set::add);
