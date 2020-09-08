@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
@@ -382,5 +383,14 @@ public class TreeUtils {
                 b.put(e.getKey(), e.getValue());
         }
         return b.build();
+    }
+
+    public static @Nullable TPEndpoint getEndpoint(@Nonnull Op op) {
+        TPEndpoint ep = null;
+        if (op instanceof SPARQLValuesTemplateOp)
+            ep = ((SPARQLValuesTemplateOp) op).getEndpoint();
+        else if (op instanceof EndpointQueryOp)
+            ep = ((EndpointQueryOp) op).getEndpoint();
+        return ep;
     }
 }

@@ -1,0 +1,19 @@
+@prefix ex: <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:book1 ex:mainTitle "Book 1"@pt;
+         ex:author  ex:author1.
+ex:book2 ex:mainTitle "Book 2"@pt;
+         ex:author  ex:author2.
+ex:book3 ex:mainTitle "Book 3"@pt;
+         ex:author  ex:author3.
+
+ex:author1 a         foaf:Person;
+           foaf:name "Author 1"@en.
+ex:author2 a         foaf:Person;
+           foaf:name "Author 2"@en.
+ex:author3 a         foaf:Person;
+           foaf:name "Author 3"@en.

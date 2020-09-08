@@ -19,9 +19,11 @@ import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrde
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.post.PhasedPostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.post.steps.EndpointPushStep;
+import br.ufsc.lapesd.riefederator.federation.planner.post.steps.FilterToBindJoinStep;
 import br.ufsc.lapesd.riefederator.federation.planner.post.steps.PipeCleanerStep;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.PhasedPrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.steps.*;
+import br.ufsc.lapesd.riefederator.federation.planner.utils.FilterJoinPlanner;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.Binder;
 import com.google.inject.multibindings.Multibinder;
@@ -106,14 +108,18 @@ public class SimpleFederationModule extends SimpleExecutionModule {
 
     public static class DefaultPostPlannerProvider implements Provider<PostPlanner> {
         private @Nonnull final PerformanceListener performanceListener;
+        private @Nonnull final FilterJoinPlanner filterJoinPlanner;
 
         @Inject
-        public DefaultPostPlannerProvider(@Nonnull PerformanceListener performanceListener) {
+        public DefaultPostPlannerProvider(@Nonnull PerformanceListener performanceListener,
+                                          @Nonnull FilterJoinPlanner filterJoinPlanner) {
             this.performanceListener = performanceListener;
+            this.filterJoinPlanner = filterJoinPlanner;
         }
 
         @Override public PostPlanner get() {
             return new PhasedPostPlanner(performanceListener)
+                    .appendPhase1(new FilterToBindJoinStep(filterJoinPlanner))
                     .appendPhase1(new PipeCleanerStep())
                     .appendPhase1(new EndpointPushStep());
         }

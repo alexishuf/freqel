@@ -119,12 +119,7 @@ public abstract class AbstractOp implements Op {
     @Override
     public void attachTo(@Nonnull Op parent) {
         if (parent == this) throw new IllegalArgumentException("Node cannot be its own parent");
-        for (Op old : parents) {
-            if (parent == old) {
-                assert false : "already attached to parent";
-                return; // on production ignore
-            }
-        }
+        assert parents.stream().noneMatch(o -> o == parent) : "already attached to this parent";
         parents.add(parent);
     }
 

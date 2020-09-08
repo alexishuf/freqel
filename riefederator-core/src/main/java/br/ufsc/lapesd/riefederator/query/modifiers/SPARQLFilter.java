@@ -16,17 +16,14 @@ import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.jena.graph.Node;
-import org.apache.jena.query.*;
-import org.apache.jena.sparql.core.DatasetGraph;
-import org.apache.jena.sparql.engine.binding.Binding;
-import org.apache.jena.sparql.engine.binding.BindingHashMap;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryException;
+import org.apache.jena.query.QueryFactory;
 import org.apache.jena.sparql.expr.*;
-import org.apache.jena.sparql.function.FunctionEnvBase;
 import org.apache.jena.sparql.serializer.SerializationContext;
 import org.apache.jena.sparql.syntax.ElementFilter;
 import org.apache.jena.sparql.syntax.ElementGroup;
 import org.apache.jena.sparql.syntax.ElementVisitorBase;
-import org.apache.jena.sparql.util.Context;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +35,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static br.ufsc.lapesd.riefederator.jena.ExprUtils.toSPARQLSyntax;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJenaNode;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -624,42 +622,6 @@ public class SPARQLFilter implements Modifier {
     }
 
     /* --- --- --- Variable Binding --- --- --- */
-
-    private static  @Nonnull StringBuilder toSPARQLSyntax(@Nonnull Expr expr,
-                                                          @Nonnull StringBuilder builder) {
-        if      (expr instanceof NodeValue) return builder.append(expr.toString());
-        else if (expr instanceof   ExprVar) return builder.append(expr.toString());
-        else if (expr instanceof  ExprNone) return builder;
-        else if (expr instanceof ExprAggregator) {
-            logger.warn("Did not expect aggregator {} within a FILTER()s!", expr);
-            return builder;
-        }
-
-        assert expr instanceof ExprFunction;
-        ExprFunction function = (ExprFunction) expr;
-        String name = function.getOpName();
-        if (name == null)
-            name = function.getFunctionName(new SerializationContext());
-
-        if (function.numArgs() == 2 && biOps.contains(name)) {
-            toSPARQLSyntax(function.getArg(1), builder).append(' ').append(name).append(' ');
-            return toSPARQLSyntax(function.getArg(2), builder);
-        } else if (function.numArgs() == 1 && unOps.contains(name)) {
-            builder.append(name).append('(');
-            return toSPARQLSyntax(function.getArg(1), builder).append(')');
-        } else {
-            builder.append(name).append('(');
-            for (int i = 1; i <= function.numArgs(); i++)
-                toSPARQLSyntax(function.getArg(i), builder).append(", ");
-            if (function.numArgs() > 0)
-                builder.setLength(builder.length()-2);
-            return builder.append(')');
-        }
-    }
-
-    private static  @Nonnull String toSPARQLSyntax(@Nonnull Expr expr) {
-        return toSPARQLSyntax(expr, new StringBuilder()).toString();
-    }
 
     public @Nonnull SPARQLFilter bind(@Nonnull Solution solution) {
         if (getVarTerms().stream().noneMatch(v -> solution.getVarNames().contains(v.getName())))

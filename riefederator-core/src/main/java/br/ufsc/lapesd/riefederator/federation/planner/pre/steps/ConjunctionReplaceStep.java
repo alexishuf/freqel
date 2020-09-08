@@ -3,20 +3,18 @@ package br.ufsc.lapesd.riefederator.federation.planner.pre.steps;
 import br.ufsc.lapesd.riefederator.algebra.InnerOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
-import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.federation.planner.utils.StepUtils;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
-import java.util.*;
+import java.util.ListIterator;
+import java.util.Set;
 
 public class ConjunctionReplaceStep implements PlannerStep {
     private static final Logger logger = LoggerFactory.getLogger(ConjunctionReplaceStep.class);
@@ -55,36 +53,9 @@ public class ConjunctionReplaceStep implements PlannerStep {
     /* --- --- --- Internals --- --- --- */
 
     private @Nonnull Op visit(@Nonnull ConjunctionOp parent) {
-        JoinGraph jg = new JoinGraph(IndexedSet.fromDistinct(parent.getChildren()));
-        IndexedSet<Op> nodes = jg.getNodes();
-        IndexedSubset<Op> visited = nodes.emptySubset();
-        List<Op> trees = new ArrayList<>();
-        ArrayDeque<Op> stack = new ArrayDeque<>();
-        for (Op core : nodes) {
-            if (!visited.contains(core))
-                trees.add(getJoinTree(core, jg, visited, stack));
-        }
-        assert !trees.isEmpty();
-        Op op = trees.size() == 1 ? trees.get(0) : new CartesianOp(trees);
+        Op op = StepUtils.planConjunction(parent.getChildren(), joinOrderPlanner);
         op.modifiers().addAll(parent.modifiers());
         StepUtils.exposeFilterVars(op);
         return op;
     }
-
-    private @Nonnull Op getJoinTree(@Nonnull Op core, @Nonnull JoinGraph jg,
-                                    @Nonnull IndexedSubset<Op> visited,
-                                    @Nonnull ArrayDeque<Op> stack) {
-        IndexedSet<Op> nodes = jg.getNodes();
-        IndexedSubset<Op> component = nodes.emptySubset();
-        stack.clear();
-        stack.push(core);
-        while (!stack.isEmpty()) {
-            Op op = stack.pop();
-            if (!component.add(op)) continue;
-            jg.forEachNeighbor(op, (ji, next) -> stack.push(next));
-        }
-        visited.addAll(component);
-        return joinOrderPlanner.plan(jg, component);
-    }
-
 }

@@ -31,6 +31,15 @@ public class JoinOp extends AbstractInnerOp {
     }
 
     @Override
+    protected boolean assertAllInvariants(boolean test) {
+        if (!test)
+            return true;
+        if (!JoinInfo.getJoinability(getLeft(), getRight()).isValid())
+            return false; // join is invalid
+        return super.assertAllInvariants(true);
+    }
+
+    @Override
     public void purgeCachesShallow() {
         List<Op> children = getChildren();
         checkState(children.size() == 2, "JoinOp does not have 2 children anymore");
@@ -38,7 +47,6 @@ public class JoinOp extends AbstractInnerOp {
         checkArgument(info.isValid(), "Current children of JoinOp cannot be joined!");
         this.joinInfo = info;
         super.purgeCachesShallow();
-        //noinspection AssertWithSideEffects
         assert assertAllInvariants(!joinInfo.equals(info));
     }
 
@@ -73,8 +81,17 @@ public class JoinOp extends AbstractInnerOp {
 
     @Override
     public @Nonnull Set<String> getRequiredInputVars() {
-        cacheHit = true;
-        return joinInfo.getPendingRequiredInputs();
+        if (reqInputsCache == null) {
+            cacheHit = true;
+            reqInputsCache = joinInfo.getPendingRequiredInputs();
+            if (!modifiers().filters().isEmpty()) {
+                reqInputsCache = new HashSet<>(reqInputsCache);
+                Set<String> resultVars = getResultVars();
+                modifiers().filters().stream().flatMap(f -> f.getVarTermNames().stream())
+                           .filter(n -> !resultVars.contains(n)).forEach(reqInputsCache::add);
+            }
+        }
+        return reqInputsCache;
     }
 
     @Override

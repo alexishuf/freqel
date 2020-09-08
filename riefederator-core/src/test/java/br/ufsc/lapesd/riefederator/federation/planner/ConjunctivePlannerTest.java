@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.DQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
@@ -15,6 +16,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArbitraryJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
+import br.ufsc.lapesd.riefederator.jena.ExprUtils;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
@@ -41,6 +43,8 @@ import com.google.inject.Guice;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.sparql.expr.Expr;
+import org.apache.jena.sparql.expr.ExprFunction;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -50,6 +54,7 @@ import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.isAcyclic;
 import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
@@ -175,11 +180,11 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         // the set of matched triples in the plan must be the same as the query
         assertEquals(root.getMatchedTriples(), triples);
 
-        long queryUnions = streamPreOrder(query).filter(UnionOp.class::isInstance).count();
+        long queryUnions = dqDeepStreamPreOrder(query).filter(UnionOp.class::isInstance).count();
         if (queryUnions == 0) {
             // all nodes in a MQNode must match the exact same triples in query
             // this allows us to consider the MQNode as a unit in the plan
-            bad = streamPreOrder(root).filter(n -> n instanceof UnionOp)
+            bad = dqDeepStreamPreOrder(root).filter(n -> n instanceof UnionOp)
                     .map(n -> (UnionOp) n)
                     .filter(n -> n.getChildren().stream().map(Op::getMatchedTriples)
                             .distinct().count() != 1)
@@ -219,7 +224,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         assertEquals(equivSets, emptySet());
 
         // no single-child union  (be it a legit union or a multi-query)
-        bad = streamPreOrder(root)
+        bad = dqDeepStreamPreOrder(root)
                 .filter(n -> n instanceof UnionOp && n.getChildren().size() < 2)
                 .collect(toList());
         assertEquals(bad, emptyList());
@@ -231,30 +236,30 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         assertEquals(bad, emptyList());
 
         // no ConjunctionOp in the plan (should've been replaced with JoinOps)
-        bad = streamPreOrder(root).filter(n -> n instanceof ConjunctionOp).collect(toList());
+        bad = dqDeepStreamPreOrder(root).filter(n -> n instanceof ConjunctionOp).collect(toList());
         assertEquals(bad, emptyList());
 
         // all join nodes are valid joins
-        bad = streamPreOrder(root).filter(n -> n instanceof JoinOp).map(n -> (JoinOp) n)
+        bad = dqDeepStreamPreOrder(root).filter(n -> n instanceof JoinOp).map(n -> (JoinOp) n)
                 .filter(n -> !JoinInfo.getJoinability(n.getLeft(), n.getRight()).isValid())
                 .collect(toList());
         assertEquals(bad, emptyList());
 
         // no single-child cartesian nodes
-        bad = streamPreOrder(root)
+        bad = dqDeepStreamPreOrder(root)
                 .filter(n -> n instanceof CartesianOp && n.getChildren().size() < 2)
                 .collect(toList());
         assertEquals(bad, emptyList());
 
         // cartesian nodes should not be directly nested (that is not elegant)
-        bad = streamPreOrder(root)
+        bad = dqDeepStreamPreOrder(root)
                 .filter(n -> n instanceof CartesianOp
                         && n.getChildren().stream().anyMatch(n2 -> n2 instanceof CartesianOp))
                 .collect(toList());
         assertEquals(bad, emptyList());
 
         // no cartesian nodes where a join is applicable between two of its operands
-        bad = streamPreOrder(root).filter(n -> n instanceof CartesianOp)
+        bad = dqDeepStreamPreOrder(root).filter(n -> n instanceof CartesianOp)
                 .filter(n -> {
                     HashSet<Op> children = new HashSet<>(n.getChildren());
                     //noinspection UnstableApiUsage
@@ -285,28 +290,44 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
                     }).collect(toList());
             //all filters are placed somewhere
             List<SPARQLFilter> missingFilters = allFilters.stream()
-                    .filter(f -> streamPreOrder(root).noneMatch(n -> {
-                        if (n instanceof QueryOp) {
-                            if (((QueryOp)n).getQuery().getModifiers().contains(f))
-                                return true;
-                        }
-                        return n.modifiers().contains(f);
-                    }))
+                    .filter(f -> dqDeepStreamPreOrder(root)
+                                    .noneMatch(n -> n.modifiers().contains(f)))
                     .collect(toList());
-            assertEquals(missingFilters, emptyList());
-
-            // forgive unassignable filters
+            if (missingFilters.isEmpty()) {
+                // no extra filters
+                List<SPARQLFilter> extraFilters = dqDeepStreamPreOrder(root)
+                        .flatMap(n -> n.modifiers().filters().stream())
+                        .filter(f -> !allFilters.contains(f)).collect(toList());
+                assertEquals(extraFilters, emptyList());
+            } else {
+                // break up filters into minimal conjunctive components
+                Set<SPARQLFilter> allComponents = allFilters.stream()
+                        .flatMap(f -> conjunctiveComponents(f).stream()).collect(toSet());
+                List<SPARQLFilter> missingComponents = allComponents.stream()
+                        .filter(f -> dqDeepStreamPreOrder(root)
+                                .noneMatch(n -> n.modifiers().filters().stream()
+                                        .anyMatch(af -> conjunctiveComponents(af).contains(f))))
+                        .collect(toList());
+                assertEquals(missingComponents, emptyList());
+            }
 
             // all filters are placed somewhere valid (with all required vars)
             List<ImmutablePair<? extends Op, SPARQLFilter>> badFilterAssignments;
-            badFilterAssignments = streamPreOrder(root)
+            badFilterAssignments = dqDeepStreamPreOrder(root)
                     .flatMap(n -> n.modifiers().filters().stream().map(f -> ImmutablePair.of(n, f)))
                     .filter(p -> !p.left.getAllVars().containsAll(p.right.getVarTermNames()))
                     .collect(toList());
             assertEquals(badFilterAssignments, emptyList());
 
+            // do not place a filter on a node where all of the filter variables are input variables
+            List<ImmutablePair<Op, SPARQLFilter>> fullyInputFilters = dqDeepStreamPreOrder(root)
+                    .flatMap(n -> n.modifiers().filters().stream().map(f -> ImmutablePair.of(n, f)))
+                    .filter(p -> p.left.getInputVars().containsAll(p.right.getVarTermNames()))
+                    .collect(toList());
+            assertEquals(fullyInputFilters, emptyList());
+
             // same as previous, but checks filters within CQuery instances
-            badFilterAssignments = streamPreOrder(root)
+            badFilterAssignments = dqDeepStreamPreOrder(root)
                     .filter(QueryOp.class::isInstance)
                     .map(n -> (QueryOp)n)
                     .flatMap(n -> n.getQuery().getModifiers().stream()
@@ -318,6 +339,37 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         }
 
         assertEquals(bad, emptyList());
+    }
+
+    private static @Nonnull Stream<Op> dqDeepStreamPreOrder(@Nonnull Op root) {
+        return streamPreOrder(root).flatMap(n -> n instanceof DQueryOp
+                ? streamPreOrder(((DQueryOp)n).getQuery()) : Stream.of(n));
+    }
+
+    private static @Nonnull Set<SPARQLFilter> conjunctiveComponents(@Nonnull SPARQLFilter filter) {
+        List<Expr> componentExprs = new ArrayList<>();
+        ArrayDeque<Expr> stack = new ArrayDeque<>();
+        stack.push(filter.getExpr());
+        while (!stack.isEmpty()) {
+            Expr expr = stack.pop();
+            if (expr instanceof ExprFunction) {
+                ExprFunction function = (ExprFunction) expr;
+                if (ExprUtils.getFunctionName(function).equals("&&"))
+                    function.getArgs().forEach(stack::push);
+                continue; //expr is a inner node, do not store
+            }
+            componentExprs.add(expr);
+        }
+
+        Set<SPARQLFilter> set = new HashSet<>();
+        for (Expr expr : componentExprs) {
+            SPARQLFilter.Builder b = SPARQLFilter.builder(expr);
+            for (org.apache.jena.sparql.core.Var v : expr.getVarsMentioned())
+                b.map(v.getVarName(), filter.getVar2Term().get(v.getVarName()));
+            set.add(b.build());
+        }
+        assert set.size() == componentExprs.size();
+        return set;
     }
 
     private static @Nonnull List<UnionOp> multiQueryNodes(@Nonnull Op root) {
