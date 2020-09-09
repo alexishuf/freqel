@@ -341,7 +341,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         assertEquals(bad, emptyList());
     }
 
-    private static @Nonnull Stream<Op> dqDeepStreamPreOrder(@Nonnull Op root) {
+    public static @Nonnull Stream<Op> dqDeepStreamPreOrder(@Nonnull Op root) {
         return streamPreOrder(root).flatMap(n -> n instanceof DQueryOp
                 ? streamPreOrder(((DQueryOp)n).getQuery()) : Stream.of(n));
     }

@@ -7,24 +7,44 @@ import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
+import br.ufsc.lapesd.riefederator.description.SelectDescription;
+import br.ufsc.lapesd.riefederator.federation.Federation;
+import br.ufsc.lapesd.riefederator.federation.Source;
+import br.ufsc.lapesd.riefederator.federation.planner.post.steps.PushDistinctStep;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
+import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.parse.CQueryContext;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
+import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
+import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.sparql.vocabulary.FOAF;
+import org.apache.jena.vocabulary.XSD;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest.assertPlanAnswers;
+import static br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest.dqDeepStreamPreOrder;
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
+import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
@@ -94,5 +114,79 @@ public class PushDistinctStepTest implements TestContext {
         assertEquals(actual, expected);
         if (expectSame)
             assertSame(actual, in);
+    }
+
+    @DataProvider
+    public static @Nonnull Object[][] testOnDefaultFederationData() {
+        String prolog = "PREFIX foaf: <"+ FOAF.NS+">\n" +
+                "PREFIX ex: <"+ EX+">\n" +
+                "PREFIX xsd: <"+ XSD.NS+">";
+        StdURI l1 = new StdURI(EX + "l1");
+        StdURI r1 = new StdURI(EX + "r1");
+        StdLit i23 = StdLit.fromUnescaped("23", xsdInteger);
+        StdLit i27 = StdLit.fromUnescaped("27", xsdInteger);
+        StdLit i31 = StdLit.fromUnescaped("31", xsdInteger);
+        return Stream.of(
+                // single source, candidate solutions already distinct
+                asList(prolog+"SELECT DISTINCT ?x WHERE { ?x ex:p1 1 }",
+                       asList("../../../rdf-optional-1.ttl"),
+                       newHashSet(MapSolution.build(x, l1), MapSolution.build(x, r1))),
+                // single source, non-distinct candidate solutions
+                asList(prolog+"SELECT DISTINCT ?x WHERE {\n" +
+                                "  {?x foaf:knows ?y .} UNION {?y foaf:knows ?x .}\n" +
+                                "}",
+                        asList("../../../rdf-optional-1.ttl"),
+                        newHashSet(MapSolution.build(x, Alice),
+                                   MapSolution.build(x, Bob),
+                                   MapSolution.build(x, Charlie))),
+                // each source contributes the same solution (deduplicate at the mediator)
+                asList(prolog+"SELECT DISTINCT ?x WHERE {?x foaf:name \"alice\".}",
+                       asList("source-1.ttl", "source-2.ttl"),
+                       newHashSet(MapSolution.build(x, Alice))),
+                // plan a cross-source join where one of the sources has duplicate solutions
+                asList(prolog+"SELECT DISTINCT ?o WHERE {?x foaf:knows/ex:p1 ?o .}",
+                        asList("source-1.ttl", "source-2.ttl"),
+                        newHashSet(MapSolution.build(o, i23))),
+                // same as above, but expose ?x (making ?o  non-distinct)
+                asList(prolog+"SELECT DISTINCT ?x ?o WHERE {?x foaf:knows/ex:p1 ?o .}",
+                        asList("source-1.ttl", "source-2.ttl"),
+                        newHashSet(
+                                MapSolution.builder().put(x, Bob).put(o, i23).build(),
+                                MapSolution.builder().put(x, Charlie).put(o, i23).build()
+                        )),
+                // cartesian over two sources with  non-distinct candidates
+                asList(prolog+"SELECT DISTINCT ?o WHERE { ex:Bob foaf:knows/ex:p2 ?o .}",
+                       asList("source-1.ttl", "source-2.ttl"),
+                       newHashSet(MapSolution.build(o, i27),
+                                  MapSolution.build(o, i31)))
+        ).map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "testOnDefaultFederationData")
+    public void testOnDefaultFederation(@Nonnull String sparql, @Nonnull List<String> sources,
+                                        @Nonnull Set<Solution> expected) throws SPARQLParseException {
+        try (Federation federation = Federation.createDefault()) {
+            for (String file : sources) {
+                Model model = new TBoxSpec().addResource(getClass(), file).loadModel();
+                ARQEndpoint ep = ARQEndpoint.forModel(model);
+                federation.addSource(new Source(new SelectDescription(ep), ep));
+            }
+
+            Op query = SPARQLParser.strict().parse(sparql);
+            Op plan = federation.plan(query);
+            assertPlanAnswers(plan, query);
+            boolean isDistinct = query.modifiers().distinct() != null;
+            List<Op> bad = dqDeepStreamPreOrder(plan)
+                    .filter(n -> n.getChildren().isEmpty())
+                    .filter(n -> (n.modifiers().distinct() != null) != isDistinct)
+                    .collect(toList());
+            assertEquals(bad, emptyList());
+
+            Results results = federation.execute(query, plan);
+            List<Solution> list = new ArrayList<>();
+            results.forEachRemainingThenClose(list::add);
+            assertEquals(new HashSet<>(list), expected);
+            assertEquals(list.size(), expected.size());
+        }
     }
 }

@@ -21,6 +21,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.post.PhasedPostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.post.steps.EndpointPushStep;
 import br.ufsc.lapesd.riefederator.federation.planner.post.steps.FilterToBindJoinStep;
 import br.ufsc.lapesd.riefederator.federation.planner.post.steps.PipeCleanerStep;
+import br.ufsc.lapesd.riefederator.federation.planner.post.steps.PushDistinctStep;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.PhasedPrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.steps.*;
 import br.ufsc.lapesd.riefederator.federation.planner.utils.FilterJoinPlanner;
@@ -101,8 +102,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
                     .appendPhase2(new CartesianDistributionStep())
                     .appendPhase3(new ConjunctionReplaceStep(joinOrderPlanner))
                     .appendPhase3(new FlattenStep())
-                    .appendPhase3(new PushFiltersStep())
-                    .appendPhase3(new PushDistinctStep());
+                    .appendPhase3(new PushFiltersStep());
         }
     }
 
@@ -120,6 +120,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         @Override public PostPlanner get() {
             return new PhasedPostPlanner(performanceListener)
                     .appendPhase1(new FilterToBindJoinStep(filterJoinPlanner))
+                    .appendPhase1(new PushDistinctStep())
                     .appendPhase1(new PipeCleanerStep())
                     .appendPhase1(new EndpointPushStep());
         }
