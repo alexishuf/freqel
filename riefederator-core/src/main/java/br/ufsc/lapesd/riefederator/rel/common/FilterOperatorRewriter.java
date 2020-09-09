@@ -1,11 +1,11 @@
 package br.ufsc.lapesd.riefederator.rel.common;
 
+import br.ufsc.lapesd.riefederator.jena.ExprUtils;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import org.apache.jena.sparql.expr.*;
-import org.apache.jena.sparql.serializer.SerializationContext;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -25,48 +25,89 @@ public class FilterOperatorRewriter {
 
     public @Nullable String rewrite(@Nonnull SelectorFactory.Context ctx,
                                     @Nonnull SPARQLFilter filter) {
-        StringBuilder b = replacingOperators(new StringBuilder(), ctx, filter, filter.getExpr());
-        return b == null ? null : b.toString();
+        State state = createState(new StringBuilder(), ctx, filter);
+        return state.visit(filter.getExpr()) ? state.b.toString() : null;
     }
 
-    private @Nullable StringBuilder
-    replacingOperators(@Nonnull StringBuilder b, @Nonnull SelectorFactory.Context ctx,
-                       @Nonnull SPARQLFilter filter, @Nonnull Expr expr) {
-        if (expr instanceof NodeValue) {
-            String sql = termWriter.apply(fromJena(((NodeValue) expr).asNode()));
-            return sql != null ? b.append(sql) : null;
-        } else if (expr instanceof ExprVar) {
+    protected @Nonnull State createState(@Nonnull StringBuilder b,
+                                         @Nonnull SelectorFactory.Context ctx,
+                                         @Nonnull SPARQLFilter filter) {
+        return new State(b, ctx, filter);
+    }
+
+    protected class State {
+        protected @Nonnull final StringBuilder b;
+        protected @Nonnull final SelectorFactory.Context ctx;
+        protected @Nonnull final SPARQLFilter filter;
+
+        public State(@Nonnull StringBuilder b, @Nonnull SelectorFactory.Context ctx,
+                     @Nonnull SPARQLFilter filter) {
+            this.b = b;
+            this.ctx = ctx;
+            this.filter = filter;
+        }
+
+        public boolean visit(@Nonnull Expr expr) {
+            if (expr instanceof NodeValue) {
+                return visitValue((NodeValue) expr);
+            } else if (expr instanceof ExprVar) {
+                return visitVar(expr);
+            } else if (expr instanceof ExprNone || expr instanceof ExprAggregator) {
+                return true;
+            }
+
+            assert expr instanceof ExprFunction;
+            return visitFunction((ExprFunction) expr);
+        }
+
+        public boolean visitFunction(@Nonnull ExprFunction expr) {
+            String sql = sparqlOp2RelOp.get(ExprUtils.getFunctionName(expr));
+            if (sql == null)
+                return false; //abort
+            return visitRelOp(expr, sql);
+        }
+
+        public boolean visitRelOp(@Nonnull ExprFunction expr, @Nonnull String sqlOp) {
+            b.append('(');
+            if (expr.numArgs() == 2) {
+                if (!visit(expr.getArg(1)))
+                    return false;
+                b.append(' ').append(sqlOp).append(' ');
+                if (visit(expr.getArg(2))) {
+                    b.append(')');
+                    return true;
+                }
+            } else if (expr.numArgs() == 1) {
+                b.append(sqlOp).append(' ');
+                if (visit(expr.getArg(1))) {
+                    b.append(')');
+                    return true;
+                }
+            }
+            return true;
+        }
+
+        public boolean visitVar(@Nonnull Expr expr) {
+            Column column = getColumn(expr);
+            b.append(column);
+            return true;
+        }
+
+        protected @Nonnull Column getColumn(@Nonnull Expr expr) {
             Term term = filter.getVar2Term().get(expr.getVarName());
             assert term != null;
             Var var = term.asVar();
             Column column = ctx.getDirectMapped(var, null);
-            assert column != null;
-            return b.append(column);
-        } else if (expr instanceof ExprNone || expr instanceof ExprAggregator) {
-            return b;
+            assert  column != null;
+            return column;
         }
 
-        assert expr instanceof ExprFunction;
-        ExprFunction function = (ExprFunction) expr;
-        String name = function.getOpName();
-        if (name == null)
-            name = function.getFunctionName(new SerializationContext());
-
-        String sql = sparqlOp2RelOp.get(name);
-        if (sql == null)
-            return null; //abort
-        b.append('(');
-        if (function.numArgs() == 2) {
-            if (replacingOperators(b, ctx, filter, function.getArg(1)) == null)
-                return null;
-            b.append(' ').append(sql).append(' ');
-            if (replacingOperators(b, ctx, filter, function.getArg(2)) != null)
-                return b.append(')');
-        } else if (function.numArgs() == 1) {
-            b.append(sql).append(' ');
-            if (replacingOperators(b, ctx, filter, function.getArg(1)) != null)
-                return b.append(')');
+        public boolean visitValue(NodeValue expr) {
+            String sql = termWriter.apply(fromJena(expr.asNode()));
+            boolean ok = sql != null;
+            if (ok)
+                b.append(sql);
+            return ok;
         }
-        return null;
     }
 }

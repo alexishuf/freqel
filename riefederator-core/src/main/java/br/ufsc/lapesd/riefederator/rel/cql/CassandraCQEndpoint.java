@@ -19,6 +19,9 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -298,6 +301,7 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
             case ASK:
             case PROJECTION:
             case DISTINCT:
+            case SPARQL_FILTER:
             case LIMIT:
                 return true;
             default:
@@ -470,6 +474,12 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
         // optimize as usual, then execute under the inner federation
         ConjunctivePlanner planner = SingletonSourceFederation.getInjector().getInstance(ConjunctivePlanner.class);
         Op plan = planner.plan(query, leaves);
+        ModifiersSet planModifiers = plan.modifiers();
+        planModifiers.addAll(index.getCrossStarFilters());
+        for (Modifier modifier : query.getModifiers()) {
+            if (!(modifier instanceof SPARQLFilter))
+                planModifiers.add(modifier);
+        }
         return getFederation().execute(query, plan);
     }
 

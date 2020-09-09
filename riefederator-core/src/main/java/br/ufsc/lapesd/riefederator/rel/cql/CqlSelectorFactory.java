@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.rel.common.FilterOperatorRewriter;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalTermWriter;
 import br.ufsc.lapesd.riefederator.rel.common.Selector;
 import br.ufsc.lapesd.riefederator.rel.common.SelectorFactory;
+import br.ufsc.lapesd.riefederator.rel.cql.impl.CqlFilterOperatorRewriter;
 import br.ufsc.lapesd.riefederator.rel.cql.impl.EqualsCqlSelector;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.FilterSelector;
@@ -15,27 +16,14 @@ import br.ufsc.lapesd.riefederator.rel.sql.impl.FilterSelector;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import static java.util.Arrays.asList;
 
 public class CqlSelectorFactory implements SelectorFactory {
-    private static final @Nonnull Map<String, String> sparqlOp2cqlOp;
-
-    static {
-        Map<String, String> map = new HashMap<>();
-        asList("<", "<=", "=", ">=", ">").forEach(o -> map.put(o, o));
-        map.put("&&", "AND");
-        sparqlOp2cqlOp = map;
-    }
-
     private @Nonnull final FilterOperatorRewriter filterRw;
     private @Nonnull final RelationalTermWriter termWriter;
 
     public CqlSelectorFactory(@Nonnull RelationalTermWriter termWriter) {
-        filterRw = new FilterOperatorRewriter(sparqlOp2cqlOp, termWriter);
+        filterRw = new CqlFilterOperatorRewriter(termWriter);
         this.termWriter = termWriter;
     }
 
