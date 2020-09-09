@@ -18,6 +18,7 @@ import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -26,6 +27,8 @@ import br.ufsc.lapesd.riefederator.util.RefEquals;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
+import com.google.common.collect.Sets;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
 
 import javax.annotation.Nonnull;
@@ -146,6 +149,30 @@ public class TreeUtils {
             }
         }
         return change;
+    }
+
+    @CanIgnoreReturnValue
+    public static @Nullable Projection exposeFilterVars(@Nonnull ModifiersSet set,
+                                                        @Nonnull Set<SPARQLFilter> filters) {
+        Projection oldProjection = set.projection();
+        if (oldProjection == null)
+            return null;
+        Set<String> old = oldProjection.getVarNames();
+        Set<String> required = null;
+        for (SPARQLFilter filter : filters) {
+            for (String name : filter.getVarTermNames()) {
+                if (!old.contains(name)) {
+                    if (required == null) {
+                        required = Sets.newHashSetWithExpectedSize(old.size() * 2);
+                        required.addAll(old);
+                    }
+                    required.add(name);
+                }
+            }
+        }
+        if (required != null)
+            set.add(Projection.of(required));
+        return oldProjection;
     }
 
     private static class AcyclicOp {

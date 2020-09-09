@@ -13,7 +13,6 @@ import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.intersect;
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
@@ -146,7 +145,8 @@ public class ModifiersSet extends AbstractSet<Modifier> {
 
     @Override
     public boolean add(@Nullable Modifier modifier) {
-        checkNotNull(modifier);
+        if (modifier == null)
+            return false; //do not add nulls
         checkState(!locked, "ModifiersSet is unmodifiable");
         Capability capability = modifier.getCapability();
         int ordinal = capability.ordinal();
@@ -171,7 +171,9 @@ public class ModifiersSet extends AbstractSet<Modifier> {
     }
 
     @Override
-    public boolean remove(Object o) {
+    public boolean remove(@Nullable Object o) {
+        if (o == null)
+            return false; //no nulls are ever stored
         checkState(!locked, "ModifiersSet is unmodifiable");
         if (!(o instanceof Modifier)) return false;
         Modifier m = (Modifier) o;

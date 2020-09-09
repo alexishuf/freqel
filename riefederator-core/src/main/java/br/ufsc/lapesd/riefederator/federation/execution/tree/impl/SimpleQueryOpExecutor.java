@@ -33,7 +33,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
-import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
+import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.exposeFilterVars;
 
 public class SimpleQueryOpExecutor extends SimpleOpExecutor
         implements QueryOpExecutor, UnionOpExecutor, DQueryOpExecutor, CartesianOpExecutor,
@@ -116,6 +116,12 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
             if (!ep.hasCapability(capability))
                 (pending == null ? pending = new ModifiersSet() : pending).add(m);
         }
+        if (!ep.hasCapability(Capability.SPARQL_FILTER) && pending != null) {
+            ModifiersSet mods = query.modifiers();
+            pending.add(exposeFilterVars(mods, mods.filters()));
+            if (pending.add(mods.limit())) mods.remove(mods.limit());
+            if (pending.add(mods.ask()  )) mods.remove(mods.ask()  );
+        }
         if (pending != null) { // replace query to a copy with supported modifiers
             Op copy = TreeUtils.deepCopy(query);
             for (Modifier m : query.modifiers()) {
@@ -153,6 +159,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         CQuery q = node.getQuery();
         TPEndpoint ep = node.getEndpoint();
         Set<SPARQLFilter> filters = node.modifiers().filters();
+        assert q.getModifiers().filters().equals(filters);
         boolean isSPARQL = ep.hasSPARQLCapabilities();
         boolean canFilter = isSPARQL || ep.hasCapability(Capability.SPARQL_FILTER);
         boolean hasCapabilities = isSPARQL || q.getModifiers().stream()
@@ -178,13 +185,18 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
             return r;
         } else { // endpoint cannot handle some modifiers, not even locally
             mq.mutateModifiers().removeIf(m -> !ep.hasCapability(m.getCapability()));
+            if (!canFilter) { // these MUST be processed after FILTER()s
+                exposeFilterVars(mq.mutateModifiers(), filters);
+                mq.mutateModifiers().remove(mq.getModifiers().limit());
+                mq.mutateModifiers().remove(mq.getModifiers().ask());
+            }
             Results r = ep.query(mq);
             if (isOptional)
                 r.setOptional(true);
             if (!ep.hasCapability(Capability.DISTINCT))
                 r = HashDistinctResults.applyIf(r, q);
             if (!canFilter)
-                r = SPARQLFilterResults.applyIf(r, union(q.getModifiers().filters(), filters));
+                r = SPARQLFilterResults.applyIf(r, filters);
             if (!ep.hasCapability(Capability.LIMIT))
                 r = LimitResults.applyIf(r, q);
             r = ProjectingResults.applyIf(r, q);
