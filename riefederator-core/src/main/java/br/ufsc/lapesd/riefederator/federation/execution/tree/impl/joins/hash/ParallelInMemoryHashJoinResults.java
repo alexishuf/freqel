@@ -141,11 +141,6 @@ public class ParallelInMemoryHashJoinResults extends AbstractResults implements 
     }
 
     @Override
-    public boolean isDistinct() {
-        return true;
-    }
-
-    @Override
     public int getReadyCount() {
         return queue.size();
     }

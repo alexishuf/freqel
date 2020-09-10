@@ -26,7 +26,7 @@ public class HashDistinctResults extends DelegatingResults implements BufferedRe
     }
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull ModifiersSet modifiers) {
-        if (modifiers.distinct() != null)
+        if (modifiers.distinct() != null && !in.isDistinct())
             return new HashDistinctResults(in);
         return in;
     }
@@ -41,6 +41,11 @@ public class HashDistinctResults extends DelegatingResults implements BufferedRe
     @Override
     public boolean isOrdered() {
         return false;
+    }
+
+    @Override
+    public boolean isDistinct() {
+        return true;
     }
 
     @Override

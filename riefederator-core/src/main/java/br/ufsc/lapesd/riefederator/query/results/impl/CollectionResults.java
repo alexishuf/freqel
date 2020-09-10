@@ -53,6 +53,11 @@ public class CollectionResults extends AbstractResults implements BufferedResult
     }
 
     @Override
+    public boolean isDistinct() {
+        return collection instanceof Set;
+    }
+
+    @Override
     public void reset(boolean close) {
         /* nothing to close */
         iterator = null;

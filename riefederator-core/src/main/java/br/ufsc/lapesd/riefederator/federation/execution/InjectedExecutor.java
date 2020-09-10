@@ -69,6 +69,11 @@ public class InjectedExecutor implements PlanExecutor {
         else
             throw new UnsupportedOperationException("No executor for "+cls);
         results.setNodeName(node.getName());
+        // optionality of results must always corresponds to optionality in the plan
+        assert results.isOptional() == (node.modifiers().optional() != null);
+        // it may happen (as an optimization) that a non-distinct node has distinct
+        // results because distinct was pushed from the query root to the leaves
+        assert node.modifiers().distinct() == null || results.isAsync() || results.isDistinct();
         return results;
     }
 }

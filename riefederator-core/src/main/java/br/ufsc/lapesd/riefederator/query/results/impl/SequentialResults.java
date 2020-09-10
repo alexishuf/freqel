@@ -12,8 +12,8 @@ import static java.util.stream.Collectors.toSet;
 public class SequentialResults extends AbstractResults implements Results {
     private final @Nonnull ResultsList<? extends Results> results;
     private final @Nullable ArraySolution.ValueFactory projector;
+    private final boolean distinct;
     private int idx = 0;
-
 
     private static @Nonnull Collection<String>
     getVarNames(@Nonnull Collection<? extends Results> results,
@@ -27,6 +27,12 @@ public class SequentialResults extends AbstractResults implements Results {
         super(getVarNames(results, varNames));
         this.results = ResultsList.of(results);
         this.projector = varNames == null ? null : ArraySolution.forVars(getVarNames());
+        this.distinct = this.results.size() == 1 && this.results.get(0).isDistinct();
+    }
+
+    @Override
+    public boolean isDistinct() {
+        return distinct;
     }
 
     @Override

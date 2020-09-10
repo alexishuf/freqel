@@ -56,12 +56,16 @@ public class BufferedResultsExecutor implements ResultsExecutor {
 
         List<FeedTask> list = new ArrayList<>(coll.size());
         BlockingQueue<FeedTask.Message> queue = new LinkedBlockingQueue<>();
+        boolean distinct = false;
         int idx = 0;
         for (Results results : coll) {
+            distinct = results.isDistinct();
             FeedTask task = new FeedTask(idx++, results, queue, buffer);
             list.add(task);
             task.schedule();
         }
+        if (idx > 1)
+            distinct = false;
         if (closed)
             logger.error("Race: close() called during async()! Will discard solutions");
         boolean projecting = false;
@@ -70,7 +74,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             projecting = coll.stream().anyMatch(r -> !r.getVarNames().equals(set));
             names = set;
         }
-        return new ConsumingResults(list, queue, names, projecting);
+        return new ConsumingResults(list, queue, names, projecting, distinct);
     }
 
     private boolean closed;
@@ -124,24 +128,32 @@ public class BufferedResultsExecutor implements ResultsExecutor {
         private @Nonnull final List<FeedTask> tasks;
         private @Nonnull final BitSet activeTasks;
         private boolean exhausted = false;
+        private final boolean distinct;
         private @Nonnull final BlockingQueue<FeedTask.Message> queue;
         private @Nullable ArraySolution.ValueFactory projector;
         private @Nullable Solution next = null;
 
         public ConsumingResults(@Nonnull List<FeedTask> tasks,
                                 @Nonnull BlockingQueue<FeedTask.Message> queue,
-                                @Nonnull Collection<String> varNames, boolean projecting) {
+                                @Nonnull Collection<String> varNames, boolean projecting,
+                                boolean distinct) {
             super(varNames);
             this.tasks = tasks;
             this.activeTasks = new BitSet(tasks.size());
             this.activeTasks.flip(0, tasks.size());
             this.queue = queue;
             this.projector = projecting ? ArraySolution.forVars(varNames) : null;
+            this.distinct = distinct;
         }
 
         @Override
         public boolean isAsync() {
             return true;
+        }
+
+        @Override
+        public boolean isDistinct() {
+            return distinct;
         }
 
         @Override

@@ -183,8 +183,7 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
             Results results = new SqlResults(sql, stmt, rs);
             // SqlResults implements FILTER()s and projection.
             // Maybe the SQL engine provided DISTINCT and LIMIT. If not (and required) provide here
-            if (!sql.isDistinct())
-                results = HashDistinctResults.applyIf(results, query);
+            results = HashDistinctResults.applyIf(results, query);
             // LIMIT must always be re-enforced since the mapping may "unfold" the SQL results
             results = LimitResults.applyIf(results, query);
             return results;

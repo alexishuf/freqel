@@ -28,10 +28,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilterExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
-import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.LimitResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
 import br.ufsc.lapesd.riefederator.rel.common.AnnotationStatus;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalMoleculeMatcher;
@@ -61,6 +58,7 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.function.Function;
 
+import static br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation.getInjector;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJenaNode;
 import static br.ufsc.lapesd.riefederator.rel.mappings.RelationalMappingUtils.predicate2column;
 import static java.util.Collections.emptySet;
@@ -296,8 +294,10 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             assert stars.get(0).getFilters().containsAll(query.getModifiers().filters());
             boolean distinct = query.getModifiers().distinct() != null;
             Results results = queryStar(stars.get(0), distinct);
+            assert !distinct || results.isDistinct();
             results = ProjectingResults.applyIf(results, query);
-            return LimitResults.applyIf(results, query);
+            results = LimitResults.applyIf(results, query);
+            return AskResults.applyIf(results, query);
         } else {
             List<Op> leaves = new ArrayList<>();
             for (StarSubQuery star : stars) {
@@ -305,7 +305,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
                 q.mutateModifiers().addAll(star.getFilters());
                 leaves.add(new EndpointQueryOp(this, q));
             }
-            ConjunctivePlanner planner = SingletonSourceFederation.getInjector().getInstance(ConjunctivePlanner.class);
+            ConjunctivePlanner planner = getInjector().getInstance(ConjunctivePlanner.class);
             return getFederation().execute(query, planner.plan(query, leaves));
         }
     }

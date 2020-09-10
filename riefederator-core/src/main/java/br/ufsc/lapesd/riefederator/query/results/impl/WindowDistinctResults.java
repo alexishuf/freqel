@@ -33,7 +33,7 @@ public class WindowDistinctResults extends DelegatingResults {
     }
 
     public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
-        if (query.getModifiers().distinct() != null)
+        if (query.getModifiers().distinct() != null && !in.isDistinct())
             return new WindowDistinctResults(in);
         return in;
     }
