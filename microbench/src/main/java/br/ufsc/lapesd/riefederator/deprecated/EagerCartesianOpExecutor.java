@@ -8,8 +8,8 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianOpExecutor
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleOpExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
+import br.ufsc.lapesd.riefederator.query.results.ResultsUtils;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -51,7 +51,7 @@ public class EagerCartesianOpExecutor extends SimpleOpExecutor implements Cartes
         }
         Results results = new EagerCartesianResults(executor.executeNode(max), toFetch,
                 node.getResultVars());
-        return SPARQLFilterResults.applyIf(results, node);
+        return ResultsUtils.applyModifiers(results, node.modifiers());
     }
 
     @Override

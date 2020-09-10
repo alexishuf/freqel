@@ -8,9 +8,9 @@ import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.CartesianOpExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsList;
+import br.ufsc.lapesd.riefederator.query.results.ResultsUtils;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.LazyCartesianResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -56,11 +56,7 @@ public class LazyCartesianOpExecutor extends SimpleOpExecutor implements Cartesi
             // parallelizing the inputs provides no significant improvement
             // the parallelization provided by lazyness is enough and is significant
             Results r = new LazyCartesianResults(list.steal(), varNames);
-            r.setOptional(node.modifiers().optional() != null);
-            r = SPARQLFilterResults.applyIf(r, node);
-            assert r.isOptional() == (node.modifiers().optional() != null);
-            return r;
-
+            return ResultsUtils.applyModifiers(r, node.modifiers());
         }
     }
 

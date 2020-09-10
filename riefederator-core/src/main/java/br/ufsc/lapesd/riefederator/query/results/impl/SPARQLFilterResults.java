@@ -1,13 +1,10 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
-import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilterExecutor;
 import br.ufsc.lapesd.riefederator.query.results.DelegatingResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,15 +27,6 @@ public class SPARQLFilterResults extends DelegatingResults implements Results {
     public static @Nonnull Results applyIf(@Nonnull Results in,
                                            @Nonnull Collection<SPARQLFilter> filters) {
         return filters.isEmpty() ? in : new SPARQLFilterResults(in, filters);
-    }
-
-    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull CQuery query) {
-        return applyIf(in, query.getModifiers().filters());
-    }
-
-    public static @Nonnull Results applyIf(@Nonnull Results in, @Nonnull Op node) {
-        ImmutableList<SPARQLFilter> list = ImmutableList.copyOf(node.modifiers().filters());
-        return list.isEmpty() ? in : new SPARQLFilterResults(in, list);
     }
 
     public SPARQLFilterResults(@Nonnull Results input,

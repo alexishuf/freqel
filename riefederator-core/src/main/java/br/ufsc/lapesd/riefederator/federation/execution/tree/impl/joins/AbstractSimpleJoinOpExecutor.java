@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleOpExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
+import br.ufsc.lapesd.riefederator.query.results.ResultsUtils;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -36,10 +36,6 @@ public abstract class AbstractSimpleJoinOpExecutor extends SimpleOpExecutor
     protected abstract @Nonnull Results innerExecute(@Nonnull JoinOp node);
 
     public final @Nonnull Results execute(@Nonnull JoinOp node) {
-        Results r = innerExecute(node);
-        r.setOptional(node.modifiers().optional() != null);
-        r = SPARQLFilterResults.applyIf(r, node);
-        assert r.isOptional() == (node.modifiers().optional() != null);
-        return r;
+        return ResultsUtils.applyModifiers(innerExecute(node), node.modifiers());
     }
 }

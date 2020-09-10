@@ -19,6 +19,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
+import br.ufsc.lapesd.riefederator.query.results.ResultsUtils;
 import br.ufsc.lapesd.riefederator.query.results.impl.*;
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -130,18 +131,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
             }
             query = copy;
         }
-
-        Results r = ep.query(query);
-        if (pending != null) { //apply modifiers locally
-            if (pending.optional() != null)
-                r.setOptional(true);
-            r = HashDistinctResults.applyIf(r, pending);
-            r = SPARQLFilterResults.applyIf(r, pending.filters());
-            r = LimitResults.applyIf(r, pending);
-            r = ProjectingResults.applyIf(r, pending);
-            r = AskResults.applyIf(r, pending);
-        }
-        return r;
+        return ResultsUtils.applyModifiers(ep.query(query), pending);
     }
 
     @Override
@@ -193,13 +183,13 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
             Results r = ep.query(mq);
             if (isOptional)
                 r.setOptional(true);
-            if (!ep.hasCapability(Capability.DISTINCT))
-                r = HashDistinctResults.applyIf(r, q);
             if (!canFilter)
                 r = SPARQLFilterResults.applyIf(r, filters);
+            r = ProjectingResults.applyIf(r, q);
+            if (!ep.hasCapability(Capability.DISTINCT))
+                r = HashDistinctResults.applyIf(r, q);
             if (!ep.hasCapability(Capability.LIMIT))
                 r = LimitResults.applyIf(r, q);
-            r = ProjectingResults.applyIf(r, q);
             if (!ep.hasCapability(Capability.ASK))
                 r  = AskResults.applyIf(r, q);
 
@@ -210,16 +200,17 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
 
     @CheckReturnValue
     public @Nonnull Results executeAsUnion(@Nonnull Op node) {
-        if (node.getChildren().isEmpty())
+        int size = node.getChildren().size();
+        if (size == 0)
             return new CollectionResults(Collections.emptyList(), node.getResultVars());
-        ArrayList<Results> resultList = new ArrayList<>(node.getChildren().size());
+        ArrayList<Results> resultList = new ArrayList<>(size);
         PlanExecutor executor = getPlanExecutor();
         Set<SPARQLFilter> unionFilters = node.modifiers().filters();
         for (Op child : node.getChildren())
             resultList.add(executor.executeNode(pushingFilters(child, unionFilters)));
-        Results results = resultsExecutor.async(resultList, node.getResultVars());
-        results.setOptional(node.modifiers().optional() != null);
-        return results;
+        Results results = size > 1 ? resultsExecutor.async(resultList, node.getResultVars())
+                                   : resultList.get(0);
+        return ResultsUtils.applyNonFilterModifiers(results, node.modifiers());
     }
 
     private @Nonnull Op pushingFilters(@Nonnull Op original,

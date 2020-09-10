@@ -5,10 +5,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.PipeOpExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.impl.AskResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.LimitResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.SPARQLFilterResults;
+import br.ufsc.lapesd.riefederator.query.results.ResultsUtils;
 import com.google.common.base.Preconditions;
 
 import javax.annotation.Nonnull;
@@ -29,15 +26,7 @@ public class SimplePipeOpExecutor extends SimpleOpExecutor implements PipeOpExec
         assert op.getChildren().size() == 1;
         Op child = op.getChildren().get(0);
         Results r = getPlanExecutor().executeNode(child);
-        if (op.modifiers().optional() != null)
-            r.setOptional(true);
-        //else: get optionality from child
-
-        r = SPARQLFilterResults.applyIf(r, op);
-        r = LimitResults.applyIf(r, op.modifiers());
-        r = ProjectingResults.applyIf(r, op.modifiers());
-        r = AskResults.applyIf(r, op.modifiers());
-        return r;
+        return ResultsUtils.applyModifiers(r, op.modifiers());
     }
 
     @Override public @Nonnull Results execute(@Nonnull Op node) throws IllegalArgumentException {
