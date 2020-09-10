@@ -14,6 +14,7 @@ import br.ufsc.lapesd.riefederator.jena.ExprUtils;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
 import com.google.common.annotations.VisibleForTesting;
@@ -53,7 +54,7 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             state.addComponents(filter);
         if (state.hasJoinComponents) {
             op.detachChildren();
-            Op root = state.rewriteCartesian();
+            Op root = state.rewriteCartesian(op);
             assert validFilterPlacement(root);
             return root;
         }
@@ -129,12 +130,16 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             addComponents(filter, filter.getExpr());
         }
 
-        public @Nonnull Op rewriteCartesian() {
+        public @Nonnull Op rewriteCartesian(@Nonnull CartesianOp parent) {
             BitSet node2component = assignFilters();
             assert !node2component.isEmpty();
             pushDownFilters(node2component);
             Op root = StepUtils.planConjunction(nodes, joinOrderPlanner);
             addOrphans(root);
+            for (Modifier m : parent.modifiers()) { // add all non-filter modifiers
+                if (!(m instanceof SPARQLFilter))
+                    root.modifiers().add(m);
+            }
             StepUtils.exposeFilterVars(root);
             return root;
         }
