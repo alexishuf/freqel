@@ -306,7 +306,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
                 leaves.add(new EndpointQueryOp(this, q));
             }
             ConjunctivePlanner planner = getInjector().getInstance(ConjunctivePlanner.class);
-            return getFederation().execute(query, planner.plan(query, leaves));
+            return getFederation().execute(planner.plan(query, leaves));
         }
     }
 

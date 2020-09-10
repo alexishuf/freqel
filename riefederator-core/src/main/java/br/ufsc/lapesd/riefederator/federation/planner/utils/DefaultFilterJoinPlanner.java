@@ -73,6 +73,12 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
         return op;
     }
 
+    @Override
+    public @Nonnull String toString() {
+        return String.format("DefaultFilterJoinPlanner(%s, %s)",
+                joinOrderPlanner.toString(), cardinalityComparator.toString());
+    }
+
     private static boolean validFilterPlacement(@Nonnull Op root) {
         for (Iterator<Op> it = TreeUtils.iteratePreOrder(root); it.hasNext(); ) {
             Op op = it.next();

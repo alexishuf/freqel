@@ -28,6 +28,11 @@ public class EndpointPushStep implements PlannerStep {
         return root;
     }
 
+    @Override
+    public @Nonnull String toString() {
+        return getClass().getSimpleName();
+    }
+
     private static class Visitor extends DQPushChecker {
         public Visitor() {
             super(SPARQLDisjunctiveProfile.DEFAULT);

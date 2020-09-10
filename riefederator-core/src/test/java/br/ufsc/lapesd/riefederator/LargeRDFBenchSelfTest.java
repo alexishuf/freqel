@@ -354,7 +354,7 @@ public class LargeRDFBenchSelfTest {
             assertTrue(inRight > 0);
 
             Set<Solution> actual = new HashSet<>(), expected = new HashSet<>();
-            federation.execute(query, plan).forEachRemainingThenClose(actual::add);
+            federation.execute(plan).forEachRemainingThenClose(actual::add);
             loadResults("B4").forEachRemaining(expected::add);
             assertEquals(actual, expected);
         }

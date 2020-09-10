@@ -475,7 +475,7 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
         ModifiersSet planModifiers = plan.modifiers();
         planModifiers.addAll(index.getCrossStarFilters());
         TreeUtils.copyNonFilter(plan, query.getModifiers());
-        return getFederation().execute(query, plan);
+        return getFederation().execute(plan);
     }
 
     /* --- --- --- Object methods --- --- --- */

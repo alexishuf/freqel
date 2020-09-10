@@ -39,6 +39,11 @@ public class FilterToBindJoinStep implements PlannerStep {
         return new Replacer(shared).visit(root);
     }
 
+    @Override
+    public @Nonnull String toString() {
+        return String.format("%s(%s)", getClass().getSimpleName(), filterJoinPlanner);
+    }
+
     private class Replacer {
         @Nonnull Set<RefEquals<Op>> shared;
         @Nullable Map<RefEquals<Op>, Op> converted;
@@ -83,4 +88,6 @@ public class FilterToBindJoinStep implements PlannerStep {
                     .allMatch(f -> n.getAllVars().containsAll(f.getVarTermNames())));
         }
     }
+
+
 }

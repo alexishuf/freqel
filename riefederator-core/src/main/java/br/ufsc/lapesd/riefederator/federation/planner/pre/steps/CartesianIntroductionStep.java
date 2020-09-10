@@ -47,7 +47,8 @@ public class CartesianIntroductionStep implements PlannerStep {
         return root;
     }
 
-    @Override public String toString() {
+    @Override
+    public @Nonnull String toString() {
         return getClass().getSimpleName();
     }
 

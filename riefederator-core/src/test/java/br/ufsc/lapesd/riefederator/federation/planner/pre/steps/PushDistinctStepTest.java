@@ -182,7 +182,7 @@ public class PushDistinctStepTest implements TestContext {
                     .collect(toList());
             assertEquals(bad, emptyList());
 
-            Results results = federation.execute(query, plan);
+            Results results = federation.execute(plan);
             List<Solution> list = new ArrayList<>();
             results.forEachRemainingThenClose(list::add);
             assertEquals(new HashSet<>(list), expected);

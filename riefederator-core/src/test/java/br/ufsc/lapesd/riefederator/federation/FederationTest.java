@@ -1085,7 +1085,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         if (expected != null) {
             // consume just to make the machinery run
             Set<Solution> actual = new HashSet<>();
-            try (Results results = federation.execute(query, plan)) {
+            try (Results results = federation.execute(plan)) {
                 results.forEachRemaining(actual::add);
             }
             perf.sync();
@@ -1231,7 +1231,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         ConjunctivePlannerTest.assertPlanAnswers(plan, query);
 
         Set<Solution> actual = new HashSet<>();
-        Results results = federation.execute(query, plan);
+        Results results = federation.execute(plan);
         results.forEachRemainingThenClose(actual::add);
         assertEquals(actual, expected);
     }

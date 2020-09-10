@@ -22,9 +22,6 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
-import br.ufsc.lapesd.riefederator.query.results.impl.AskResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.HashDistinctResults;
-import br.ufsc.lapesd.riefederator.query.results.impl.ProjectingResults;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableCollection;
@@ -151,7 +148,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         Op plan = plan(expandTemplates(query));
         double planMs = sw.elapsed(MICROSECONDS)/1000.0;
         sw.reset().start();
-        Results results = execute(query, plan);
+        Results results = execute(plan);
         if (!logger.isDebugEnabled()) {
             logger.info("plan() took {}ms and iterators setup {}ms ",
                         planMs, sw.elapsed(MICROSECONDS)/1000.0);
@@ -159,19 +156,8 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return results;
     }
 
-    public @Nonnull Results execute(@Nonnull CQuery query, Op plan) {
-        return execute(new QueryOp(query), plan);
-    }
-
-    public @Nonnull Results execute(@Nonnull Op query, Op plan) {
-        assert plan.getMatchedTriples().equals(query.getMatchedTriples())
-                : "This plan does not correspond to this query!";
-        Results results = executor.executePlan(plan);
-        results = ProjectingResults.applyIf(results, query.modifiers());
-        results = HashDistinctResults.applyIf(results, query.modifiers());
-        results = AskResults.applyIf(results, query.modifiers());
-        results = resultsExecutor.async(results);
-        return results;
+    public @Nonnull Results execute(@Nonnull Op plan) {
+        return resultsExecutor.async(executor.executePlan(plan));
     }
 
     @VisibleForTesting
@@ -211,9 +197,18 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         try (TimeSampler ignored = Metrics.FULL_PLAN_MS.createThreadSampler(performanceListener)) {
             Stopwatch sw = Stopwatch.createStarted();
             Op root = query instanceof QueryOp ? query : TreeUtils.deepCopy(query);
+            assert root.assertTreeInvariants();
             root = prePlanner.plan(root);
+            assert root.assertTreeInvariants();
+
             root = planComponents(root, query, cardinalityComputer);
+            assert root.assertTreeInvariants();
+            assert keptRootModifiers(root, query);
+
             root = postPlanner.plan(root);
+            assert keptRootModifiers(root, query);
+            assert root.assertTreeInvariants();
+
             TreeUtils.nameNodes(root);
             if (logger.isDebugEnabled()) {
                 logger.debug("From query to plan in {}ms. Query: \"\"\"{}\"\"\".\nPlan: \n{}",
@@ -222,6 +217,13 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
             }
             return root;
         }
+    }
+
+    private boolean keptRootModifiers(@Nonnull Op plan, @Nonnull Op query) {
+        return (query.modifiers().distinct() == null || plan.modifiers().distinct() != null)
+                && (query.modifiers().limit() == null || plan.modifiers().limit() != null)
+                && (query.modifiers().projection() == null || plan.modifiers().projection() != null)
+                && (query.modifiers().ask() == null || plan.modifiers().ask() != null);
     }
 
     @Override

@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.decomp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
@@ -13,9 +14,6 @@ import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
-import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.collect.HashMultimap;
@@ -60,15 +58,7 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
             performance.sample(Metrics.SOURCES_COUNT, countEndpoints(leaves));
             Op plan = planner.plan(query, leaves);
             p.placeBottommost(plan);
-            Distinct distinct = query.getModifiers().distinct();
-            Optional optional = query.getModifiers().optional();
-            Limit limit = query.getModifiers().limit();
-            if (distinct != null)
-                plan.modifiers().add(distinct);
-            if (optional != null)
-                plan.modifiers().add(optional);
-            if (limit != null)
-                plan.modifiers().add(limit);
+            TreeUtils.copyNonFilter(plan, query.getModifiers());
             return plan;
         }
     }

@@ -17,6 +17,11 @@ public class PushDistinctStep implements PlannerStep {
         return visit(root, shared, false);
     }
 
+    @Override
+    public @Nonnull String toString() {
+        return getClass().getSimpleName();
+    }
+
     private static @Nonnull Op visit(@Nonnull Op op, @Nonnull Set<RefEquals<Op>> shared,
                                      boolean makeDistinct) {
         boolean distinct = op.modifiers().distinct() != null;

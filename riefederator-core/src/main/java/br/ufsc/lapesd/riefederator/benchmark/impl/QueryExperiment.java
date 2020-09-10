@@ -307,7 +307,7 @@ public class QueryExperiment {
                 }
                 try (TimeSampler ignored = new TimeSampler(perf, Metrics.EXEC_MS)) {
                     Stopwatch firstResultSw = Stopwatch.createStarted();
-                    try (Results results = federation.execute(query, plan)) {
+                    try (Results results = federation.execute(plan)) {
                         while (results.hasNext()) {
                             resultsList.add(results.next());
                             if (firstResultSw.isRunning()) {

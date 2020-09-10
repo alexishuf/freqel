@@ -42,8 +42,13 @@ public class PipeCleanerStep implements PlannerStep {
         });
     }
 
+    @Override
+    public @Nonnull String toString() {
+        return getClass().getSimpleName();
+    }
+
     private void removeLockedPipeOps(@Nonnull Set<RefEquals<Op>> locked,
-                                    @Nonnull ListMultimap<RefEquals<Op>, PipeOp> n2pipe) {
+                                     @Nonnull ListMultimap<RefEquals<Op>, PipeOp> n2pipe) {
         for (RefEquals<Op> ref : locked) {
             Op pipe = ref.get();
             if (pipe instanceof PipeOp)

@@ -50,6 +50,11 @@ public class PushFiltersStep implements PlannerStep {
         return root;
     }
 
+    @Override
+    public @Nonnull String toString() {
+        return getClass().getSimpleName();
+    }
+
     private void pushFilters(@Nonnull Set<RefEquals<Op>> locked, @Nonnull Op root) {
         if (!(root instanceof InnerOp))
             return; //no children to push to

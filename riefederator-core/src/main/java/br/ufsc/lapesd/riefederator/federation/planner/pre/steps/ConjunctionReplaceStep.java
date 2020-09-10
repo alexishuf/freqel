@@ -49,7 +49,7 @@ public class ConjunctionReplaceStep implements PlannerStep {
     }
 
     @Override public @Nonnull String toString() {
-        return getClass().getSimpleName();
+        return String.format("%s(%s)", getClass().getSimpleName(), joinOrderPlanner);
     }
 
     /* --- --- --- Internals --- --- --- */
