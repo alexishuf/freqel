@@ -3,9 +3,9 @@ package br.ufsc.lapesd.riefederator.federation.decomp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
-import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
@@ -13,10 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Assign {@link SPARQLFilter}s of a query to the deepest possible node in plans.
@@ -27,9 +27,9 @@ public class FilterAssigner {
     private final @Nonnull Set<SPARQLFilter> filters;
     private final @Nonnull SetMultimap<Term, SPARQLFilter> term2filter;
 
-    public FilterAssigner(@Nonnull CQuery query) {
-        term2filter = HashMultimap.create();
-        filters = query.getModifiers().filters();
+    public FilterAssigner(@Nonnull Collection<SPARQLFilter> filters) {
+        this.term2filter = HashMultimap.create();
+        this.filters = filters instanceof Set ? (Set<SPARQLFilter>)filters : new HashSet<>(filters);
         for (SPARQLFilter filter : filters)
             filter.getVarTerms().forEach(t -> term2filter.put(t, filter));
     }
@@ -94,6 +94,14 @@ public class FilterAssigner {
                 }
             }
         }
+        assert allFiltersPlaced(plan);
+    }
+
+    private boolean allFiltersPlaced(@Nonnull Op root) {
+        Set<SPARQLFilter> observed = TreeUtils.streamPreOrder(root)
+                .flatMap(o -> o.modifiers().filters().stream()).collect(toSet());
+        List<SPARQLFilter> missing = filters.stream().filter(f -> !observed.contains(f)).collect(toList());
+        return missing.isEmpty();
     }
 
     public boolean placeBottommost(@Nonnull Op node,

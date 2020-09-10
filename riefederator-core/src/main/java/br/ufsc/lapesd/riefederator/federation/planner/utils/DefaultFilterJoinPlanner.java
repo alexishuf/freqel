@@ -136,7 +136,6 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             Op root = StepUtils.planConjunction(nodes, joinOrderPlanner);
             addOrphans(root);
             TreeUtils.copyNonFilter(root, parent.modifiers());
-            StepUtils.exposeFilterVars(root);
             return root;
         }
 

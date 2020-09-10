@@ -4,6 +4,8 @@ import br.ufsc.lapesd.riefederator.algebra.InnerOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
+import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.federation.planner.utils.StepUtils;
@@ -54,8 +56,8 @@ public class ConjunctionReplaceStep implements PlannerStep {
 
     private @Nonnull Op visit(@Nonnull ConjunctionOp parent) {
         Op op = StepUtils.planConjunction(parent.getChildren(), joinOrderPlanner);
-        op.modifiers().addAll(parent.modifiers());
-        StepUtils.exposeFilterVars(op);
+        new FilterAssigner(parent.modifiers().filters()).placeBottommost(op);
+        TreeUtils.copyNonFilter(op, parent.modifiers());
         return op;
     }
 }

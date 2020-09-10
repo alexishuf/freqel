@@ -99,7 +99,7 @@ public class ConjunctionReplaceStepTest implements TestContext {
                        JoinOp.builder(new QueryOp(createQuery(x, age, u)),
                                       new QueryOp(createQuery(x, age, v, x, name, w)))
                                .add(SPARQLFilter.build("?u < ?v"))
-                               .add(Projection.of("x", "u", "v")) //expose vars used in filter
+                               .add(Projection.of("x"))
                                .build())
         ).map(List::toArray).toArray(Object[][]::new);
     }

@@ -4,33 +4,16 @@ import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public class StepUtils {
-    public static void exposeFilterVars(@Nonnull Op op) {
-        Projection projection = op.modifiers().projection();
-        if (projection != null) {
-            Set<String> ok = projection.getVarNames();
-            Set<String> required = null;
-            for (SPARQLFilter filter : op.modifiers().filters()) {
-                for (String var : filter.getVarTermNames()) {
-                    if (!ok.contains(var))
-                        (required == null ? required = new HashSet<>() : required).add(var);
-                }
-            }
-            if (required != null) {
-                required.addAll(ok);
-                op.modifiers().add(Projection.of(required));
-            }
-        }
-    }
-
     public static @Nonnull Op planConjunction(@Nonnull Collection<Op> nodes,
                                               @Nonnull JoinOrderPlanner joinOrderPlanner) {
         IndexedSet<Op> set = IndexedSet.fromDistinct(nodes);
@@ -43,9 +26,7 @@ public class StepUtils {
                 trees.add(getJoinTree(core, jg, visited, stack, joinOrderPlanner));
         }
         assert !trees.isEmpty();
-        Op op = trees.size() == 1 ? trees.get(0) : new CartesianOp(trees);
-        StepUtils.exposeFilterVars(op);
-        return op;
+        return trees.size() == 1 ? trees.get(0) : new CartesianOp(trees);
     }
 
     private static @Nonnull Op getJoinTree(@Nonnull Op core, @Nonnull JoinGraph jg,

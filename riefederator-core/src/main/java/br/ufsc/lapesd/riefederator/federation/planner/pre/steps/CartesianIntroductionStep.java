@@ -7,7 +7,6 @@ import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
-import br.ufsc.lapesd.riefederator.federation.planner.utils.StepUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
@@ -90,7 +89,6 @@ public class CartesianIntroductionStep implements PlannerStep {
             }
             root.modifiers().add(m);
         }
-        StepUtils.exposeFilterVars(root);
         return root;
     }
 

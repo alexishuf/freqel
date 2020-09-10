@@ -62,7 +62,7 @@ public class FilterAssignerTest implements TestContext {
         JoinOp root = JoinOp.create(j1, q3);
 
         CQuery fullQuery = createQuery(Alice, knows, x, x, knows, y, y, age, u);
-        FilterAssigner assigner = new FilterAssigner(fullQuery);
+        FilterAssigner assigner = new FilterAssigner(fullQuery.getModifiers().filters());
 
         // place on leaves
         List<EndpointQueryOp> queryOps = asList(q1, q2, q3);
@@ -90,7 +90,7 @@ public class FilterAssignerTest implements TestContext {
                 .add(new EndpointQueryOp(ep1, query))
                 .add(new EndpointQueryOp(ep2, query))
                 .build();
-        FilterAssigner assigner = new FilterAssigner(query);
+        FilterAssigner assigner = new FilterAssigner(query.getModifiers().filters());
         assigner.placeBottommost(node);
         checkAllFilters(query.getModifiers().filters(), node);
     }
@@ -106,7 +106,7 @@ public class FilterAssignerTest implements TestContext {
                 new ProtoQueryOp(ep2, query)
         );
 
-        FilterAssigner assigner = new FilterAssigner(query);
+        FilterAssigner assigner = new FilterAssigner(query.getModifiers().filters());
         List<EndpointQueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
                 .map(n -> (EndpointQueryOp)n).collect(toList());
         for (EndpointQueryOp queryOp : queryOps)
@@ -133,7 +133,7 @@ public class FilterAssignerTest implements TestContext {
                 new ProtoQueryOp(ep2, createQuery(x, manages, y, y, age, v))
         );
 
-        FilterAssigner assigner = new FilterAssigner(fullQuery);
+        FilterAssigner assigner = new FilterAssigner(fullQuery.getModifiers().filters());
         List<EndpointQueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
                 .map(n -> (EndpointQueryOp)n).collect(toList());
 

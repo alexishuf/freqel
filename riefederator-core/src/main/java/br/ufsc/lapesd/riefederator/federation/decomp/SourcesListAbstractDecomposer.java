@@ -54,7 +54,7 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     @Override
     public @Nonnull Op decompose(@Nonnull CQuery query) {
         try (TimeSampler ignored = Metrics.PLAN_MS.createThreadSampler(performance)) {
-            FilterAssigner p = new FilterAssigner(query);
+            FilterAssigner p = new FilterAssigner(query.getModifiers().filters());
             Collection<Op> leaves = decomposeIntoLeaves(query, p);
 
             performance.sample(Metrics.SOURCES_COUNT, countEndpoints(leaves));
@@ -92,7 +92,7 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
 
     @Override
     public @Nonnull List<Op> decomposeIntoLeaves(@Nonnull CQuery query) {
-        return decomposeIntoLeaves(query, new FilterAssigner(query));
+        return decomposeIntoLeaves(query, new FilterAssigner(query.getModifiers().filters()));
     }
 
     public @Nonnull List<Op> decomposeIntoLeaves(@Nonnull CQuery query,
