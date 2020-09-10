@@ -53,7 +53,8 @@ public class QueryOp extends AbstractOp {
     @Override
     public @Nonnull Set<String> getResultVars() {
         cacheHit = true;
-        return query.attr().publicTripleVarNames();
+        boolean hasProjection = query.getModifiers().projection() != null;
+        return hasProjection ? query.attr().publicVarNames() : query.attr().publicTripleVarNames();
     }
     @Override
     public @Nonnull Set<String> getRequiredInputVars() {

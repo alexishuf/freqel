@@ -32,6 +32,16 @@ public abstract class AbstractOp implements Op {
         this.name = name;
     }
 
+    @Override
+    public boolean assertTreeInvariants() {
+        if (!AbstractOp.class.desiredAssertionStatus())
+            return true;
+        boolean ok = assertAllInvariants(true);
+        for (Op child : getChildren())
+            ok &= child.assertTreeInvariants();
+        return ok;
+    }
+
     protected void assertAllInvariants() {
         assertAllInvariants(true);
     }

@@ -42,12 +42,18 @@ public class AbstractPhasedPlanner {
     }
 
     public @Nonnull Op plan(@Nonnull Op tree) {
+        assert tree.assertTreeInvariants();
         Set<RefEquals<Op>> shared = TreeUtils.findSharedNodes(tree);
-        for (PlannerStep step : phase1deep)
+        for (PlannerStep step : phase1deep) {
             tree = step.plan(tree, shared);
+            assert tree.assertTreeInvariants();
+        }
         tree = phase2(tree, shared);
-        for (PlannerStep step : phase3deep)
+        assert tree.assertTreeInvariants();
+        for (PlannerStep step : phase3deep) {
             tree = step.plan(tree, shared);
+            assert tree.assertTreeInvariants();
+        }
         return tree;
     }
 

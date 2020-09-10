@@ -16,6 +16,14 @@ import java.util.Set;
 
 public interface Op {
     /**
+     * Recursively assert node invariants over the internal (and external) state.
+     *
+     * Computation is only performed if assertions are enabled. If assertions are not enabled,
+     * this simply returns true without checking anything.
+     */
+    boolean assertTreeInvariants();
+
+    /**
      * Get the name for this node within its plan.
      */
     @Nonnull String getName();

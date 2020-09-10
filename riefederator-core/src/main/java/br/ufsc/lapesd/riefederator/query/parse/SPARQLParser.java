@@ -130,7 +130,9 @@ public class SPARQLParser {
         ConvertVisitor visitor = new ConvertVisitor(convertOptions);
         try {
             q.visit(visitor);
-            return visitor.getTree();
+            Op tree = visitor.getTree();
+            assert tree.assertTreeInvariants();
+            return tree;
         } catch (ConvertVisitor.FeatureException e) {
             throw new UnsupportedSPARQLFeatureException(e.getMessage(), q);
         } catch (RuntimeException e) {
