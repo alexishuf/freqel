@@ -50,11 +50,6 @@ public class EndpointIteratorResults extends AbstractResults implements Results 
     }
 
     @Override
-    public boolean isAsync() {
-        return false;
-    }
-
-    @Override
     public int getReadyCount() {
         return current != null ? current.getReadyCount() : 0;
     }

@@ -16,7 +16,9 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.impl.*;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.EndpointIteratorResults;
+import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.webapis.description.*;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
@@ -110,11 +112,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
                          query, molecule.getName(), e);
             return CollectionResults.empty(resultVars);
         }
-        Results results = new EndpointIteratorResults(it, query);
-        results = SPARQLFilterResults.applyIf(results, query);
-        results = ProjectingResults.applyIf(results, query);
-        results = HashDistinctResults.applyIf(results, query);
-        return results;
+        return new EndpointIteratorResults(it, query);
     }
 
     public @Nonnull Results matchAndQuery(@Nonnull CQuery query) {
@@ -177,6 +175,8 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
         switch (capability) {
             case PROJECTION:
             case DISTINCT:
+            case LIMIT:
+            case ASK:
             case SPARQL_FILTER:
                 return true;
             default:
