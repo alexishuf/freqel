@@ -8,10 +8,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import org.jetbrains.annotations.Contract;
@@ -21,7 +18,34 @@ import java.util.Objects;
 import java.util.Set;
 
 public class QueryOp extends AbstractOp {
-    protected MutableCQuery query = null;
+    private MutableCQuery query = null;
+
+    /**
+     * Changing the modifiers implicitly updates many of the get*Vars() methods.
+     * This delegate extends the updates done by CQuery internally to get*Vars()
+     * methods not delegated to CQuery.
+     *
+     * Caches are not purged recursively, as the client code is responsible for that.
+     * The cacheHit flag is not changed, as the client code may rely on its previous
+     * value if it wishes to star an upwards recursive purge from this node.
+     */
+    private class ModifierSetInterceptor extends DelegatingModifiersSet {
+        public ModifierSetInterceptor(@Nonnull ModifiersSet delegate) {
+            super(delegate, false);
+        }
+
+        @Override protected void added(@Nonnull Modifier modifier) {
+            super.added(modifier);
+            if (modifier instanceof Projection || modifier instanceof Ask)
+                strictResultVarsCache = publicVarsCache = allInputVarsCache = null;
+        }
+
+        @Override protected void removed(@Nonnull Modifier modifier) {
+            super.added(modifier);
+            if (modifier instanceof Projection || modifier instanceof Ask)
+                strictResultVarsCache = publicVarsCache = allInputVarsCache = null;
+        }
+    }
 
     public QueryOp(@Nonnull CQuery query) {
         setQuery(query);
@@ -29,10 +53,11 @@ public class QueryOp extends AbstractOp {
 
     @Override
     public @Nonnull ModifiersSet modifiers() {
-        return query.mutateModifiers();
+        return new ModifierSetInterceptor(this.query.mutateModifiers());
     }
 
     public @Nonnull MutableCQuery getQuery() {
+        assert query != null;
         return query;
     }
 

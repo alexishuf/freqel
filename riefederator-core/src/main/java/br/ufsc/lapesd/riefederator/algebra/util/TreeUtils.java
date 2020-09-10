@@ -17,10 +17,7 @@ import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
@@ -419,5 +416,17 @@ public class TreeUtils {
         else if (op instanceof EndpointQueryOp)
             ep = ((EndpointQueryOp) op).getEndpoint();
         return ep;
+    }
+
+    public static void copyNonFilter(@Nonnull Op destOp, @Nonnull Collection<Modifier> modifiers) {
+        ModifiersSet set = destOp.modifiers();
+        boolean purge = false;
+        for (Modifier m : modifiers) {
+            if (m instanceof SPARQLFilter)                        continue;
+            else if (m instanceof Ask || m instanceof Projection) purge = true;
+            set.add(m);
+        }
+        if (purge)
+            destOp.purgeCachesUpward();
     }
 }

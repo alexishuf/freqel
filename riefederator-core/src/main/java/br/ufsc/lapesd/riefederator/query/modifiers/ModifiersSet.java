@@ -20,7 +20,7 @@ import static java.util.Collections.unmodifiableSet;
 
 public class ModifiersSet extends AbstractSet<Modifier> {
     private static final Logger logger = LoggerFactory.getLogger(ModifiersSet.class);
-    private static final class Data {
+    protected static final class Data {
         private final @Nonnull List<Set<Modifier>> sets;
         private final @Nonnull Set<SPARQLFilter> filtersView;
         private int size;
@@ -41,14 +41,14 @@ public class ModifiersSet extends AbstractSet<Modifier> {
             size = other == null ? 0 : other.size;
         }
     }
-    private final @Nonnull Data d;
-    private boolean locked = false;
+    protected final @Nonnull Data d;
+    protected boolean locked = false;
 
     public static final @Nonnull ModifiersSet EMPTY = new ModifiersSet().getLockedView();
 
-    protected ModifiersSet(@Nonnull Data d) {
-        this.d = d;
-        locked = true;
+    protected ModifiersSet(@Nonnull ModifiersSet delegate, boolean locked) {
+        this.d = delegate.d;
+        this.locked = locked;
     }
 
     public ModifiersSet() {
@@ -335,7 +335,7 @@ public class ModifiersSet extends AbstractSet<Modifier> {
     }
 
     public @Nonnull ModifiersSet getLockedView() {
-        return new ModifiersSet(d);
+        return new ModifiersSet(this, true);
     }
 
     private @Nullable <T extends Modifier> T getSingleton(@Nonnull Capability cap,

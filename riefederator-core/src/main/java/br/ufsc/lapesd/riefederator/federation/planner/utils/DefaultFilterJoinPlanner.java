@@ -14,7 +14,6 @@ import br.ufsc.lapesd.riefederator.jena.ExprUtils;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
 import com.google.common.annotations.VisibleForTesting;
@@ -136,10 +135,7 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             pushDownFilters(node2component);
             Op root = StepUtils.planConjunction(nodes, joinOrderPlanner);
             addOrphans(root);
-            for (Modifier m : parent.modifiers()) { // add all non-filter modifiers
-                if (!(m instanceof SPARQLFilter))
-                    root.modifiers().add(m);
-            }
+            TreeUtils.copyNonFilter(root, parent.modifiers());
             StepUtils.exposeFilterVars(root);
             return root;
         }

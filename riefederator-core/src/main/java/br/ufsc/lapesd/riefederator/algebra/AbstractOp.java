@@ -154,6 +154,23 @@ public abstract class AbstractOp implements Op {
     }
 
     @Override
+    public void purgeCachesUpward() {
+        if (!cacheHit)
+            return;
+        ArrayDeque<Op> stack = new ArrayDeque<>();
+        stack.push(this);
+        purgeCachesUpward(stack);
+    }
+
+    public void purgeCachesUpward(@Nonnull ArrayDeque<Op> stack) {
+        while (!stack.isEmpty()) {
+            Op op = stack.pop();
+            op.purgeCachesShallow();
+            op.getParents().forEach(stack::push);
+        }
+    }
+
+    @Override
     public void purgeCaches() {
         if (!cacheHit)
             return; // do not propagate if nobody queried this node since last cache purge
@@ -165,11 +182,7 @@ public abstract class AbstractOp implements Op {
             op.getChildren().forEach(stack::push);
         }
         getParents().forEach(stack::push);
-        while (!stack.isEmpty()) {
-            Op op = stack.pop();
-            op.purgeCachesShallow();
-            op.getParents().forEach(stack::push);
-        }
+        purgeCachesUpward(stack);
     }
 
     @Override

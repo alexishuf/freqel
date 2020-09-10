@@ -125,7 +125,13 @@ public interface Op {
     void detachFrom(@Nonnull Op parent);
 
     /**
-     * Invalidate all caches held internally by this node and any of its parents or children.
+     * Invalidate all caches held internally by this node and any of its direct or indirect parents.
+     */
+    void purgeCachesUpward();
+
+    /**
+     * Invalidate all caches held internally by this node and any of its direct or indirect
+     * parents or children.
      */
     void purgeCaches();
 

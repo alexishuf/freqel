@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.rel.cql;
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.riefederator.federation.Federation;
@@ -19,9 +20,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -475,10 +474,7 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
         Op plan = planner.plan(query, leaves);
         ModifiersSet planModifiers = plan.modifiers();
         planModifiers.addAll(index.getCrossStarFilters());
-        for (Modifier modifier : query.getModifiers()) {
-            if (!(modifier instanceof SPARQLFilter))
-                planModifiers.add(modifier);
-        }
+        TreeUtils.copyNonFilter(plan, query.getModifiers());
         return getFederation().execute(query, plan);
     }
 
