@@ -15,18 +15,18 @@ import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.*;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.ResultsUtils;
-import br.ufsc.lapesd.riefederator.query.results.impl.*;
+import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import java.util.ArrayList;
@@ -105,24 +105,29 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         }
     }
 
+    protected @Nullable ModifiersSet getPendingModifiers(@Nonnull ModifiersSet in,
+                                                         @Nonnull TPEndpoint ep) {
+        ModifiersSet pending = null;
+        for (Modifier m : in) {
+            Capability capability = m.getCapability();
+            if (!ep.hasCapability(capability))
+                (pending == null ? pending = new ModifiersSet() : pending).add(m);
+        }
+        if (!ep.hasCapability(Capability.SPARQL_FILTER) && pending != null) {
+            pending.add(exposeFilterVars(in, in.filters()));
+            if (pending.add(in.limit())) in.remove(in.limit());
+            if (pending.add(in.ask()  )) in.remove(in.ask()  );
+        }
+        return pending;
+    }
+
     protected @Nonnull Results doExecute(@Nonnull DQueryOp node) {
         DQEndpoint ep = node.getEndpoint();
         Op query = node.getQuery();
         assert new DQPushChecker(ep.getDisjunctiveProfile()).setEndpoint(ep).canPush(query)
                : "Why did a non-executable plan got to this point!?";
         // if save all unsupported modifiers in pending
-        ModifiersSet pending = null;
-        for (Modifier m : query.modifiers()) {
-            Capability capability = m.getCapability();
-            if (!ep.hasCapability(capability))
-                (pending == null ? pending = new ModifiersSet() : pending).add(m);
-        }
-        if (!ep.hasCapability(Capability.SPARQL_FILTER) && pending != null) {
-            ModifiersSet mods = query.modifiers();
-            pending.add(exposeFilterVars(mods, mods.filters()));
-            if (pending.add(mods.limit())) mods.remove(mods.limit());
-            if (pending.add(mods.ask()  )) mods.remove(mods.ask()  );
-        }
+        ModifiersSet pending = getPendingModifiers(query.modifiers(), ep);
         if (pending != null) { // replace query to a copy with supported modifiers
             Op copy = TreeUtils.deepCopy(query);
             for (Modifier m : query.modifiers()) {
@@ -148,54 +153,30 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
     protected @Nonnull Results doExecute(@Nonnull EndpointQueryOp node) {
         CQuery q = node.getQuery();
         TPEndpoint ep = node.getEndpoint();
-        Set<SPARQLFilter> filters = node.modifiers().filters();
-        assert q.getModifiers().filters().equals(filters);
-        boolean isSPARQL = ep.hasSPARQLCapabilities();
-        boolean canFilter = isSPARQL || ep.hasCapability(Capability.SPARQL_FILTER);
-        boolean hasCapabilities = isSPARQL || q.getModifiers().stream()
-                .allMatch(m -> m instanceof Optional || ep.hasCapability(m.getCapability()))
-                && (filters.isEmpty() || canFilter) ;
-
-        MutableCQuery mq = new MutableCQuery(q);
-        Set<SPARQLFilter> removed = mq.sanitizeFiltersStrict();
-        if (!removed.isEmpty()) {
-            logger.warn("Query had {} filters with input variables. Such variables should've " +
-                        "been bound before execution against {}. Offending filters: {}. " +
-                        "Offending query: {}", removed.size(), ep, removed, q);
-            assert false : "Attempted to execute query with input vars in filters";
+        ModifiersSet pending = getPendingModifiers(q.getModifiers(), ep);
+        if (!q.attr().reqInputVarNames().isEmpty()) {
+            assert false : "Query has required input vars";
+            // in production: try to recover by discarding FILTER()s
+            MutableCQuery mq = new MutableCQuery(q);
+            Set<SPARQLFilter> removed = mq.sanitizeFiltersStrict();
+            logger.warn("Query against {} had unbound required input variables.\n  Offending " +
+                        "filters: {}\n  Pending inputs after removed filters: {}\n  Offending " +
+                        "query:\n    {}", ep, removed, mq.attr().reqInputVarNames(),
+                        q.toString().replace("\n", "\n    "));
+            q = mq;
         }
-        boolean isOptional = mq.mutateModifiers().remove(q.getModifiers().optional());
-        assert mq.getModifiers().optional() == null;
-        assert !isOptional || node.modifiers().optional() != null; //do not affect input!
-
-        if (hasCapabilities) {
-            Results r = ep.query(mq);
-            if (isOptional)
-                r.setOptional(true);
-            return r;
-        } else { // endpoint cannot handle some modifiers, not even locally
-            mq.mutateModifiers().removeIf(m -> !ep.hasCapability(m.getCapability()));
-            if (!canFilter) { // these MUST be processed after FILTER()s
-                exposeFilterVars(mq.mutateModifiers(), filters);
-                mq.mutateModifiers().remove(mq.getModifiers().limit());
-                mq.mutateModifiers().remove(mq.getModifiers().ask());
-            }
-            Results r = ep.query(mq);
-            if (isOptional)
-                r.setOptional(true);
-            if (!canFilter)
-                r = SPARQLFilterResults.applyIf(r, filters);
-            r = ProjectingResults.applyIf(r, q);
-            if (!ep.hasCapability(Capability.DISTINCT))
-                r = HashDistinctResults.applyIf(r, q);
-            if (!ep.hasCapability(Capability.LIMIT))
-                r = LimitResults.applyIf(r, q);
-            if (!ep.hasCapability(Capability.ASK))
-                r  = AskResults.applyIf(r, q);
-
-            assert !isOptional || r.isOptional();
-            return r;
+        Results r;
+        if (pending == null) {
+            r = ep.query(q);
+        } else {
+            MutableCQuery mq = new MutableCQuery(q);
+            mq.mutateModifiers().removeIf(pending::contains);
+            assert q.getModifiers().containsAll(pending); // q not affected!
+            r = ResultsUtils.applyModifiers(ep.query(mq), pending);
         }
+        assert q.getModifiers().optional() == null || r.isOptional();
+        assert r.getVarNames().equals(q.attr().publicVarNames());
+        return r;
     }
 
     @CheckReturnValue
