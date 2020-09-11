@@ -46,7 +46,8 @@ public class EndpointIteratorResults extends AbstractResults implements Results 
 
     public EndpointIteratorResults(@Nonnull Iterator<? extends TPEndpoint> epIterator,
                                    @Nonnull CQuery query) {
-        this(epIterator, query, query.attr().allVarNames(), false);
+        this(epIterator, query, query.attr().publicVarNames(),
+                query.getModifiers().projection() != null);
     }
 
     @Override

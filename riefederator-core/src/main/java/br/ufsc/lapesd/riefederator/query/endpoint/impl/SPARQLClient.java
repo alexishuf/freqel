@@ -14,6 +14,7 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.*;
 import br.ufsc.lapesd.riefederator.query.modifiers.Ask;
+import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.AbstractResults;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
@@ -272,7 +273,9 @@ public class SPARQLClient extends AbstractTPEndpoint implements DQEndpoint {
     public @Nonnull Results query(@Nonnull CQuery query) {
         if (query.attr().isAsk())
             return execute(query, JSON_ACCEPT, emptySet(), AskResults::new);
-        return execute(query, TSV_ACCEPT, query.attr().publicTripleVarNames(), TSVResults::new);
+        Projection p = query.getModifiers().projection();
+        Set<String> vars = p == null ? query.attr().publicTripleVarNames() : p.getVarNames();
+        return execute(query, TSV_ACCEPT, vars, TSVResults::new);
     }
 
     @Override

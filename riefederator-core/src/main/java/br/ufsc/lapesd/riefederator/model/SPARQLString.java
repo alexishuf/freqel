@@ -17,7 +17,6 @@ import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.XSD;
@@ -56,7 +55,9 @@ public class SPARQLString {
         boolean distinct = query.getModifiers().distinct() != null;
         int limit = query.attr().limit();
         PrefixDict dict = query.getPrefixDict(StdPrefixDict.STANDARD);
-        IndexedSet<String> varNames = query.attr().publicTripleVarNames();
+        // honor projection if present, else expose only vars in triple patterns
+        Projection p = query.getModifiers().projection();
+        Set<String> varNames = p == null ? query.attr().publicTripleVarNames() : p.getVarNames();
 
         // write body to discover which variables in publicTripleVarNames should be removed
         StringBuilder bb = new StringBuilder(query.size()*60);
