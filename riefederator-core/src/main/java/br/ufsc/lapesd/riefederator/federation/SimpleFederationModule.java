@@ -18,10 +18,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.post.PhasedPostPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.post.steps.EndpointPushStep;
-import br.ufsc.lapesd.riefederator.federation.planner.post.steps.FilterToBindJoinStep;
-import br.ufsc.lapesd.riefederator.federation.planner.post.steps.PipeCleanerStep;
-import br.ufsc.lapesd.riefederator.federation.planner.post.steps.PushDistinctStep;
+import br.ufsc.lapesd.riefederator.federation.planner.post.steps.*;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.PhasedPrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.steps.*;
 import br.ufsc.lapesd.riefederator.federation.planner.utils.FilterJoinPlanner;
@@ -83,24 +80,21 @@ public class SimpleFederationModule extends SimpleExecutionModule {
     }
 
     public static class DefaultPrePlannerProvider implements Provider<PrePlanner> {
-        private @Nonnull JoinOrderPlanner joinOrderPlanner;
         private @Nonnull PerformanceListener performanceListener;
 
         @Inject
-        public DefaultPrePlannerProvider(@Nonnull JoinOrderPlanner joinOrderPlanner,
-                                         @Nonnull PerformanceListener performanceListener) {
-            this.joinOrderPlanner = joinOrderPlanner;
+        public DefaultPrePlannerProvider(@Nonnull PerformanceListener performanceListener) {
             this.performanceListener = performanceListener;
         }
 
-        @Override public @Nonnull PrePlanner get() {
+        @Override
+        public @Nonnull PrePlanner get() {
             return new PhasedPrePlanner(performanceListener)
                     .appendPhase1(new FlattenStep())
                     .appendPhase1(new CartesianIntroductionStep())
                     .appendPhase1(new FlattenStep())
                     .appendPhase2(new UnionDistributionStep())
                     .appendPhase2(new CartesianDistributionStep())
-                    .appendPhase3(new ConjunctionReplaceStep(joinOrderPlanner))
                     .appendPhase3(new FlattenStep())
                     .appendPhase3(new PushFiltersStep());
         }
@@ -108,19 +102,26 @@ public class SimpleFederationModule extends SimpleExecutionModule {
 
     public static class DefaultPostPlannerProvider implements Provider<PostPlanner> {
         private @Nonnull final PerformanceListener performanceListener;
+        private @Nonnull final JoinOrderPlanner joinOrderPlanner;
         private @Nonnull final FilterJoinPlanner filterJoinPlanner;
 
         @Inject
         public DefaultPostPlannerProvider(@Nonnull PerformanceListener performanceListener,
+                                          @Nonnull JoinOrderPlanner joinOrderPlanner,
                                           @Nonnull FilterJoinPlanner filterJoinPlanner) {
             this.performanceListener = performanceListener;
+            this.joinOrderPlanner = joinOrderPlanner;
             this.filterJoinPlanner = filterJoinPlanner;
         }
 
-        @Override public PostPlanner get() {
+        @Override
+        public @Nonnull PostPlanner get() {
             return new PhasedPostPlanner(performanceListener)
+                    .appendPhase1(new ConjunctionReplaceStep(joinOrderPlanner))
+                    .appendPhase1(new FlattenStep())
                     .appendPhase1(new FilterToBindJoinStep(filterJoinPlanner))
                     .appendPhase1(new PushDistinctStep())
+                    .appendPhase1(new PushLimitStep())
                     .appendPhase1(new PipeCleanerStep())
                     .appendPhase1(new EndpointPushStep());
         }

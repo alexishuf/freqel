@@ -39,6 +39,10 @@ public class MapProjectingResults implements Results {
         return false;
     }
 
+    @Override public int getLimit() {
+        return -1;
+    }
+
     @Override public void setOptional(boolean value) {
         throw new UnsupportedOperationException();
     }

@@ -21,8 +21,14 @@ public abstract class DelegatingResults extends AbstractResults {
         return in.isAsync();
     }
 
-    @Override public boolean isOptional() {
+    @Override
+    public boolean isOptional() {
         return super.isOptional() || in.isOptional();
+    }
+
+    @Override
+    public int getLimit() {
+        return in.getLimit();
     }
 
     @Override

@@ -36,6 +36,11 @@ public interface Results extends Iterator<Solution>, AutoCloseable {
     boolean isOptional();
 
     /**
+     * If this results has an upper bound in the number of results return that bound, else -1.
+     */
+    int getLimit();
+
+    /**
      * Set the optional flag reported by {@link Results#isOptional()}.
      */
     void setOptional(boolean value);

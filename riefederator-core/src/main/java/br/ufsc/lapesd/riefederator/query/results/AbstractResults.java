@@ -37,6 +37,11 @@ public abstract class AbstractResults implements Results {
     }
 
     @Override
+    public int getLimit() {
+        return -1;
+    }
+
+    @Override
     public void setOptional(boolean optional) {
         this.optional = optional;
     }
