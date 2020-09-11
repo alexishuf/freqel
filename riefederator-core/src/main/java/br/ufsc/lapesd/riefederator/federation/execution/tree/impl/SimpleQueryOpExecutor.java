@@ -153,7 +153,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         boolean isSPARQL = ep.hasSPARQLCapabilities();
         boolean canFilter = isSPARQL || ep.hasCapability(Capability.SPARQL_FILTER);
         boolean hasCapabilities = isSPARQL || q.getModifiers().stream()
-                .allMatch(m -> m.equals(Optional.INSTANCE) || ep.hasCapability(m.getCapability()))
+                .allMatch(m -> m instanceof Optional || ep.hasCapability(m.getCapability()))
                 && (filters.isEmpty() || canFilter) ;
 
         MutableCQuery mq = new MutableCQuery(q);
@@ -164,7 +164,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
                         "Offending query: {}", removed.size(), ep, removed, q);
             assert false : "Attempted to execute query with input vars in filters";
         }
-        boolean isOptional = mq.mutateModifiers().remove(Optional.INSTANCE);
+        boolean isOptional = mq.mutateModifiers().remove(q.getModifiers().optional());
         assert mq.getModifiers().optional() == null;
         assert !isOptional || node.modifiers().optional() != null; //do not affect input!
 

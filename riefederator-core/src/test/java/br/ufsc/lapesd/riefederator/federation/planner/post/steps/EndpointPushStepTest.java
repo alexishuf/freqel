@@ -110,20 +110,20 @@ public class EndpointPushStepTest implements TestContext {
                                                .add(q(dq1, Alice, knows, y)).build(),
                                              q(dq1, x, knows, y)))),
                 // wrap optional
-                asList(JoinOp.create(q(dq1, Alice, knows, x), q(dq1, x, age, u, Optional.INSTANCE)),
+                asList(JoinOp.create(q(dq1, Alice, knows, x), q(dq1, x, age, u, Optional.EXPLICIT)),
                        new DQueryOp(dq1, JoinOp.create(q(dq1, Alice, knows, x),
-                                                       q(dq1, x, age, u, Optional.INSTANCE)))),
+                                                       q(dq1, x, age, u, Optional.EXPLICIT)))),
                 // do not wrap optional if forbidden
                 asList(JoinOp.create(q(dq1NO, Alice, knows, x),
-                                     q(dq1NO, x, age, u, Optional.INSTANCE)),
+                                     q(dq1NO, x, age, u, Optional.EXPLICIT)),
                        null),
                 // wrap optional root even if forbidden
                 asList(UnionOp.builder().add(q(dq1NO, x, knows, Alice))
                                         .add(q(dq1NO, x, knows, Bob))
-                                        .add(Optional.INSTANCE).build(),
+                                        .add(Optional.EXPLICIT).build(),
                        new DQueryOp(dq1NO, UnionOp.builder().add(q(dq1NO, x, knows, Alice))
                                                             .add(q(dq1NO, x, knows, Bob))
-                                                            .add(Optional.INSTANCE).build()))
+                                                            .add(Optional.EXPLICIT).build()))
         ).map(List::toArray).toArray(Object[][]::new);
     }
 

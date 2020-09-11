@@ -115,14 +115,14 @@ public class CartesianIntroductionStepTest implements TestContext {
                                 .add(new QueryOp(createQuery(Alice, p1, x)))
                                 .add(new QueryOp(createQuery(
                                         Bob, p1, x,
-                                        Bob, p2, y, Optional.INSTANCE)))
+                                        Bob, p2, y, Optional.EXPLICIT)))
                                 .build(),
                         ConjunctionOp.builder()
                                 .add(new QueryOp(createQuery(Alice, p1, x)))
                                 .add(CartesianOp.builder()
                                         .add(new QueryOp(createQuery(Bob, p1, x)))
                                         .add(new QueryOp(createQuery(Bob, p2, y)))
-                                        .add(Optional.INSTANCE)
+                                        .add(Optional.EXPLICIT)
                                         .build())
                                 .build())
         ).map(List::toArray).toArray(Object[][]::new);

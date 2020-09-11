@@ -297,7 +297,7 @@ public class ConvertVisitor implements QueryVisitor {
                     logger.warn("Ignoring OPTIONAL that yields no Op: {}", el.getOptionalElement());
                     return;
                 }
-                op.modifiers().add(Optional.INSTANCE);
+                op.modifiers().add(Optional.EXPLICIT);
                 if (oldOp instanceof ConjunctionOp) {
                     ((ConjunctionOp) oldOp).addChild(op);
                     op = oldOp;

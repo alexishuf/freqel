@@ -220,7 +220,7 @@ public class SPARQLParserTest implements TestContext {
                                 "?x foaf:knows ex:Alice . OPTIONAL {?x foaf:name ?y .} }", true,
                        ConjunctionOp.builder()
                                .add(new QueryOp(createQuery(x, knows, Alice)))
-                               .add(new QueryOp(createQuery(x, name, y, Optional.INSTANCE)))
+                               .add(new QueryOp(createQuery(x, name, y, Optional.EXPLICIT)))
                                .build(), null),
                 // parse OPTIONAL with FILTER inside a UNION
                 asList(prolog+"SELECT * WHERE {\n" +
@@ -240,7 +240,7 @@ public class SPARQLParserTest implements TestContext {
                                         .add(new QueryOp(createQuery(
                                                 x, name, y,
                                                 x, age, u,
-                                                SPARQLFilter.build("?u > 23"), Optional.INSTANCE
+                                                SPARQLFilter.build("?u > 23"), Optional.EXPLICIT
                                         ))).build())
                                 .add(new QueryOp(createQuery(x, knows, Bob)))
                                 .build(), null),
@@ -263,7 +263,7 @@ public class SPARQLParserTest implements TestContext {
                                 .add(new QueryOp(createQuery(
                                         x, name, y,
                                         x, age, u,
-                                        SPARQLFilter.build("?u < 23"), Optional.INSTANCE)))
+                                        SPARQLFilter.build("?u < 23"), Optional.EXPLICIT)))
                                 .add(Projection.of("u", "x"))
                                 .build(), null)
         ).map(List::toArray).toArray(Object[][]::new);

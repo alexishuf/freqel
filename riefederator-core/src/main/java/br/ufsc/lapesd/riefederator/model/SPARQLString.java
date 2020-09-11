@@ -15,10 +15,7 @@ import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
-import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
-import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
+import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
@@ -152,16 +149,33 @@ public class SPARQLString {
 
     public static @Nonnull StringBuilder
     writeBody(@Nonnull StringBuilder b, @Nonnull Op op, @Nonnull PrefixDict dict) {
-        boolean optional = op.modifiers().optional() != null;
+        boolean optional = op.modifiers().contains(Optional.EXPLICIT);
         if (optional)
             b.append(" OPTIONAL { ");
         if (op instanceof QueryOp) {
             writeTriples(b, ((QueryOp) op).getQuery(), dict);
-        } else if (op instanceof CartesianOp || op instanceof JoinOp || op instanceof ConjunctionOp
-                                             || op instanceof PipeOp) {
-            boolean e = op.getChildren().stream().anyMatch(c -> c instanceof EmptyOp
-                                                             && c.modifiers().optional() == null);
-            if (!e) {
+        }
+        boolean hasEmpty = false, hasOptional = false;
+        if (!(op instanceof UnionOp)) {
+            for (Op child : op.getChildren()) {
+                if (child instanceof EmptyOp) hasEmpty = true;
+                if (child.modifiers().optional() != null) hasOptional = true;
+            }
+        }
+        if (op instanceof JoinOp) {
+            JoinOp jo = (JoinOp)op;
+            Op[] o = {jo.getLeft(), jo.getRight()};
+            if (!hasEmpty || hasOptional) {
+                if (o[0].modifiers().optional() != null && o[1].modifiers().optional() == null) {
+                    Op tmp = o[1];
+                    o[1] = o[0];
+                    o[0] = tmp;
+                }
+                writeBody(b, o[0], dict);
+                writeBody(b, o[1], dict);
+            }
+        } else if (op instanceof CartesianOp || op instanceof ConjunctionOp || op instanceof PipeOp) {
+            if (!hasEmpty || hasOptional) {
                 for (Op child : op.getChildren())
                     writeBody(b, child, dict);
             }

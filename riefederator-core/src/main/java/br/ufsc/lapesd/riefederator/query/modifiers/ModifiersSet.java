@@ -259,6 +259,11 @@ public class ModifiersSet extends AbstractSet<Modifier> {
             Limit mine = limit();
             int value = Math.min(mine == null ? Integer.MAX_VALUE : mine.getValue(), theirs);
             change |= add(new Limit(value));
+        } else if (modifier instanceof Optional) {
+            Optional mine = optional();
+            boolean explicit =  (mine != null && mine.isExplicit())
+                             || ((Optional)modifier).isExplicit();
+            change |= add(explicit ? Optional.EXPLICIT : Optional.IMPLICIT);
         } else {
             assert !modifier.getCapability().isUniqueModifier()
                     || !modifier.getCapability().hasParameter();

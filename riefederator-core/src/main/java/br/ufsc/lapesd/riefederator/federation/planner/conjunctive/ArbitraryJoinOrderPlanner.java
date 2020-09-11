@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 
@@ -39,6 +40,7 @@ public class ArbitraryJoinOrderPlanner implements JoinOrderPlanner {
             IndexedSet<Op> nodes = IndexedSet.from(nodesCollection);
             IndexedSubset<Op> pending = nodes.fullSubset();
             Op root = pending.iterator().next();
+            boolean optional = root.modifiers().optional() != null;
             pending.remove(root);
             root = cleanEquivalents(root);
             while (!pending.isEmpty()) {
@@ -53,6 +55,8 @@ public class ArbitraryJoinOrderPlanner implements JoinOrderPlanner {
                     throw new IllegalArgumentException("nodesCollection is not join-connected");
                 pending.remove(selected);
                 root = JoinOp.create(root, cleanEquivalents(selected));
+                if ((optional &= selected.modifiers().optional() != null))
+                    root.modifiers().add(Optional.IMPLICIT);
             }
             return root;
         }

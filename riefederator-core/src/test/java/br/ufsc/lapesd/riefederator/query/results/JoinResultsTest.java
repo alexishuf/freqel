@@ -244,9 +244,9 @@ public class JoinResultsTest implements TestContext {
         EndpointQueryOp l = new EndpointQueryOp(eps.get(ep), parser.parseConjunctive(leftSparql));
         EndpointQueryOp r = new EndpointQueryOp(eps.get(ep), parser.parseConjunctive(rightSparql));
         if ((optionalBitmap & 0x1) != 0)
-            l.modifiers().add(Optional.INSTANCE);
+            l.modifiers().add(Optional.EXPLICIT);
         if ((optionalBitmap & 0x2) != 0)
-            r.modifiers().add(Optional.INSTANCE);
+            r.modifiers().add(Optional.EXPLICIT);
         List<Future<?>> futures = new ArrayList<>();
         CountDownLatch latch = new CountDownLatch(threads);
         for (int i = 0; i < threads; i++) {

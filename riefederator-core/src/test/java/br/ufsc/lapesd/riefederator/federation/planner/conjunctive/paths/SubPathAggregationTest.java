@@ -7,7 +7,7 @@ import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArbitraryJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinOrderConjunctivePlannerTest;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinOrderPlannerTest;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -280,7 +280,7 @@ public class SubPathAggregationTest implements TestContext {
 
     @DataProvider
     public static Object[][] joinOrderPlannerData() {
-        return JoinOrderConjunctivePlannerTest.suppliers.stream().map(s -> new Object[]{s})
+        return JoinOrderPlannerTest.suppliers.stream().map(s -> new Object[]{s})
                 .toArray(Object[][]::new);
     }
 

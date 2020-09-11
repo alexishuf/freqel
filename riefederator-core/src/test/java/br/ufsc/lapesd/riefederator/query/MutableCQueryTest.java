@@ -1334,7 +1334,7 @@ public class MutableCQueryTest implements TestContext {
     @Test(groups = {"fast"})
     public void testBlockUnsafeMerge() {
         MutableCQuery a = generateConstellationQuery(3), b = generateConstellationQuery(6);
-        assertTrue(b.mutateModifiers().add(Optional.INSTANCE));
+        assertTrue(b.mutateModifiers().add(Optional.EXPLICIT));
 
         expectThrows(UnsafeMergeException.class, () -> a.mergeWith(b));
         assertEquals(a, generateConstellationQuery(3)); // no side effect remains
@@ -1343,7 +1343,7 @@ public class MutableCQueryTest implements TestContext {
     @Test(invocationCount = 8)
     public void testConcurrentCopy() throws Exception {
         MutableCQuery original = generateConstellationQuery(3);
-        original.mutateModifiers().add(Optional.INSTANCE);
+        original.mutateModifiers().add(Optional.EXPLICIT);
         ExecutorService executor = Executors.newFixedThreadPool(8);
         List<Future<CQuery>> futures1 = new ArrayList<>();
         List<Future<CQuery>> futures2 = new ArrayList<>();
@@ -1356,7 +1356,7 @@ public class MutableCQueryTest implements TestContext {
                 }));
                 futures2.add(executor.submit(() -> {
                     MutableCQuery copy = new MutableCQuery(original);
-                    copy.mutateModifiers().remove(Optional.INSTANCE);
+                    copy.mutateModifiers().remove(Optional.EXPLICIT);
                     return copy;
                 }));
             });

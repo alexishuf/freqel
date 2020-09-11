@@ -37,6 +37,7 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest.assertPlanAnswers;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
@@ -214,7 +215,9 @@ public class BSBMSelfTest {
         Set<Solution> ac = new HashSet<>(), ex = new HashSet<>();
         ARQEndpoint ep = ARQEndpoint.forModel(allData());
         try (Federation federation = SingletonSourceFederation.createFederation(ep.asSource())) {
-            federation.query(query).forEachRemainingThenClose(ac::add);
+            Op plan = federation.plan(query);
+            assertPlanAnswers(plan, query);
+            federation.execute(plan).forEachRemainingThenClose(ac::add);
             loadResults(queryName).forEachRemainingThenClose(ex::add);
             Set<String> actualVars, expectedVars;
             actualVars = ac.stream().flatMap(s -> s.getVarNames().stream()).collect(toSet());

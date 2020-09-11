@@ -386,7 +386,7 @@ public class ModifiersSetTest implements TestContext {
         assertThrows(UnsafeMergeException.class, () -> e.safeMergeWith(g, proj, proj));
 
         g.clear();
-        g.add(Optional.INSTANCE);
+        g.add(Optional.EXPLICIT);
         assertFalse(e.canMergeWith(g));
         assertThrows(UnsafeMergeException.class, () -> e.safeMergeWith(g, proj, proj));
 

@@ -9,7 +9,6 @@ import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
-import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.modifiers.UnsafeMergeException;
 import br.ufsc.lapesd.riefederator.util.RefEquals;
 import org.slf4j.Logger;
@@ -58,7 +57,7 @@ public class FlattenStep implements PlannerStep {
             return false; // tree should've been replaced with the single child
         if ((op instanceof CartesianOp || op instanceof ConjunctionOp)
                 && list.stream().filter(c -> c instanceof QueryOp
-                && !c.modifiers().contains(Optional.INSTANCE)
+                && c.modifiers().optional() == null
                 && !locked.contains(RefEquals.of(c))).count() > 1) {
             return false; //all non-locked query nodes under ×, or . should've been merged
         }
@@ -110,7 +109,7 @@ public class FlattenStep implements PlannerStep {
             Op child = it.next();
             if (child instanceof QueryOp && !sharedNodes.contains(RefEquals.of(child))) {
                 if (queryOp == null) {
-                    if (!child.modifiers().contains(Optional.INSTANCE))
+                    if (child.modifiers().optional() == null)
                         queryOp = (QueryOp) child;
                 } else {
                     MutableCQuery q = queryOp.getQuery();

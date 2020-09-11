@@ -254,7 +254,9 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         // cartesian nodes should not be directly nested (that is not elegant)
         bad = dqDeepStreamPreOrder(root)
                 .filter(n -> n instanceof CartesianOp
-                        && n.getChildren().stream().anyMatch(n2 -> n2 instanceof CartesianOp))
+                          && n.getChildren().stream()
+                          .anyMatch(n2 -> n2 instanceof CartesianOp
+                                       && n2.modifiers().optional() == null))
                 .collect(toList());
         assertEquals(bad, emptyList());
 

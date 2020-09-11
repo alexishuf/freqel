@@ -3,7 +3,6 @@ package br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
-import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +67,7 @@ public abstract class AbstractBindJoinOpExecutor extends AbstractSimpleJoinOpExe
                              hasOpt ? "is optional" : "",
                              node.prettyPrint());
                 nodes[0] = nodes[0].flatCopy();
-                nodes[0].modifiers().remove(Optional.INSTANCE);
+                nodes[0].modifiers().remove(nodes[0].modifiers().optional());
             } else {
                 Op tmp = nodes[1];
                 nodes[1] = nodes[0];

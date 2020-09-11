@@ -2,6 +2,8 @@ package br.ufsc.lapesd.riefederator.model;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
@@ -56,6 +58,7 @@ import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
 public class SPARQLStringTest implements TestContext {
+    private final ARQEndpoint ep = ARQEndpoint.forModel(ModelFactory.createDefaultModel());
     private static final Atom A1 = new Atom("A1");
 
     @DataProvider
@@ -326,5 +329,24 @@ public class SPARQLStringTest implements TestContext {
 
         // full comparison. The previous tests serve mostly to help debug failures
         assertEquals(parsed, op);
+    }
+
+    @Test
+    public void testRegressionLeftOptional() {
+        JoinOp root = JoinOp.builder(
+                new EndpointQueryOp(ep, createQuery(x, type, y, Optional.EXPLICIT)),
+                new EndpointQueryOp(ep, createQuery(x, name, z))
+        ).add(Projection.of("x", "y")).build();
+        SPARQLString ss = SPARQLString.create(root);
+        String sparql = ss.getSparql();
+        assertTrue(Pattern.compile("SELECT\\s+\\?x\\s+\\?y\\s+WHERE").matcher(sparql).find());
+        assertTrue(sparql.contains("OPTIONAL"));
+        // OPTIONAL must appear after something else. It cannot appear at the star of a BGP
+        // because that would mean it is optional in relation to nothing
+        int zIndex = sparql.indexOf("?z");
+        int optionalIndex = sparql.indexOf("OPTIONAL");
+        assertTrue(zIndex > 0);
+        assertTrue(optionalIndex > 0);
+        assertTrue(zIndex < optionalIndex);
     }
 }

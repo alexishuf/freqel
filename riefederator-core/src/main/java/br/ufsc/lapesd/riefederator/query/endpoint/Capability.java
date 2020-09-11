@@ -55,7 +55,6 @@ public enum  Capability {
         switch (this) {
             case ASK:
             case DISTINCT:
-            case OPTIONAL:
                 return false;
             default:
                 return true;

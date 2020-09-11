@@ -14,6 +14,7 @@ import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
+import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.WebApiEndpoint;
@@ -97,9 +98,13 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
                           "Cannot optimize joins without nodes to join!");
             Data d = new Data(joinGraph, nodesCollection);
             Weigher weigher = new Weigher(takeInitialJoin(d, joinCardinalityEstimator));
+            boolean optional = weigher.root.modifiers().optional() != null;
             while (!d.pending.isEmpty()) {
                 Op best = d.pending.stream().min(weigher.comparator).orElse(null);
-                weigher.root = JoinOp.create(weigher.root, d.take(best));
+                Op r = d.take(best);
+                weigher.root = JoinOp.create(weigher.root, r);
+                if ((optional &= r.modifiers().optional() != null))
+                    weigher.root.modifiers().add(Optional.IMPLICIT);
             }
             return weigher.root;
         }
@@ -149,7 +154,12 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
             bestOuter = bestInner;
             bestInner = tmp;
         }
-        return JoinOp.create(d.take(bestOuter), d.take(bestInner));
+
+        Op l = d.take(bestOuter), r = d.take(bestInner);
+        JoinOp joinOp = JoinOp.create(l, r);
+        if (l.modifiers().optional() != null && r.modifiers().optional() != null)
+            joinOp.modifiers().add(Optional.IMPLICIT);
+        return joinOp;
     }
 
     @VisibleForTesting

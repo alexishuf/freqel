@@ -184,7 +184,7 @@ public class DQueryOpExecutorTest implements TestContext {
         Op query = SPARQLParser.strict().parse(sparql);
         DQueryOp op = new DQueryOp(ep, query);
         if (optional)
-            op.modifiers().add(Optional.INSTANCE);
+            op.modifiers().add(Optional.EXPLICIT);
         Set<Solution> actual = new HashSet<>();
         Results results = exec.execute(op);
         assertEquals(results.isOptional(), optional);
