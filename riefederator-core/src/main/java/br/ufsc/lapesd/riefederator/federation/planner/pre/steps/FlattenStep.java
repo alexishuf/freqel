@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
+import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
@@ -38,7 +39,7 @@ public class FlattenStep implements PlannerStep {
                 flattenSameClass(locked, io, children, resultVars);
             if (io instanceof ConjunctionOp)
                 mergeQueryOps(locked, children);
-            if (children.size() == 1 && !ioShared)
+            if (!(io instanceof PipeOp) && children.size() == 1 && !ioShared)
                 return children.get(0); // replace conj(a) with a
         } finally {
             assert io.assertTreeInvariants();

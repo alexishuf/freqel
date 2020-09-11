@@ -30,6 +30,7 @@ import static java.util.Collections.singletonList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
+@Test(groups = {"fast"})
 public class PostPlannerTest implements TestContext {
     private static final CQEndpoint e1 = new EmptyEndpoint(), e2 = new EmptyEndpoint();
 
