@@ -33,6 +33,24 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     }
 
     @Override
+    protected boolean assertAllInvariants(boolean test) {
+        if (!test || !AbstractInnerOp.class.desiredAssertionStatus())
+            return true;
+        Set<String> oldAllVarsCache = allVarsCache;
+        Set<String> oldResultVarsCache = resultVarsCache;
+        Set<String> oldReqInputsCache = reqInputsCache;
+        Set<String> oldOptInputsCache = optInputsCache;
+        try {
+            return super.assertAllInvariants(true);
+        } finally {
+            allVarsCache = oldAllVarsCache;
+            resultVarsCache = oldResultVarsCache;
+            reqInputsCache = oldReqInputsCache;
+            optInputsCache = oldOptInputsCache;
+        }
+    }
+
+    @Override
     public void purgeCachesShallow() {
         super.purgeCachesShallow();
         allVarsCache = resultVarsCache = reqInputsCache = optInputsCache = null;

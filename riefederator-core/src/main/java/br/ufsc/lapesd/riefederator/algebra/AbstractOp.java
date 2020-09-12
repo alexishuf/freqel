@@ -49,18 +49,26 @@ public abstract class AbstractOp implements Op {
     protected boolean assertAllInvariants(boolean test) {
         if (!test || !AbstractOp.class.desiredAssertionStatus())
             return true;
+        Set<String> oldStrictResultVarsCache = strictResultVarsCache;
+        Set<String> oldPublicVarsCache = publicVarsCache;
+        Set<String> oldAllInputVarsCache = allInputVarsCache;
         boolean oldCacheHit = this.cacheHit;
-        Projection projection = modifiers().projection();
-        assert projection == null || projection.getVarNames().equals(getResultVars());
-        assert getPublicVars().containsAll(getResultVars());
-        assert getPublicVars().containsAll(getInputVars());
-        assert getInputVars().containsAll(getRequiredInputVars());
-        assert getInputVars().containsAll(getOptionalInputVars());
-        assert getResultVars().containsAll(getStrictResultVars());
-        assert getStrictResultVars().stream().noneMatch(getInputVars()::contains);
-        purgeCachesShallow();
-        cacheHit = oldCacheHit;
-        return true;
+        try {
+            Projection projection = modifiers().projection();
+            assert projection == null || projection.getVarNames().equals(getResultVars());
+            assert getPublicVars().containsAll(getResultVars());
+            assert getPublicVars().containsAll(getInputVars());
+            assert getInputVars().containsAll(getRequiredInputVars());
+            assert getInputVars().containsAll(getOptionalInputVars());
+            assert getResultVars().containsAll(getStrictResultVars());
+            assert getStrictResultVars().stream().noneMatch(getInputVars()::contains);
+            return true;
+        } finally {
+            strictResultVarsCache = oldStrictResultVarsCache;
+            publicVarsCache = oldPublicVarsCache;
+            allInputVarsCache = oldAllInputVarsCache;
+            cacheHit = oldCacheHit;
+        }
     }
 
     @Override
