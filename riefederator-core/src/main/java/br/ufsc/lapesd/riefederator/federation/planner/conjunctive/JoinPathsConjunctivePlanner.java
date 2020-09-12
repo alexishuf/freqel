@@ -62,7 +62,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
         if (query.isEmpty()) //empty query
             return new EmptyOp(new QueryOp(query));
         if (qns.isEmpty()) {
-            logger.info("No subqueries (lack of sources?). Query: \"\"\"{}\"\"\"", query);
+            logger.debug("No subqueries (lack of sources?). Query: \"\"\"{}\"\"\"", query);
             return new EmptyOp(new QueryOp(query));
         }
         IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.attr().matchedTriples());

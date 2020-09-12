@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.federation;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
@@ -177,7 +178,10 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
             if (op.getClass().equals(QueryOp.class)) {
                 QueryOp component = (QueryOp) op;
                 Op componentPlan = strategy.decompose(component.getQuery());
-                if (componentPlan instanceof EmptyOp && component.modifiers().optional() == null) {
+                boolean report = componentPlan instanceof EmptyOp
+                        && component.modifiers().optional() == null
+                        && !component.getParents().stream().allMatch(UnionOp.class::isInstance);
+                if (report) {
                     logger.info("Non-optional query component is unsatisfiable." +
                                 "\n  Component:\n    {}\n  Whole query:\n    {}",
                                 component.prettyPrint().replace("\n", "\n    "),

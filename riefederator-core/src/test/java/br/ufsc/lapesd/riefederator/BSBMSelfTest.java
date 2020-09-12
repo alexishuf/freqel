@@ -4,6 +4,8 @@ import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
+import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecException;
+import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.jena.query.JenaBindingResults;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -14,7 +16,9 @@ import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
@@ -30,12 +34,14 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest.assertPlanAnswers;
 import static java.util.Arrays.asList;
@@ -238,6 +244,74 @@ public class BSBMSelfTest {
             assertEquals(ac.stream().filter(s -> !ex.contains(s)).collect(toSet()),
                          emptySet(), "Unexpected solutions!");
             assertEquals(ac, ex);
+        }
+    }
+
+    public static class CreateBSBMZip {
+
+        private static void mkdir(@Nonnull File dir) throws IOException {
+            if (dir.exists())
+                FileUtils.deleteDirectory(dir);
+            if (!dir.mkdirs()) throw new IOException("Failed to mkdir -p " + dir);
+        }
+
+        private static @Nonnull File fillDir() throws IOException, FederationSpecException {
+            File dir = Files.createTempDirectory("riefederator").toFile();
+            File queriesDir = new File(dir, "queries");
+            mkdir(dir);
+            mkdir(new File(dir, "cache"));
+            mkdir(queriesDir);
+
+            List<TPEndpointTest.FusekiEndpoint> eps = new ArrayList<>();
+            try {
+                for (String filename : DATA_FILENAMES) {
+                    Dataset ds = DatasetFactory.create(loadData(filename));
+                    eps.add(new TPEndpointTest.FusekiEndpoint(ds));
+                }
+                File config = new File(dir, "config.yaml");
+                try (PrintStream out = new PrintStream(new FileOutputStream(config))) {
+                    out.println("sources-cache: cache");
+                    out.println("sources:");
+                    for (TPEndpointTest.FusekiEndpoint ep : eps) {
+                        out.println("  - loader: sparql");
+                        out.println("    uri: " + ep.uri);
+                    }
+                }
+                for (String filename : QUERY_FILENAMES) {
+                    try (Reader in = getReader("queries/" + filename);
+                         FileOutputStream out = new FileOutputStream(new File(queriesDir, filename))) {
+                        IOUtils.copy(in, out, StandardCharsets.UTF_8);
+                    }
+                }
+                try (Federation federation = new FederationSpecLoader().load(config)) {
+                    if (!federation.initAllSources(5, TimeUnit.MINUTES))
+                        throw new RuntimeException("Timeout on initAllSources()");
+                }
+            } finally {
+                for (TPEndpointTest.FusekiEndpoint ep : eps)
+                    ep.close();
+            }
+            return dir;
+        }
+
+        public static void main(String[] args) throws IOException, FederationSpecException {
+            File dir = fillDir();
+            File dst = new File(args.length > 0 ? args[0] : "/tmp/bsbm.zip");
+            try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(dst))) {
+                Path dirPath = dir.toPath();
+                for (Iterator<Path> it = Files.walk(dirPath).iterator(); it.hasNext(); ) {
+                    Path p = it.next();
+                    String relativePath = dirPath.relativize(p).toString();
+                    File inFile = dirPath.resolve(p).toAbsolutePath().toFile();
+                    if (inFile.isFile()) {
+                        out.putNextEntry(new ZipEntry(relativePath));
+                        try (FileInputStream in = new FileInputStream(inFile)) {
+                            IOUtils.copy(in, out);
+                        }
+                    }
+                }
+            }
+            System.out.println("Wrote to "+dst.getAbsolutePath());
         }
     }
 }
