@@ -82,7 +82,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         EndpointQueryOp n1 = node(e1, Alice, p1, x);
         EndpointQueryOp n2 = node(e1, x, p1, y);
         EndpointQueryOp n3 = node(e2, y, p1, Bob);
-        IndexedSet<Op> all = IndexedSet.fromDistinct(asList(n1, n2, n3));
+        IndexedSet<Op> all = IndexedSet.fromRefDistinct(asList(n1, n2, n3));
         return Stream.of(
                 asList(new JoinComponent(all, n1), new JoinComponent(all, n1), true),
                 asList(new JoinComponent(all, n1), new JoinComponent(all, n2), false),
@@ -158,7 +158,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         EndpointQueryOp n2 = node(e1, x, p2, y);
         EndpointQueryOp n3 = new EndpointQueryOp(e2, createQuery(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get(),
                         p3, Bob, AtomAnnotation.of(Person)));
-        IndexedSet<Op> nodes = IndexedSet.fromDistinct(asList(n1, n2, n3));
+        IndexedSet<Op> nodes = IndexedSet.fromRefDistinct(asList(n1, n2, n3));
 
         JoinComponent path1, path2, path3;
         path1 = new JoinComponent(nodes, n3, n2, n1);
@@ -283,7 +283,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         // mXi == M(nX, nXi)
         Op m1i = m(n1, n1i);
 
-        IndexedSet<Op> nodes = IndexedSet.fromDistinct(
+        IndexedSet<Op> nodes = IndexedSet.fromRefDistinct(
                 asList(n1, n2, n3, n4, n5, n6, n1i, n2i, n4i, n5i, n1j, n2j, n5j, m1i));
 
         return Stream.of(
@@ -413,7 +413,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         EndpointQueryOp n3i = node(e1, b -> b.annotate(y, AtomInputAnnotation.asRequired(Person, "Person").get()), y, p3, z);
         EndpointQueryOp n4i = node(e1, b -> b.annotate(z, AtomInputAnnotation.asRequired(Person, "Person").get()), z, p4, Bob);
 
-        IndexedSet<Op> all = IndexedSet.from(asList(n1 , n2 , n3 , n4 ,
+        IndexedSet<Op> all = IndexedSet.fromRefDistinct(asList(n1 , n2 , n3 , n4 ,
                                                           n1a, n2a, n3a, n4a,
                                                           n1i, n2i, n3i, n4i));
 
@@ -528,7 +528,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
                                            List<List<Integer>> equivIndices) {
         JoinPathsConjunctivePlanner planner = createPathsPlanner();
         //setup
-        IndexedSet<Op> nodes = IndexedSet.fromDistinct(
+        IndexedSet<Op> nodes = IndexedSet.fromRefDistinct(
                 nodesList.stream().flatMap(Collection::stream).collect(toSet()));
         JoinGraph graph = new JoinGraph(nodes);
         List<JoinComponent> pathsList;

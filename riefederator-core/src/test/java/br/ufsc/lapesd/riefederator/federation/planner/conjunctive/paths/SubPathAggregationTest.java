@@ -68,7 +68,7 @@ public class SubPathAggregationTest implements TestContext {
                             o3 = node(e2, y, p3, z, SUBJ),     o4 = node(e2, z, p4, Bob, SUBJ);
     public static EndpointQueryOp l1 = node(e2, Alice, p1, x, OBJ), l2 = node(e2, x, p2, y, OBJ),
                             l3 = node(e2, y, p3, z, OBJ),     l4 = node(e2, z, p4, Bob, OBJ);
-    public static IndexedSet<Op> allNodes = IndexedSet.fromDistinct(
+    public static IndexedSet<Op> allNodes = IndexedSet.fromRefDistinct(
             asList(n1, n2, n3, n4, o1, o2, o3, o4, l1, l2, l3, l4));
 
     @DataProvider

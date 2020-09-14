@@ -65,8 +65,6 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
                         +" does not match its index in map");
             }
         }
-        if (list.isEmpty())
-            return empty();
         return new IndexedSet<>(list, map);
     }
 
@@ -83,6 +81,26 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
             return new IndexedSet<>((List<U>)collection, indexMap);
         else
             return new IndexedSet<>(new ArrayList<>(collection), indexMap);
+    }
+
+    private static @Nonnull <U> IndexedSet<U> createRefDistinct(@Nonnull Collection<U> coll) {
+        List<U> list = coll instanceof List ? (List<U>)coll : new ArrayList<>(coll);
+        RefHashMap<U, Integer> indexMap = new RefHashMap<>(list.size());
+        int i = 0;
+        for (U u : list) indexMap.put(u, i++);
+        return new IndexedSet<>(list, indexMap);
+    }
+
+    public static @Nonnull <U> IndexedSet<U> fromRefDistinct(@Nonnull Collection<U> coll) {
+        if (coll instanceof IndexedSet)  return (IndexedSet<U>) coll;
+        else if (coll.isEmpty())         return empty();
+        else                             return createRefDistinct(coll);
+    }
+
+    public static @Nonnull <U> IndexedSet<U> fromRefDistinctCopy(@Nonnull Collection<U> coll) {
+        if (coll instanceof IndexedSet)  return (IndexedSet<U>) coll;
+        else if (coll.isEmpty())         return empty();
+        else                             return createRefDistinct(new ArrayList<>(coll));
     }
 
     public static @Nonnull <U> IndexedSet<U> fromDistinct(@Nonnull Iterator<U> it) {

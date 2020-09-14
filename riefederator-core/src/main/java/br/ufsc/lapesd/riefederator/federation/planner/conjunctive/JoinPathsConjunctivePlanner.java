@@ -21,6 +21,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.RefHashMap;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -177,7 +178,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     @VisibleForTesting
     @Nonnull IndexedSet<Op> getNodesIndexedSetFromPaths(@Nonnull List<JoinComponent> paths) {
         List<Op> list = new ArrayList<>();
-        Map<Op, Integer> n2idx = new HashMap<>();
+        RefHashMap<Op, Integer> n2idx = new RefHashMap<>();
         Multimap<Set<Triple>, EndpointQueryOp> mm = MultimapBuilder.hashKeys().arrayListValues().build();
         for (JoinComponent path : paths) {
             for (Op node : path.getNodes()) {
@@ -241,16 +242,17 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
         for (Op node : queryNodes)
             mm.put(new JoinInterface(node), node);
 
-        List<Op> list = new ArrayList<>();
+        RefHashMap<Op, Integer> n2idx = new RefHashMap<>(mm.keySet().size());
+        List<Op> list = new ArrayList<>(mm.keySet().size());
+        int size = 0;
         for (JoinInterface key : mm.keySet()) {
             Collection<Op> nodes = mm.get(key);
             assert !nodes.isEmpty();
-            if (nodes.size() > 1)
-                list.add(UnionOp.builder().addAll(nodes).build());
-            else
-                list.add(nodes.iterator().next());
+            Op node = nodes.size() > 1 ? UnionOp.build(nodes) : nodes.iterator().next();
+            list.add(node);
+            n2idx.put(node, size++);
         }
-        return IndexedSet.fromDistinct(list);
+        return IndexedSet.fromMap(n2idx, list);
     }
 
 //    @VisibleForTesting

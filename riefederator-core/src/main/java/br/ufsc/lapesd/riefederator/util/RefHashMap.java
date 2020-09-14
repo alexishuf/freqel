@@ -75,8 +75,11 @@ public class RefHashMap<K, V> extends AbstractMap<K, V> implements RefMap<K, V> 
 
     @Override public boolean containsValue(Object value) {
         if (value == null) return false;
-        for (Object v : values) {
-            if (v != null && v.equals(value)) return true;
+        for (int begin = 0; begin < keys.length; begin += bucketSize) {
+            for (int i = begin, end = begin + bucketSize; i < end; i++) {
+                if      (  keys[i] == null      ) break;
+                else if (values[i].equals(value)) return true;
+            }
         }
         return false;
     }
@@ -176,6 +179,17 @@ public class RefHashMap<K, V> extends AbstractMap<K, V> implements RefMap<K, V> 
 
     @Override public @Nonnull Set<K> keySet() {
         return keySet == null ? (keySet = new KeySet()) : keySet;
+    }
+
+    public @Nonnull RefHashSet<K> toSet() {
+        for (int begin = 0; begin < keys.length; begin += bucketSize) {
+            for (int i = begin, end = begin+bucketSize; i < end; i++) {
+                if (keys[i] == null) break;
+                else                 values[i] = RefHashSet.PRESENT;
+            }
+        }
+        //noinspection unchecked
+        return new RefHashSet<>((RefHashMap<K, RefHashSet.Present>)this);
     }
 
     private class Handle implements Entry<K, V> {

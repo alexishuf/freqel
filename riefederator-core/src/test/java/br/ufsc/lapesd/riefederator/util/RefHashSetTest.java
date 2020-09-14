@@ -87,37 +87,37 @@ public class RefHashSetTest {
 
     @Test(dataProvider = "sizesData")
     public void testFill(int size) {
-        RefSet actual = new RefHashSet<>();
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>();
         fill(actual, new HashSet<>(), 0, size, 1);
     }
 
     @Test(dataProvider = "sizesData")
     public void testFillReserved(int size) {
-        RefSet actual = new RefHashSet<>(size);
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>(size);
         fill(actual, new HashSet<>(), 0, size, 1);
     }
 
     @Test(dataProvider = "sizesData")
     public void testFillUnderReserved(int size) {
-        RefSet actual = new RefHashSet<>(size/2);
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>(size/2);
         fill(actual, new HashSet<>(), 0, size, 1);
     }
 
     @Test(dataProvider = "sizesData")
     public void testFillEven(int size) {
-        RefSet actual = new RefHashSet<>();
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>();
         fill(actual, new HashSet<>(), 0, size, 2);
     }
 
     @Test(dataProvider = "sizesData")
     public void testFillBackwards(int size) {
-        RefSet actual = new RefHashSet<>();
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>();
         fill(actual, new HashSet<>(), size, -1, -1);
     }
 
     @Test(dataProvider = "sizesData")
     public void testClear(int size) {
-        RefSet actual = new RefHashSet<>();
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>();
         fill(actual, new HashSet<>(), size, -1, -1);
         actual.clear();
         check(actual, emptySet());
@@ -125,7 +125,7 @@ public class RefHashSetTest {
 
     @Test(dataProvider = "sizesData")
     public void testRemoveAll(int size) {
-        RefSet actual = new RefHashSet<>();
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>();
         HashSet<RefMapTest.Thing> expected = new HashSet<>();
         fill(actual, expected, size, -1, -1);
         assertTrue(actual.removeAll(expected));
@@ -135,7 +135,7 @@ public class RefHashSetTest {
 
     @Test(dataProvider = "sizesData")
     public void testRemoveAllManual(int size) {
-        RefSet actual = new RefHashSet<>();
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>();
         HashSet<RefMapTest.Thing> expected = new HashSet<>();
         fill(actual, expected, size, -1, -1);
         for (RefMapTest.Thing thing : expected)
@@ -149,7 +149,7 @@ public class RefHashSetTest {
 
     @Test(dataProvider = "sizesData")
     public void testRemoveByIterator(int size) {
-        RefSet actual = new RefHashSet<>();
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>();
         HashSet<RefMapTest.Thing> expected = new HashSet<>();
         fill(actual, expected, size, -1, -1);
         Iterator<RefMapTest.Thing> it = actual.iterator();
@@ -166,14 +166,34 @@ public class RefHashSetTest {
 
     @Test(dataProvider = "sizesData")
     public void testStableHash(int size) {
-        RefSet actual = new RefHashSet<>();
+        RefSet<RefMapTest.Thing> actual = new RefHashSet<>();
         HashSet<RefMapTest.Thing> expected = new HashSet<>();
         fill(actual, expected, 0, size, 1);
-        RefSet actual2 = new RefHashSet<>(actual);
+        RefSet<RefMapTest.Thing> actual2 = new RefHashSet<>(actual);
         HashSet<RefMapTest.Thing> expected2 = new HashSet<>(expected);
 
         assertEquals(expected2.hashCode(), expected.hashCode());
         assertEquals(actual2.hashCode(), actual.hashCode());
+    }
+
+    @Test(dataProvider = "sizesData")
+    public void testConvertFromMap(int size) {
+        RefHashMap<RefMapTest.Thing, Integer> map = new RefHashMap<>(size);
+        HashSet<RefMapTest.Thing> expected = new HashSet<>();
+        for (int i = 0; i < size; i++) {
+            RefMapTest.Thing thing = new RefMapTest.Thing(i);
+            assertNull(map.put(thing, i));
+            expected.add(thing);
+        }
+        assertEquals(map.size(), size);
+        RefHashSet<RefMapTest.Thing> actual = map.toSet();
+        check(actual, expected);
+
+        RefMapTest.Thing extra = new RefMapTest.Thing(size);
+        assertTrue(actual.add(extra));
+        expected.add(extra);
+        check(actual, expected);
+        assertTrue(map.containsKey(extra));
     }
 
 }

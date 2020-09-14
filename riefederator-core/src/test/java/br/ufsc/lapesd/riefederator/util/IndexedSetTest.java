@@ -807,4 +807,84 @@ public class IndexedSetTest implements TestContext {
         assertTrue(a.equals(b));
         assertTrue(b.equals(a));
     }
+
+    private static class Thing {
+        private int id;
+        public Thing(int id) {
+            this.id = id;
+        }
+        @Override public boolean equals(Object o) {
+            return o instanceof Thing && id == ((Thing)o).id;
+        }
+        @Override public int hashCode() {
+            return Objects.hash(id);
+        }
+    }
+
+    @Test(dataProvider = "sizesData")
+    public void testFromRefDistinct(int size) {
+        List<Thing> in = new ArrayList<>(), ex = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            in.add(new Thing(i));
+            ex.add(in.get(in.size()-1));
+        }
+        IndexedSet<Thing> set = IndexedSet.fromRefDistinct(in);
+        assertEquals(in, ex); //in not modified
+        assertTrue(set.containsAll(in));
+        assertTrue(in.containsAll(set));
+        assertEquals(in, new ArrayList<>(set)); //iteration order preserved
+        for (Thing thing : ex)
+            assertEquals(set.indexOf(thing), in.indexOf(thing)); // indexOf corresponds to iteration
+        for (int i = 0; i < size; i++) { //do not contain equal but distinct
+            Thing distinct = new Thing(i);
+            assertFalse(set.contains(distinct));
+            assertEquals(set.indexOf(distinct), -1);
+            assertTrue(in.contains(distinct)); //ArrayList honors equals()
+        }
+    }
+
+    @Test(dataProvider = "sizesData")
+    public void testFromRefDistinctDuplicates(int size) {
+        List<Thing> in = new ArrayList<>(), ex = new ArrayList<>();
+        for (int i = 0; i < 2*size; i++) {
+            in.add(new Thing(i % size));
+            ex.add(in.get(in.size()-1));
+        }
+        IndexedSet<Thing> set = IndexedSet.fromRefDistinct(in);
+        assertEquals(set.size(), 2*size);
+        assertEquals(new ArrayList<>(set), ex);
+        for (int i = 0, exSize = ex.size(); i < exSize; i++) {
+            Thing thing = ex.get(i);
+            assertTrue(set.contains(thing));
+            assertEquals(set.indexOf(thing), i);
+        }
+        set.containsAll(ex);
+        assertEquals(in, ex);
+    }
+
+    @Test(dataProvider = "sizesData")
+    public void testFromRefDistinctCopy(int size) {
+        List<Thing> in = new ArrayList<>(), ex = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            in.add(new Thing(i));
+            ex.add(in.get(in.size()-1));
+        }
+        IndexedSet<Thing> set = IndexedSet.fromRefDistinctCopy(in);
+        assertEquals(new ArrayList<>(set), ex);
+        Collections.reverse(in);
+        assertEquals(new ArrayList<>(set), ex);
+        for (Thing thing : ex)
+            assertEquals(set.indexOf(thing), ex.indexOf(thing));
+
+        in.clear();
+        for (Thing thing : ex)
+            assertTrue(set.contains(thing));
+        assertTrue(set.containsAll(ex));
+
+        for (int i = 0; i < size; i++) {
+            Thing copy = new Thing(i);
+            assertFalse(set.contains(copy));
+            assertEquals(set.indexOf(copy), -1);
+        }
+    }
 }

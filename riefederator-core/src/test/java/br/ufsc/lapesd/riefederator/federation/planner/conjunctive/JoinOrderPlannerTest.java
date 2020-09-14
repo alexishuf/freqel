@@ -296,7 +296,7 @@ public class JoinOrderPlannerTest implements TestContext {
         EndpointQueryOp modalities = new EndpointQueryOp(e1, createQuery(o4, p9, d));
 
         JoinOrderPlanner planner = supplier.get();
-        IndexedSet<Op> leaves = IndexedSet.from(asList(
+        IndexedSet<Op> leaves = IndexedSet.fromRefDistinct(asList(
                 contractorByName, procurementsOfContractor, contractById, modalities,
                 procurementById, orgByDesc, contract));
         JoinGraph graph = new JoinGraph(leaves);

@@ -37,7 +37,7 @@ public class ArbitraryJoinOrderPlanner implements JoinOrderPlanner {
                             @Nonnull Collection<Op> nodesCollection) {
         try (TimeSampler ignored = Metrics.OPT_MS.createThreadSampler(performance)) {
             checkArgument(!nodesCollection.isEmpty(), "Cannot plan joins without any nodes!");
-            IndexedSet<Op> nodes = IndexedSet.from(nodesCollection);
+            IndexedSet<Op> nodes = IndexedSet.fromRefDistinct(nodesCollection);
             IndexedSubset<Op> pending = nodes.fullSubset();
             Op root = pending.iterator().next();
             boolean optional = root.modifiers().optional() != null;

@@ -16,7 +16,7 @@ import java.util.List;
 public class StepUtils {
     public static @Nonnull Op planConjunction(@Nonnull Collection<Op> nodes,
                                               @Nonnull JoinOrderPlanner joinOrderPlanner) {
-        IndexedSet<Op> set = IndexedSet.fromDistinct(nodes);
+        IndexedSet<Op> set = IndexedSet.fromRefDistinct(nodes);
         JoinGraph jg = new JoinGraph(set);
         IndexedSubset<Op> visited = set.emptySubset();
         List<Op> trees = new ArrayList<>();
