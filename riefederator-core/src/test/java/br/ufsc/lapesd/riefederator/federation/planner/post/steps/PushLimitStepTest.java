@@ -14,19 +14,18 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.parse.CQueryContext;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
@@ -50,21 +49,21 @@ public class PushLimitStepTest implements TestContext {
         xKnowsYPipe23.modifiers().add(Limit.of(23));
         return Stream.of(
                 // singleton trees with no effect
-                asList(q(Alice, knows, x), emptySet(), null),
-                asList(q(Alice, knows, x), singleton(xKnowsY), null),
-                asList(q(Alice, knows, x, Limit.of(23)), emptySet(), null),
-                asList(xKnowsY, singleton(xKnowsY), null),
-                asList(xKnowsY23, singleton(xKnowsY23), null),
+                asList(q(Alice, knows, x), EmptyRefSet.emptySet(), null),
+                asList(q(Alice, knows, x), RefHashSet.of(xKnowsY), null),
+                asList(q(Alice, knows, x, Limit.of(23)), EmptyRefSet.emptySet(), null),
+                asList(xKnowsY, RefHashSet.of(xKnowsY), null),
+                asList(xKnowsY23, RefHashSet.of(xKnowsY23), null),
                 // do not push into join
                 asList(JoinOp.builder(xKnowsY, q(y, knows, Alice))
                                 .add(Limit.of(23)).build(),
-                       emptySet(), null),
+                       EmptyRefSet.emptySet(), null),
                 // push into union
                 asList(UnionOp.builder()
                                 .add(xKnowsY)
                                 .add(q(y, knows, Alice))
                                 .add(Limit.of(23)).build(),
-                       emptySet(),
+                       EmptyRefSet.emptySet(),
                        UnionOp.builder()
                                .add(xKnowsY23)
                                .add(q(y, knows, Alice, Limit.of(23)))
@@ -75,7 +74,7 @@ public class PushLimitStepTest implements TestContext {
                                 .add(xKnowsY)
                                 .add(q(Alice, knows, z))
                                 .add(Limit.of(23)).add(Projection.of("y", "z")).build(),
-                       emptySet(),
+                       EmptyRefSet.emptySet(),
                        CartesianOp.builder()
                                .add(xKnowsY23)
                                .add(q(Alice, knows, z, Limit.of(23)))
@@ -84,7 +83,7 @@ public class PushLimitStepTest implements TestContext {
                 asList(UnionOp.builder().add(xKnowsY)
                                         .add(q(Alice, knows, y))
                                         .add(Projection.of("y")).add(Limit.of(23)).build(),
-                       singleton(xKnowsY),
+                       RefHashSet.of(xKnowsY),
                        UnionOp.builder()
                                .add(xKnowsYPipe23)
                                .add(q(Alice, knows, y, Limit.of(23)))
@@ -93,7 +92,7 @@ public class PushLimitStepTest implements TestContext {
     }
 
     @Test(dataProvider = "testData")
-    public void test(@Nonnull Op in, @Nonnull Set<RefEquals<Op>> shared, @Nullable Op expected) {
+    public void test(@Nonnull Op in, @Nonnull RefSet<Op> shared, @Nullable Op expected) {
         if (expected == null)
             expected = in;
         boolean expectSame = expected == in;

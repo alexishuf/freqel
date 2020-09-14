@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArbitraryJoinO
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.parse.CQueryContext;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
 import org.apache.jena.sparql.expr.Expr;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -83,7 +84,7 @@ public class DefaultFilterJoinPlannerTest implements TestContext {
                                @Nonnull Collection<String> expectedStrings) {
         DefaultFilterJoinPlanner def = createDefault();
         List<Op> nodes = asList(new EmptyOp(singleton("x")), new EmptyOp(singleton("y")));
-        DefaultFilterJoinPlanner.State state = def.createState(nodes, emptySet());
+        DefaultFilterJoinPlanner.State state = def.createState(nodes, EmptyRefSet.emptySet());
         for (String filterString : in)
             state.addComponents(SPARQLFilter.build(filterString));
 

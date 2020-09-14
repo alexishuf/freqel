@@ -5,16 +5,12 @@ import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
+import br.ufsc.lapesd.riefederator.util.ListRefHashMultimap;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
 
 public class PipeCleanerStep implements PlannerStep {
     /**
@@ -28,8 +24,8 @@ public class PipeCleanerStep implements PlannerStep {
      * @return root, unless it was a {@link PipeOp} removed
      */
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull Set<RefEquals<Op>> locked) {
-        ListMultimap<RefEquals<Op>, PipeOp> n2pipe = findPipes(root);
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> locked) {
+        ListRefHashMultimap<Op, PipeOp> n2pipe = findPipes(root);
         if (n2pipe == null)
             return root; // no work
         removeKeysWithDistinctPipes(n2pipe);
@@ -38,7 +34,7 @@ public class PipeCleanerStep implements PlannerStep {
             if (!(o instanceof PipeOp)) return o;
             assert o.getChildren().size() == 1;
             Op child = o.getChildren().get(0);
-            return n2pipe.containsKey(RefEquals.of(child)) ? child : o;
+            return n2pipe.containsKey(child) ? child : o;
         });
     }
 
@@ -47,47 +43,45 @@ public class PipeCleanerStep implements PlannerStep {
         return getClass().getSimpleName();
     }
 
-    private void removeLockedPipeOps(@Nonnull Set<RefEquals<Op>> locked,
-                                     @Nonnull ListMultimap<RefEquals<Op>, PipeOp> n2pipe) {
-        for (RefEquals<Op> ref : locked) {
-            Op pipe = ref.get();
+    private void removeLockedPipeOps(@Nonnull RefSet<Op> locked,
+                                     @Nonnull ListRefHashMultimap<Op, PipeOp> n2pipe) {
+        for (Op pipe : locked) {
             if (pipe instanceof PipeOp)
-                n2pipe.remove(RefEquals.of(pipe.getChildren().get(0)), pipe);
+                n2pipe.removeValue(pipe.getChildren().get(0), (PipeOp) pipe);
         }
     }
 
-    private @Nullable ListMultimap<RefEquals<Op>, PipeOp> findPipes(@Nonnull Op root) {
-        ListMultimap<RefEquals<Op>, PipeOp> n2pipe = null;
+    private @Nullable ListRefHashMultimap<Op, PipeOp> findPipes(@Nonnull Op root) {
+        ListRefHashMultimap<Op, PipeOp> n2pipe = null;
         for (Iterator<Op> it = TreeUtils.iteratePreOrder(root); it.hasNext(); ) {
             Op op = it.next();
             if (!(op instanceof PipeOp))
                 continue;
             PipeOp pipe = (PipeOp) op;
             assert pipe.getChildren().size() == 1;
-            RefEquals<Op> child = RefEquals.of(pipe.getChildren().get(0));
-            (n2pipe == null ? n2pipe = ArrayListMultimap.create() : n2pipe).put(child, pipe);
+            Op child = pipe.getChildren().get(0);
+            if (n2pipe == null)
+                n2pipe = new ListRefHashMultimap<>();
+            n2pipe.putValue(child, pipe);
         }
         return n2pipe;
     }
 
-    private void removeKeysWithDistinctPipes(@Nonnull ListMultimap<RefEquals<Op>, PipeOp> n2pipe) {
-        List<RefEquals<Op>> dropKeys = new ArrayList<>();
+    private void removeKeysWithDistinctPipes(@Nonnull ListRefHashMultimap<Op, PipeOp> n2pipe) {
         outer:
-        for (RefEquals<Op> op : n2pipe.keySet()) {
+        for (Iterator<Op> it = n2pipe.keySet().iterator(); it.hasNext(); ) {
+            Op op = it.next();
             ModifiersSet prev = null;
             for (PipeOp pipe : n2pipe.get(op)) {
                 if (prev == null) {
                     prev = pipe.modifiers();
                 } else if (!pipe.modifiers().equals(prev)) {
-                    dropKeys.add(op);
+                    it.remove();
                     continue outer;
                 }
             }
             assert prev != null;
-            op.get().modifiers().unsafeMergeWith(prev, op.get().getPublicVars(),
-                                                 op.get().getPublicVars());
+            op.modifiers().unsafeMergeWith(prev, op.getPublicVars(), op.getPublicVars());
         }
-        for (RefEquals<Op> k : dropKeys)
-            n2pipe.removeAll(k);
     }
 }

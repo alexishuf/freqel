@@ -9,14 +9,13 @@ import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.federation.planner.utils.StepUtils;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.ListIterator;
-import java.util.Set;
 
 public class ConjunctionReplaceStep implements PlannerStep {
     private static final Logger logger = LoggerFactory.getLogger(ConjunctionReplaceStep.class);
@@ -29,7 +28,7 @@ public class ConjunctionReplaceStep implements PlannerStep {
     }
 
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull Set<RefEquals<Op>> locked) {
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> locked) {
         if (!(root instanceof InnerOp))
             return root;
         InnerOp io = (InnerOp) root;
@@ -38,7 +37,7 @@ public class ConjunctionReplaceStep implements PlannerStep {
                 it.set(plan(it.next(), locked));
         }
         if (root instanceof ConjunctionOp) {
-            if (locked.contains(RefEquals.of(root))) {
+            if (locked.contains(root)) {
                 assert false;
                 logger.error("Locked ConjunctionOp {} MUST be replaced to be have an " +
                              "executable plan! Will ignore its locked status", root);

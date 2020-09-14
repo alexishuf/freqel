@@ -9,16 +9,15 @@ import br.ufsc.lapesd.riefederator.algebra.util.DQPushChecker;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.endpoint.DQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLDisjunctiveProfile;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Set;
 
 public class EndpointPushStep implements PlannerStep {
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull Set<RefEquals<Op>> ignored) {
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> ignored) {
         if (isTrivial(root))
             return root;
         Visitor.Result result = new Visitor().visit(root);

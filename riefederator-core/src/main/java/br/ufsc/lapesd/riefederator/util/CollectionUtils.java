@@ -11,12 +11,6 @@ import java.util.function.Function;
 import static java.util.Collections.emptySet;
 
 public class CollectionUtils {
-    public static @Nonnull <T, R, K> Function<T, R>
-    memoize(@Nonnull Function<T, R> function, @Nonnull Function<T, K> keyFactory) {
-        Map<K, R> memory = new HashMap<>();
-        return t -> memory.computeIfAbsent(keyFactory.apply(t), k -> function.apply(t));
-    }
-
     public static @Nonnull <T, I>
     Set<T> intersect(@Nonnull Collection<I> input,
                      @Nonnull Function<I, ? extends Collection<T>> getter,

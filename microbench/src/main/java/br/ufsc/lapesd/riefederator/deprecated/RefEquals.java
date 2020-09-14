@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.util;
+package br.ufsc.lapesd.riefederator.deprecated;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

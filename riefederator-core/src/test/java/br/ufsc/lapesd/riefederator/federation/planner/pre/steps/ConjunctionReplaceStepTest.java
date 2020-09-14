@@ -11,20 +11,19 @@ import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
@@ -35,11 +34,11 @@ public class ConjunctionReplaceStepTest implements TestContext {
     public static Object[][] testData() {
         QueryOp q1 = new QueryOp(createQuery(Alice, knows, x));
         return Stream.of(
-                asList(q1, emptySet(), null),
+                asList(q1, EmptyRefSet.emptySet(), null),
                 asList(UnionOp.builder().add(q1).add(new QueryOp(createQuery(Bob, knows, x))).build(),
-                       emptySet(), null),
+                       EmptyRefSet.emptySet(), null),
                 asList(UnionOp.builder().add(q1).add(new QueryOp(createQuery(Bob, knows, x))).build(),
-                       singleton(q1), null),
+                       RefHashSet.of(q1), null),
                 //base case with a single join
                 asList(ConjunctionOp.builder()
                                 .add(new QueryOp(createQuery(
@@ -48,7 +47,7 @@ public class ConjunctionReplaceStepTest implements TestContext {
                                 .add(new QueryOp(createQuery(x, knows, Bob)))
                                 .add(Projection.of("u"))
                                 .build(),
-                       emptySet(),
+                       EmptyRefSet.emptySet(),
                        JoinOp.builder(
                                new QueryOp(createQuery(
                                        Alice, knows, x,
@@ -62,7 +61,7 @@ public class ConjunctionReplaceStepTest implements TestContext {
                                         Alice, age, u, SPARQLFilter.build("?u < 23"))))
                                 .add(Projection.of("u"))
                                 .build(),
-                       emptySet(),
+                       EmptyRefSet.emptySet(),
                        CartesianOp.builder()
                                .add(new QueryOp(createQuery(Alice, knows, x)))
                                .add(new QueryOp(createQuery(
@@ -79,7 +78,7 @@ public class ConjunctionReplaceStepTest implements TestContext {
                                         .build())
                                 .add(Projection.of("y", "u"))
                                 .build(),
-                       emptySet(),
+                       EmptyRefSet.emptySet(),
                        CartesianOp.builder()
                                .add(new QueryOp(createQuery(Alice, knows, x)))
                                .add(JoinOp.create(
@@ -95,7 +94,7 @@ public class ConjunctionReplaceStepTest implements TestContext {
                                 .add(SPARQLFilter.build("?u < ?v"))
                                 .add(Projection.of("x"))
                                 .build(),
-                       emptySet(),
+                       EmptyRefSet.emptySet(),
                        JoinOp.builder(new QueryOp(createQuery(x, age, u)),
                                       new QueryOp(createQuery(x, age, v, x, name, w)))
                                .add(SPARQLFilter.build("?u < ?v"))
@@ -105,7 +104,7 @@ public class ConjunctionReplaceStepTest implements TestContext {
     }
 
     @Test(dataProvider = "testData")
-    public void test(@Nonnull Op in, @Nonnull Set<RefEquals<Op>> locked, @Nullable Op expected) {
+    public void test(@Nonnull Op in, @Nonnull RefSet<Op> locked, @Nullable Op expected) {
         if (expected == null)
             expected = in;
         boolean equalsIn = expected.equals(in);

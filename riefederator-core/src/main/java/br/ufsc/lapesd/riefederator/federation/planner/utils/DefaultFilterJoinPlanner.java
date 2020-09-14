@@ -15,7 +15,7 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableBiMap;
 import org.apache.jena.sparql.core.Var;
@@ -44,7 +44,7 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
     }
 
     @Override
-    public @Nonnull Op rewrite(@Nonnull CartesianOp op, @Nonnull Set<RefEquals<Op>> shared) {
+    public @Nonnull Op rewrite(@Nonnull CartesianOp op, @Nonnull RefSet<Op> shared) {
         Set<SPARQLFilter> filters = op.modifiers().filters();
         if (filters.isEmpty())
             return op;
@@ -61,7 +61,7 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
     }
 
     @Override
-    public @Nonnull Op rewrite(@Nonnull JoinOp op, @Nonnull Set<RefEquals<Op>> shared) {
+    public @Nonnull Op rewrite(@Nonnull JoinOp op, @Nonnull RefSet<Op> shared) {
         Set<SPARQLFilter> filters = op.modifiers().filters();
         if (filters.isEmpty())
             return op;
@@ -97,7 +97,7 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
     }
 
     @VisibleForTesting
-    @Nonnull State createState(@Nonnull List<Op> nodes, @Nonnull Set<RefEquals<Op>> shared) {
+    @Nonnull State createState(@Nonnull List<Op> nodes, @Nonnull RefSet<Op> shared) {
         return new State(nodes, shared);
     }
 
@@ -107,17 +107,17 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
         private @Nonnull List<SPARQLFilter> components = new ArrayList<>();
         private @Nonnull List<BitSet> component2node;
         private @Nonnull BitSet orphanComps = new BitSet();
-        private @Nonnull Set<RefEquals<Op>> shared;
+        private @Nonnull RefSet<Op> shared;
         private boolean hasJoinComponents = false;
 
-        public State(@Nonnull List<Op> nodes, @Nonnull Set<RefEquals<Op>> shared) {
+        public State(@Nonnull List<Op> nodes, @Nonnull RefSet<Op> shared) {
             this.shared = shared;
             this.nodes = new ArrayList<>(nodes);
             this.nodes.sort(Comparator.comparing(Op::getCardinality, cardinalityComparator));
             this.component2node = new ArrayList<>();
         }
 
-        public State(@Nonnull JoinOp op, @Nonnull Set<RefEquals<Op>> shared) {
+        public State(@Nonnull JoinOp op, @Nonnull RefSet<Op> shared) {
             this.shared = shared;
             this.nodes = op.getChildren();
             int size = nodes.size();
@@ -191,7 +191,7 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
                 }
             }
             if (!placed) {
-                if (shared.contains(RefEquals.of(op)))
+                if (shared.contains(op))
                     op = new PipeOp(op);
                 op.modifiers().add(filter);
             }

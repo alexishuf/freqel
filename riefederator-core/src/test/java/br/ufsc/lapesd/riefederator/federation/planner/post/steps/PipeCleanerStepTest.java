@@ -11,10 +11,10 @@ import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
 import org.testng.annotations.Test;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static java.util.Collections.emptySet;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
@@ -26,7 +26,7 @@ public class PipeCleanerStepTest implements TestContext {
         JoinOp op = JoinOp.create(new EndpointQueryOp(e1, createQuery(x, knows, y)),
                                   new EndpointQueryOp(e1, createQuery(y, age, u)));
         Op expected = TreeUtils.deepCopy(op);
-        Op plan = new PipeCleanerStep().plan(op, emptySet());
+        Op plan = new PipeCleanerStep().plan(op, EmptyRefSet.emptySet());
         assertSame(plan, op);
         assertEquals(plan, expected);
     }
@@ -40,7 +40,7 @@ public class PipeCleanerStepTest implements TestContext {
                 .add(pipe)
                 .add(SPARQLFilter.build("?u > ?v"))
                 .build();
-        Op plan = new PipeCleanerStep().plan(root, emptySet());
+        Op plan = new PipeCleanerStep().plan(root, EmptyRefSet.emptySet());
         assertSame(root, plan);
         assertEquals(plan, CartesianOp.builder()
                 .add(new EndpointQueryOp(e1, createQuery(x, age, u)))
@@ -58,7 +58,7 @@ public class PipeCleanerStepTest implements TestContext {
         Op root = UnionOp.builder().add(p1).add(p2).build();
 
         Op expected = TreeUtils.deepCopy(root);
-        Op plan = new PipeCleanerStep().plan(root, emptySet());
+        Op plan = new PipeCleanerStep().plan(root, EmptyRefSet.emptySet());
         assertSame(plan, root);
         assertSame(plan.getChildren().get(0), root.getChildren().get(0));
         assertSame(plan.getChildren().get(1), root.getChildren().get(1));
@@ -77,7 +77,7 @@ public class PipeCleanerStepTest implements TestContext {
                 .add(JoinOp.create(p2, new EndpointQueryOp(e2, createQuery(x, knows, y))))
                 .build();
 
-        Op plan = new PipeCleanerStep().plan(root, emptySet());
+        Op plan = new PipeCleanerStep().plan(root, EmptyRefSet.emptySet());
         assertSame(plan, root);
         assertSame(plan.getChildren().get(0), root.getChildren().get(0));
         assertSame(plan.getChildren().get(0).getChildren().get(0), queryOp);

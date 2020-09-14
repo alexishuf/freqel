@@ -23,7 +23,9 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.sparql.vocabulary.FOAF;
@@ -43,7 +45,7 @@ import static br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerT
 import static br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest.dqDeepStreamPreOrder;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
@@ -63,16 +65,16 @@ public class PushDistinctStepTest implements TestContext {
         xKnowsAlicePipe.modifiers().add(Distinct.INSTANCE);
         EndpointQueryOp xKnowsAliceDistinct = q(x, knows, Alice, Distinct.INSTANCE);
         return Stream.of(
-                asList(q(x, knows, y), null, emptySet()),
-                asList(q(x, knows, y, Distinct.INSTANCE), null, emptySet()),
-                asList(xKnowsAlice, null, singleton(RefEquals.of(xKnowsAlice))),
-                asList(xKnowsAliceDistinct, null, singleton(RefEquals.of(xKnowsAliceDistinct))),
+                asList(q(x, knows, y), null, EmptyRefSet.emptySet()),
+                asList(q(x, knows, y, Distinct.INSTANCE), null, EmptyRefSet.emptySet()),
+                asList(xKnowsAlice, null, RefHashSet.of(xKnowsAlice)),
+                asList(xKnowsAliceDistinct, null, RefHashSet.of(xKnowsAliceDistinct)),
                 // no change with union
                 asList(UnionOp.builder()
                                 .add(q(x, knows, Alice))
                                 .add(q(x, knows, Bob))
                                 .build(),
-                       null, emptySet()),
+                       null, EmptyRefSet.emptySet()),
                 // push distinct down union
                 asList(UnionOp.builder()
                                 .add(q(x, knows, Alice))
@@ -82,13 +84,13 @@ public class PushDistinctStepTest implements TestContext {
                                .add(q(x, knows, Alice, Distinct.INSTANCE))
                                .add(q(x, knows, Bob, Distinct.INSTANCE))
                                .add(Distinct.INSTANCE).build(),
-                       emptySet()),
+                        EmptyRefSet.emptySet()),
                 // add pipe while pushing down Join
                 asList(JoinOp.builder(xKnowsAlice, q(x, age, u))
                                 .add(Distinct.INSTANCE).build(),
                        JoinOp.builder(xKnowsAlicePipe, q(x, age, u, Distinct.INSTANCE))
                                .add(Distinct.INSTANCE).build(),
-                       singleton(RefEquals.of(xKnowsAlice))),
+                       RefHashSet.of(xKnowsAlice)),
                 // do not add Distinct to intermediate nodes
                 asList(JoinOp.builder(UnionOp.builder()
                                                 .add(q(x, knows, Alice))
@@ -99,13 +101,13 @@ public class PushDistinctStepTest implements TestContext {
                                                .add(q(x, knows, Bob, Distinct.INSTANCE)).build(),
                                        q(x, age, u, Distinct.INSTANCE)
                        ).add(Distinct.INSTANCE).build(),
-                       emptySet())
+                       EmptyRefSet.emptySet())
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "testData")
     public void test(@Nonnull Op in, @Nullable Op expected,
-                     @Nonnull Set<RefEquals<Op>> shared) {
+                     @Nonnull RefSet<Op> shared) {
         if (expected == null)
             expected = in;
         expected = TreeUtils.deepCopy(expected);

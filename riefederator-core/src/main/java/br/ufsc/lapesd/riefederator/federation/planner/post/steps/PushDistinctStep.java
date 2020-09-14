@@ -6,14 +6,13 @@ import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 
 import javax.annotation.Nonnull;
-import java.util.Set;
 
 public class PushDistinctStep implements PlannerStep {
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull Set<RefEquals<Op>> shared) {
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> shared) {
         return visit(root, shared, false);
     }
 
@@ -22,7 +21,7 @@ public class PushDistinctStep implements PlannerStep {
         return getClass().getSimpleName();
     }
 
-    private static @Nonnull Op visit(@Nonnull Op op, @Nonnull Set<RefEquals<Op>> shared,
+    private static @Nonnull Op visit(@Nonnull Op op, @Nonnull RefSet<Op> shared,
                                      boolean makeDistinct) {
         boolean distinct = op.modifiers().distinct() != null;
         if (op instanceof InnerOp) {
@@ -32,7 +31,7 @@ public class PushDistinctStep implements PlannerStep {
                     children.set(i, visit(children.get(i), shared, effMakeDistinct));
             }
         } else if (makeDistinct && !distinct) {
-            if (shared.contains(RefEquals.of(op)))
+            if (shared.contains(op))
                 op = new PipeOp(op);
             op.modifiers().add(Distinct.INSTANCE);
         }

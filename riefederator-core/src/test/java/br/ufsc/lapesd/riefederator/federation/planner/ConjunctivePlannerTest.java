@@ -29,7 +29,8 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
@@ -146,21 +147,21 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
             if (query.modifiers().optional() == null)
                 assertFalse(root instanceof EmptyOp, "EmptyOp is not an answer!");
             // tolerate EmptyOp x if x is a child of a union that has a non-EmptyOp child
-            Set<RefEquals<Op>> tolerate = new HashSet<>();
+            RefSet<Op> tolerate = new RefHashSet<>();
             streamPreOrder(root).filter(UnionOp.class::isInstance)
                     .forEach(o -> {
                         long c = o.getChildren().stream().filter(EmptyOp.class::isInstance).count();
                         if (c < o.getChildren().size()) {
                             o.getChildren().stream().filter(EmptyOp.class::isInstance)
-                                           .map(RefEquals::of).forEach(tolerate::add);
+                                           .forEach(tolerate::add);
                         }
                     });
             // tolerate EmptyOp x if x is marked optional
             streamPreOrder(root)
                     .filter(o -> o instanceof EmptyOp && o.modifiers().optional() != null)
-                    .forEach(o -> tolerate.add(RefEquals.of(o)));
+                    .forEach(o -> tolerate.add(o));
             assertEquals(streamPreOrder(root).filter(EmptyOp.class::isInstance)
-                            .filter(o -> !tolerate.contains(RefEquals.of(o))).count(),
+                            .filter(o -> !tolerate.contains(o)).count(),
                          0, "There are non-tolerable EmptyOp in the plan as leaves");
         }
 

@@ -21,7 +21,7 @@ import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.vocabulary.FOAF;
@@ -33,7 +33,10 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -45,7 +48,6 @@ import static br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerT
 import static br.ufsc.lapesd.riefederator.model.term.std.StdLit.fromUnescaped;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
@@ -177,17 +179,15 @@ public class FilterToBindJoinStepTest implements TestContext {
                 "PREFIX ex: <"+EX+">\n";
         return Stream.of(
                 // no work to be done
-                asList(eq(Alice, knows, x), emptySet(),
+                asList(eq(Alice, knows, x),
                        prolog+"SELECT * WHERE {ex:Alice foaf:knows ?x}", null),
                 // no work to be done
                 asList(JoinOp.create(eq(x, knows, y), eq(y, age, u, SPARQLFilter.build("?u > 23"))),
-                       emptySet(),
                        prolog+"SELECT * WHERE {?x foaf:knows ?y . ?y foaf:age ?u FILTER(?u > 23)}",
                        null),
                 // push filter into join
                 asList(JoinOp.builder(eq(x, age, u), eq(x, age, v))
                                 .add(SPARQLFilter.build("?u > ?v")).build(),
-                       emptySet(),
                        prolog+"SELECT * WHERE {?x foaf:age ?u ; foaf:age ?v FILTER(?u > ?v)}",
                        (Predicate<Op>)o -> {
                             if (!(o instanceof JoinOp)) return false;
@@ -199,7 +199,7 @@ public class FilterToBindJoinStepTest implements TestContext {
                                 .add(eq(Alice, age, u, SPARQLFilter.build("?u > 23")))
                                 .add(eq(Alice, ageEx, v))
                                 .add(SPARQLFilter.build("?u > ?v")).build(),
-                       emptySet(), prolog+"SELECT * WHERE {\n" +
+                        prolog+"SELECT * WHERE {\n" +
                                 "  ex:Alice foaf:age ?u ; ex:age ?v\n" +
                                 "    FILTER(?u > 23)\nFILTER(?u > ?v).\n" +
                                 "}",
@@ -216,11 +216,11 @@ public class FilterToBindJoinStepTest implements TestContext {
 
     @Test(dataProvider = "testStepData", groups = {"fast"})
     public void testStep(@Nonnull Supplier<FilterToBindJoinStep> supplier, @Nonnull Op plan,
-                         @Nonnull Set<RefEquals<Op>> shared, @Nonnull String querySparql,
-                         @Nullable Predicate<Op> checker) throws SPARQLParseException {
+                         @Nonnull String querySparql, @Nullable Predicate<Op> checker)
+            throws SPARQLParseException {
         Op query = SPARQLParser.strict().parse(querySparql);
         assertPlanAnswers(plan, query);
-        Op actual = supplier.get().plan(TreeUtils.deepCopy(plan), shared);
+        Op actual = supplier.get().plan(TreeUtils.deepCopy(plan), EmptyRefSet.emptySet());
         assertPlanAnswers(actual, query);
         if (checker != null)
             assertTrue(checker.test(actual));

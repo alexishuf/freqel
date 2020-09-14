@@ -7,20 +7,19 @@ import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
@@ -31,13 +30,13 @@ public class CartesianDistributionStepTest implements TestContext {
     public static Object[][] testData() {
         QueryOp q1 = new QueryOp(createQuery(Alice, knows, x));
         return Stream.of(
-                asList(q1, emptySet(), null),
-                asList(q1, singleton(q1), null),
+                asList(q1, EmptyRefSet.emptySet(), null),
+                asList(q1, RefHashSet.of(q1), null),
                 asList(UnionOp.builder()
                                 .add(new QueryOp(createQuery(Alice, knows, x)))
                                 .add(new QueryOp(createQuery(Bob, knows, x)))
                                 .build(),
-                       emptySet(), null),
+                       EmptyRefSet.emptySet(), null),
                 // base case
                 asList(ConjunctionOp.builder()
                         .add(CartesianOp.builder()
@@ -47,7 +46,7 @@ public class CartesianDistributionStepTest implements TestContext {
                                 .build())
                         .add(new QueryOp(createQuery(x, age, u, SPARQLFilter.build("?u < 23"))))
                         .build(),
-                       singleton(q1),
+                       RefHashSet.of(q1),
                        CartesianOp.builder()
                                .add(new QueryOp(createQuery(
                                        Alice, knows, x,
@@ -59,7 +58,7 @@ public class CartesianDistributionStepTest implements TestContext {
     }
 
     @Test(dataProvider = "testData")
-    public void test(@Nonnull Op in, @Nonnull Set<RefEquals<Op>> locked, @Nullable Op expected) {
+    public void test(@Nonnull Op in, @Nonnull RefSet<Op> locked, @Nullable Op expected) {
         if (expected == null)
             expected = in;
         boolean expectSame = expected.equals(in);

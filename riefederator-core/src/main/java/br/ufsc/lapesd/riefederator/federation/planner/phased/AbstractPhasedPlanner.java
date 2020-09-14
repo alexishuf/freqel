@@ -4,13 +4,12 @@ import br.ufsc.lapesd.riefederator.algebra.InnerOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Set;
 
 import static java.lang.String.format;
 
@@ -43,7 +42,7 @@ public class AbstractPhasedPlanner {
 
     public @Nonnull Op plan(@Nonnull Op tree) {
         assert tree.assertTreeInvariants();
-        Set<RefEquals<Op>> shared = TreeUtils.findSharedNodes(tree);
+        RefSet<Op> shared = TreeUtils.findSharedNodes(tree);
         for (PlannerStep step : phase1deep) {
             tree = step.plan(tree, shared);
             assert tree.assertTreeInvariants();
@@ -57,7 +56,7 @@ public class AbstractPhasedPlanner {
         return tree;
     }
 
-    protected  @Nonnull Op phase2(@Nonnull Op root, @Nonnull Set<RefEquals<Op>> locked) {
+    protected  @Nonnull Op phase2(@Nonnull Op root, @Nonnull RefSet<Op> locked) {
         if (root instanceof InnerOp) { //recurse
             InnerOp io = (InnerOp) root;
             try (TakenChildren children = io.takeChildren().setNoContentChange()) {

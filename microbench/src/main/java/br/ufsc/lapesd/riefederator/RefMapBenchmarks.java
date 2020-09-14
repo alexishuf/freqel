@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator;
 
 import br.ufsc.lapesd.riefederator.deprecated.*;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
 import br.ufsc.lapesd.riefederator.util.RefHashMap;
 import br.ufsc.lapesd.riefederator.util.RefMap;
 import com.google.common.collect.Maps;

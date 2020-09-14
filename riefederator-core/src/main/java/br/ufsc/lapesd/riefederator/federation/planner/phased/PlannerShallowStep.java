@@ -1,11 +1,10 @@
 package br.ufsc.lapesd.riefederator.federation.planner.phased;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
-import java.util.Set;
 
 @Immutable
 public interface PlannerShallowStep {
@@ -16,5 +15,5 @@ public interface PlannerShallowStep {
      * @param locked Set of nodes that should not be mutated more than receiving new modifiers
      * @return op or a replacement for it
      */
-    @Nonnull Op visit(@Nonnull Op op, @Nonnull Set<RefEquals<Op>> locked);
+    @Nonnull Op visit(@Nonnull Op op, @Nonnull RefSet<Op> locked);
 }

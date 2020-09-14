@@ -6,17 +6,17 @@ import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.UnsafeMergeException;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 
 import javax.annotation.Nonnull;
-import java.util.HashSet;
 import java.util.Set;
 
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.hasIntersect;
 
 public class CartesianDistributionStep extends AbstractDistributionStep {
     @Override
-    public @Nonnull Op visit(@Nonnull Op parent, @Nonnull Set<RefEquals<Op>> shared) {
+    public @Nonnull Op visit(@Nonnull Op parent, @Nonnull RefSet<Op> shared) {
         if (!(parent instanceof ConjunctionOp))
             return parent;
         // C(P(a{x}, b{y}), P(c{x}, d{z}), U(e, f), g{x}) --> C(P(acg, b, d), U(e, f))
@@ -26,7 +26,7 @@ public class CartesianDistributionStep extends AbstractDistributionStep {
         MutableCQuery query = queryOp.getQuery();
 
         boolean hasExtra = false;
-        Set<RefEquals<Op>> merged = null;
+        RefSet<Op> merged = null;
         for (Op child : parent.getChildren()) {
             if (child instanceof CartesianOp && child.modifiers().isEmpty()) {
                 for (Op grandchild : child.getChildren()) {
@@ -34,8 +34,8 @@ public class CartesianDistributionStep extends AbstractDistributionStep {
                             && hasIntersect(grandchild.getResultVars(), queryVars)) {
                         try {
                             query.mergeWith(((QueryOp) grandchild).getQuery());
-                            if (merged == null) merged = new HashSet<>();
-                            merged.add(RefEquals.of(grandchild));
+                            if (merged == null) merged = new RefHashSet<>();
+                            merged.add(grandchild);
                         } catch (UnsafeMergeException ignored) { }
                     }
                 }
@@ -51,13 +51,13 @@ public class CartesianDistributionStep extends AbstractDistributionStep {
     }
 
     private @Nonnull Op raiseProduct(@Nonnull ConjunctionOp parent, QueryOp queryOp,
-                                     boolean hasExtra, @Nonnull Set<RefEquals<Op>> merged) {
+                                     boolean hasExtra, @Nonnull RefSet<Op> merged) {
         ConjunctionOp.Builder conjBuilder = hasExtra ? ConjunctionOp.builder() : null;
         CartesianOp.Builder prodBuilder = CartesianOp.builder().add(queryOp);
         for (Op child : parent.getChildren()) {
             if (child instanceof CartesianOp && child.modifiers().isEmpty()) {
                 for (Op grandchild : child.getChildren()) {
-                    if (!merged.contains(RefEquals.of(grandchild)))
+                    if (!merged.contains(grandchild))
                         prodBuilder.add(grandchild);
                 }
             } else if (child != queryOp) {

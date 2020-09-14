@@ -8,22 +8,19 @@ import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
-import com.google.common.collect.Sets;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
@@ -34,9 +31,9 @@ public class UnionDistributionStepTest implements TestContext {
         QueryOp q1 = new QueryOp(createQuery(Alice, knows, x));
         Op u1 = UnionOp.build(asList(q1, new QueryOp(createQuery(Bob, knows, x))));
         return Stream.of(
-                asList(q1, emptySet(), q1),
-                asList(q1, Collections.singleton(q1), q1),
-                asList(u1, emptySet(), u1),
+                asList(q1, EmptyRefSet.emptySet(), q1),
+                asList(q1, RefHashSet.of(q1), q1),
+                asList(u1, EmptyRefSet.emptySet(), u1),
                 // base replacement scenario
                 asList(ConjunctionOp.builder()
                                 .add(UnionOp.builder()
@@ -49,7 +46,7 @@ public class UnionDistributionStepTest implements TestContext {
                                 .add(new QueryOp(createQuery(
                                         x, age, v, SPARQLFilter.build("?v < 23"))))
                                 .build(),
-                       emptySet(),
+                       EmptyRefSet.emptySet(),
                        UnionOp.builder()
                                .add(new QueryOp(createQuery(
                                        y, knows, x,
@@ -69,7 +66,7 @@ public class UnionDistributionStepTest implements TestContext {
                                         .build())
                                 .add(new QueryOp(createQuery(x, age, u)))
                                 .build(),
-                       singleton(q1),
+                       RefHashSet.of(q1),
                        null),
                 // extra node is preserved
                 asList(ConjunctionOp.builder()
@@ -90,7 +87,7 @@ public class UnionDistributionStepTest implements TestContext {
                                         .add(new QueryOp(createQuery(Alice, knows, Bob)))
                                         .build())
                                 .build(),
-                       Sets.newHashSet(q1, u1),
+                       RefHashSet.of(q1, u1),
                        ConjunctionOp.builder()
                                .add(CartesianOp.builder()
                                        .add(new QueryOp(createQuery(y, name, z)))
@@ -114,7 +111,7 @@ public class UnionDistributionStepTest implements TestContext {
     }
 
     @Test(dataProvider = "testData")
-    public void test(@Nonnull Op in, @Nonnull Set<RefEquals<Op>> locked, @Nullable Op expected) {
+    public void test(@Nonnull Op in, @Nonnull RefSet<Op> locked, @Nullable Op expected) {
         if (expected == null)
             expected = in;
         boolean expectSame = expected.equals(in);

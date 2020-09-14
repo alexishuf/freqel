@@ -7,21 +7,19 @@ import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
@@ -42,19 +40,19 @@ public class FlattenStepTest implements TestContext {
                 .build();
         return Stream.of(
                 asList(new QueryOp(createQuery(x, knows, Alice)),
-                       emptySet(),
+                        EmptyRefSet.emptySet(),
                        new QueryOp(createQuery(x, knows, Alice))),
-                asList(q1, singleton(q1), q1),
-                asList(j1, emptySet(), j1),
-                asList(j1, singleton(q1), j1),
-                asList(j1, newHashSet(q1, j1), j1),
+                asList(q1, RefHashSet.of(q1), q1),
+                asList(j1, EmptyRefSet.emptySet(), j1),
+                asList(j1, RefHashSet.of(q1), j1),
+                asList(j1, RefHashSet.of(q1, j1), j1),
                 asList(UnionOp.builder()
                                 .add(u1)
                                 .add(new QueryOp(createQuery(
                                         x, knows, Charlie,
                                         x, age, u, SPARQLFilter.build("?u > 23"))))
                                 .build(),
-                       emptySet(),
+                       EmptyRefSet.emptySet(),
                        UnionOp.builder()
                                .add(new QueryOp(createQuery(
                                        x, knows, Alice,
@@ -70,7 +68,7 @@ public class FlattenStepTest implements TestContext {
                                         x, knows, Charlie,
                                         x, age, u, SPARQLFilter.build("?u > 23"))))
                                 .build(),
-                        singleton(u1),
+                        RefHashSet.of(u1),
                         UnionOp.builder()
                                 .add(u1)
                                 .add(new QueryOp(createQuery(
@@ -85,13 +83,13 @@ public class FlattenStepTest implements TestContext {
                                         y, age, v, SPARQLFilter.build("?v > 23"))))
                                 .add(SPARQLFilter.build("?u < ?v"))
                                 .build(),
-                       emptySet(),
+                        EmptyRefSet.emptySet(),
                        null)
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "flattenTestData")
-    public void testFlatten(@Nonnull Op in, @Nonnull Set<RefEquals<Op>> locked,
+    public void testFlatten(@Nonnull Op in, @Nonnull RefSet<Op> locked,
                             @Nullable Op expected) {
         FlattenStep step = new FlattenStep();
         if (expected == null)

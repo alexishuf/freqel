@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -23,7 +24,6 @@ import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.assertEquals;
@@ -134,7 +134,7 @@ public class CartesianIntroductionStepTest implements TestContext {
             expected = TreeUtils.deepCopy(in);
         boolean isSame = expected.equals(in);
         CartesianIntroductionStep step = new CartesianIntroductionStep();
-        Op actual = step.plan(in, emptySet());
+        Op actual = step.plan(in, EmptyRefSet.emptySet());
         assertEquals(actual, expected);
         if (isSame)
             assertSame(actual, in);

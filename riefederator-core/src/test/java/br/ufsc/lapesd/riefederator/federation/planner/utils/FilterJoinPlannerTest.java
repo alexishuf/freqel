@@ -18,7 +18,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
 import com.google.inject.Injector;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.testng.annotations.DataProvider;
@@ -37,7 +37,6 @@ import java.util.stream.Stream;
 import static br.ufsc.lapesd.riefederator.algebra.Cardinality.guess;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
@@ -95,20 +94,19 @@ public class FilterJoinPlannerTest implements TestContext {
         return Stream.of(
                 // no filters in cartesian, no change
                 asList(CartesianOp.builder().add(q(Alice, name, x)).add(q(Alice, age, u)).build(),
-                       emptySet(), null),
+                       null),
                 // no filter on parent enables joining
                 asList(CartesianOp.builder()
                                 .add(q(Alice, knows, x))
                                 .add(q(Alice, age, u, Alice, age, v))
                                 .add(SPARQLFilter.build("?u < 23"))
                                 .add(SPARQLFilter.build("?u > ?v")).build(),
-                       emptySet(), null),
+                       null),
                 // simple joining filter
                 asList(CartesianOp.builder()
                                 .add(q(guess(10), Alice, age, u))
                                 .add(q(guess(20), Alice, ageEx, v))
                                 .add(SPARQLFilter.build("?u > ?v")).build(),
-                       emptySet(),
                        (Predicate<Op>) o -> checkJoin(o, 3,
                                createQuery(Alice, age, u, Alice, ageEx, v,
                                            SPARQLFilter.build("?u > ?v")))),
@@ -118,7 +116,7 @@ public class FilterJoinPlannerTest implements TestContext {
                                 .add(q(guess(20), Alice, ageEx, v))
                                 .add(q(guess(30), Alice, p1, w))
                                 .add(SPARQLFilter.build("?u < ?v && ?v < ?w")).build(),
-                       emptySet(), (Predicate<Op>)o -> checkJoin(o, 5,
+                       (Predicate<Op>)o -> checkJoin(o, 5,
                                 createQuery(Alice, age, u, Alice, ageEx, v, Alice, p1, w,
                                             SPARQLFilter.build("?u < ?v"),
                                             SPARQLFilter.build("?v < ?w")))),
@@ -130,7 +128,7 @@ public class FilterJoinPlannerTest implements TestContext {
                                 .add(q(guess(10), Alice, p1, o1))
                                 .add(q(guess(10), Alice, p2, o2))
                                 .add(SPARQLFilter.build("?u < ?v && str(?o1) = str(?o2)")).build(),
-                       emptySet(), (Predicate<Op>)o -> {
+                       (Predicate<Op>)o -> {
                             boolean ok = o instanceof CartesianOp;
                             ok &= o.getChildren().size() == 2;
                             Op fst = o.getChildren().stream().filter(c -> c.getResultVars()
@@ -163,14 +161,13 @@ public class FilterJoinPlannerTest implements TestContext {
 
     @Test(dataProvider = "testCartesianData")
     public void testCartesian(@Nonnull Supplier<FilterJoinPlanner> supplier,
-                              @Nonnull CartesianOp unsafeIn, @Nonnull Set<RefEquals<Op>> shared,
-                              @Nullable Predicate<Op> checker) {
+                              @Nonnull CartesianOp unsafeIn, @Nullable Predicate<Op> checker) {
         CartesianOp in = (CartesianOp) TreeUtils.deepCopy(unsafeIn);
         if (checker == null) {
             Op copy = TreeUtils.deepCopy(in);
             checker = o -> Objects.equals(o, copy) && o == in;
         }
-        Op actual = supplier.get().rewrite(in, shared);
+        Op actual = supplier.get().rewrite(in, EmptyRefSet.emptySet());
         ConjunctivePlannerTest.assertPlanAnswers(actual, unsafeIn);
         assertTrue(checker.test(actual));
     }
@@ -179,18 +176,17 @@ public class FilterJoinPlannerTest implements TestContext {
     public static @Nonnull Object[][] testJoinData() {
         return Stream.of(
                 // no filters, no change
-                asList(JoinOp.create(q(x, name, u), q(x, age, u)), emptySet(), null),
+                asList(JoinOp.create(q(x, name, u), q(x, age, u)),  null),
                 // filters on leaves do not trigger
                 asList(JoinOp.create(q(x, age, u, SPARQLFilter.build("?u < 23")),
-                                     q(x, age, v)), emptySet(), null),
+                                     q(x, age, v)),  null),
                 // no effect if leaf has join filter
                 asList(JoinOp.create(q(x, age, u), q(x, age, v, SPARQLFilter.build("?v > ?u"))),
-                       emptySet(), null),
+                        null),
                 // push filter to leaf that already has inputs
                 asList(JoinOp.builder(q(x, age, u),
                                      q(x, age, v, SPARQLFilter.build("?v < ?w")))
                              .add(SPARQLFilter.build("?u < ?v")).build(),
-                       emptySet(),
                        JoinOp.create(q(x, age, u), q(x, age, v, SPARQLFilter.build("?v < ?w"),
                                                                 SPARQLFilter.build("?u < ?v"))))
         ).flatMap(l -> suppliers.stream().map(s -> {
@@ -202,14 +198,13 @@ public class FilterJoinPlannerTest implements TestContext {
 
     @Test(dataProvider = "testJoinData")
     public void testJoin(@Nonnull Supplier<FilterJoinPlanner> supplier,
-                         @Nonnull JoinOp unsafeIn, @Nonnull Set<RefEquals<Op>> shared,
-                         @Nullable JoinOp expected) {
+                         @Nonnull JoinOp unsafeIn, @Nullable JoinOp expected) {
         if (expected == null)
             expected = unsafeIn;
         boolean expectSame = expected == unsafeIn;
         expected = (JoinOp) TreeUtils.deepCopy(expected);
         JoinOp in = (JoinOp) TreeUtils.deepCopy(unsafeIn);
-        Op actual = supplier.get().rewrite(in, shared);
+        Op actual = supplier.get().rewrite(in, EmptyRefSet.emptySet());
         assertTrue(actual instanceof JoinOp);
         assertEquals(actual, expected);
         ConjunctivePlannerTest.assertPlanAnswers(actual, unsafeIn);

@@ -11,7 +11,7 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.UnsafeMergeException;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,10 +27,10 @@ public class FlattenStep implements PlannerStep {
     private static Logger logger = LoggerFactory.getLogger(FlattenStep.class);
 
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull Set<RefEquals<Op>> locked) {
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> locked) {
         if (!(root instanceof InnerOp)) return root;
         InnerOp io = (InnerOp) root;
-        boolean ioShared = locked.contains(RefEquals.of(io));
+        boolean ioShared = locked.contains(io);
         Set<String> resultVars = io.getResultVars();
         try (TakenChildren children = io.takeChildren().setNoContentChange()) {
             for (ListIterator<Op> it = children.listIterator(); it.hasNext(); )
@@ -47,19 +47,19 @@ public class FlattenStep implements PlannerStep {
         return io; //changed in-place
     }
 
-    public boolean isFlat(@Nonnull Op op, @Nonnull Set<RefEquals<Op>> locked) {
+    public boolean isFlat(@Nonnull Op op, @Nonnull RefSet<Op> locked) {
         List<Op> list = op.getChildren();
         if (op instanceof ConjunctionOp
                 && list.stream().anyMatch(c -> c instanceof ConjunctionOp
-                && !locked.contains(RefEquals.of(c)))) {
+                && !locked.contains(c))) {
             return false;
         }
-        if (list.size() == 1 && !locked.contains(RefEquals.of(op)))
+        if (list.size() == 1 && !locked.contains(op))
             return false; // tree should've been replaced with the single child
         if ((op instanceof CartesianOp || op instanceof ConjunctionOp)
                 && list.stream().filter(c -> c instanceof QueryOp
                 && c.modifiers().optional() == null
-                && !locked.contains(RefEquals.of(c))).count() > 1) {
+                && !locked.contains(c)).count() > 1) {
             return false; //all non-locked query nodes under ×, or . should've been merged
         }
         // check same-class nesting:
@@ -78,14 +78,14 @@ public class FlattenStep implements PlannerStep {
 
     /* --- --- --- Internals --- --- ---   */
 
-    private void flattenSameClass(@Nonnull Set<RefEquals<Op>> shared, InnerOp parent,
+    private void flattenSameClass(@Nonnull RefSet<Op> shared, InnerOp parent,
                                   @Nonnull TakenChildren children,
                                   @Nonnull Set<String> parentVars) {
         boolean parentProjected = parent.modifiers().projection() != null;
         Class<? extends InnerOp> parentClass = parent.getClass();
         for (int i = 0, size = children.size(); i < size; i++) {
             Op c = children.get(i);
-            if (c.getClass().equals(parentClass) && !shared.contains(RefEquals.of(c))) {
+            if (c.getClass().equals(parentClass) && !shared.contains(c)) {
                 Iterator<Op> it = c.getChildren().iterator();
                 if (it.hasNext()) {
                     try {
@@ -104,11 +104,11 @@ public class FlattenStep implements PlannerStep {
         }
     }
 
-    private void mergeQueryOps(@Nonnull Set<RefEquals<Op>> sharedNodes, TakenChildren children) {
+    private void mergeQueryOps(@Nonnull RefSet<Op> sharedNodes, TakenChildren children) {
         QueryOp queryOp = null;
         for (Iterator<Op> it = children.iterator(); it.hasNext(); ) {
             Op child = it.next();
-            if (child instanceof QueryOp && !sharedNodes.contains(RefEquals.of(child))) {
+            if (child instanceof QueryOp && !sharedNodes.contains(child)) {
                 if (queryOp == null) {
                     if (child.modifiers().optional() == null)
                         queryOp = (QueryOp) child;

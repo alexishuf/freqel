@@ -10,7 +10,9 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import com.google.common.collect.Sets;
 import org.testng.annotations.Test;
 
@@ -63,7 +65,7 @@ public class PushFiltersStepTest implements TestContext {
         JoinOp root = JoinOp.create(j1, q3);
 
         HashSet<SPARQLFilter> set = new HashSet<>(root.modifiers().filters());
-        Op replacement = new PushFiltersStep().plan(root, emptySet());
+        Op replacement = new PushFiltersStep().plan(root, EmptyRefSet.emptySet());
         checkAllFilters(set, replacement);
     }
 
@@ -78,7 +80,7 @@ public class PushFiltersStepTest implements TestContext {
                 .add(new EndpointQueryOp(ep2, query))
                 .build();
         PushFiltersStep step = new PushFiltersStep();
-        Op replacement = step.plan(node, emptySet());
+        Op replacement = step.plan(node, EmptyRefSet.emptySet());
         checkAllFilters(singleton(SPARQLFilter.build("?u > 23")), replacement);
     }
 
@@ -93,7 +95,7 @@ public class PushFiltersStepTest implements TestContext {
                 .add(SPARQLFilter.build("?u > 23"))
                 .build();
         PushFiltersStep step = new PushFiltersStep();
-        Op replacement = step.plan(node, emptySet());
+        Op replacement = step.plan(node, EmptyRefSet.emptySet());
         checkAllFilters(singleton(SPARQLFilter.build("?u > 23")), replacement);
     }
 
@@ -116,8 +118,8 @@ public class PushFiltersStepTest implements TestContext {
         rtl.modifiers().add(greater);
 
         PushFiltersStep step = new PushFiltersStep();
-        checkAllFilters(Sets.newHashSet(eq, greater), step.plan(ltr, emptySet()));
-        checkAllFilters(Sets.newHashSet(eq, greater), step.plan(rtl, emptySet()));
+        checkAllFilters(Sets.newHashSet(eq, greater), step.plan(ltr, EmptyRefSet.emptySet()));
+        checkAllFilters(Sets.newHashSet(eq, greater), step.plan(rtl, EmptyRefSet.emptySet()));
     }
 
     @Test
@@ -127,7 +129,7 @@ public class PushFiltersStepTest implements TestContext {
                 .add(new EndpointQueryOp(ep1, createQuery(Alice, age, u)))
                 .add(SPARQLFilter.build("?u > 23"))
                 .build();
-        Op replacement = new PushFiltersStep().plan(op, emptySet());
+        Op replacement = new PushFiltersStep().plan(op, EmptyRefSet.emptySet());
         checkAllFilters(singleton(SPARQLFilter.build("?u > 23")), replacement);
     }
 
@@ -141,7 +143,7 @@ public class PushFiltersStepTest implements TestContext {
                 new EndpointQueryOp(ep1, createQuery(y, age, u, SPARQLFilter.build("?u > 23"))));
         op.modifiers().add(SPARQLFilter.build("?u > 23"));
 
-        Op replacement = new PushFiltersStep().plan(op, emptySet());
+        Op replacement = new PushFiltersStep().plan(op, EmptyRefSet.emptySet());
         assertSame(replacement, op);
         checkAllFilters(singleton(SPARQLFilter.build("?u > 23")), replacement);
         assertEquals(op.getChildren().get(0).getChildren().get(1).modifiers().filters(),
@@ -156,7 +158,7 @@ public class PushFiltersStepTest implements TestContext {
                                   new EndpointQueryOp(ep1, createQuery(y, age, u)));
         op.modifiers().add(SPARQLFilter.build("?u > 23"));
         Op lockedNode = op.getRight();
-        Set<RefEquals<Op>> lockedSet = singleton(RefEquals.of(lockedNode));
+        RefSet<Op> lockedSet = RefHashSet.of(lockedNode);
 
         Op replacement = new PushFiltersStep().plan(op, lockedSet);
         assertSame(replacement, op);

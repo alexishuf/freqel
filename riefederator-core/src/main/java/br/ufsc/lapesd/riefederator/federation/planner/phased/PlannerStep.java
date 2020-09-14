@@ -1,11 +1,10 @@
 package br.ufsc.lapesd.riefederator.federation.planner.phased;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
-import java.util.Set;
 
 @Immutable
 public interface PlannerStep {
@@ -17,5 +16,5 @@ public interface PlannerStep {
      *               addition of modifiers.
      * @return the same tree root or a replacement Op if the root had to be replaced.
      */
-    @Nonnull Op plan(@Nonnull Op root, @Nonnull Set<RefEquals<Op>> locked);
+    @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> locked);
 }

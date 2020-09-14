@@ -19,8 +19,9 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.util.CollectionUtils;
-import br.ufsc.lapesd.riefederator.util.RefEquals;
+import br.ufsc.lapesd.riefederator.util.RefHashMap;
+import br.ufsc.lapesd.riefederator.util.RefMap;
+import br.ufsc.lapesd.riefederator.util.RefSet;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
@@ -98,12 +99,13 @@ public class TreeUtils {
     public static @Nonnull Op replaceNodes(@Nonnull Op root,
                                            @Nullable InnerCardinalityComputer cardinality,
                                            @Nonnull Function<Op, Op> map) {
-        Function<Op, Op> memoized = CollectionUtils.memoize(n -> {
-            Op replacement = map.apply(n);
-            return replacement == null ? n : replacement;
-        }, RefEquals::of);
+        RefMap<Op, Op> memory = new RefHashMap<>(32, 3);
         ArrayDeque<Op> stack = new ArrayDeque<>();
-        root = memoized.apply(root);
+        Function<Op, Op> mapNN = o -> {
+            Op replacement = map.apply(o);
+            return replacement == null ? o : replacement;
+        };
+        root = memory.computeIfAbsent(root, mapNN);
         if (root instanceof InnerOp)
             stack.push(root);
         while (!stack.isEmpty()) {
@@ -111,7 +113,7 @@ public class TreeUtils {
             boolean change = false;
             try (TakenChildren children = op.takeChildren()) {
                 for (int i = 0, size = children.size(); i < size; i++) {
-                    Op replacement = memoized.apply(children.get(i));
+                    Op replacement = memory.computeIfAbsent(children.get(i), mapNN);
                     if (children.set(i, replacement) != replacement)
                         change = true;
                     if (replacement instanceof InnerOp)
@@ -244,18 +246,17 @@ public class TreeUtils {
                 DISTINCT | NONNULL), false);
     }
 
-    public static @Nonnull Set<RefEquals<Op>> findSharedNodes(@Nonnull Op tree) {
+    public static @Nonnull RefSet<Op> findSharedNodes(@Nonnull Op tree) {
         ArrayDeque<Op> queue = new ArrayDeque<>();
         queue.add(tree);
-        Map<RefEquals<Op>, Integer> map = new HashMap<>();
+        RefHashMap<Op, Integer> map = new RefHashMap<>();
         while (!queue.isEmpty()) {
             Op op = queue.remove();
-            RefEquals<Op> key = new RefEquals<>(op);
-            if (map.put(key, map.getOrDefault(key, 0) + 1) == null)
+            if (map.put(op, map.getOrDefault(op, 0) + 1) == null)
                 queue.addAll(op.getChildren());
         }
         map.entrySet().removeIf(e -> e.getValue() <= 1);
-        return map.keySet();
+        return map.toSet();
     }
 
     public static @Nonnull List<Op> childrenIfMulti(@Nonnull Op node) {

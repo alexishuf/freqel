@@ -17,6 +17,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLDisjunctiveProfile;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -25,7 +26,6 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -133,7 +133,7 @@ public class EndpointPushStepTest implements TestContext {
             expected = in;
         boolean expectSame = expected == in;
         expected = TreeUtils.deepCopy(expected);
-        Op actual = new EndpointPushStep().plan(in, Collections.emptySet());
+        Op actual = new EndpointPushStep().plan(in, EmptyRefSet.emptySet());
 
         assertEquals(actual, expected);
         if (expectSame)
