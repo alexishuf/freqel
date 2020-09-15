@@ -30,28 +30,38 @@ import java.util.zip.ZipInputStream;
 public class PlanningBenchmarks {
 
     @Param({"LRB",
-            "B1", //UNION
+            "B1",
             "B2",
-            "B3", //ORDER BY
-            "B4", //UNION
+            "B3",
+            "B4",
             "B5",
             "B6",
             "B7",
-            "B8", //UNION
+            "B8",
+            "C1",
             "C10",
-            "S1", //UNION
+            "C2",
+            "C3",
+            "C4",
+            "C5",
+            "C6",
+            "C7",
+            "C8",
+            "C9",
+            "S1",
+            "S10",
+            "S11",
+            "S12",
+            "S13",
+            "S14",
             "S2",
             "S3",
             "S4",
             "S5",
             "S6",
             "S7",
-            "S8", //UNION
-            "S9", //UNION
-            "S10",
-            "S11",
-            "S12",
-            "S13",
+            "S8",
+            "S9",
             "BSBM",
             "query1",
             "query2",
