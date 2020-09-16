@@ -10,8 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class RateLimitsRegistry {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(RateLimitsRegistry.class);
     private static final Pattern HOST_RX = Pattern.compile("^\\s*(\\w+://)?([^@]*@)?([^/]*)");
@@ -26,7 +24,10 @@ public class RateLimitsRegistry {
     public synchronized  @Nullable RateLimit register(@Nonnull String prefix,
                                                       @Nullable RateLimit limit) {
         Matcher matcher = HOST_RX.matcher(prefix);
-        checkArgument(matcher.find(), "prefix "+prefix+" does not look like an URI nor hostname!");
+        if (!matcher.find()) {
+            throw new IllegalArgumentException("prefix "+prefix+" does not look like an " +
+                                               "URI nor hostname!");
+        }
         String host = matcher.group(3);
         if (limit == null)
             return prefix2Limit.remove(host);

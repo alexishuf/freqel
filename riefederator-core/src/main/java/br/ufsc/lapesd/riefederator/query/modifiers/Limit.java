@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.modifiers;
 
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
@@ -12,7 +11,8 @@ public class Limit implements Modifier {
     private final int value;
 
     public Limit(int value) {
-        Preconditions.checkArgument(value > 0, "value="+value+" should be >0");
+        if (value <= 0)
+            throw new IllegalArgumentException("value="+value+" should be >0");
         this.value = value;
     }
 

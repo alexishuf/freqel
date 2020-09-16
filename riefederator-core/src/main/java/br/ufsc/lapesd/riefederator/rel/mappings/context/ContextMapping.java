@@ -35,6 +35,7 @@ import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static com.google.common.base.Preconditions.checkState;
 import static java.util.Collections.emptyList;
 
 @Immutable
@@ -142,8 +143,8 @@ public class ContextMapping implements RelationalMapping {
         private @Nonnull final Map<String, TableContext> table2context = new HashMap<>();
 
         public @Nonnull TableBuilder beginTable(@Nonnull String tableName) {
-            Preconditions.checkState(!table2context.containsKey(tableName),
-                                     "Table "+tableName+" already registered!");
+            if (table2context.containsKey(tableName))
+                throw new IllegalStateException("Table "+tableName+" already registered!");
             return new TableBuilder(this, tableName);
         }
 
@@ -153,7 +154,7 @@ public class ContextMapping implements RelationalMapping {
         }
 
         public @CheckReturnValue @Nonnull ContextMapping build() {
-            Preconditions.checkState(!table2context.isEmpty(), "No Tables!");
+            checkState(!table2context.isEmpty(), "No Tables!");
             return new ContextMapping(table2context);
         }
     }

@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl;
 
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.PrimitiveParser;
-import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.RDFNode;
@@ -25,7 +24,8 @@ public class DatePrimitiveParser implements PrimitiveParser {
     private final @Nonnull String isoFormat;
 
     public DatePrimitiveParser(@Nonnull String format) {
-        Preconditions.checkArgument(isValidFormat(format), "Invalid SimpleDateFormat: "+format);
+        if (!isValidFormat(format))
+            throw new IllegalArgumentException("Invalid SimpleDateFormat: "+format);
         this.format = format;
         this.hasTime = TIME_RX.matcher(format).find();
         this.isoFormat = hasTime ? "yyyy-MM-dd'T'HH:mm:ss.SSSXXX" : "yyyy-MM-dd";

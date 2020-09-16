@@ -31,11 +31,11 @@ public abstract class UndirectedIrreflexiveArrayGraph<N, W> {
         return totalCells(size) - totalCells(size - nodeIdx);
     }
 
-    public UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nonnull List<N> nodes) {
+    protected UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nonnull List<N> nodes) {
         this(wClass, null, nodes);
     }
 
-    public UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nullable W zero,
+    protected UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nullable W zero,
                                            @Nonnull List<N> nodes) {
         Preconditions.checkArgument(!nodes.isEmpty());
         Preconditions.checkArgument(nodes.stream().noneMatch(Objects::isNull),
@@ -52,14 +52,14 @@ public abstract class UndirectedIrreflexiveArrayGraph<N, W> {
         }
     }
 
-    public UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nullable W zero) {
+    protected UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nullable W zero) {
         nodes = Collections.emptyList();
         this.wClass = wClass;
         this.zero = zero;
         weights = (W[])Array.newInstance(wClass, 0);
     }
 
-    public UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass) {
+    protected UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass) {
         this(wClass, (W)null);
     }
 
@@ -157,7 +157,8 @@ public abstract class UndirectedIrreflexiveArrayGraph<N, W> {
     public W getWeight(int l, int r) {
         Preconditions.checkPositionIndex(l, size());
         Preconditions.checkPositionIndex(r, size());
-        Preconditions.checkArgument(l != r, "Cannot getWeight("+l+", "+r+") on irreflexive graph");
+        if (l == r)
+            throw new IllegalArgumentException("Cannot do reflexive getWeight("+l+", "+r+")");
         if (l > r) return getWeight(r, l);
         return weights[rowOffset(l) + (r-(l+1))];
     }

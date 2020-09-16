@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.createTempFile;
 
@@ -110,10 +109,10 @@ public class QueryEvaluation {
         CmdLineParser parser = new CmdLineParser(app);
         try {
             parser.parseArgument(args);
-            checkArgument(app.childXmx == null || ChildJVM.XM_RX.matcher(app.childXmx).matches(),
-                          app.childXmx + " is not a valid value for -Xmx");
-            checkArgument(app.childXms == null || ChildJVM.XM_RX.matcher(app.childXms).matches(),
-                          app.childXms + " is not a valid value for -Xms");
+            if (app.childXmx != null && !ChildJVM.XM_RX.matcher(app.childXmx).matches())
+                throw new IllegalArgumentException(app.childXmx + " is not a valid value for -Xmx");
+            if (app.childXms != null && !ChildJVM.XM_RX.matcher(app.childXms).matches())
+                throw new IllegalArgumentException(app.childXms + " is not a valid value for -Xms");
         } catch (CmdLineException|IllegalArgumentException e ) {
             System.err.println(e.getLocalizedMessage());
             printUsage(System.err, parser);

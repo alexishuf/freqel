@@ -131,8 +131,8 @@ public abstract class CQueryContext {
                             "Received TripleAnnotation before first triple is complete!");
                     if (window.isEmpty()) {
                         query.annotate(query.get(query.size() - 1), (TripleAnnotation) next);
-                    } else {
-                        checkState(isTermAnnotation, "Annotation "+next+" only implements " +
+                    } else if (!isTermAnnotation) {
+                        throw new IllegalStateException("Annotation "+next+" only implements " +
                                 "TripleAnnotation but is positioned after a subject or predicate");
                     }
                     processed = true;

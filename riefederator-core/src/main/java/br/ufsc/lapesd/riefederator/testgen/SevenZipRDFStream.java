@@ -26,8 +26,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class SevenZipRDFStream {
     private static final Logger logger = LoggerFactory.getLogger(SevenZipRDFStream.class);
     private static final Pattern EXT_RX = Pattern.compile("^.*\\.([^.]*)$");
@@ -114,8 +112,10 @@ public class SevenZipRDFStream {
 
     private void stream(@Nonnull File temp, @Nonnull Lang lang,
                         @Nonnull StreamRDF sink) throws IOException, RiotException {
-        checkArgument(temp.exists(), temp+" does not exist");
-        checkArgument(temp.isFile(), temp+" is not a file");
+        if (!temp.exists())
+            throw new IllegalArgumentException(temp+" does not exist");
+        if (!temp.isFile())
+            throw new IllegalArgumentException(temp+" is not a file");
         if (lang.equals(RDFLanguages.NTRIPLES) || lang.equals(RDFLanguages.N3))
             lang = RDFLanguages.TURTLE; //superset, allows @prefix
         try (FileInputStream inputStream = new FileInputStream(temp)) {

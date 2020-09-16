@@ -35,10 +35,13 @@ public class CqlGenerator {
         StarVarIndex index = new StarVarIndex(query, selectorFactory);
         if (index.getStarCount() > 1)
             throw new MultiStarException(index);
-        checkArgument(index.getStarCount() == 1, "Cassandra does not allow " +
-                      "joins, yet found "+index.getStarCount()+" stars in "+query);
+        if (index.getStarCount() != 1) {
+            throw new IllegalArgumentException("Cassandra does not allow joins, yet found " +
+                                               index.getStarCount()+" stars in "+query);
+        }
         String table = index.getStar(0).findTable();
-        checkArgument(table != null, "No table found for the star "+query);
+        if (table == null)
+            throw new IllegalArgumentException("No table found for the star "+query);
 
         String cql = write(distinct, limit, index, table);
         IndexedSubset<SPARQLFilter> doneFilters = index.getStar(0).getFilters().copy();

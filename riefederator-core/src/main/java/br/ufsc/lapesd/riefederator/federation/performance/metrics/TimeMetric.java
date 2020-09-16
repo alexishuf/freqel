@@ -7,8 +7,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.Preconditions.checkState;
-
 public interface TimeMetric extends Metric<Double> {
     @Nonnull TimeUnit getTimeUnit();
 
@@ -36,8 +34,10 @@ public interface TimeMetric extends Metric<Double> {
     default @Nonnull TimeSampler
     createThreadSampler(@Nonnull PerformanceListener listener) throws IllegalStateException {
         SamplerRegistry r = listener.getSamplerRegistry();
-        checkState(r.getCurrentThreadSampler(this) == null,
-                   "There is an already active TimeSampler for "+this+" in this thread");
+        if (r.getCurrentThreadSampler(this) != null) {
+            throw new IllegalStateException("There is an already active TimeSampler for " +
+                                            this + " in this thread");
+        }
         return r.createSampler(this, listener);
     }
 }

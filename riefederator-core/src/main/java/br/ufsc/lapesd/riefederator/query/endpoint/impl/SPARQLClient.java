@@ -60,7 +60,6 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import static br.ufsc.lapesd.riefederator.algebra.Cardinality.*;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Boolean.parseBoolean;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyMap;
@@ -208,9 +207,10 @@ public class SPARQLClient extends AbstractTPEndpoint implements DQEndpoint {
     @CanIgnoreReturnValue
     public @Nonnull SPARQLClient setMediaTypeParameters(@Nonnull String type,
                                                         @Nullable Map<String, String> parameters) {
-        checkArgument(JSON_TYPE.equals(type) || TSV_TYPE.equals(type),
-                "mediaType must be SPARQLClient.JSON_MEDIA_TYPE or SPARQLClient.TSV_MEDIA_TYPE" +
-                ", got"+type);
+        if (!JSON_TYPE.equals(type) && !TSV_TYPE.equals(type)) {
+            throw new IllegalArgumentException("mediaType must be SPARQLClient.JSON_MEDIA_TYPE " +
+                                               "or SPARQLClient.TSV_MEDIA_TYPE, got"+type);
+        }
         if (parameters == null && mt2params != null) {
             mt2params.remove(type);
         } else {

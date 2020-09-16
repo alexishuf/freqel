@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.jena.model.term;
 
 import br.ufsc.lapesd.riefederator.model.term.Blank;
-import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.jena.rdf.model.RDFNode;
 
@@ -14,7 +13,8 @@ public class JenaBlank extends JenaRes implements Blank {
 
     public JenaBlank(@Nonnull RDFNode node, @Nullable String name) {
         super(node.asResource());
-        Preconditions.checkArgument(node.isAnon(), "Expected "+node+" to be a blank node");
+        if (!node.isAnon())
+            throw new IllegalArgumentException("Expected "+node+" to be a blank node");
         this.name = name;
     }
 

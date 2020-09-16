@@ -10,8 +10,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import javax.inject.Provider;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public abstract class AbstractBindJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AbstractBindJoinOpExecutor.class);
 
@@ -53,8 +51,10 @@ public abstract class AbstractBindJoinOpExecutor extends AbstractSimpleJoinOpExe
             nodes[0] = nodes[1];
             nodes[1] = tmp;
         }
-        checkArgument(!nodes[0].hasRequiredInputs(), "Both left and right children have" +
-                                                     " required inputs. Cannot bind join "+node);
+        if (nodes[0].hasRequiredInputs()) {
+            throw new IllegalArgumentException("Both left and right children have required " +
+                                               "inputs. Cannot bind join "+node);
+        }
         if (nodes[0].modifiers().optional() != null) {
             boolean hasReq = nodes[1].hasRequiredInputs();
             boolean hasOpt = nodes[1].modifiers().optional() != null;

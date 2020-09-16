@@ -17,8 +17,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class SwaggerSourceLoader implements SourceLoader {
     private static final Logger logger = LoggerFactory.getLogger(SwaggerSourceLoader.class);
     private static final @Nonnull Set<String> NAMES = Sets.newHashSet("swagger");
@@ -32,7 +30,8 @@ public class SwaggerSourceLoader implements SourceLoader {
     public @Nonnull Set<Source> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
                                      @Nonnull File reference) throws SourceLoadException {
         String loaderKey = spec.getString("loader", "").trim().toLowerCase();
-        checkArgument(loaderKey.equals("swagger"), this+"does not support loader="+loaderKey);
+        if (!loaderKey.equals("swagger"))
+            throw new IllegalArgumentException(this+"does not support loader="+loaderKey);
 
         SwaggerParser parser = getParser(spec, reference);
         Set<String> white = getStringSet(spec, "whitelist");

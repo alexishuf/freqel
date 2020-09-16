@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
 
@@ -38,8 +37,8 @@ public class JsonResultsFormatter implements ResultsFormatter {
     @Override
     public @Nonnull FormattedResults format(@Nonnull @WillClose Results results, boolean isAsk,
                                             @Nullable MediaType mediaType) {
-        checkArgument(mediaType == null || APPLICATION_JSON_TYPE.isCompatible(mediaType),
-                      "Unsupported MediaType "+mediaType);
+        if (mediaType != null && !APPLICATION_JSON_TYPE.isCompatible(mediaType))
+            throw new IllegalArgumentException("Unsupported MediaType "+mediaType);
         return isAsk ? formatAsk(results) : formatResults(results);
     }
 

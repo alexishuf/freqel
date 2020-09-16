@@ -16,7 +16,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.setMinus;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.stream.Collectors.toSet;
 
 @Immutable
@@ -72,8 +71,8 @@ public class AtomFilter implements MoleculeElement {
         }
 
         public @Nonnull WithBuilder map(@Nonnull AtomWithRole atom, @Nonnull String var) {
-            checkState(filter.getVars().contains(var),
-                                     "Var "+var+" not in filter "+filter);
+            if (!filter.getVars().contains(var))
+                throw new IllegalArgumentException("Var "+var+" not in filter "+filter);
             atom2varBuilder.put(atom, var);
             return this;
         }

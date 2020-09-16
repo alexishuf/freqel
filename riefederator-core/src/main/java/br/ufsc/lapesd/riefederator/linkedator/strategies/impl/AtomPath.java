@@ -12,8 +12,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class AtomPath extends AbstractList<String> {
     private final Logger logger = LoggerFactory.getLogger(AtomPath.class);
     private final @Nonnull List<String> list;
@@ -37,8 +35,10 @@ public class AtomPath extends AbstractList<String> {
      *
      */
     public @Nullable SimplePath toSimplePath(Molecule mol) {
-        checkArgument(list.stream().allMatch(a -> mol.getAtom(a) != null),
-                      "Some atoms in this path do not belong to the given Molecule "+mol);
+        if (list.stream().anyMatch(a -> mol.getAtom(a) == null)) {
+            throw new IllegalArgumentException("Some atoms in this path do not belong " +
+                                               "to the given Molecule "+mol);
+        }
         if (list.size() < 2)
             return SimplePath.EMPTY;
         SimplePath.Builder builder = SimplePath.builder();

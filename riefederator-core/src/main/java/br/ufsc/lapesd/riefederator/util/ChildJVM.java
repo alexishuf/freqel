@@ -19,7 +19,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -113,7 +112,8 @@ public class ChildJVM implements AutoCloseable {
         @CanIgnoreReturnValue
         public @Nonnull Builder setXmx(@Nonnull String value) {
             Matcher matcher = XM_RX.matcher(value);
-            checkArgument(matcher.matches(), value + " is not valid for -Xmx");
+            if (!matcher.matches())
+                throw new IllegalArgumentException(value + " is not valid for -Xmx");
             xmx = matcher.group(1);
             return this;
         }
@@ -125,7 +125,8 @@ public class ChildJVM implements AutoCloseable {
         @CanIgnoreReturnValue
         public @Nonnull Builder setXms(@Nonnull String value) {
             Matcher matcher = XM_RX.matcher(value);
-            checkArgument(matcher.matches(), value + " is not valid for -Xms");
+            if (!matcher.matches())
+                throw new IllegalArgumentException(value + " is not valid for -Xms");
             xms = matcher.group(1);
             return this;
         }

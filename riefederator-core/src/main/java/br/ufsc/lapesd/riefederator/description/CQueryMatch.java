@@ -16,6 +16,8 @@ import java.lang.ref.SoftReference;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 /**
  * The result of matching a conjunctive query against a {@link Description}.
  */
@@ -62,10 +64,9 @@ public class CQueryMatch {
         public @Nonnull Builder addExclusiveGroup(@Nonnull Collection<Triple> group) {
             Preconditions.checkState(!built);
             if (CQueryMatch.class.desiredAssertionStatus()) {
-                Preconditions.checkArgument(query.containsAll(group),
-                        "Triple in group not in query");
+                checkArgument(query.containsAll(group), "Triple in group not in query");
             }
-            Preconditions.checkArgument(!group.isEmpty(), "Exclusive group cannot be empty");
+            checkArgument(!group.isEmpty(), "Exclusive group cannot be empty");
             CQuery cQuery = CQuery.from(group);
             if (exclusiveGroups.add(cQuery))
                 exclusiveGroupsBuilder.add(cQuery);
@@ -76,7 +77,7 @@ public class CQueryMatch {
         public @Nonnull Builder addTriple(@Nonnull Triple triple) {
             Preconditions.checkState(!built);
             if (CQueryMatch.class.desiredAssertionStatus())
-                Preconditions.checkArgument(query.contains(triple), "Triple not in query");
+                checkArgument(query.contains(triple), "Triple not in query");
             if (nonExclusive.add(triple))
                 nonExclusiveBuilder.add(triple);
             return this;

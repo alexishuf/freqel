@@ -12,7 +12,6 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.setMinus;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 
@@ -245,9 +244,10 @@ public class MoleculeBuilder {
     }
 
     public @Nonnull MoleculeBuilder filter(@Nonnull AtomFilter filter) {
-        Set<String> missing = setMinus(filter.getAtomNames(), name2atom.keySet());
-        checkArgument(missing.isEmpty(),
-                      "Some atoms mentioned by filter are missing from this builder: "+missing);
+        if (!name2atom.keySet().containsAll(filter.getAtomNames())) {
+            throw new IllegalArgumentException("Some atoms mentioned by filter are missing " +
+                    "from this builder: " + setMinus(filter.getAtomNames(), name2atom.keySet()));
+        }
         filterSet.add(filter);
         return this;
     }

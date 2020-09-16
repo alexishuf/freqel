@@ -10,8 +10,6 @@ import javax.annotation.Nonnull;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 @Immutable
 public class TemplateLink extends StdURI {
     private final @Nonnull CQuery template;
@@ -21,8 +19,10 @@ public class TemplateLink extends StdURI {
                         @Nonnull Term sub, @Nonnull Term obj) {
         super(uri);
         Set<Term> vars = template.streamTerms(Var.class).collect(Collectors.toSet());
-        checkArgument(vars.contains(sub), "Subject "+sub+" missing from template "+template);
-        checkArgument(vars.contains(obj), "Object " +obj+" missing from template "+template);
+        if (!vars.contains(sub))
+            throw new IllegalArgumentException("Subject "+sub+" missing from template "+template);
+        if (!vars.contains(obj))
+            throw new IllegalArgumentException("Object " +obj+" missing from template "+template);
         this.template = template;
         this.subject = sub;
         this.object = obj;

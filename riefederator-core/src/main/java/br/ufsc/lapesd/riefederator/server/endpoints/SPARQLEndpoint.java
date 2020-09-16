@@ -17,7 +17,6 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import java.io.PrintWriter;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN_TYPE;
 
@@ -33,8 +32,10 @@ public class SPARQLEndpoint {
     private @Nonnull Federation getFederation() {
         String key = Federation.class.getName();
         Object obj = application.getProperties().get(key);
-        checkArgument(obj != null, "Property "+ key +" not set");
-        checkArgument(obj instanceof Federation, "Property "+ key +" is not a Federation");
+        if (obj == null)
+            throw new IllegalArgumentException("Property "+ key +" not set");
+        if (!(obj instanceof Federation))
+            throw new IllegalArgumentException("Property "+ key +" is not a Federation");
         return (Federation)obj;
     }
 

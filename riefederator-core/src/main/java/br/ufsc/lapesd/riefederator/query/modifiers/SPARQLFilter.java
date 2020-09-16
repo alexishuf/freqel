@@ -38,7 +38,6 @@ import java.util.regex.Pattern;
 import static br.ufsc.lapesd.riefederator.jena.ExprUtils.toSPARQLSyntax;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJenaNode;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 import static org.apache.jena.sparql.sse.Tags.*;
@@ -366,7 +365,8 @@ public class SPARQLFilter implements Modifier {
             if (!REL_SYMBOLS.contains(sym))
                 return f;
             Expr l = f.getArg(1), r = f.getArg(2);
-            checkArgument(f.numArgs() == 2, "expected two args for "+sym+", got"+f.numArgs());
+            if (f.numArgs() != 2)
+                throw new IllegalArgumentException("expected 2 args for "+sym+", got"+f.numArgs());
             if (l instanceof NodeValue && !(r instanceof NodeValue)) {
                 switch (sym) {
                     case tagGE:

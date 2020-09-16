@@ -207,7 +207,8 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
         public boolean isWebApi;
 
         public OrderTuple(@Nonnull Cardinality cardinality, int pendingInputs, boolean isWebApi) {
-            checkArgument(pendingInputs >= 0, "pendingInputs "+pendingInputs+" must be >= 0");
+            if (pendingInputs < 0)
+                throw new IllegalArgumentException("pendingInputs "+pendingInputs+" must be >= 0");
             this.cardinality = cardinality;
             this.pendingInputs = pendingInputs;
             this.isWebApi = isWebApi;

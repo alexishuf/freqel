@@ -37,7 +37,6 @@ import javax.annotation.Nonnull;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toSet;
 
 public class ConvertVisitor implements QueryVisitor {
@@ -445,8 +444,10 @@ public class ConvertVisitor implements QueryVisitor {
                     }
                 });
                 terms.add(fromJena(path.getObject()));
-                checkArgument((terms.size() % 3) == 0, "SPARQL 1.1 path yielded " +
-                              "a triple with less than 3 terms. This is likely a bug");
+                if ((terms.size() % 3) != 0) {
+                    throw new IllegalArgumentException("SPARQL 1.1 path yielded a triple with " +
+                                                       "less than 3 terms. This is likely a bug");
+                }
                 for (int i = 0; i < terms.size(); i += 3)
                     addTriple(cQuery, terms.get(i), terms.get(i+1), terms.get(i+2));
             }

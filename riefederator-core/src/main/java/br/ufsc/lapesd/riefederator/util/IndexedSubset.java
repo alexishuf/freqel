@@ -6,7 +6,6 @@ import com.google.errorprone.annotations.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkElementIndex;
 import static java.util.Spliterator.*;
 
@@ -214,7 +213,8 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     @Override
     public boolean add(T t) {
         int idx = parent.indexOf(t);
-        checkArgument(idx >= 0, "Cannot add "+t+" since it is not in getParent()");
+        if (idx < 0)
+            throw new IllegalArgumentException("Cannot add "+t+" since it is not in getParent()");
         boolean old = bitSet.get(idx);
         if (!old)
             bitSet.set(idx);
