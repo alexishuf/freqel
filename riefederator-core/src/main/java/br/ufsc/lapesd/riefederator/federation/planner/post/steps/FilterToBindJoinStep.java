@@ -8,13 +8,12 @@ import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.federation.planner.utils.FilterJoinPlanner;
-import br.ufsc.lapesd.riefederator.util.RefHashMap;
-import br.ufsc.lapesd.riefederator.util.RefMap;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.util.IdentityHashMap;
 
 public class FilterToBindJoinStep implements PlannerStep {
     private final @Nonnull FilterJoinPlanner filterJoinPlanner;
@@ -45,7 +44,7 @@ public class FilterToBindJoinStep implements PlannerStep {
 
     private class Replacer {
         @Nonnull RefSet<Op> shared;
-        @Nullable RefMap<Op, Op> converted;
+        @Nullable IdentityHashMap<Op, Op> converted;
 
         public Replacer(@Nonnull RefSet<Op> shared) {
             this.shared = shared;
@@ -67,7 +66,7 @@ public class FilterToBindJoinStep implements PlannerStep {
                     if (shared.contains(op)) {
                         shared.add(replacement);
                         if (converted == null)
-                            converted = new RefHashMap<>(shared.size());
+                            converted = new IdentityHashMap<>(shared.size());
                         converted.put(op, replacement);
                     }
                 }

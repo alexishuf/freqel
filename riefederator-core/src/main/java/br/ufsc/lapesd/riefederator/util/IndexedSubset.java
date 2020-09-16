@@ -126,12 +126,10 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
     @Override
     public int hashCode() {
         // do not cache, since getBitSet() can be modified
-        int size = size(), out = 0;
-        int[] codes = new int[size];
+        int h = 0;
         for (int i = bitSet.nextSetBit(0); i >= 0; i = bitSet.nextSetBit(i+1))
-            codes[out++] = parent.get(i).hashCode();
-        Arrays.sort(codes);
-        return Arrays.hashCode(codes);
+            h += parent.hash(parent.get(i));
+        return h;
     }
 
     /* --- implement List & Set methods --- */
@@ -174,8 +172,9 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
             }
         } else if (c == parent) {
             return size() == parent.size();
+        } else if (size() < c.size()) {
+            return false;
         }
-        if (size() < c.size()) return false;
         for (Object o : c) {
             if (!contains(o)) return false;
         }

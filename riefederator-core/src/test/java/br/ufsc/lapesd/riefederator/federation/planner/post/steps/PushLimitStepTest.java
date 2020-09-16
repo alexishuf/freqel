@@ -15,7 +15,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.parse.CQueryContext;
 import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -50,10 +50,10 @@ public class PushLimitStepTest implements TestContext {
         return Stream.of(
                 // singleton trees with no effect
                 asList(q(Alice, knows, x), EmptyRefSet.emptySet(), null),
-                asList(q(Alice, knows, x), RefHashSet.of(xKnowsY), null),
+                asList(q(Alice, knows, x), IdentityHashSet.of(xKnowsY), null),
                 asList(q(Alice, knows, x, Limit.of(23)), EmptyRefSet.emptySet(), null),
-                asList(xKnowsY, RefHashSet.of(xKnowsY), null),
-                asList(xKnowsY23, RefHashSet.of(xKnowsY23), null),
+                asList(xKnowsY, IdentityHashSet.of(xKnowsY), null),
+                asList(xKnowsY23, IdentityHashSet.of(xKnowsY23), null),
                 // do not push into join
                 asList(JoinOp.builder(xKnowsY, q(y, knows, Alice))
                                 .add(Limit.of(23)).build(),
@@ -83,7 +83,7 @@ public class PushLimitStepTest implements TestContext {
                 asList(UnionOp.builder().add(xKnowsY)
                                         .add(q(Alice, knows, y))
                                         .add(Projection.of("y")).add(Limit.of(23)).build(),
-                       RefHashSet.of(xKnowsY),
+                       IdentityHashSet.of(xKnowsY),
                        UnionOp.builder()
                                .add(xKnowsYPipe23)
                                .add(q(Alice, knows, y, Limit.of(23)))

@@ -20,7 +20,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.EmptyWebApiEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Collections2;
@@ -240,7 +240,7 @@ public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
 
     @Test(dataProvider = "joinCardinalityEstimatorData")
     public void testTakeInitialJoinSingletonGraph(@Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
-        JoinGraph graph = new JoinGraph(IndexedSet.from(singletonList(
+        JoinGraph graph = new JoinGraph(RefIndexedSet.fromRefDistinct(singletonList(
                 n(ep1, NON_EMPTY, Alice, p1, x))
         ));
         GreedyJoinOrderPlanner.Data data = createData(graph);
@@ -251,7 +251,7 @@ public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
 
     @Test(dataProvider = "joinCardinalityEstimatorData")
     public void testTakeInitialJoinSingletonGraphCleansEquivalents(@Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
-        JoinGraph graph = new JoinGraph(IndexedSet.from(singletonList(
+        JoinGraph graph = new JoinGraph(RefIndexedSet.fromRefDistinct(singletonList(
                 m(n(ep1, NON_EMPTY, Alice, p1, x), n(ep2, NON_EMPTY, Alice, p1, x))
         )));
         GreedyJoinOrderPlanner.Data data = createData(graph);
@@ -269,7 +269,7 @@ public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
                 n(ep2, guess(16), Alice, p1, x),
                 n(ep2, exact(3), x, p1, y)
         );
-        JoinGraph graph = new JoinGraph(IndexedSet.from(asList(
+        JoinGraph graph = new JoinGraph(RefIndexedSet.fromRefDistinct(asList(
                 m(n(ep1, NON_EMPTY, Alice, p1, x), best.get(0)),
                 m(n(ep1, NON_EMPTY, x, p1, y), best.get(1)),
                 n(ep1, NON_EMPTY, y, p1, Bob)
@@ -316,7 +316,7 @@ public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
         int i = 0;
         //noinspection UnstableApiUsage
         for (List<Op> permutation : Collections2.permutations(Scenario1.nodes)) {
-            JoinGraph graph = new JoinGraph(IndexedSet.from(permutation));
+            JoinGraph graph = new JoinGraph(RefIndexedSet.fromRefDistinct(permutation));
             GreedyJoinOrderPlanner.Data data = createData(graph);
             Op root = GreedyJoinOrderPlanner.takeInitialJoin(data, joinCardinalityEstimator);
 
@@ -331,7 +331,7 @@ public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
                 = new GreedyJoinOrderPlanner(NoOpPerformanceListener.INSTANCE,
                                              NoCardinalityEnsemble.INSTANCE,
                                              RelativeCardinalityAdder.DEFAULT, joinCardinalityEstimator);
-        JoinGraph graph = new JoinGraph(IndexedSet.from(Scenario1.nodes));
+        JoinGraph graph = new JoinGraph(RefIndexedSet.fromRefDistinct(Scenario1.nodes));
         Op root = planner.plan(graph, Scenario1.nodes);
 
         assertEquals(streamPreOrder(root).filter(n -> !(n instanceof JoinOp)).collect(toSet()),

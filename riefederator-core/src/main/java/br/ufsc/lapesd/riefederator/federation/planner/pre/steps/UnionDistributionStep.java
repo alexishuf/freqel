@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 
 import javax.annotation.Nonnull;
@@ -29,7 +29,7 @@ public class UnionDistributionStep extends AbstractDistributionStep {
 
         boolean hasExtra = false;
         List<Op> children = parent.getChildren();
-        RefSet<Op> matches = new RefHashSet<>(children.size()*children.size());
+        RefSet<Op> matches = new IdentityHashSet<>(children.size()*children.size());
         for (Op child : children) {
             if (child instanceof UnionOp) {
                 for (Op grandChild : child.getChildren()) {

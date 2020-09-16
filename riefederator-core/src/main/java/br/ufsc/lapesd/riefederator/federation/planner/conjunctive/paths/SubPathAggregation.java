@@ -3,8 +3,8 @@ package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
@@ -122,7 +122,7 @@ public class SubPathAggregation {
                 visited.addAll(novel);
             }
 
-            reducedGraph = new JoinGraph(IndexedSet.fromDistinct(nodes));
+            reducedGraph = new JoinGraph(RefIndexedSet.fromRefDistinct(nodes));
             return reducedGraph;
         }
 

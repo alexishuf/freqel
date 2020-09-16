@@ -21,7 +21,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
-import br.ufsc.lapesd.riefederator.util.RefHashMap;
+import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -133,7 +133,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
 
     private @Nullable Op plan(@Nonnull Collection<Op> qns,
                               @Nonnull IndexedSet<Triple> triples) {
-        IndexedSet<Op> leaves = groupNodes(qns);
+        RefIndexedSet<Op> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
         List<JoinComponent> pathsSet = getPaths(triples, g);
         assertValidJoinComponents(pathsSet, triples);
@@ -156,7 +156,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
 
     @VisibleForTesting
     void removeAlternativePaths(@Nonnull List<JoinComponent> paths) {
-        IndexedSet<Op> set = getNodesIndexedSetFromPaths(paths);
+        RefIndexedSet<Op> set = getNodesIndexedSetFromPaths(paths);
         BitSet marked = new BitSet(paths.size());
         for (int i = 0; i < paths.size(); i++) {
             IndexedSubset<Op> outer = set.subset(paths.get(i).getNodes());
@@ -176,9 +176,9 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     }
 
     @VisibleForTesting
-    @Nonnull IndexedSet<Op> getNodesIndexedSetFromPaths(@Nonnull List<JoinComponent> paths) {
+    @Nonnull RefIndexedSet<Op> getNodesIndexedSetFromPaths(@Nonnull List<JoinComponent> paths) {
         List<Op> list = new ArrayList<>();
-        RefHashMap<Op, Integer> n2idx = new RefHashMap<>();
+        IdentityHashMap<Op, Integer> n2idx = new IdentityHashMap<>();
         Multimap<Set<Triple>, EndpointQueryOp> mm = MultimapBuilder.hashKeys().arrayListValues().build();
         for (JoinComponent path : paths) {
             for (Op node : path.getNodes()) {
@@ -211,7 +211,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
                 list.add(node);
             }
         }
-        return IndexedSet.fromMap(n2idx, list);
+        return RefIndexedSet.fromMap(n2idx, list);
     }
 
     private boolean satisfiesAll(@Nonnull IndexedSet<Triple> all,
@@ -235,14 +235,14 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     }
 
     @VisibleForTesting
-    @Nonnull IndexedSet<Op> groupNodes(@Nonnull Collection<Op> queryNodes) {
+    @Nonnull RefIndexedSet<Op> groupNodes(@Nonnull Collection<Op> queryNodes) {
         ListMultimap<JoinInterface, Op> mm;
         mm = MultimapBuilder.hashKeys(queryNodes.size()).arrayListValues().build();
 
         for (Op node : queryNodes)
             mm.put(new JoinInterface(node), node);
 
-        RefHashMap<Op, Integer> n2idx = new RefHashMap<>(mm.keySet().size());
+        IdentityHashMap<Op, Integer> n2idx = new IdentityHashMap<>(mm.keySet().size());
         List<Op> list = new ArrayList<>(mm.keySet().size());
         int size = 0;
         for (JoinInterface key : mm.keySet()) {
@@ -252,7 +252,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
             list.add(node);
             n2idx.put(node, size++);
         }
-        return IndexedSet.fromMap(n2idx, list);
+        return RefIndexedSet.fromMap(n2idx, list);
     }
 
 //    @VisibleForTesting
@@ -381,7 +381,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
                 // invariant: matched is the union of all matched triples
                 assert nodes.stream().flatMap(n -> n.getMatchedTriples().stream())
                             .collect(toSet()).equals(matched);
-                return new JoinComponent(nodes.getParent(), nodes); //share nodes
+                return new JoinComponent((RefIndexedSet<Op>) nodes.getParent(), nodes); //share nodes
             }
 
             boolean hasConflictingNode(@Nonnull IndexedSubset<Triple> candidateMatched) {

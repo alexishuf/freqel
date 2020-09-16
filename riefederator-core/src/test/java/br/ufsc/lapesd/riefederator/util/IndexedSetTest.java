@@ -828,7 +828,7 @@ public class IndexedSetTest implements TestContext {
             in.add(new Thing(i));
             ex.add(in.get(in.size()-1));
         }
-        IndexedSet<Thing> set = IndexedSet.fromRefDistinct(in);
+        IndexedSet<Thing> set = RefIndexedSet.fromRefDistinct(in);
         assertEquals(in, ex); //in not modified
         assertTrue(set.containsAll(in));
         assertTrue(in.containsAll(set));
@@ -850,7 +850,7 @@ public class IndexedSetTest implements TestContext {
             in.add(new Thing(i % size));
             ex.add(in.get(in.size()-1));
         }
-        IndexedSet<Thing> set = IndexedSet.fromRefDistinct(in);
+        IndexedSet<Thing> set = RefIndexedSet.fromRefDistinct(in);
         assertEquals(set.size(), 2*size);
         assertEquals(new ArrayList<>(set), ex);
         for (int i = 0, exSize = ex.size(); i < exSize; i++) {
@@ -869,7 +869,7 @@ public class IndexedSetTest implements TestContext {
             in.add(new Thing(i));
             ex.add(in.get(in.size()-1));
         }
-        IndexedSet<Thing> set = IndexedSet.fromRefDistinctCopy(in);
+        IndexedSet<Thing> set = RefIndexedSet.fromRefDistinctCopy(in);
         assertEquals(new ArrayList<>(set), ex);
         Collections.reverse(in);
         assertEquals(new ArrayList<>(set), ex);

@@ -4,8 +4,8 @@ import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayDeque;
@@ -16,7 +16,7 @@ import java.util.List;
 public class StepUtils {
     public static @Nonnull Op planConjunction(@Nonnull Collection<Op> nodes,
                                               @Nonnull JoinOrderPlanner joinOrderPlanner) {
-        IndexedSet<Op> set = IndexedSet.fromRefDistinct(nodes);
+        RefIndexedSet<Op> set = RefIndexedSet.fromRefDistinct(nodes);
         JoinGraph jg = new JoinGraph(set);
         IndexedSubset<Op> visited = set.emptySubset();
         List<Op> trees = new ArrayList<>();
@@ -33,7 +33,7 @@ public class StepUtils {
                                            @Nonnull IndexedSubset<Op> visited,
                                            @Nonnull ArrayDeque<Op> stack,
                                            @Nonnull JoinOrderPlanner joinOrderPlanner) {
-        IndexedSet<Op> nodes = jg.getNodes();
+        RefIndexedSet<Op> nodes = jg.getNodes();
         IndexedSubset<Op> component = nodes.emptySubset();
         stack.clear();
         stack.push(core);

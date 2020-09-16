@@ -14,8 +14,8 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import org.testng.annotations.DataProvider;
@@ -68,7 +68,7 @@ public class SubPathAggregationTest implements TestContext {
                             o3 = node(e2, y, p3, z, SUBJ),     o4 = node(e2, z, p4, Bob, SUBJ);
     public static EndpointQueryOp l1 = node(e2, Alice, p1, x, OBJ), l2 = node(e2, x, p2, y, OBJ),
                             l3 = node(e2, y, p3, z, OBJ),     l4 = node(e2, z, p4, Bob, OBJ);
-    public static IndexedSet<Op> allNodes = IndexedSet.fromRefDistinct(
+    public static RefIndexedSet<Op> allNodes = RefIndexedSet.fromRefDistinct(
             asList(n1, n2, n3, n4, o1, o2, o3, o4, l1, l2, l3, l4));
 
     @DataProvider
@@ -107,7 +107,7 @@ public class SubPathAggregationTest implements TestContext {
             Collections.shuffle(permutation);
 
             //setup
-            JoinGraph joinGraph = new JoinGraph(IndexedSet.fromDistinct(permutation));
+            JoinGraph joinGraph = new JoinGraph(RefIndexedSet.fromRefDistinct(permutation));
             SubPathAggregation.State state = new SubPathAggregation.State(joinGraph);
             components.stream().map(allNodes::subset).forEach(state.getComponents()::add);
 
@@ -154,7 +154,7 @@ public class SubPathAggregationTest implements TestContext {
         for (int i = 0; i < 256; i++) {
             ArrayList<Op> permutation = new ArrayList<>(allNodes);
             Collections.shuffle(permutation);
-            JoinGraph graph = new JoinGraph(IndexedSet.fromDistinct(permutation));
+            JoinGraph graph = new JoinGraph(RefIndexedSet.fromRefDistinct(permutation));
             Set<IndexedSubset<Op>> stored = new HashSet<>();
             SubPathAggregation.State state = new SubPathAggregation.State(graph) {
                 @Override

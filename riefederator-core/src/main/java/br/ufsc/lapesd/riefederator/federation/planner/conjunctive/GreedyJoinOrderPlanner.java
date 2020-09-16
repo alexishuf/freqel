@@ -15,8 +15,8 @@ import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
 import br.ufsc.lapesd.riefederator.webapis.WebApiEndpoint;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
@@ -53,7 +53,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
     @VisibleForTesting
     class Data {
         private @Nonnull final JoinGraph graph;
-        public @Nonnull final IndexedSet<Op> clean;
+        public @Nonnull final RefIndexedSet<Op> clean;
         public @Nonnull final IndexedSubset<Op> pending;
         public @Nonnull final IndexedSubset<Op> webApi;
 
@@ -65,14 +65,14 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
                 c.setCardinality(TreeUtils.estimate(c, cardEnsemble, cardAdder));
                 cleanList.add(c);
             }
-            this.clean = IndexedSet.fromDistinct(cleanList);
+            this.clean = RefIndexedSet.fromRefDistinct(cleanList);
             this.webApi = clean.subset(OrderTuple::hasWebApi);
             this.pending = clean.fullSubset();
 
         }
 
         @Nullable JoinInfo weight(@Nonnull Op a, @Nonnull Op b) {
-            IndexedSet<Op> nodes = graph.getNodes();
+            RefIndexedSet<Op> nodes = graph.getNodes();
             if (nodes.contains(a) && nodes.contains(b))
                 return graph.getWeight(a, b);
             return JoinInfo.getJoinability(a, b);

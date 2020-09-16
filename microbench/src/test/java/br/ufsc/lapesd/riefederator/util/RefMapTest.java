@@ -202,7 +202,7 @@ public class RefMapTest {
 
     @DataProvider
     public static @Nonnull Object[][] sizesData() {
-        return Stream.of(0, 1, 2, 3, 10, 32)
+        return Stream.of(0, 1, 2, 3, 10, 32, 128)
                 .flatMap(i -> factories.stream().map(f -> new Object[]{f, i}))
                 .toArray(Object[][]::new);
     }
@@ -487,8 +487,4 @@ public class RefMapTest {
             checkReadOperations(actual, expected);
         }
     }
-
-
-
-
 }

@@ -6,7 +6,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 public class RefHashSet<T> extends AbstractSet<T> implements RefSet<T> {
-    private final @Nonnull RefHashMap<T, Present> map;
+    private final @Nonnull RefHashMap<T, Object> map;
     static final @Nonnull Present PRESENT = new Present();
 
     static final class Present {
@@ -15,8 +15,9 @@ public class RefHashSet<T> extends AbstractSet<T> implements RefSet<T> {
         @Override public int hashCode() { return 0; }
     }
 
-    RefHashSet(@Nonnull RefHashMap<T, Present> map) {
-        this.map = map;
+    RefHashSet(@Nonnull RefHashMap<T, ?> map) {
+        //noinspection unchecked
+        this.map = (RefHashMap<T, Object>) map;
     }
 
     public RefHashSet() {
@@ -62,7 +63,7 @@ public class RefHashSet<T> extends AbstractSet<T> implements RefSet<T> {
     }
 
     @Override public boolean remove(Object key) {
-        return map.remove(key) == PRESENT;
+        return map.remove(key) != null;
     }
 
     @Override public void clear() {
@@ -70,6 +71,6 @@ public class RefHashSet<T> extends AbstractSet<T> implements RefSet<T> {
     }
 
     @Override public int hashCode() {
-        return map.hashCode();
+        return map.keySet().hashCode();
     }
 }

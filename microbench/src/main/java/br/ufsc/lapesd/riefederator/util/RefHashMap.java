@@ -13,7 +13,7 @@ public class RefHashMap<K, V> extends AbstractMap<K, V> implements RefMap<K, V> 
     @SuppressWarnings("NotNullFieldNotInitialized") private @Nonnull Object[] values;
     private @Nullable EntrySet entrySet = null;
     private @Nullable KeySet keySet = null;
-    private int buckets, bucketSize, bucketMask, hash = 0, size = 0;
+    private int buckets, bucketSize, bucketMask, hash = 0, keysHash = 0, size = 0;
 
     public RefHashMap() {
         this(16, 3);
@@ -107,12 +107,12 @@ public class RefHashMap<K, V> extends AbstractMap<K, V> implements RefMap<K, V> 
                 keys[i] = key;
                 values[i] = value;
                 ++size;
-                hash = 0;
+                hash = keysHash = 0;
                 return null;
             } else if (keys[i] == key) {
                 @SuppressWarnings("unchecked") V old = (V)values[i];
                 values[i] = value;
-                hash = 0;
+                hash = keysHash = 0;
                 return old;
             }
         }
@@ -136,7 +136,7 @@ public class RefHashMap<K, V> extends AbstractMap<K, V> implements RefMap<K, V> 
         System.arraycopy(values, i+1, values, i, bucketLast-i);
         keys[bucketLast] = values[bucketLast] = null;
         --size;
-        hash = 0;
+        hash = keysHash = 0;
         return old;
     }
 
@@ -154,23 +154,29 @@ public class RefHashMap<K, V> extends AbstractMap<K, V> implements RefMap<K, V> 
 
     @Override public void clear() {
         size = 0;
-        hash = 0;
+        hash = keysHash = 0;
         Arrays.fill(keys, null);
         Arrays.fill(values, null);
     }
 
     @Override public int hashCode() {
-        if (hash == 0) {
-            int h = 0;
-            for (int i = 0; i < keys.length; i += bucketSize) {
-                for (int j = i, end = i+bucketSize; j < end; j++) {
-                    if (keys[j] == null) break;
-                    else h += identityHashCode(keys[j]) ^ values[j].hashCode();
-                }
-            }
-            hash = h;
-        }
+        if (hash == 0)
+            computeHash();
         return hash;
+    }
+
+    private void computeHash() {
+        int k = 0, kv = 0;
+        for (int i = 0; i < keys.length; i += bucketSize) {
+            for (int j = i, end = i+bucketSize; j < end; j++) {
+                if (keys[j] == null) break;
+                int h = identityHashCode(keys[j]);
+                k  += h;
+                kv += h ^ values[j].hashCode();
+            }
+        }
+        keysHash = k;
+        hash = kv;
     }
 
     @Override public @Nonnull Set<Entry<K, V>> entrySet() {
@@ -182,14 +188,7 @@ public class RefHashMap<K, V> extends AbstractMap<K, V> implements RefMap<K, V> 
     }
 
     public @Nonnull RefHashSet<K> toSet() {
-        for (int begin = 0; begin < keys.length; begin += bucketSize) {
-            for (int i = begin, end = begin+bucketSize; i < end; i++) {
-                if (keys[i] == null) break;
-                else                 values[i] = RefHashSet.PRESENT;
-            }
-        }
-        //noinspection unchecked
-        return new RefHashSet<>((RefHashMap<K, RefHashSet.Present>)this);
+        return new RefHashSet<>(this);
     }
 
     private class Handle implements Entry<K, V> {
@@ -318,6 +317,7 @@ public class RefHashMap<K, V> extends AbstractMap<K, V> implements RefMap<K, V> 
     }
 
     private final class KeySet extends AbstractSet<K> {
+
         @Override public @Nonnull Iterator<K> iterator() {
             return new KeyIterator();
         }
@@ -336,6 +336,12 @@ public class RefHashMap<K, V> extends AbstractMap<K, V> implements RefMap<K, V> 
 
         @Override public boolean remove(Object o) {
             return RefHashMap.this.remove(o) != null;
+        }
+
+        @Override public int hashCode() {
+            if (keysHash == 0)
+                computeHash();
+            return keysHash;
         }
     }
 }

@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -31,7 +31,7 @@ public class CartesianDistributionStepTest implements TestContext {
         QueryOp q1 = new QueryOp(createQuery(Alice, knows, x));
         return Stream.of(
                 asList(q1, EmptyRefSet.emptySet(), null),
-                asList(q1, RefHashSet.of(q1), null),
+                asList(q1, IdentityHashSet.of(q1), null),
                 asList(UnionOp.builder()
                                 .add(new QueryOp(createQuery(Alice, knows, x)))
                                 .add(new QueryOp(createQuery(Bob, knows, x)))
@@ -46,7 +46,7 @@ public class CartesianDistributionStepTest implements TestContext {
                                 .build())
                         .add(new QueryOp(createQuery(x, age, u, SPARQLFilter.build("?u < 23"))))
                         .build(),
-                       RefHashSet.of(q1),
+                       IdentityHashSet.of(q1),
                        CartesianOp.builder()
                                .add(new QueryOp(createQuery(
                                        Alice, knows, x,

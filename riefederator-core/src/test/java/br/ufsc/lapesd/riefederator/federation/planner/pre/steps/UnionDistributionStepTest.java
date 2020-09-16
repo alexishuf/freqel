@@ -9,7 +9,7 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -32,7 +32,7 @@ public class UnionDistributionStepTest implements TestContext {
         Op u1 = UnionOp.build(asList(q1, new QueryOp(createQuery(Bob, knows, x))));
         return Stream.of(
                 asList(q1, EmptyRefSet.emptySet(), q1),
-                asList(q1, RefHashSet.of(q1), q1),
+                asList(q1, IdentityHashSet.of(q1), q1),
                 asList(u1, EmptyRefSet.emptySet(), u1),
                 // base replacement scenario
                 asList(ConjunctionOp.builder()
@@ -66,7 +66,7 @@ public class UnionDistributionStepTest implements TestContext {
                                         .build())
                                 .add(new QueryOp(createQuery(x, age, u)))
                                 .build(),
-                       RefHashSet.of(q1),
+                       IdentityHashSet.of(q1),
                        null),
                 // extra node is preserved
                 asList(ConjunctionOp.builder()
@@ -87,7 +87,7 @@ public class UnionDistributionStepTest implements TestContext {
                                         .add(new QueryOp(createQuery(Alice, knows, Bob)))
                                         .build())
                                 .build(),
-                       RefHashSet.of(q1, u1),
+                       IdentityHashSet.of(q1, u1),
                        ConjunctionOp.builder()
                                .add(CartesianOp.builder()
                                        .add(new QueryOp(createQuery(y, name, z)))

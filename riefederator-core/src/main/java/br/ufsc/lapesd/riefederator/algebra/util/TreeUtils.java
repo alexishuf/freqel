@@ -19,8 +19,7 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.util.RefHashMap;
-import br.ufsc.lapesd.riefederator.util.RefMap;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ListMultimap;
@@ -99,7 +98,7 @@ public class TreeUtils {
     public static @Nonnull Op replaceNodes(@Nonnull Op root,
                                            @Nullable InnerCardinalityComputer cardinality,
                                            @Nonnull Function<Op, Op> map) {
-        RefMap<Op, Op> memory = new RefHashMap<>(32, 3);
+        IdentityHashMap<Op, Op> memory = new IdentityHashMap<>();
         ArrayDeque<Op> stack = new ArrayDeque<>();
         Function<Op, Op> mapNN = o -> {
             Op replacement = map.apply(o);
@@ -198,7 +197,7 @@ public class TreeUtils {
     }
 
     public static boolean isAcyclic(@Nonnull Op root) {
-        Set<Op> open = new HashSet<>();
+        IdentityHashSet<Op> open = new IdentityHashSet<>();
         ArrayDeque<AcyclicOp> stack = new ArrayDeque<>();
         stack.push(AcyclicOp.entering(root));
         while (!stack.isEmpty()) {
@@ -249,14 +248,14 @@ public class TreeUtils {
     public static @Nonnull RefSet<Op> findSharedNodes(@Nonnull Op tree) {
         ArrayDeque<Op> queue = new ArrayDeque<>();
         queue.add(tree);
-        RefHashMap<Op, Integer> map = new RefHashMap<>();
+        IdentityHashMap<Op, Integer> map = new IdentityHashMap<>();
         while (!queue.isEmpty()) {
             Op op = queue.remove();
             if (map.put(op, map.getOrDefault(op, 0) + 1) == null)
                 queue.addAll(op.getChildren());
         }
         map.entrySet().removeIf(e -> e.getValue() <= 1);
-        return map.toSet();
+        return new IdentityHashSet<>(map);
     }
 
     public static @Nonnull List<Op> childrenIfMulti(@Nonnull Op node) {
@@ -350,7 +349,7 @@ public class TreeUtils {
     public static void nameNodes(@Nonnull Op root) {
         ArrayDeque<Op> stack = new ArrayDeque<>();
         stack.push(root);
-        Set<Op> visited = new HashSet<>();
+        IdentityHashSet<Op> visited = new IdentityHashSet<>();
         int joins = 0, queryNodes = 0, mqNodes = 0, cartesianNodes = 0, emptyNodes = 0, oNodes = 0;
         while (!stack.isEmpty()) {
             Op node = stack.pop();

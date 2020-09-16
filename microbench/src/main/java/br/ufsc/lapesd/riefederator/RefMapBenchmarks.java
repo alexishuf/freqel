@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator;
 
 import br.ufsc.lapesd.riefederator.deprecated.*;
+import br.ufsc.lapesd.riefederator.util.IdRefHashMap;
 import br.ufsc.lapesd.riefederator.util.RefHashMap;
-import br.ufsc.lapesd.riefederator.util.RefMap;
 import com.google.common.collect.Maps;
 import org.openjdk.jmh.annotations.*;
 
@@ -18,7 +18,7 @@ public class RefMapBenchmarks {
     @Param({"0", "4", "8", "16", "32", "128", "1024"})
     private int size;
 
-    @Param({"hash", "hash+shift", "hash+simple", "hash+fastgrowth", "sorted", "sorted+Pair", "RefEquals+HashSet"})
+    @Param({"id", "hash", "idhash", "hash+shift", "hash+simple", "hash+fastgrowth", "sorted", "sorted+Pair", "RefEquals+HashSet"})
     private String implementation;
 
     public static class Thing {
@@ -48,7 +48,15 @@ public class RefMapBenchmarks {
 
     @Setup(Level.Trial)
     public void setUp() {
-        if (implementation.equals("hash")) {
+        if (implementation.equals("id")) {
+            capacityFactory = c -> new IdentityHashMap<>(c);
+            factory = () -> new IdentityHashMap<>();
+            putAllFunction = this::putAllRefMap;
+        } else if (implementation.equals("idhash")) {
+            capacityFactory = c -> new IdRefHashMap<>(c);
+            factory = () -> new IdRefHashMap<>();
+            putAllFunction = this::putAllRefMap;
+        } else if (implementation.equals("hash")) {
             capacityFactory = c -> new RefHashMap<Thing, Integer>(c);
             factory = () -> new RefHashMap<>();
             putAllFunction = this::putAllRefMap;
@@ -88,8 +96,8 @@ public class RefMapBenchmarks {
         }
     }
 
-    private @Nonnull RefMap<Thing, Integer> putAllRefMap(@Nonnull Object in) {
-        @SuppressWarnings("unchecked") RefMap<Thing, Integer> map = (RefMap<Thing, Integer>) in;
+    private @Nonnull Map<Thing, Integer> putAllRefMap(@Nonnull Object in) {
+        @SuppressWarnings("unchecked") Map<Thing, Integer> map = (Map<Thing, Integer>) in;
         for (int i = 0; i < size; i++)
             map.put(new Thing(i), i);
         return map;
@@ -109,6 +117,14 @@ public class RefMapBenchmarks {
 
     @Benchmark public @Nonnull Object putAllReservedBenchmark() {
         return putAllFunction.apply(capacityFactory.apply(size));
+    }
+
+    @Benchmark public int iteratorRemoveThenHashBenchmark() {
+        Map<Thing, Integer> map = capacityFactory.apply(size);
+        for (int i = 0; i < size; i++)
+            map.put(new Thing(i), i);
+        map.entrySet().removeIf(e -> e.getValue() % 4 == 0);
+        return map.hashCode();
     }
 
     @Benchmark public int iterateBenchmark() {

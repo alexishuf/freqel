@@ -24,7 +24,7 @@ import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -67,8 +67,8 @@ public class PushDistinctStepTest implements TestContext {
         return Stream.of(
                 asList(q(x, knows, y), null, EmptyRefSet.emptySet()),
                 asList(q(x, knows, y, Distinct.INSTANCE), null, EmptyRefSet.emptySet()),
-                asList(xKnowsAlice, null, RefHashSet.of(xKnowsAlice)),
-                asList(xKnowsAliceDistinct, null, RefHashSet.of(xKnowsAliceDistinct)),
+                asList(xKnowsAlice, null, IdentityHashSet.of(xKnowsAlice)),
+                asList(xKnowsAliceDistinct, null, IdentityHashSet.of(xKnowsAliceDistinct)),
                 // no change with union
                 asList(UnionOp.builder()
                                 .add(q(x, knows, Alice))
@@ -90,7 +90,7 @@ public class PushDistinctStepTest implements TestContext {
                                 .add(Distinct.INSTANCE).build(),
                        JoinOp.builder(xKnowsAlicePipe, q(x, age, u, Distinct.INSTANCE))
                                .add(Distinct.INSTANCE).build(),
-                       RefHashSet.of(xKnowsAlice)),
+                       IdentityHashSet.of(xKnowsAlice)),
                 // do not add Distinct to intermediate nodes
                 asList(JoinOp.builder(UnionOp.builder()
                                                 .add(q(x, knows, Alice))

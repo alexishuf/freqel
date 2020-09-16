@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
@@ -43,7 +43,7 @@ public class PushFiltersStep implements PlannerStep {
                 assert pair.right == 0;
                 if (locked.contains(pair.left)) {
                     if (visited == null)
-                        visited = new RefHashSet<>(locked.size());
+                        visited = new IdentityHashSet<>(locked.size());
                     if (!visited.add(pair.left))
                         continue;
                 }

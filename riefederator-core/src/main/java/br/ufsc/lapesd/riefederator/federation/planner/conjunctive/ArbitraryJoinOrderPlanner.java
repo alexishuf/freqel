@@ -10,8 +10,8 @@ import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -37,7 +37,7 @@ public class ArbitraryJoinOrderPlanner implements JoinOrderPlanner {
                             @Nonnull Collection<Op> nodesCollection) {
         try (TimeSampler ignored = Metrics.OPT_MS.createThreadSampler(performance)) {
             checkArgument(!nodesCollection.isEmpty(), "Cannot plan joins without any nodes!");
-            IndexedSet<Op> nodes = IndexedSet.fromRefDistinct(nodesCollection);
+            RefIndexedSet<Op> nodes = RefIndexedSet.fromRefDistinct(nodesCollection);
             IndexedSubset<Op> pending = nodes.fullSubset();
             Op root = pending.iterator().next();
             boolean optional = root.modifiers().optional() != null;

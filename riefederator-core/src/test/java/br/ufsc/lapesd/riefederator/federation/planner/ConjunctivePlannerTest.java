@@ -28,8 +28,8 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
@@ -147,7 +147,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
             if (query.modifiers().optional() == null)
                 assertFalse(root instanceof EmptyOp, "EmptyOp is not an answer!");
             // tolerate EmptyOp x if x is a child of a union that has a non-EmptyOp child
-            RefSet<Op> tolerate = new RefHashSet<>();
+            RefSet<Op> tolerate = new IdentityHashSet<>();
             streamPreOrder(root).filter(UnionOp.class::isInstance)
                     .forEach(o -> {
                         long c = o.getChildren().stream().filter(EmptyOp.class::isInstance).count();

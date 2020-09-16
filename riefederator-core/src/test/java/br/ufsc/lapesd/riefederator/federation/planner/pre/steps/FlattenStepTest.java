@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -42,10 +42,10 @@ public class FlattenStepTest implements TestContext {
                 asList(new QueryOp(createQuery(x, knows, Alice)),
                         EmptyRefSet.emptySet(),
                        new QueryOp(createQuery(x, knows, Alice))),
-                asList(q1, RefHashSet.of(q1), q1),
+                asList(q1, IdentityHashSet.of(q1), q1),
                 asList(j1, EmptyRefSet.emptySet(), j1),
-                asList(j1, RefHashSet.of(q1), j1),
-                asList(j1, RefHashSet.of(q1, j1), j1),
+                asList(j1, IdentityHashSet.of(q1), j1),
+                asList(j1, IdentityHashSet.of(q1, j1), j1),
                 asList(UnionOp.builder()
                                 .add(u1)
                                 .add(new QueryOp(createQuery(
@@ -68,7 +68,7 @@ public class FlattenStepTest implements TestContext {
                                         x, knows, Charlie,
                                         x, age, u, SPARQLFilter.build("?u > 23"))))
                                 .build(),
-                        RefHashSet.of(u1),
+                        IdentityHashSet.of(u1),
                         UnionOp.builder()
                                 .add(u1)
                                 .add(new QueryOp(createQuery(

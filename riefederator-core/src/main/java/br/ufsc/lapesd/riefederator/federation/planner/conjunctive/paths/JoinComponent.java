@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -21,7 +21,7 @@ public class JoinComponent {
     private @LazyInit int hash = 0;
 
     @SuppressWarnings("ReferenceEquality")
-    public JoinComponent(@Nonnull IndexedSet<Op> allNodes,
+    public JoinComponent(@Nonnull RefIndexedSet<Op> allNodes,
                          @Nonnull Collection<Op> component) {
         checkArgument(!component.isEmpty(), "Empty component not allowed");
         checkArgument(allNodes.containsAll(component),
@@ -34,7 +34,7 @@ public class JoinComponent {
         }
     }
 
-    public JoinComponent(@Nonnull IndexedSet<Op> allNodes,
+    public JoinComponent(@Nonnull RefIndexedSet<Op> allNodes,
                          @Nonnull Op... nodes) {
         this(allNodes, Arrays.asList(nodes));
     }
@@ -44,7 +44,7 @@ public class JoinComponent {
         this(graph.getNodes(), component);
     }
 
-    public JoinComponent(@Nonnull IndexedSet<Op> allNodes,
+    public JoinComponent(@Nonnull RefIndexedSet<Op> allNodes,
                          @Nonnull Op node) {
         checkArgument(allNodes.contains(node), "node ∉ allNodes");
         nodes = allNodes.immutableSubset(node);

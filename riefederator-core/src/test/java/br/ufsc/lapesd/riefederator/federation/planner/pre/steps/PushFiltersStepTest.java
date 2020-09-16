@@ -11,7 +11,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import com.google.common.collect.Sets;
 import org.testng.annotations.Test;
@@ -158,7 +158,7 @@ public class PushFiltersStepTest implements TestContext {
                                   new EndpointQueryOp(ep1, createQuery(y, age, u)));
         op.modifiers().add(SPARQLFilter.build("?u > 23"));
         Op lockedNode = op.getRight();
-        RefSet<Op> lockedSet = RefHashSet.of(lockedNode);
+        RefSet<Op> lockedSet = IdentityHashSet.of(lockedNode);
 
         Op replacement = new PushFiltersStep().plan(op, lockedSet);
         assertSame(replacement, op);

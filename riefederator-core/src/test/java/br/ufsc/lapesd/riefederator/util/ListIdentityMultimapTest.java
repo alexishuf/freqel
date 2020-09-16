@@ -7,11 +7,11 @@ import java.util.Arrays;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
-public class ListRefHashMultimapTest {
+public class ListIdentityMultimapTest {
     @Test
     public void testSingleKey() {
-        ListRefHashMultimap<RefMapTest.Thing, Integer> mm = new ListRefHashMultimap<>();
-        RefMapTest.Thing zero = new RefMapTest.Thing(0);
+        ListIdentityMultimap<RefSetTest.Thing, Integer> mm = new ListIdentityMultimap<>();
+        RefSetTest.Thing zero = new RefSetTest.Thing(0);
         assertTrue(mm.putValue(zero, 0));
         assertTrue(mm.putValue(zero, 1));
         assertTrue(mm.putValue(zero, 0));

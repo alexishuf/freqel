@@ -6,7 +6,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.UnsafeMergeException;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 
 import javax.annotation.Nonnull;
@@ -34,7 +34,7 @@ public class CartesianDistributionStep extends AbstractDistributionStep {
                             && hasIntersect(grandchild.getResultVars(), queryVars)) {
                         try {
                             query.mergeWith(((QueryOp) grandchild).getQuery());
-                            if (merged == null) merged = new RefHashSet<>();
+                            if (merged == null) merged = new IdentityHashSet<>();
                             merged.add(grandchild);
                         } catch (UnsafeMergeException ignored) { }
                     }

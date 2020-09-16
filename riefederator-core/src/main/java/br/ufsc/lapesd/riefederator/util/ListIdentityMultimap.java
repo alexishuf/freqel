@@ -2,17 +2,15 @@ package br.ufsc.lapesd.riefederator.util;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
 
-public class ListRefHashMultimap<K, V> extends RefHashMap<K, List<V>> {
-    public ListRefHashMultimap() {
+@SuppressWarnings("ClassExtendsConcreteCollection")
+public class ListIdentityMultimap<K, V> extends IdentityHashMap<K, List<V>> {
+    public ListIdentityMultimap() {
     }
 
-    public ListRefHashMultimap(int buckets, int bucketSize) {
-        super(buckets, bucketSize);
-    }
-
-    public ListRefHashMultimap(int capacity) {
+    public ListIdentityMultimap(int capacity) {
         super(capacity);
     }
 

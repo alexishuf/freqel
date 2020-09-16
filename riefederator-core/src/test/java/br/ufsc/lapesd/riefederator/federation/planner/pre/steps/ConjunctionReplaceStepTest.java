@@ -12,7 +12,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
-import br.ufsc.lapesd.riefederator.util.RefHashSet;
+import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -38,7 +38,7 @@ public class ConjunctionReplaceStepTest implements TestContext {
                 asList(UnionOp.builder().add(q1).add(new QueryOp(createQuery(Bob, knows, x))).build(),
                        EmptyRefSet.emptySet(), null),
                 asList(UnionOp.builder().add(q1).add(new QueryOp(createQuery(Bob, knows, x))).build(),
-                       RefHashSet.of(q1), null),
+                       IdentityHashSet.of(q1), null),
                 //base case with a single join
                 asList(ConjunctionOp.builder()
                                 .add(new QueryOp(createQuery(

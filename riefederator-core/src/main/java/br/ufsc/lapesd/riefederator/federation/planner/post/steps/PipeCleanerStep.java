@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.riefederator.util.ListRefHashMultimap;
+import br.ufsc.lapesd.riefederator.util.ListIdentityMultimap;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 
 import javax.annotation.Nonnull;
@@ -25,7 +25,7 @@ public class PipeCleanerStep implements PlannerStep {
      */
     @Override
     public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> locked) {
-        ListRefHashMultimap<Op, PipeOp> n2pipe = findPipes(root);
+        ListIdentityMultimap<Op, PipeOp> n2pipe = findPipes(root);
         if (n2pipe == null)
             return root; // no work
         removeKeysWithDistinctPipes(n2pipe);
@@ -44,15 +44,15 @@ public class PipeCleanerStep implements PlannerStep {
     }
 
     private void removeLockedPipeOps(@Nonnull RefSet<Op> locked,
-                                     @Nonnull ListRefHashMultimap<Op, PipeOp> n2pipe) {
+                                     @Nonnull ListIdentityMultimap<Op, PipeOp> n2pipe) {
         for (Op pipe : locked) {
             if (pipe instanceof PipeOp)
                 n2pipe.removeValue(pipe.getChildren().get(0), (PipeOp) pipe);
         }
     }
 
-    private @Nullable ListRefHashMultimap<Op, PipeOp> findPipes(@Nonnull Op root) {
-        ListRefHashMultimap<Op, PipeOp> n2pipe = null;
+    private @Nullable ListIdentityMultimap<Op, PipeOp> findPipes(@Nonnull Op root) {
+        ListIdentityMultimap<Op, PipeOp> n2pipe = null;
         for (Iterator<Op> it = TreeUtils.iteratePreOrder(root); it.hasNext(); ) {
             Op op = it.next();
             if (!(op instanceof PipeOp))
@@ -61,13 +61,13 @@ public class PipeCleanerStep implements PlannerStep {
             assert pipe.getChildren().size() == 1;
             Op child = pipe.getChildren().get(0);
             if (n2pipe == null)
-                n2pipe = new ListRefHashMultimap<>();
+                n2pipe = new ListIdentityMultimap<>();
             n2pipe.putValue(child, pipe);
         }
         return n2pipe;
     }
 
-    private void removeKeysWithDistinctPipes(@Nonnull ListRefHashMultimap<Op, PipeOp> n2pipe) {
+    private void removeKeysWithDistinctPipes(@Nonnull ListIdentityMultimap<Op, PipeOp> n2pipe) {
         outer:
         for (Iterator<Op> it = n2pipe.keySet().iterator(); it.hasNext(); ) {
             Op op = it.next();

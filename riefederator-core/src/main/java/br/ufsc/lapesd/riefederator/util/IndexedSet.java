@@ -16,9 +16,9 @@ import static java.util.Spliterator.*;
 @Immutable
 public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set<T> {
     @SuppressWarnings("Immutable")
-    private final @Nonnull List<T> data;
+    protected final @Nonnull List<T> data;
     @SuppressWarnings("Immutable")
-    private final @Nonnull Map<T, Integer> indexMap;
+    protected final @Nonnull Map<T, Integer> indexMap;
     private @LazyInit int hash = 0;
 
     private static final @Nonnull IndexedSet<?> EMPTY
@@ -81,26 +81,6 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
             return new IndexedSet<>((List<U>)collection, indexMap);
         else
             return new IndexedSet<>(new ArrayList<>(collection), indexMap);
-    }
-
-    private static @Nonnull <U> IndexedSet<U> createRefDistinct(@Nonnull Collection<U> coll) {
-        List<U> list = coll instanceof List ? (List<U>)coll : new ArrayList<>(coll);
-        RefHashMap<U, Integer> indexMap = new RefHashMap<>(list.size());
-        int i = 0;
-        for (U u : list) indexMap.put(u, i++);
-        return new IndexedSet<>(list, indexMap);
-    }
-
-    public static @Nonnull <U> IndexedSet<U> fromRefDistinct(@Nonnull Collection<U> coll) {
-        if (coll instanceof IndexedSet)  return (IndexedSet<U>) coll;
-        else if (coll.isEmpty())         return empty();
-        else                             return createRefDistinct(coll);
-    }
-
-    public static @Nonnull <U> IndexedSet<U> fromRefDistinctCopy(@Nonnull Collection<U> coll) {
-        if (coll instanceof IndexedSet)  return (IndexedSet<U>) coll;
-        else if (coll.isEmpty())         return empty();
-        else                             return createRefDistinct(new ArrayList<>(coll));
     }
 
     public static @Nonnull <U> IndexedSet<U> fromDistinct(@Nonnull Iterator<U> it) {
@@ -242,6 +222,10 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
         return false;
     }
 
+    int hash(@Nonnull T object) {
+        return object.hashCode();
+    }
+
     /* --- implement object methods --- */
 
     @Override
@@ -260,9 +244,8 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     public int hashCode() {
         if (hash == 0) {
             int local = 0;
-            for (T e : data) {
-                local += e.hashCode();
-            }
+            for (T e : data)
+                local += hash(e);
             hash = local;
         }
         return hash;
