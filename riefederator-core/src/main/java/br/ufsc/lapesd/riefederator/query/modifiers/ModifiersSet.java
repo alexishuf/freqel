@@ -4,8 +4,6 @@ import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.hash.InM
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.impl.LazyCartesianResults;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -15,30 +13,32 @@ import static br.ufsc.lapesd.riefederator.util.CollectionUtils.intersect;
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableSet;
 
 public class ModifiersSet extends AbstractSet<Modifier> {
-    private static final Logger logger = LoggerFactory.getLogger(ModifiersSet.class);
+    private static final int FILTER_ORDINAL = Capability.SPARQL_FILTER.ordinal();
     protected static final class Data {
-        private final @Nonnull List<Set<Modifier>> sets;
+        private final @Nonnull Modifier[] uniqueModifiers;
+        private final @Nonnull Set<SPARQLFilter> filters;
         private final @Nonnull Set<SPARQLFilter> filtersView;
         private int size;
 
         public Data(@Nullable Data other) {
             Capability[] capabilities = Capability.values();
-            sets = new ArrayList<>(capabilities.length);
-            for (Capability cap : Capability.values()) {
-                Set<Modifier> otherSet = other == null ? null : other.sets.get(cap.ordinal());
-                if (cap.isUniqueModifier())
-                    sets.add(otherSet == null ? emptySet() : otherSet);
-                else
-                    sets.add(otherSet == null ? new HashSet<>() : new HashSet<>(otherSet));
+            uniqueModifiers = new Modifier[capabilities.length];
+            Set<SPARQLFilter> filters = null;
+            for (Capability cap : capabilities) {
+                if (cap.isUniqueModifier()) {
+                    int ord = cap.ordinal();
+                    uniqueModifiers[ord] = other == null ? null : other.uniqueModifiers[ord];
+                } else if (other != null) {
+                    assert cap == Capability.SPARQL_FILTER;
+                    filters = new HashSet<>(other.filters);
+                }
             }
-            Set<?> filters = sets.get(Capability.SPARQL_FILTER.ordinal());
-            //noinspection unchecked
-            filtersView = unmodifiableSet((Set<SPARQLFilter>)filters);
-            size = other == null ? 0 : other.size;
+            this.filters = filters == null ? new HashSet<>() : filters;
+            this.filtersView = unmodifiableSet(this.filters);
+            this.size = other == null ? 0 : other.size;
         }
     }
     protected final @Nonnull Data d;
@@ -80,22 +80,31 @@ public class ModifiersSet extends AbstractSet<Modifier> {
     }
 
     private class It implements Iterator<Modifier> {
-
-        private int currentRow = 0;
-        private Iterator<Modifier> it = null;
+        private int ordinal = -1;
+        private Iterator<? extends Modifier> it = null;
         private Modifier current = null, last = null;
 
         private boolean advance() {
-            int endRow = d.sets.size();
-            while (currentRow != endRow && current == null) {
-                if (it == null)
-                    it = d.sets.get(currentRow).iterator();
-                if (it.hasNext()) {
-                    current = it.next();
+            current = null;
+            if (ordinal != FILTER_ORDINAL)
+                ++ordinal;
+            while (current == null && ordinal < d.uniqueModifiers.length) {
+                if (ordinal == FILTER_ORDINAL) {
+                    if (this.it != null) {
+                        if (this.it.hasNext())
+                            current = this.it.next();
+                        else
+                            this.it = null;
+                    } else {
+                        Iterator<SPARQLFilter> it = d.filters.iterator();
+                        if (it.hasNext())
+                            current = (this.it = it).next();
+                    }
                 } else {
-                    it = null;
-                    ++currentRow;
+                    current = d.uniqueModifiers[ordinal];
                 }
+                if (current == null)
+                    ++ordinal;
             }
             return current != null;
         }
@@ -118,13 +127,11 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         public void remove() {
             checkState(last != null, "Cannot remove(): next() not called yet");
             checkState(!locked, "ModifiersSet is unmodifiable");
-            assert it != null;
-            if (Capability.values()[currentRow].isUniqueModifier()) {
-                d.sets.set(currentRow, Collections.emptySet());
-                ++currentRow;
-                it = null;
-            } else {
+            if (it != null) {
+                assert ordinal == FILTER_ORDINAL;
                 it.remove();
+            } else {
+                d.uniqueModifiers[ordinal] = null;
             }
             --d.size;
             removed(last);
@@ -139,8 +146,9 @@ public class ModifiersSet extends AbstractSet<Modifier> {
     @Override
     public boolean contains(Object o) {
         if (!(o instanceof Modifier)) return false;
-        Modifier modifier = (Modifier) o;
-        return d.sets.get(modifier.getCapability().ordinal()).contains(modifier);
+        Modifier m = (Modifier) o;
+        int ord = m.getCapability().ordinal();
+        return ord == FILTER_ORDINAL ? d.filters.contains(m) : d.uniqueModifiers[ord] != null;
     }
 
     @Override
@@ -148,26 +156,24 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         if (modifier == null)
             return false; //do not add nulls
         checkState(!locked, "ModifiersSet is unmodifiable");
-        Capability capability = modifier.getCapability();
-        int ordinal = capability.ordinal();
-        if (capability.isUniqueModifier()) {
-            Iterator<Modifier> it = d.sets.get(ordinal).iterator();
-            boolean empty = !it.hasNext();
-            if (empty || !it.next().equals(modifier)) {
-                d.sets.set(ordinal, Collections.singleton(modifier));
-                if (empty)
-                    ++d.size;
-                added(modifier);
-                return true;
-            }
-            return false;
+        int ordinal = modifier.getCapability().ordinal();
+        boolean change;
+        if (ordinal == FILTER_ORDINAL) {
+            change = d.filters.add((SPARQLFilter) modifier);
+            if (change)
+                ++d.size;
+        } else {
+            assert modifier.getCapability().isUniqueModifier();
+            Modifier old = d.uniqueModifiers[ordinal];
+            d.uniqueModifiers[ordinal] = modifier;
+            if (old == null)
+                ++d.size;
+            change = old == null || !old.equals(modifier);
         }
-        boolean change = d.sets.get(ordinal).add(modifier);
-        if (change) {
-            ++d.size;
+        if (change)
             added(modifier);
-        }
         return change;
+
     }
 
     @Override
@@ -177,17 +183,17 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         checkState(!locked, "ModifiersSet is unmodifiable");
         if (!(o instanceof Modifier)) return false;
         Modifier m = (Modifier) o;
-        Capability capability = m.getCapability();
+        int ordinal = m.getCapability().ordinal();
 
-        boolean change = false;
-        if (capability.isUniqueModifier()) {
-            Iterator<Modifier> it = d.sets.get(capability.ordinal()).iterator();
-            if (it.hasNext() && it.next().equals(m)) {
-                d.sets.set(capability.ordinal(), Collections.emptySet());
-                change = true;
-            }
+        boolean change;
+        if (ordinal == FILTER_ORDINAL) {
+            change = d.filters.remove(m);
         } else {
-            change = d.sets.get(capability.ordinal()).remove(m);
+            assert m.getCapability().isUniqueModifier();
+            Modifier old = d.uniqueModifiers[ordinal];
+            change = old != null && old.equals(m);
+            if (change)
+                d.uniqueModifiers[ordinal] = null;
         }
         if (change) {
             --d.size;
@@ -226,10 +232,14 @@ public class ModifiersSet extends AbstractSet<Modifier> {
     private @Nullable UnsafeMergeException getUnsafeMergeException(@Nonnull Collection<Modifier> collection) {
         List<Modifier> list = null;
         for (Modifier modifier : collection) {
-            Capability capability = modifier.getCapability();
-            if (capability.isMergeUnsafe()) {
-                Set<Modifier> curr = d.sets.get(capability.ordinal());
-                if (capability.hasParameter() ? !curr.contains(modifier) : curr.isEmpty()) {
+            Capability cap = modifier.getCapability();
+            if (cap.isMergeUnsafe()) {
+                int ordinal = cap.ordinal();
+                assert ordinal == FILTER_ORDINAL || cap.isUniqueModifier();
+                //noinspection SuspiciousMethodCalls
+                boolean bad = ordinal == FILTER_ORDINAL ? !d.filters.contains(modifier)
+                            : !Objects.equals(d.uniqueModifiers[ordinal], modifier);
+                if (bad) {
                     if (list == null) list = new ArrayList<>();
                     list.add(modifier);
                 }
@@ -343,33 +353,25 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         return new ModifiersSet(this, true);
     }
 
-    private @Nullable <T extends Modifier> T getSingleton(@Nonnull Capability cap,
-                                                         @Nonnull Class<T> modifierClass) {
-        assert cap.isUniqueModifier() : "this should not be called for non-unique capabilities";
-        Iterator<Modifier> it = d.sets.get(cap.ordinal()).iterator();
-        //noinspection unchecked
-        return it.hasNext() ? (T) it.next() : null;
-    }
-
     public @Nullable Projection projection() {
-        return getSingleton(Capability.PROJECTION, Projection.class);
+        return (Projection) d.uniqueModifiers[Capability.PROJECTION.ordinal()];
     }
     public @Nullable Ask ask() {
-        return getSingleton(Capability.ASK, Ask.class);
+        return (Ask) d.uniqueModifiers[Capability.ASK.ordinal()];
     }
     public @Nullable Distinct distinct() {
-        return getSingleton(Capability.DISTINCT, Distinct.class);
+        return (Distinct) d.uniqueModifiers[Capability.DISTINCT.ordinal()];
     }
     public @Nullable Limit limit() {
-        return getSingleton(Capability.LIMIT, Limit.class);
+        return (Limit) d.uniqueModifiers[Capability.LIMIT.ordinal()];
     }
     public @Nullable Optional optional() {
-        return getSingleton(Capability.OPTIONAL, Optional.class);
+        return (Optional) d.uniqueModifiers[Capability.OPTIONAL.ordinal()];
     }
     public @Nonnull Set<SPARQLFilter> filters() {
         return d.filtersView;
     }
     public @Nullable ValuesModifier valueModifier() {
-        return getSingleton(Capability.VALUES, ValuesModifier.class);
+        return (ValuesModifier) d.uniqueModifiers[Capability.VALUES.ordinal()];
     }
 }

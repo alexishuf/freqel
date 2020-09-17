@@ -74,7 +74,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
         SemanticSelectDescription d = new SemanticSelectDescription(ep, reasoner);
         Triple qry = new Triple(Alice, manages, Bob);
         SemanticCQueryMatch m = d.semanticMatch(CQuery.from(qry));
-        assertEquals(m.getIrrelevant(), emptyList());
+        assertEquals(m.getIrrelevant(CQuery.from(qry)), emptyList());
         assertEquals(m.getAllRelevant(), singleton(qry));
         assertEquals(m.getKnownExclusiveGroups(), emptySet());
         assertEquals(m.getAlternatives(qry), singleton(CQuery.from(qry)));
@@ -88,7 +88,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
         Triple[] ts = {new Triple(Alice, manages, o), new Triple(o, mentors, Charlie)};
         SemanticSelectDescription d = new SemanticSelectDescription(ep, reasoner);
         SemanticCQueryMatch m = d.semanticMatch(CQuery.from(asList(ts)));
-        assertEquals(m.getIrrelevant(), emptyList());
+        assertEquals(m.getIrrelevant(CQuery.from(ts)), emptyList());
         assertEquals(new HashSet<>(m.getAllRelevant()), Sets.newHashSet(ts));
         assertEquals(m.getKnownExclusiveGroups(), emptySet());
 
@@ -104,7 +104,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
         SemanticSelectDescription d = new SemanticSelectDescription(ep, reasoner);
         Triple qry = new Triple(Alice, knows, o);
         SemanticCQueryMatch m = d.semanticMatch(CQuery.from(qry));
-        assertEquals(m.getIrrelevant(), emptyList());
+        assertEquals(m.getIrrelevant(CQuery.from(qry)), emptyList());
         assertEquals(m.getKnownExclusiveGroups(), emptyList());
         assertEquals(m.getAllRelevant(), singletonList(qry));
 
@@ -126,7 +126,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
         SemanticSelectDescription d = new SemanticSelectDescription(ep, reasoner);
         Triple qry = new Triple(s, advises, Charlie);
         SemanticCQueryMatch m = d.semanticMatch(CQuery.from(qry));
-        assertEquals(m.getIrrelevant(), emptyList());
+        assertEquals(m.getIrrelevant(CQuery.from(qry)), emptyList());
         assertEquals(m.getKnownExclusiveGroups(), emptyList());
         assertEquals(m.getAllRelevant(), singletonList(qry));
         assertEquals(m.getNonExclusiveRelevant(), singletonList(qry));
@@ -146,7 +146,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
         SemanticSelectDescription d = new SemanticSelectDescription(ep, true, reasoner);
         Triple qry = new Triple(s, type, Manager);
         SemanticCQueryMatch m = d.semanticMatch(CQuery.from(qry));
-        assertEquals(m.getIrrelevant(), emptyList());
+        assertEquals(m.getIrrelevant(CQuery.from(qry)), emptyList());
         assertEquals(m.getKnownExclusiveGroups(), emptyList());
         assertEquals(m.getAllRelevant(), singletonList(qry));
         assertEquals(m.getNonExclusiveRelevant(), singletonList(qry));
@@ -161,7 +161,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
         SemanticSelectDescription d = new SemanticSelectDescription(ep, true, reasoner);
         Triple qry = new Triple(s, type, Person);
         SemanticCQueryMatch m = d.semanticMatch(CQuery.from(qry));
-        assertEquals(m.getIrrelevant(), emptyList());
+        assertEquals(m.getIrrelevant(CQuery.from(qry)), emptyList());
         assertEquals(m.getKnownExclusiveGroups(), emptyList());
         assertEquals(m.getAllRelevant(), singletonList(qry));
         assertEquals(m.getNonExclusiveRelevant(), singletonList(qry));
@@ -182,7 +182,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
         SemanticSelectDescription d = new SemanticSelectDescription(ep, true, reasoner);
         Triple qry = new Triple(s, type, Employee);
         SemanticCQueryMatch m = d.semanticMatch(CQuery.from(qry));
-        assertEquals(m.getIrrelevant(), emptyList());
+        assertEquals(m.getIrrelevant(CQuery.from(qry)), emptyList());
         assertEquals(m.getKnownExclusiveGroups(), emptyList());
         assertEquals(m.getAllRelevant(), singletonList(qry));
         assertEquals(m.getNonExclusiveRelevant(), singletonList(qry));

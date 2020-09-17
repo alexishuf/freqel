@@ -8,56 +8,51 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.Immutable;
+import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.WillClose;
-import java.lang.ref.SoftReference;
 import java.util.*;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * The result of matching a conjunctive query against a {@link Description}.
  */
-@SuppressWarnings("UnstableApiUsage")
 @Immutable
 public class CQueryMatch {
-    private final @Nonnull ImmutableList<CQuery> exclusiveGroups;
-    private final @Nonnull ImmutableList<Triple> nonExclusiveRelevant;
-    private final @Nonnull CQuery query;
+    private final @Nonnull List<CQuery> exclusiveGroups;
+    private final @Nonnull List<Triple> nonExclusiveRelevant;
     @SuppressWarnings("Immutable")
-    private @Nonnull SoftReference<ImmutableList<Triple>> allRelevant = new SoftReference<>(null);
+    private @LazyInit @Nullable List<Triple> allRelevant = null;
 
-    public CQueryMatch(@Nonnull CQuery query) {
-        this(query, ImmutableList.of(), ImmutableList.of());
+    public static final @Nonnull CQueryMatch EMPTY = new CQueryMatch();
+
+    protected CQueryMatch() {
+        this(emptyList(), emptyList());
     }
 
-    public CQueryMatch(@Nonnull CQuery query,
-                       @Nonnull ImmutableList<CQuery> exclusiveGroups,
-                       @Nonnull ImmutableList<Triple> nonExclusiveRelevant) {
+    public CQueryMatch(@Nonnull List<CQuery> exclusiveGroups,
+                       @Nonnull List<Triple> nonExclusiveRelevant) {
         this.exclusiveGroups = exclusiveGroups;
         this.nonExclusiveRelevant = nonExclusiveRelevant;
-        this.query = query;
     }
 
     public static class Builder {
         protected final @Nonnull CQuery query;
-        protected final @Nonnull ImmutableList.Builder<CQuery> exclusiveGroupsBuilder;
-        protected final @Nonnull ImmutableList.Builder<Triple> nonExclusiveBuilder;
-        private final @Nonnull HashSet<CQuery> exclusiveGroups;
-        private final @Nonnull HashSet<Triple> nonExclusive;
+        protected @Nullable List<CQuery> exclusiveGroups;
+        protected @Nullable List<Triple> nonExclusive;
         protected boolean built = false;
+        private final int capacity;
 
-        @SuppressWarnings("UnstableApiUsage")
         protected Builder(@Nonnull CQuery query) {
             this.query = query;
-            int capacity = Math.max(query.size() / 2, 10);
-            exclusiveGroupsBuilder = ImmutableList.builderWithExpectedSize(capacity);
-            nonExclusiveBuilder = ImmutableList.builderWithExpectedSize(capacity);
-            exclusiveGroups = new HashSet<>(capacity);
-            nonExclusive = new HashSet<>(capacity);
+            capacity = (query.size() >> 1) + 1;
         }
 
         @Contract("_ -> this")
@@ -68,8 +63,10 @@ public class CQueryMatch {
             }
             checkArgument(!group.isEmpty(), "Exclusive group cannot be empty");
             CQuery cQuery = CQuery.from(group);
-            if (exclusiveGroups.add(cQuery))
-                exclusiveGroupsBuilder.add(cQuery);
+            if (exclusiveGroups == null)
+                exclusiveGroups = new ArrayList<>(capacity);
+            assert !exclusiveGroups.contains(query) : "Group already added";
+            exclusiveGroups.add(cQuery);
             return this;
         }
 
@@ -78,8 +75,10 @@ public class CQueryMatch {
             Preconditions.checkState(!built);
             if (CQueryMatch.class.desiredAssertionStatus())
                 checkArgument(query.contains(triple), "Triple not in query");
-            if (nonExclusive.add(triple))
-                nonExclusiveBuilder.add(triple);
+            if (nonExclusive == null)
+                nonExclusive = new ArrayList<>(capacity);
+            assert !nonExclusive.contains(triple) : "Triple already added";
+            nonExclusive.add(triple);
             return this;
         }
 
@@ -87,8 +86,10 @@ public class CQueryMatch {
         public @Nonnull CQueryMatch build() {
             Preconditions.checkState(!built);
             built = true;
-            return new CQueryMatch(query, exclusiveGroupsBuilder.build(),
-                                   nonExclusiveBuilder.build());
+            List<CQuery> ex = exclusiveGroups == null ? emptyList()
+                                                      : unmodifiableList(exclusiveGroups);
+            List<Triple> ne = nonExclusive == null ? emptyList() : unmodifiableList(nonExclusive);
+            return new CQueryMatch(ex, ne);
         }
     }
 
@@ -104,33 +105,29 @@ public class CQueryMatch {
     }
 
     /**
-     * The full query for which this {@link CQueryMatch} is a result
-     */
-    public @Nonnull CQuery getQuery() {
-        return query;
-    }
-
-    /**
      * Gets all triples in the query for which the source is potentially relevant.
      *
      * @return An unmodifiable List with the triples
      */
-    public @Nonnull ImmutableList<Triple> getAllRelevant() {
-        ImmutableList<Triple> strong = allRelevant.get();
-        if (strong == null) {
-            ImmutableList.Builder<Triple> builder = ImmutableList.builderWithExpectedSize(query.size());
-            exclusiveGroups.forEach(builder::addAll);
-            builder.addAll(nonExclusiveRelevant);
-            allRelevant = new SoftReference<>(strong = builder.build());
+    public @Nonnull List<Triple> getAllRelevant() {
+        if (allRelevant == null) {
+            int size = nonExclusiveRelevant.size();
+            for (CQuery group : exclusiveGroups)
+                size += group.size();
+            ArrayList<Triple> list = new ArrayList<>(size);
+            for (CQuery group : exclusiveGroups)
+                list.addAll(group);
+            list.addAll(nonExclusiveRelevant);
+            allRelevant = unmodifiableList(list);
         }
-        return strong;
+        return allRelevant;
     }
 
     /**
      * Gets all triples which are not in <code>getAllRelevant()</code>.
      * @return An unmodifiable List with the triples
      */
-    public @Nonnull ImmutableList<Triple> getIrrelevant() {
+    public @Nonnull List<Triple> getIrrelevant(@Nonnull CQuery query) {
         Set<Triple> set = new LinkedHashSet<>(query);
         Stream.concat(exclusiveGroups.stream().flatMap(Collection::stream),
                 nonExclusiveRelevant.stream()).forEach(set::remove);
@@ -141,7 +138,7 @@ public class CQueryMatch {
      * Gets the triples in getAllRelevant() which are not part of any exclusive group.
      * @return An unmodifiable {@link List} with the triples.
      */
-    public @Nonnull ImmutableList<Triple> getNonExclusiveRelevant() {
+    public @Nonnull List<Triple> getNonExclusiveRelevant() {
         return nonExclusiveRelevant;
     }
 
@@ -161,7 +158,7 @@ public class CQueryMatch {
      *
      * @return The list of exclusive groups as an unmodifiable list of unmodifiable lists.
      */
-    public @Nonnull ImmutableList<CQuery> getKnownExclusiveGroups() {
+    public @Nonnull List<CQuery> getKnownExclusiveGroups() {
         return exclusiveGroups;
     }
 
@@ -172,7 +169,7 @@ public class CQueryMatch {
         if (isEmpty()) {
             return "{}";
         }
-        StringBuilder b = new StringBuilder(query.size()*32);
+        StringBuilder b = new StringBuilder();
         b.append("CQueryMatch{\n");
         for (List<Triple> group : exclusiveGroups) {
             b.append("  EXCLUSIVE_GROUP {\n");

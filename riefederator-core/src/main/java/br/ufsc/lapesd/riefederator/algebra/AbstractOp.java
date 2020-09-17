@@ -15,7 +15,8 @@ public abstract class AbstractOp implements Op {
     protected @Nullable Set<String> strictResultVarsCache, publicVarsCache, allInputVarsCache;
     protected @Nonnull String name;
     private @Nonnull Cardinality cardinality = Cardinality.UNSUPPORTED;
-    protected @Nonnull List<Op> parents = new ArrayList<>();
+    private @Nullable List<Op> parents = null;
+    private boolean parentsSingleton = false;
     protected boolean cacheHit = false;
 
     protected AbstractOp() {
@@ -131,28 +132,49 @@ public abstract class AbstractOp implements Op {
 
     @Override
     public @Nonnull List<Op> getParents() {
-        return parents;
+        return parents == null ? Collections.emptyList() : parents;
     }
 
     @Override
     public void attachTo(@Nonnull Op parent) {
-        if (parent == this) throw new IllegalArgumentException("Node cannot be its own parent");
-        assert parents.stream().noneMatch(o -> o == parent) : "already attached to this parent";
-        parents.add(parent);
+        if (parent == this)
+            throw new IllegalArgumentException("Node cannot be its own parent");
+        assert parents == null || parents.stream().noneMatch(o -> o == parent)
+                : "already attached to this parent";
+        if (parents == null) {
+            parentsSingleton = true;
+            parents = Collections.singletonList(parent);
+        } else if (parentsSingleton) {
+            List<Op> list = new ArrayList<>();
+            list.add(parents.get(0));
+            list.add(parent);
+            parentsSingleton = false;
+            parents = list;
+        } else {
+            parents.add(parent);
+        }
     }
 
     @Override
     public void detachFrom(@Nonnull Op parent) {
         boolean found = false;
-        for (Iterator<Op> it = parents.iterator(); it.hasNext(); ) {
-            if (it.next() == parent) {
-                found = true;
-                it.remove();
-                break;
+        if (parents == null) {
+            assert false : "detaching from parent, but has no parents";
+        } else if (parentsSingleton) {
+            if ((found = this.parents.get(0) == parent))
+                this.parents = null;
+            assert found : "detaching parent that is not a parent";
+        } else {
+            for (Iterator<Op> it = this.parents.iterator(); it.hasNext(); ) {
+                if (it.next() == parent) {
+                    found = true;
+                    it.remove();
+                    break;
+                }
             }
+            assert parents.stream().noneMatch(o -> o == parent) : "parent appears twice in list";
         }
         assert found : "parent does not appear in parents list";
-        assert parents.stream().noneMatch(o -> o == parent) : "parent appears twice in parents list";
     }
 
     @Override

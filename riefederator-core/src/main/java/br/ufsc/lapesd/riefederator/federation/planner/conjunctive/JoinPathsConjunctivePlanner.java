@@ -319,7 +319,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
 
     private final static class PathsContext {
         private final List<JoinComponent> result;
-        private final ArrayDeque<State> queue = new ArrayDeque<>();
+        private final ArrayDeque<State> queue;
         private final @Nonnull IndexedSet<Triple> full;
         private final @Nonnull JoinGraph g;
         private final @Nonnull Cache<State, Boolean> recent;
@@ -424,6 +424,8 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
         public PathsContext(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g) {
             this.full = full;
             this.g = g;
+            int nodesSize = g.getNodes().size();
+            this.queue = new ArrayDeque<>(Math.max(nodesSize + nodesSize/2 + 1, 10));
             this.globallyUnsatisfied = full.fullSubset();
             this.result = new ArrayList<>();
             this.recent = CacheBuilder.newBuilder().maximumSize(4096).initialCapacity(512).build();

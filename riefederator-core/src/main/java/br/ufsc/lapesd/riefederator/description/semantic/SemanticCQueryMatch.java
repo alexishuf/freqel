@@ -6,48 +6,56 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSetMultimap;
+import com.google.common.collect.MultimapBuilder;
+import com.google.common.collect.SetMultimap;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.Immutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.WillClose;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
+
+import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
 
 @Immutable
 public class SemanticCQueryMatch extends CQueryMatch {
     private static final Logger logger = LoggerFactory.getLogger(SemanticCQueryMatch.class);
-    private final @Nonnull ImmutableSetMultimap<Triple, CQuery> alternatives;
-    private final @Nonnull ImmutableSetMultimap<CQuery, CQuery> exgAlternatives;
+    private final @Nonnull SetMultimap<Triple, CQuery> alternatives;
+    private final @Nonnull SetMultimap<CQuery, CQuery> exgAlternatives;
 
-    public SemanticCQueryMatch(@Nonnull CQuery query) {
-        super(query);
+    public static final @Nonnull SemanticCQueryMatch EMPTY = new SemanticCQueryMatch();
+
+    protected SemanticCQueryMatch() {
         alternatives = ImmutableSetMultimap.of();
         exgAlternatives = ImmutableSetMultimap.of();
     }
 
-    public SemanticCQueryMatch(@Nonnull CQuery query,
-                               @Nonnull ImmutableList<CQuery> exclusiveGroups,
-                               @Nonnull ImmutableList<Triple> nonExclusiveRelevant,
-                               @Nonnull ImmutableSetMultimap<Triple, CQuery> alternatives,
-                               @Nonnull ImmutableSetMultimap<CQuery, CQuery> exgAlternatives) {
-        super(query, exclusiveGroups, nonExclusiveRelevant);
+    public SemanticCQueryMatch(@Nonnull List<CQuery> exclusiveGroups,
+                               @Nonnull List<Triple> nonExclusiveRelevant,
+                               @Nonnull SetMultimap<Triple, CQuery> alternatives,
+                               @Nonnull SetMultimap<CQuery, CQuery> exgAlternatives) {
+        super(exclusiveGroups, nonExclusiveRelevant);
         this.alternatives = alternatives;
         this.exgAlternatives = exgAlternatives;
     }
 
     public static class Builder extends CQueryMatch.Builder {
-        private @Nonnull final ImmutableSetMultimap.Builder<Triple, CQuery> alternatives;
-        private @Nonnull final ImmutableSetMultimap.Builder<CQuery, CQuery> exgAlternatives;
+        private @Nullable SetMultimap<Triple, CQuery> alternatives;
+        private @Nullable SetMultimap<CQuery, CQuery> exgAlternatives;
+        private final int mmCapacity;
 
         public Builder(@Nonnull CQuery query) {
             super(query);
-            alternatives = ImmutableSetMultimap.builder();
-            exgAlternatives = ImmutableSetMultimap.builder();
+            mmCapacity = Math.max(query.size() >> 1, 10);
+            alternatives = MultimapBuilder.hashKeys(mmCapacity).hashSetValues().build();
+            exgAlternatives = MultimapBuilder.hashKeys(mmCapacity).hashSetValues().build();
         }
 
         @CanIgnoreReturnValue
@@ -55,6 +63,8 @@ public class SemanticCQueryMatch extends CQueryMatch {
                                                @Nonnull CQuery alternative) {
             if (getClass().desiredAssertionStatus())
                 Preconditions.checkArgument(this.query.contains(query), "triple not in query");
+            if (alternatives == null)
+                alternatives = MultimapBuilder.hashKeys(mmCapacity).hashSetValues().build();
             alternatives.put(query, alternative);
             return this;
         }
@@ -90,6 +100,8 @@ public class SemanticCQueryMatch extends CQueryMatch {
                                 exGroup, alternative);
                 }
             }
+            if (exgAlternatives == null)
+                exgAlternatives = MultimapBuilder.hashKeys(mmCapacity).hashSetValues().build();
             exgAlternatives.put(exGroup, alternative);
             return this;
         }
@@ -98,9 +110,14 @@ public class SemanticCQueryMatch extends CQueryMatch {
         public @Nonnull SemanticCQueryMatch build() {
             Preconditions.checkState(!built);
             built = true;
-            return new SemanticCQueryMatch(query, exclusiveGroupsBuilder.build(),
-                                           nonExclusiveBuilder.build(),
-                                           alternatives.build(), exgAlternatives.build());
+            List<CQuery> ex = exclusiveGroups == null ? emptyList()
+                                                      : unmodifiableList(exclusiveGroups);
+            List<Triple> ne = nonExclusive == null ? emptyList() : unmodifiableList(nonExclusive);
+            SetMultimap<Triple, CQuery> alt = alternatives == null ? ImmutableSetMultimap.of()
+                                                                   : alternatives;
+            SetMultimap<CQuery, CQuery> exAlt = this.exgAlternatives == null
+                                              ? ImmutableSetMultimap.of() : exgAlternatives;
+            return new SemanticCQueryMatch(ex, ne, alt, exAlt);
         }
     }
 

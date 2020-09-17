@@ -306,14 +306,13 @@ public class MoleculeMatcher implements SemanticDescription {
         protected  @Nonnull Map<Term, CQuery> subQueries;
         protected  @Nonnull Map<ImmutablePair<Term, Atom>, List<List<LinkMatch>>> visited;
         protected  @Nonnull Multimap<ImmutablePair<Term, Atom>, LinkMatch>  incoming;
-        protected  @Nonnull SemanticCQueryMatch.Builder matchBuilder;
+        protected  @Nullable SemanticCQueryMatch.Builder matchBuilder = null;
         protected  @Nonnull Index idx;
 
         public State(@Nonnull CQuery query, boolean reason) {
             this.parentQuery = query;
             this.reason = reason;
             this.idx = getIndex();
-            this.matchBuilder = SemanticCQueryMatch.builder(query);
             int count = query.size();
             HashSet<Term> sos = Sets.newHashSetWithExpectedSize(count * 2);
             for (Triple t : query) {
@@ -330,8 +329,14 @@ public class MoleculeMatcher implements SemanticDescription {
                                       .arrayListValues().build();
         }
 
+        public @Nonnull SemanticCQueryMatch.Builder matchBuilder() {
+            if (matchBuilder == null)
+                matchBuilder = SemanticCQueryMatch.builder(parentQuery);
+            return matchBuilder;
+        }
+
         public @Nonnull SemanticCQueryMatch build() {
-            return matchBuilder.build();
+            return matchBuilder == null ? SemanticCQueryMatch.EMPTY : matchBuilder.build();
         }
 
         protected boolean ignoreTriple(@Nonnull Triple t) {
@@ -342,13 +347,13 @@ public class MoleculeMatcher implements SemanticDescription {
             for (Triple t : parentQuery) {
                 if (ignoreTriple(t)) continue;
                 if (t.getPredicate().isVar()) {
-                    matchBuilder.addTriple(t).addAlternative(t, t);
+                    matchBuilder().addTriple(t).addAlternative(t, t);
                 } else {
                     Iterator<Link> it = idx.streamNE(t.getPredicate(), reason).iterator();
                     if (it.hasNext())
-                        matchBuilder.addTriple(t);
+                        matchBuilder().addTriple(t);
                     while (it.hasNext())
-                        matchBuilder.addAlternative(t, t.withPredicate(it.next().p));
+                        matchBuilder().addAlternative(t, t.withPredicate(it.next().p));
                 }
             }
             return this;
@@ -663,7 +668,7 @@ public class MoleculeMatcher implements SemanticDescription {
             query = subQuery.build();
             if (query.isEmpty())
                 return; // builder rejected the exclusive group during build
-            matchBuilder.addExclusiveGroup(query);
+            SemanticCQueryMatch.Builder matchBuilder = matchBuilder().addExclusiveGroup(query);
             for (List<Term> ps : Lists.cartesianProduct(predicatesList)) {
                 EGQueryBuilder b = createEGQueryBuilder(query, subQuery);
                 assert ps.size() == query.size();

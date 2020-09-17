@@ -8,6 +8,7 @@ import org.testng.annotations.Test;
 
 import java.util.List;
 
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -18,12 +19,14 @@ public class CQueryMatchTest implements TestContext {
 
     @Test
     public void testEmpty() {
-        CQueryMatch m = new CQueryMatch(CQuery.EMPTY);
+        CQueryMatch m = new CQueryMatch();
         assertTrue(m.isEmpty());
         assertEquals(m.getAllRelevant(), emptyList());
         assertEquals(m.getKnownExclusiveGroups(), emptyList());
         assertEquals(m.getNonExclusiveRelevant(), emptyList());
-        assertEquals(m.getIrrelevant(), emptyList());
+        assertEquals(m.getIrrelevant(CQuery.EMPTY), emptyList());
+        assertEquals(m.getIrrelevant(createQuery(Alice, knows, x)),
+                     singletonList(new Triple(Alice, knows, x)));
         assertEquals(Splitter.on('\n').splitToList(m.toString()).size(), 1);
     }
 
@@ -65,7 +68,7 @@ public class CQueryMatchTest implements TestContext {
                 .addTriple(new Triple(x, knows, Bob)).build();
         assertFalse(m.isEmpty());
         assertEquals(m.getAllRelevant(), query.subList(0, 3));
-        assertEquals(m.getIrrelevant(), query.subList(3, 4));
+        assertEquals(m.getIrrelevant(CQuery.from(query)), query.subList(3, 4));
         assertEquals(m.getNonExclusiveRelevant(), query.subList(2, 3));
         assertEquals(m.getKnownExclusiveGroups(), singletonList(query.subList(0, 2)));
     }

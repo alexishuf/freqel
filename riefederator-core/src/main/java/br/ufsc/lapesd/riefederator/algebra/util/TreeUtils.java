@@ -272,9 +272,9 @@ public class TreeUtils {
         node = flattenMultiQuery(node);
         if (!(node instanceof UnionOp)) return node;
 
-        ListMultimap<CQuery, EndpointQueryOp> mm;
-        mm = MultimapBuilder.hashKeys().arrayListValues().build();
         List<Op> children = node.getChildren();
+        ListMultimap<CQuery, EndpointQueryOp> mm;
+        mm = MultimapBuilder.hashKeys().arrayListValues(children.size()).build();
         for (Op child : children) {
             if (child instanceof EndpointQueryOp)
                 mm.put(((EndpointQueryOp) child).getQuery(), (EndpointQueryOp) child);

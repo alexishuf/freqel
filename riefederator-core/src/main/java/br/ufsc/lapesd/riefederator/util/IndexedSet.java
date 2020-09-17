@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.util;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
@@ -24,15 +25,13 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     private static final @Nonnull IndexedSet<?> EMPTY
             = new IndexedSet<>(Collections.emptyList(), ImmutableMap.of());
 
-    protected static @Nonnull <U> ImmutableMap<U, Integer>
+    protected static @Nonnull <U> Map<U, Integer>
     createIndexMap(@Nonnull Collection<U> list) {
-        ImmutableMap.Builder<U, Integer> b;
-        //noinspection UnstableApiUsage
-        b = ImmutableMap.builderWithExpectedSize(list.size());
+        HashMap<U, Integer> map = Maps.newHashMapWithExpectedSize(list.size());
         int idx = 0;
         for (U obj : list)
-            b.put(obj, idx++);
-        return b.build();
+            map.put(obj, idx++);
+        return map;
     }
 
     public IndexedSet(@Nonnull Collection<T> collection) {
@@ -76,7 +75,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
             return empty();
         if (IndexedSet.class.desiredAssertionStatus())
             checkArgument(new HashSet<>(collection).size() == collection.size());
-        ImmutableMap<U, Integer> indexMap = createIndexMap(collection);
+        Map<U, Integer> indexMap = createIndexMap(collection);
         if (collection instanceof List)
             return new IndexedSet<>((List<U>)collection, indexMap);
         else

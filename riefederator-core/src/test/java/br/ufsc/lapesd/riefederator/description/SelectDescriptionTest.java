@@ -145,7 +145,6 @@ public class SelectDescriptionTest implements TestContext {
         SelectDescription description = new SelectDescription(rdf1, fetchClasses);
 
         CQueryMatch match = description.match(CQuery.from(query));
-        assertEquals(match.getQuery(), CQuery.from(query));
         assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), new HashSet<>(expected));
         assertEquals(match.getKnownExclusiveGroups(), Collections.emptySet());
     }

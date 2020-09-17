@@ -278,20 +278,20 @@ public class SelectDescription implements Description {
 
     @Override
     public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
-        CQueryMatch.Builder b = CQueryMatch.builder(query);
+        CQueryMatch.Builder b = null;
         if (!initSync())
-            return b.build(); //return empty result if timed out or error
+            return CQueryMatch.EMPTY; //return empty result if timed out or error
         Set<Term> predicates = requireNonNull(this.predicates);
         for (Triple triple : query) {
             Term p = triple.getPredicate();
             Term o = triple.getObject();
             if (classes != null && p.equals(TYPE) && o.isGround()) {
                 if (classes.contains(o))
-                    b.addTriple(triple);
+                    (b == null ? (b = CQueryMatch.builder(query)) : b).addTriple(triple);
             } else if (p.isVar() || predicates.contains(p)) {
-                b.addTriple(triple);
+                (b == null ? (b = CQueryMatch.builder(query)) : b).addTriple(triple);
             }
         }
-        return b.build();
+        return b == null ? CQueryMatch.EMPTY : b.build();
     }
 }

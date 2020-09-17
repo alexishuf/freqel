@@ -93,12 +93,13 @@ public class AskDescription implements Description {
 
     @Override
     public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
-        CQueryMatch.Builder b = CQueryMatch.builder(query);
+        CQueryMatch.Builder b = null;
         for (Triple triple : query) {
-            if (match(triple))
-                b.addTriple(triple);
+            if (match(triple)) {
+                (b == null ? b = CQueryMatch.builder(query) : b).addTriple(triple);
+            }
         }
-        return b.build();
+        return b == null ? CQueryMatch.EMPTY : b.build();
     }
 
     @Override

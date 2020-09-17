@@ -617,13 +617,12 @@ public class MoleculeMatcherTest implements TestContext {
         }
 
         CQueryMatch match = description.match(query);
-        assertEquals(match.getQuery(), query);
 
         // compare relevant & irrelevant triple patterns
         assertEquals(newHashSet(match.getAllRelevant()), concat(nonExclusive.stream(),
                 exclusiveGroupsAsTriples.stream().flatMap(Collection::stream)).collect(toSet()));
         HashSet<Triple> irrelevant = newHashSet(match.getAllRelevant());
-        irrelevant.retainAll(match.getIrrelevant());
+        irrelevant.retainAll(match.getIrrelevant(query));
         assertEquals(irrelevant, emptySet());
 
         // compare exclusive groups. Ignore ordering
@@ -673,13 +672,12 @@ public class MoleculeMatcherTest implements TestContext {
                                            @Nonnull Collection<Triple> nonExclusive) {
         CQuery query = CQuery.from(queryAsList);
         SemanticCQueryMatch match = description.semanticMatch(query);
-        assertEquals(match.getQuery(), query);
 
         // compare relevant & irrelevant triple patterns
         assertEquals(newHashSet(match.getAllRelevant()), concat(nonExclusive.stream(),
                 exclusiveGroups.stream().flatMap(Collection::stream)).collect(toSet()));
         HashSet<Triple> irrelevant = newHashSet(match.getAllRelevant());
-        irrelevant.retainAll(match.getIrrelevant());
+        irrelevant.retainAll(match.getIrrelevant(query));
         assertEquals(irrelevant, emptySet());
 
         // compare exclusive groups. Ignore ordering

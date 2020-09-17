@@ -47,13 +47,15 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
 
     @Override
     protected @Nonnull List<ProtoQueryOp> decomposeIntoProtoQNs(@Nonnull CQuery query) {
-        List<ProtoQueryOp> qns = new ArrayList<>();
+        int nSources = sources.size();
+        List<ProtoQueryOp> qns = new ArrayList<>(nSources *4);
         // save known EGs and  map triple -> endpoint
-        Multimap<Triple, TPEndpoint> ne2ep = HashMultimap.create();
-        Map<ImmutablePair<Triple, TPEndpoint>, Set<CQuery>> ne2alts = new HashMap<>();
+        Multimap<Triple, TPEndpoint> ne2ep = HashMultimap.create(query.size(), nSources/2 + 1);
+        Map<ImmutablePair<Triple, TPEndpoint>, Set<CQuery>> ne2alts
+                = new HashMap<>(query.size()* nSources);
 
         try (TimeSampler ignored = Metrics.SELECTION_MS.createThreadSampler(performance)) {
-            (sources.size() > 8 ? sources.parallelStream() : sources.stream())
+            (nSources > 8 ? sources.parallelStream() : sources.stream())
                     .map(src -> match(src, query))
                     .forEachOrdered(p -> {
                         CQueryMatch m = p.right;
