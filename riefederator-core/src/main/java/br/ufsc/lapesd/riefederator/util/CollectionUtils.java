@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import com.google.common.collect.Sets;
 import org.apache.commons.collections4.set.UnmodifiableSet;
 
 import javax.annotation.Nonnull;
@@ -30,18 +31,39 @@ public class CollectionUtils {
 
     public static @Nonnull <T, I>
     Set<T> union(@Nullable Collection<I> input,
-                 @Nonnull Function<I, ? extends Collection<T>> getter) {
-        Set<T> set = new HashSet<>();
+                 @Nonnull Function<I, ? extends Collection<T>> getter, int capacity) {
+        Set<T> union = new HashSet<>(capacity);
         if (input != null) {
-            for (I i : input) set.addAll(getter.apply(i));
+            for (I i : input)
+                union.addAll(getter.apply(i));
         }
-        return set;
+        return union;
+    }
+
+    public static @Nonnull <T, I>
+    Set<T> union(@Nullable Collection<I> input,
+                 @Nonnull Function<I, ? extends Collection<T>> getter) {
+        Set<T> union = null;
+        if (input != null) {
+            for (I i : input) {
+                Collection<T> values = getter.apply(i);
+                if (!values.isEmpty()) {
+                    if (union == null)
+                        union = new HashSet<>(values.size() + 10);
+                    union.addAll(values);
+                }
+            }
+        }
+        return union == null ? emptySet() : union;
     }
 
     public static @Nonnull <T> Set<T> union(@Nullable Collection<T> a, @Nullable Collection<T> b) {
         a = a == null ? emptySet() : a;
         b = b == null ? emptySet() : b;
-        HashSet<T> set = new HashSet<>(a.size() + b.size());
+        int expected = a.size() + b.size();
+        if (expected == 0)
+            return emptySet();
+        Set<T> set = Sets.newHashSetWithExpectedSize(expected);
         set.addAll(a);
         set.addAll(b);
         return set;
@@ -49,10 +71,13 @@ public class CollectionUtils {
 
     public static @Nonnull <T> Set<T> intersect(@Nullable Collection<T> left,
                                                 @Nullable Collection<T> right) {
-        left  = left  == null ? emptySet() :  left;
-        right = right == null ? emptySet() : right;
-        Set<T> result = new HashSet<>(left.size() < right.size() ? left : right);
-        result.retainAll(left.size() < right.size() ? right : left);
+        if (left == null || right == null)
+            return emptySet();
+        final int ls = left.size(), rs = right.size();
+        if (ls == 0 || rs == 0)
+            return emptySet();
+        Set<T> result = new HashSet<>(ls < rs ? left : right);
+        result.retainAll(ls < rs ? right : left);
         return result;
     }
 

@@ -4,11 +4,7 @@ import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
-import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.SetMultimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,18 +20,14 @@ import static java.util.stream.Collectors.toSet;
 public class FilterAssigner {
     private static final Logger logger = LoggerFactory.getLogger(FilterAssigner.class);
 
-    private final @Nonnull Set<SPARQLFilter> filters;
-    private final @Nonnull SetMultimap<Term, SPARQLFilter> term2filter;
+    private final @Nonnull Collection<SPARQLFilter> filters;
 
     public FilterAssigner(@Nonnull Collection<SPARQLFilter> filters) {
-        this.term2filter = HashMultimap.create();
-        this.filters = filters instanceof Set ? (Set<SPARQLFilter>)filters : new HashSet<>(filters);
-        for (SPARQLFilter filter : filters)
-            filter.getVars().forEach(t -> term2filter.put(t, filter));
+        this.filters = filters;
     }
 
     public boolean isEmpty() {
-        return term2filter.isEmpty();
+        return filters.isEmpty();
     }
 
     /**
@@ -50,30 +42,24 @@ public class FilterAssigner {
         List<Op> result = new ArrayList<>(list.size());
         for (ProtoQueryOp proto : list) {
             Op leafNode = proto.toOp(); //QueryNode or MultiQueryNode
-            Set<Var> vars = proto.getMatchedQuery().attr().allVars();
-            vars.stream()
-                    .flatMap(v -> term2filter.get(v).stream())
-                    .distinct().filter(a -> vars.containsAll(a.getVars()))
-                    .forEach(f -> addFilter(leafNode, f));
+            Set<String> vars = leafNode.getAllVars();
+            for (SPARQLFilter filter : filters) {
+                if (vars.containsAll(filter.getVarNames())) {
+                    if (leafNode instanceof UnionOp) {
+                        for (Op child : leafNode.getChildren()) {
+                            assert child instanceof EndpointQueryOp
+                                    : "Expected UnionOp of EndpointQueryOp";
+                            child.modifiers().add(filter);
+                        }
+                    } else {
+                        assert leafNode instanceof EndpointQueryOp : "Unexpected Op class!";
+                        leafNode.modifiers().add(filter);
+                    }
+                }
+            }
             result.add(leafNode);
         }
         return result;
-    }
-
-    private static void addFilter(@Nonnull Op node, @Nonnull SPARQLFilter filter) {
-        if (node instanceof EndpointQueryOp) {
-            node.modifiers().add(filter);
-        } else if (node instanceof UnionOp) {
-            for (Op child : node.getChildren()) {
-                assert child instanceof EndpointQueryOp : "Expected MultiNode of QueryNodes";
-                assert canFilter(child, filter)
-                        : "Filter has variables which do not occur in the alternative node";
-                child.modifiers().add(filter);
-            }
-        } else {
-            assert false : "Only QueryNodes and MultiQueryNodes should be here!";
-            node.modifiers().add(filter);
-        }
     }
 
     private static boolean canFilter(@Nonnull Op node, @Nonnull SPARQLFilter filter) {
@@ -105,27 +91,27 @@ public class FilterAssigner {
     }
 
     public boolean placeBottommost(@Nonnull Op node,
-                                   @Nonnull SPARQLFilter annotation) {
-        if (!canFilter(node, annotation))
+                                   @Nonnull SPARQLFilter filter) {
+        if (!canFilter(node, filter))
             return false; // do not recurse into this subtree
-        if (node.modifiers().filters().contains(annotation))
+        if (node.modifiers().filters().contains(filter))
             return true; // already added
         if (node instanceof UnionOp) {
             int count = 0;
             for (Op child : node.getChildren())
-                count += placeBottommost(child, annotation) ? 1 : 0;
+                count += placeBottommost(child, filter) ? 1 : 0;
             assert count > 0
-                    : "MultiQueryNode as whole accepts "+annotation+" but no child accepts!";
+                    : "UnionOp as whole accepts "+filter+" but no child accepts!";
             assert count == node.getChildren().size()
-                    : "Not all children of a MultiQueryNode could receive "+annotation;
+                    : "Not all children of a UnionOp could receive "+filter;
         } else if (node instanceof EndpointQueryOp) {
-            node.modifiers().add(annotation);
+            node.modifiers().add(filter);
         } else {
             boolean done = false;
             for (Op child : node.getChildren())
-                done |= placeBottommost(child, annotation);
+                done |= placeBottommost(child, filter);
             if (!done)
-                node.modifiers().add(annotation);
+                node.modifiers().add(filter);
         }
         return true;
     }

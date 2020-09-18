@@ -19,6 +19,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.SetMultimap;
 
 import javax.annotation.Nonnull;
+import java.lang.ref.SoftReference;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -42,8 +43,8 @@ public class CQueryCache {
     private ImmutableIndexedSubset<String> inputVarNames, reqInputVarNames, optInputVarNames;
 
     private final AtomicInteger indexTriplesState = new AtomicInteger(0);
-    private List<ImmutableIndexedSubset<Triple>> s2triple, p2triple, o2triple;
-    private SetMultimap<Term, Atom> t2atom;
+    private SoftReference<List<ImmutableIndexedSubset<Triple>>> s2triple, p2triple, o2triple;
+    private SoftReference<SetMultimap<Term, Atom>> t2atom;
     private IndexedSet<Triple> matchedTriples;
 
     private Boolean joinConnected, ask;
@@ -389,12 +390,12 @@ public class CQueryCache {
 
     private static final @Nonnull BitSet EMPTY_BITSET = new BitSet();
 
-    private static @Nonnull <T> List<ImmutableIndexedSubset<T>>
+    private static @Nonnull <T> SoftReference<List<ImmutableIndexedSubset<T>>>
     toImmutableIndexedSubset(@Nonnull IndexedSet<T> parent, @Nonnull BitSet[] sets) {
         List<ImmutableIndexedSubset<T>> list = new ArrayList<>(sets.length);
         for (BitSet set : sets)
             list.add(new ImmutableIndexedSubset<>(parent, set == null ? EMPTY_BITSET : set));
-        return list;
+        return new SoftReference<>(list);
     }
 
     public @Nonnull ImmutableIndexedSubset<Triple> triplesWithTerm(@Nonnull Term term) {
@@ -402,11 +403,14 @@ public class CQueryCache {
         int idx = tripleTerms().indexOf(term);
         if (idx < 0)
             return triples.immutableEmptySubset();
-        indexTriples();
+        List<ImmutableIndexedSubset<Triple>> s2t, p2t, o2t;
+        while ((s2t = s2triple == null ? null : s2triple.get()) == null) indexTriples();
+        while ((p2t = p2triple == null ? null : p2triple.get()) == null) indexTriples();
+        while ((o2t = o2triple == null ? null : o2triple.get()) == null) indexTriples();
         BitSet set = new BitSet();
-        set.or(s2triple.get(idx).getBitSet());
-        set.or(p2triple.get(idx).getBitSet());
-        set.or(o2triple.get(idx).getBitSet());
+        set.or(s2t.get(idx).getBitSet());
+        set.or(p2t.get(idx).getBitSet());
+        set.or(o2t.get(idx).getBitSet());
         return new ImmutableIndexedSubset<>(triples, set);
     }
 
@@ -415,30 +419,34 @@ public class CQueryCache {
         int termIdx = tripleTerms().indexOf(term);
         if (termIdx < 0)
             return getSet().immutableEmptySubset();
-        indexTriples();
-        List<ImmutableIndexedSubset<Triple>> list;
-        switch (position) {
-            case SUBJ:
-                list = s2triple; break;
-            case PRED:
-                list = p2triple; break;
-            case OBJ:
-                list = o2triple; break;
-            default:
-                throw new IllegalArgumentException("Bad position="+position);
+        List<ImmutableIndexedSubset<Triple>> list = null;
+        while (list == null) {
+            indexTriples();
+            switch (position) {
+                case SUBJ:
+                    list = s2triple == null ? null : s2triple.get(); break;
+                case PRED:
+                    list = p2triple == null ? null : p2triple.get(); break;
+                case OBJ:
+                    list = o2triple == null ? null : o2triple.get(); break;
+                default:
+                    throw new IllegalArgumentException("Bad position="+position);
+            }
         }
         return list.get(termIdx);
     }
 
     public @Nonnull SetMultimap<Term, Atom> termAtoms() {
-        if (t2atom != null)
-            return t2atom;
-        HashMultimap<Term, Atom> map = HashMultimap.create(tripleTerms().size(), 2);
+        SetMultimap<Term, Atom> strong = t2atom == null ? null : t2atom.get();
+        if (strong != null)
+            return strong;
+        SetMultimap<Term, Atom> map = HashMultimap.create(tripleTerms().size(), 2);
         for (Map.Entry<Term, TermAnnotation> e : d.termAnnotations.entries()) {
             if (e.getValue() instanceof AtomAnnotation)
                 map.put(e.getKey(), ((AtomAnnotation)e.getValue()).getAtom());
         }
-        return t2atom = map;
+        t2atom = new SoftReference<>(map);
+        return map;
     }
 
     public @Nonnull Set<Atom> termAtoms(@Nonnull Term term) {

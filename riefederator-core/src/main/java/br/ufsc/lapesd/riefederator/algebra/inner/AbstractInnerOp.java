@@ -17,7 +17,7 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 import static com.google.common.base.Preconditions.*;
-import static java.util.stream.Collectors.toSet;
+import static java.util.Collections.emptySet;
 
 public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     protected @Nullable Set<String> allVarsCache, resultVarsCache, reqInputsCache, optInputsCache;
@@ -67,8 +67,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         if (allVarsCache == null) {
             cacheHit = true;
             assert children != null;
-            allVarsCache = children.stream().flatMap(n -> n.getPublicVars().stream())
-                                            .collect(toSet());
+            allVarsCache = CollectionUtils.union(children, Op::getPublicVars, 16);
         }
         return allVarsCache;
     }
@@ -82,7 +81,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
             if (projection != null)
                 resultVarsCache = projection.getVarNames();
             else
-                resultVarsCache = CollectionUtils.union(children, Op::getResultVars);
+                resultVarsCache = CollectionUtils.union(children, Op::getResultVars, 16);
         }
         return resultVarsCache;
     }
@@ -104,9 +103,18 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
             cacheHit = true;
             assert children != null;
             Set<String> required = getRequiredInputVars();
-            optInputsCache = children.stream().flatMap(n -> n.getOptionalInputVars().stream())
-                                              .filter(n -> !required.contains(n))
-                                              .collect(toSet());
+            Set<String> set = null;
+            for (Op child : children) {
+                Set<String> candidates = child.getOptionalInputVars();
+                for (String var : candidates) {
+                    if (!required.contains(var)) {
+                        if (set == null)
+                            set = new HashSet<>(candidates.size()+10);
+                        set.add(var);
+                    }
+                }
+            }
+            optInputsCache = set == null ? emptySet() : set;
             assert optInputsCache.isEmpty() || hasInputs();
         }
         return optInputsCache;
@@ -117,7 +125,7 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         if (matchedTriples == null) {
             cacheHit = true;
             assert children != null;
-            matchedTriples = CollectionUtils.union(children, Op::getMatchedTriples);
+            matchedTriples = CollectionUtils.union(children, Op::getMatchedTriples, 16);
         }
         return matchedTriples;
     }
