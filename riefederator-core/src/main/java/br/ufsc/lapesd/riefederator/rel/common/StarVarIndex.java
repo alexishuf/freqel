@@ -295,7 +295,7 @@ public class StarVarIndex {
             if (projection != null) {
                 sparqlVars = new HashSet<>(projection.getVarNames());
                 for (IndexedSubset<SPARQLFilter> filters : star2pendingFilters) {
-                    for (SPARQLFilter f : filters) sparqlVars.addAll(f.getVarTermNames());
+                    for (SPARQLFilter f : filters) sparqlVars.addAll(f.getVarNames());
                 }
             } else {
                 IndexedSet<String> allVars = stars.get(0).getVarNames().getParent();
@@ -378,7 +378,7 @@ public class StarVarIndex {
             for (int i = 0, size = stars.size(); i < size; i++) {
                 int index = i;
                 Set<String> requiredByFilters = star2pendingFilters.get(i).stream()
-                        .flatMap(f -> f.getVarTermNames().stream()
+                        .flatMap(f -> f.getVarNames().stream()
                                 .flatMap(v -> sparqlVar2Var.get(v).stream()))
                         .collect(toSet());
                 star2vars.get(i).removeIf(v -> {

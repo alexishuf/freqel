@@ -168,7 +168,7 @@ public class CQueryContextTest implements TestContext {
                 x, p2, u, SPARQLFilter.build("?u > 23"),
                 x, p3, v, SPARQLFilter.build("?v < 23"));
         assertEquals(query.getModifiers(),
-                     asList(SPARQLFilter.build("?u > 23"),
-                            SPARQLFilter.build("?v < 23")));
+                     newHashSet(SPARQLFilter.build("?u > 23"),
+                                SPARQLFilter.build("?v < 23")));
     }
 }

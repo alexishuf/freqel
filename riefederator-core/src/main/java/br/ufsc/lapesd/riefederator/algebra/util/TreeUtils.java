@@ -158,7 +158,7 @@ public class TreeUtils {
         Set<String> old = oldProjection.getVarNames();
         Set<String> required = null;
         for (SPARQLFilter filter : filters) {
-            for (String name : filter.getVarTermNames()) {
+            for (String name : filter.getVarNames()) {
                 if (!old.contains(name)) {
                     if (required == null) {
                         required = Sets.newHashSetWithExpectedSize(old.size() * 2);

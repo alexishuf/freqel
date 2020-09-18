@@ -235,7 +235,7 @@ public class CQueryCache {
         list.addAll(tripleVars);
         map.putAll(tripleVars.getPositionsMap());
         for (SPARQLFilter filter : filters) {
-            for (Var var : filter.getVarTerms()) {
+            for (Var var : filter.getVars()) {
                 if (map.putIfAbsent(var, list.size()) == null)
                     list.add(var);
             }

@@ -11,13 +11,11 @@ import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityComparator;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.jena.ExprUtils;
-import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.RefSet;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableBiMap;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.ExprFunction;
@@ -50,7 +48,7 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             return op;
         State state = new State(op.getChildren(), shared);
         for (SPARQLFilter filter : filters)
-            state.addComponents(filter);
+            state.addComponents(filter.getExpr());
         if (state.hasJoinComponents) {
             op.detachChildren();
             Op root = state.rewriteCartesian(op);
@@ -67,7 +65,7 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             return op;
         State state = new State(op, shared);
         for (SPARQLFilter filter : filters)
-            state.addComponents(filter);
+            state.addComponents(filter.getExpr());
         if (state.hasJoinComponents)
             state.rewriteJoin(op);
         return op;
@@ -85,11 +83,11 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             Set<String> all = op.getAllVars();
             Set<String> ins = op.getInputVars();
             List<SPARQLFilter> bad = op.modifiers().filters().stream()
-                    .filter(f -> !all.containsAll(f.getVarTermNames())).collect(toList());
+                    .filter(f -> !all.containsAll(f.getVarNames())).collect(toList());
             if (!bad.isEmpty())
                 return false;
             bad = op.modifiers().filters().stream()
-                    .filter(f -> ins.containsAll(f.getVarTermNames())).collect(toList());
+                    .filter(f -> ins.containsAll(f.getVarNames())).collect(toList());
             if (!bad.isEmpty())
                 return false;
         }
@@ -131,10 +129,6 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             return components;
         }
 
-        public void addComponents(@Nonnull SPARQLFilter filter) {
-            addComponents(filter, filter.getExpr());
-        }
-
         public @Nonnull Op rewriteCartesian(@Nonnull CartesianOp parent) {
             BitSet node2component = assignFilters();
             assert !node2component.isEmpty();
@@ -164,7 +158,7 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
         }
 
         private @Nonnull Op pushDownFilter(@Nonnull SPARQLFilter filter, @Nonnull Op op) {
-            Set<String> vars = intersect(op.getAllVars(), filter.getVarTermNames());
+            Set<String> vars = intersect(op.getAllVars(), filter.getVarNames());
             assert !vars.isEmpty();
             Op replacement = pushDownFilter(filter, vars, op);
             if (replacement == null) {
@@ -276,7 +270,8 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             return nodesFilters;
         }
 
-        private void addComponents(@Nonnull SPARQLFilter filter, @Nonnull Expr expr) {
+        @VisibleForTesting
+        void addComponents(@Nonnull Expr expr) {
             if (expr instanceof ExprFunction) {
                 ExprFunction function = (ExprFunction) expr;
                 String name = function.getOpName();
@@ -284,19 +279,14 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
 
                 if (name.equals("&&")) {
                     for (int i = 1; i <= function.numArgs(); i++)
-                        addComponents(filter, function.getArg(i));
+                        addComponents(function.getArg(i));
                     return;
                 }
             }
-            Set<Var> exprVars = expr.getVarsMentioned();
-            ImmutableBiMap<String, Term> outer = filter.getVar2Term();
-            SPARQLFilter.Builder b = SPARQLFilter.builder(expr);
-            for (Var v : exprVars)
-                b.map(v.getVarName(), outer.get(v.getVarName()));
-            addComponent(b.build());
+            addComponent(SPARQLFilter.build(expr));
         }
 
-        private void addComponent(SPARQLFilter filter) {
+        private void addComponent(@Nonnull SPARQLFilter filter) {
             assert components.stream().noneMatch(filter::equals);
             components.add(filter);
             component2node.add(null);

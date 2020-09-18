@@ -86,7 +86,7 @@ public class DefaultFilterJoinPlannerTest implements TestContext {
         List<Op> nodes = asList(new EmptyOp(singleton("x")), new EmptyOp(singleton("y")));
         DefaultFilterJoinPlanner.State state = def.createState(nodes, EmptyRefSet.emptySet());
         for (String filterString : in)
-            state.addComponents(SPARQLFilter.build(filterString));
+            state.addComponents(SPARQLFilter.build(filterString).getExpr());
 
         List<SPARQLFilter> actual = state.getComponents();
         HashSet<SPARQLFilter> set = new HashSet<>(actual);

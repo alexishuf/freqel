@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.riefederator.rel.common;
 
 import br.ufsc.lapesd.riefederator.jena.ExprUtils;
-import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.jena.model.term.node.JenaVarNode;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
+import org.apache.jena.graph.Node_Variable;
 import org.apache.jena.sparql.expr.*;
 
 import javax.annotation.Nonnull;
@@ -88,15 +88,13 @@ public class FilterOperatorRewriter {
         }
 
         public boolean visitVar(@Nonnull Expr expr) {
-            Column column = getColumn(expr);
+            Column column = getColumn((ExprVar) expr);
             b.append(column);
             return true;
         }
 
-        protected @Nonnull Column getColumn(@Nonnull Expr expr) {
-            Term term = filter.getVar2Term().get(expr.getVarName());
-            assert term != null;
-            Var var = term.asVar();
+        protected @Nonnull Column getColumn(@Nonnull ExprVar expr) {
+            JenaVarNode var = new JenaVarNode((Node_Variable) expr.getAsNode());
             Column column = ctx.getDirectMapped(var, null);
             assert  column != null;
             return column;

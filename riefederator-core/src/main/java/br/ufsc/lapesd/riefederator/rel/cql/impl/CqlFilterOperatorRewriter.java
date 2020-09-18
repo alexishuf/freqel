@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.rel.common.RelationalTermWriter;
 import br.ufsc.lapesd.riefederator.rel.common.SelectorFactory;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.ExprFunction;
+import org.apache.jena.sparql.expr.ExprVar;
 import org.apache.jena.sparql.expr.NodeValue;
 
 import javax.annotation.Nonnull;
@@ -65,7 +66,7 @@ public class CqlFilterOperatorRewriter extends FilterOperatorRewriter {
         }
 
         @Override public boolean visitVar(@Nonnull Expr expr) {
-            String columnName = getColumn(expr).getColumn();
+            String columnName = getColumn((ExprVar) expr).getColumn();
             b.append(columnName);
             columns.add(columnName);
             return true;

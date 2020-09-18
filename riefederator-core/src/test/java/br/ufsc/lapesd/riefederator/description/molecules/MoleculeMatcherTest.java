@@ -98,9 +98,9 @@ public class MoleculeMatcherTest implements TestContext {
     public static @Nonnull Molecule person2oe1f = Molecule.builder("Person2oe1f")
             .out(name, new Atom("name"))
             .out(age, new Atom("age"))
-            .filter(AtomFilter.builder("?ac >= ?in")
+            .filter(AtomFilter.builder(SPARQLFilter.build("?ac >= ?in"))
                     .map(AtomRole.INPUT.wrap("age"), "in")
-                    .map(AtomRole.OUTPUT.wrap("age"), "ac").buildFilter())
+                    .map(AtomRole.OUTPUT.wrap("age"), "ac").build())
             .exclusive().closed().build();
 
     public static @Nonnull Molecule person1i2oe1f = Molecule.builder("Person2oe1f")
@@ -110,9 +110,9 @@ public class MoleculeMatcherTest implements TestContext {
                             .exclusive().closed().buildAtom())
             .out(name, new Atom("name"))
             .out(age, new Atom("age"))
-            .filter(AtomFilter.builder("?ac >= ?in")
+            .filter(AtomFilter.builder(SPARQLFilter.build("?ac >= ?in"))
                     .map(AtomRole.INPUT.wrap("age"), "in")
-                    .map(AtomRole.OUTPUT.wrap("age"), "ac").buildFilter())
+                    .map(AtomRole.OUTPUT.wrap("age"), "ac").build())
             .exclusive().closed().build();
 
     /* ~~~ large molecule ~~~ */

@@ -59,10 +59,10 @@ public class MoleculeBuilderTest implements TestContext {
         Supplier<Molecule> supplier =
                 () -> Molecule.builder("core1").exclusive().closed().out(knows, b)
                         .startNewCore("core2").out(age, a1)
-                        .filter(AtomFilter.builder("$actual > $input")
+                        .filter(AtomFilter.builder(SPARQLFilter.build("$actual > $input"))
                                 .map(AtomRole.OUTPUT.wrap(a1), "actual")
                                 .map(AtomRole.INPUT.wrap(a1), "input")
-                                .buildFilter())
+                                .build())
                         .build();
         Molecule m = supplier.get();
         assertEquals(m.getCore().getName(), "core1");

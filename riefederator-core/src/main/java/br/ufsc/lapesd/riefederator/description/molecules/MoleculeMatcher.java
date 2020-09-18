@@ -580,10 +580,10 @@ public class MoleculeMatcher implements SemanticDescription {
 
             @CanIgnoreReturnValue
             public boolean tryAdd(@Nonnull SPARQLFilter filter) {
-                if (!allVars.containsAll(filter.getVarTerms()))
+                if (!allVars.containsAll(filter.getVars()))
                     return false;
                 Set<AtomFilter> candidates = null;
-                for (Var var : filter.getVarTerms()) {
+                for (Var var : filter.getVars()) {
                     Set<AtomFilter> set = term2atom.get(var).stream()
                             .flatMap(a -> molecule.getFiltersWithAtom(a).stream()).collect(toSet());
                     if (candidates == null) {

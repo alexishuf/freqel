@@ -348,7 +348,7 @@ public class QueryOpTest implements TestContext {
         assertEquals(bound.getQuery().getModifiers().size(), 1);
         Modifier modifier = bound.getQuery().getModifiers().iterator().next();
         assertTrue(modifier instanceof SPARQLFilter);
-        assertEquals(((SPARQLFilter)modifier).getVars(), singleton("y"));
+        assertEquals(((SPARQLFilter)modifier).getVarNames(), singleton("y"));
     }
 
     @Test(dataProvider = "factoryData")

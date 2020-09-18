@@ -129,10 +129,10 @@ public class SqlSelectorFactoryTest implements TestContext {
             assertNull(selector);
         } else {
             assertNotNull(selector);
-            assertEquals(selector.getSparqlVars(), filter.getVarTermNames());
-            assertEquals(new HashSet<>(selector.getTerms()), filter.getVarTerms());
+            assertEquals(selector.getSparqlVars(), filter.getVarNames());
+            assertEquals(new HashSet<>(selector.getTerms()), filter.getVars());
 
-            Set<Column> expectedColumns = filter.getVarTermNames().stream()
+            Set<Column> expectedColumns = filter.getVarNames().stream()
                     .map(n -> new Column("T", "c" + n)).collect(toSet());
             assertEquals(new HashSet<>(selector.getColumns()), expectedColumns);
             assertTrue(selector.hasCondition());

@@ -31,7 +31,7 @@ public class CqlSelectorFactory implements SelectorFactory {
     public @Nullable Selector create(@Nonnull Context context, @Nonnull SPARQLFilter filter) {
         List<Term> vars = new ArrayList<>();
         List<Column> columns = new ArrayList<>();
-        for (Var var : filter.getVarTerms()) {
+        for (Var var : filter.getVars()) {
             Column column = context.getDirectMapped(var, null);
             if (column == null) return null;
             vars.add(var);

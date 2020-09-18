@@ -718,8 +718,8 @@ public class MutableCQuery extends CQuery {
             Modifier modifier = it.next();
             if (modifier instanceof SPARQLFilter) {
                 SPARQLFilter filter = (SPARQLFilter) modifier;
-                boolean remove = strict ? !tripleVars.containsAll(filter.getVarTermNames())
-                                        : !tripleVars.containsAny(filter.getVarTermNames());
+                boolean remove = strict ? !tripleVars.containsAll(filter.getVarNames())
+                                        : !tripleVars.containsAny(filter.getVarNames());
                 if (remove) {
                     it.remove();
                     set.add(filter);
@@ -755,7 +755,7 @@ public class MutableCQuery extends CQuery {
         if (MutableCQuery.class.desiredAssertionStatus()) {
             IndexedSet<String> tripleVars = d.cache.tripleVarNames();
             return d.modifiers.filters().stream()
-                    .flatMap(f -> f.getVarTermNames().stream())
+                    .flatMap(f -> f.getVarNames().stream())
                     .filter(n -> !tripleVars.contains(n)).collect(toSet());
         }
         return null;

@@ -102,8 +102,8 @@ public class PushFiltersStepTest implements TestContext {
     @Test
     public void testApplyOnJoin() {
         SPARQLFilter eq, greater;
-        eq = SPARQLFilter.builder("iri(?x) != iri(?y)").map(x).map(y).build();
-        greater = SPARQLFilter.builder("?u > ?v").map(u).map(v).build();
+        eq = SPARQLFilter.build("iri(?x) != iri(?y)");
+        greater = SPARQLFilter.build("?u > ?v");
 
         List<EndpointQueryOp> leaves = asList(
                 new EndpointQueryOp(ep1, createQuery(Alice, knows, x)),

@@ -99,7 +99,7 @@ public class UnionOpExecutorTest implements TestContext {
         EndpointQueryOp qn2 = new EndpointQueryOp(rdf2, createQuery(x, age, y));
         Op node = UnionOp.builder().add(qn1).add(qn2).build();
         node.modifiers().add(Projection.of("x"));
-        node.modifiers().add(SPARQLFilter.builder("?y > 23").build());
+        node.modifiers().add(SPARQLFilter.build("?y > 23"));
 
         Results results = executor.execute(node);
         Set<Solution> actual = new HashSet<>();

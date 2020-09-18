@@ -87,7 +87,7 @@ public class JoinOp extends AbstractInnerOp {
             if (!modifiers().filters().isEmpty()) {
                 reqInputsCache = new HashSet<>(reqInputsCache);
                 Set<String> resultVars = getResultVars();
-                modifiers().filters().stream().flatMap(f -> f.getVarTermNames().stream())
+                modifiers().filters().stream().flatMap(f -> f.getVarNames().stream())
                            .filter(n -> !resultVars.contains(n)).forEach(reqInputsCache::add);
             }
         }

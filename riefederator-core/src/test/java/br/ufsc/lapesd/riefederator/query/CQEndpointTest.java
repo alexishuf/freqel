@@ -260,7 +260,7 @@ public class CQEndpointTest extends EndpointTestBase {
                             x, age,   u,
                             y, knows, Bob,
                             y, age,   v,
-                            SPARQLFilter.builder("?v > ?u").map(u).map(v).build());
+                            SPARQLFilter.build("?v > ?u"));
         queryResourceTest(f, query,
                           singleton(MapSolution.builder().put(x, Alice).put(y, Dave)
                                                          .put(u, lit(23))

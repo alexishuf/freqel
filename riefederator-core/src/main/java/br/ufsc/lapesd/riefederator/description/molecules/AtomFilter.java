@@ -1,7 +1,5 @@
 package br.ufsc.lapesd.riefederator.description.molecules;
 
-import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
@@ -15,7 +13,6 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
-import static br.ufsc.lapesd.riefederator.util.CollectionUtils.setMinus;
 import static java.util.stream.Collectors.toSet;
 
 @Immutable
@@ -50,90 +47,25 @@ public class AtomFilter implements MoleculeElement {
         return b.append('}').toString();
     }
 
-    public static @Nonnull WithBuilder with(@Nonnull SPARQLFilter filter) {
-        return new WithBuilder(filter);
-    }
-
-    public static @Nonnull Builder builder(@Nonnull String filter) {
+    public static @Nonnull Builder builder(@Nonnull SPARQLFilter filter) {
         return new Builder(filter);
     }
 
-    public static class WithBuilder {
+    public static class Builder {
         private final @Nonnull SPARQLFilter filter;
         private @Nullable String name;
         private int inputIndex = Integer.MIN_VALUE;
         private boolean required = false;
         private final @Nonnull ImmutableBiMap.Builder<AtomWithRole, String> atom2varBuilder;
 
-        public WithBuilder(@Nonnull SPARQLFilter filter) {
+        public Builder(@Nonnull SPARQLFilter filter) {
             this.filter = filter;
             this.atom2varBuilder = ImmutableBiMap.builder();
         }
 
-        public @Nonnull WithBuilder map(@Nonnull AtomWithRole atom, @Nonnull String var) {
-            if (!filter.getVars().contains(var))
-                throw new IllegalArgumentException("Var "+var+" not in filter "+filter);
-            atom2varBuilder.put(atom, var);
-            return this;
-        }
-        public @Nonnull WithBuilder map(@Nonnull Atom atom, @Nonnull AtomRole role,
-                                        @Nonnull String var) {
-            return map(role.wrap(atom), var);
-        }
-        public @Nonnull WithBuilder map(@Nonnull String atomName, @Nonnull AtomRole role,
-                                        @Nonnull String var) {
-            return map(role.wrap(atomName), var);
-        }
-
-        public @Nonnull WithBuilder name(@Nonnull String name) {
-            this.name = name;
-            return this;
-        }
-
-        public @CanIgnoreReturnValue @Nonnull WithBuilder withInputIndex(int inputIndex) {
-            this.inputIndex = inputIndex;
-            return this;
-        }
-
-        public @CanIgnoreReturnValue @Nonnull WithBuilder required(boolean value) {
-            this.required = value;
-            return this;
-        }
-
-        public @Nonnull AtomFilter build() {
-            ImmutableBiMap<AtomWithRole, String> atom2var = atom2varBuilder.build();
-            if (name == null) name = generateName(filter, atom2var);
-            return new AtomFilter(filter, atom2var, name, inputIndex, required);
-        }
-    }
-
-    public static class Builder extends SPARQLFilter.Builder {
-        private final @Nonnull ImmutableBiMap.Builder<AtomWithRole, String> atom2varBuilder;
-        private @Nullable String name;
-        private int inputIndex = Integer.MIN_VALUE;
-        boolean requiredFilter = false;
-
-        public Builder(@Nonnull String filter) {
-            super(filter);
-            this.atom2varBuilder = ImmutableBiMap.builder();
-        }
-
-        public @Nonnull Builder name(@Nonnull String name) {
-            this.name = name;
-            return this;
-        }
-
-        @Override
-        public @Nonnull Builder map(@Nonnull String var, @Nonnull Term term) {
-            super.map(var, term);
-            return this;
-        }
-        @Override
-        public @Nonnull Builder map(@Nonnull Var var) {
-            return map(var.getName(), var);
-        }
-
         public @Nonnull Builder map(@Nonnull AtomWithRole atom, @Nonnull String var) {
+            if (!filter.getVarNames().contains(var))
+                throw new IllegalArgumentException("Var "+var+" not in filter "+filter);
             atom2varBuilder.put(atom, var);
             return this;
         }
@@ -146,28 +78,25 @@ public class AtomFilter implements MoleculeElement {
             return map(role.wrap(atomName), var);
         }
 
-        public @Nonnull Builder withInputIndex(int inputIndex) {
+        public @Nonnull Builder name(@Nonnull String name) {
+            this.name = name;
+            return this;
+        }
+
+        public @CanIgnoreReturnValue @Nonnull Builder withInputIndex(int inputIndex) {
             this.inputIndex = inputIndex;
             return this;
         }
 
-        public @CanIgnoreReturnValue @Nonnull Builder requiredFilter(boolean value) {
-            this.requiredFilter = value;
+        public @CanIgnoreReturnValue @Nonnull Builder required(boolean value) {
+            this.required = value;
             return this;
         }
 
-        public @Nonnull AtomFilter buildFilter() {
-            SPARQLFilter filter = super.build();
+        public @Nonnull AtomFilter build() {
             ImmutableBiMap<AtomWithRole, String> atom2var = atom2varBuilder.build();
-            if (!filter.getVars().containsAll(atom2var.values())) {
-                throw new IllegalStateException("Some vars to which atoms map are not present " +
-                        "in the SPARQLFilter: " +
-                        setMinus(atom2var.keySet().stream().map(AtomWithRole::getAtomName)
-                                                           .collect(toSet()),
-                                filter.getVars()));
-            }
             if (name == null) name = generateName(filter, atom2var);
-            return new AtomFilter(filter, atom2var, name, inputIndex, requiredFilter);
+            return new AtomFilter(filter, atom2var, name, inputIndex, required);
         }
     }
 

@@ -82,7 +82,7 @@ public class FilterToBindJoinStep implements PlannerStep {
 
         private boolean validFilterPlacements(@Nonnull Op root) {
             return TreeUtils.streamPreOrder(root).allMatch(n -> n.modifiers().filters().stream()
-                    .allMatch(f -> n.getAllVars().containsAll(f.getVarTermNames())));
+                    .allMatch(f -> n.getAllVars().containsAll(f.getVarNames())));
         }
     }
 

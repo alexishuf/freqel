@@ -59,7 +59,7 @@ public class StarsHelper {
             IndexedSubset<SPARQLFilter> starFilters = filters.emptySubset();
             for (Iterator<SPARQLFilter> it = pendingFilters.iterator(); it.hasNext(); ) {
                 SPARQLFilter filter = it.next();
-                if (vars.containsAll(filter.getVarTermNames())) {
+                if (vars.containsAll(filter.getVarNames())) {
                     starFilters.add(filter);
                     it.remove();
                 }

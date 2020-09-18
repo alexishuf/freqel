@@ -85,7 +85,7 @@ public class CartesianIntroductionStep implements PlannerStep {
             if (m instanceof SPARQLFilter) {
                 SPARQLFilter f = (SPARQLFilter) m;
                 boolean pending = componentNodes.stream().anyMatch(n -> !n.modifiers().contains(f)
-                        && hasIntersect(n.getAllVars(), f.getVarTermNames()));
+                        && hasIntersect(n.getAllVars(), f.getVarNames()));
                 if (!pending)
                     continue; //if the filter is not pending anywhere, to not add to the root
             } else if (m instanceof ValuesModifier) {

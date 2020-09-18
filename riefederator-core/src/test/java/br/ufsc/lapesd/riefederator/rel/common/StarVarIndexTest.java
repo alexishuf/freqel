@@ -253,7 +253,7 @@ public class StarVarIndexTest implements TestContext {
         // check that all pending triples and filters have the columns required for execution
         for (int i = 0, size = index.getStarCount(); i < size; i++) {
             for (SPARQLFilter filter : index.getPendingFilters(i)) {
-                for (Var term : filter.getVarTerms()) {
+                for (Var term : filter.getVars()) {
                     for (Column column : index.getStar(i).getAllColumns(term)) {
                         assertTrue(index.getProjection(i).stream()
                                         .anyMatch(v3 -> index.getColumn(v3).equals(column)),

@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.*;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
@@ -210,11 +211,9 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
                     AtomFilter atomFilter = e.getValue();
                     Map<AtomWithRole, Term> atom2queryTerm = new HashMap<>();
                     atomFilter.getAtoms().forEach(a -> {
-                        String var = atomFilter.getVar(a);
-                        assert var != null;
-                        Term term = atomFilter.getSPARQLFilter().get(var);
-                        assert term != null;
-                        Term onSubsumed = result.getOnSubsumed(term);
+                        String varName = atomFilter.getVar(a);
+                        assert varName != null;
+                        Term onSubsumed = result.getOnSubsumed(new StdVar(varName));
                         atom2queryTerm.put(a, onSubsumed);
                     });
                     for (Map.Entry<AtomWithRole, Term> e2 : atom2queryTerm.entrySet()) {

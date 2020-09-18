@@ -88,7 +88,7 @@ public class PushFiltersStep implements PlannerStep {
      */
     private @Nullable Op pushFilter(@Nonnull SPARQLFilter filter,
                                     @Nonnull RefSet<Op> locked, @Nonnull Op op) {
-        if (!op.getAllVars().containsAll(filter.getVarTermNames()))
+        if (!op.getAllVars().containsAll(filter.getVarNames()))
             return null; //op cannot evaluate filter being pushed down
         boolean pushed = false;
         if (op instanceof InnerOp) {

@@ -212,17 +212,17 @@ public class ParameterPath {
         if (filterString == null) return null; // no value
 
         SPARQLFilter filter = SPARQLFilter.build(filterString);
-        if (!filter.getVars().equals(FILTER_VARS)) {
+        if (!filter.getVarNames().equals(FILTER_VARS)) {
             if (errorMsg != null) {
                 errorMsg.append("Filter has unexpected vars. Expected input and actual. Found: ")
-                        .append(filter.getVars());
+                        .append(filter.getVarNames());
             }
             return null;
         }
-        AtomFilter.WithBuilder builder = AtomFilter.with(filter);
-        if (filter.getVars().contains(inVar))
+        AtomFilter.Builder builder = AtomFilter.builder(filter);
+        if (filter.getVarNames().contains(inVar))
             builder.map(AtomRole.INPUT.wrap(atom), inVar);
-        if (filter.getVars().contains(acVar))
+        if (filter.getVarNames().contains(acVar))
             builder.map(AtomRole.OUTPUT.wrap(atom), acVar);
         if (inputIndex != MIN_VALUE)
             builder.withInputIndex(inputIndex);

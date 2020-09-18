@@ -85,9 +85,9 @@ public class APIMoleculeMatcherTest implements TestContext {
         molecule = Molecule.builder("Book")
                 .out(title, BOOK_TITLE)
                 .out(author, AUTHOR)
-                .filter(AtomFilter.builder("?ac >= ?in").name("authorAgeGEFilter")
+                .filter(AtomFilter.builder(SPARQLFilter.build("?ac >= ?in")).name("authorAgeGEFilter")
                         .map(AtomRole.OUTPUT.wrap(AUTHOR_AGE), "ac")
-                        .map(AtomRole. INPUT.wrap(AUTHOR_AGE), "in").buildFilter())
+                        .map(AtomRole. INPUT.wrap(AUTHOR_AGE), "in").build())
                 .exclusive()
                 .build();
         atom2var.clear();
@@ -98,12 +98,12 @@ public class APIMoleculeMatcherTest implements TestContext {
         molecule = Molecule.builder("Book")
                 .out(title, BOOK_TITLE)
                 .out(author, AUTHOR)
-                .filter(AtomFilter.builder("?ac >= ?in").name("authorAgeGEFilter")
+                .filter(AtomFilter.builder(SPARQLFilter.build("?ac >= ?in")).name("authorAgeGEFilter")
                         .map(AtomRole.OUTPUT.wrap(AUTHOR_AGE), "ac")
-                        .map(AtomRole. INPUT.wrap(AUTHOR_AGE), "in").buildFilter())
-                .filter(AtomFilter.builder("?ac <= ?in").name("authorAgeLEFilter")
+                        .map(AtomRole. INPUT.wrap(AUTHOR_AGE), "in").build())
+                .filter(AtomFilter.builder(SPARQLFilter.build("?ac <= ?in")).name("authorAgeLEFilter")
                         .map(AtomRole.OUTPUT.wrap(AUTHOR_AGE), "ac")
-                        .map(AtomRole. INPUT.wrap(AUTHOR_AGE), "in").buildFilter())
+                        .map(AtomRole. INPUT.wrap(AUTHOR_AGE), "in").build())
                 .exclusive()
                 .build();
         atom2var.clear();

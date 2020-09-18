@@ -31,7 +31,7 @@ public class FilterAssigner {
         this.term2filter = HashMultimap.create();
         this.filters = filters instanceof Set ? (Set<SPARQLFilter>)filters : new HashSet<>(filters);
         for (SPARQLFilter filter : filters)
-            filter.getVarTerms().forEach(t -> term2filter.put(t, filter));
+            filter.getVars().forEach(t -> term2filter.put(t, filter));
     }
 
     public boolean isEmpty() {
@@ -53,7 +53,7 @@ public class FilterAssigner {
             Set<Var> vars = proto.getMatchedQuery().attr().allVars();
             vars.stream()
                     .flatMap(v -> term2filter.get(v).stream())
-                    .distinct().filter(a -> vars.containsAll(a.getVarTerms()))
+                    .distinct().filter(a -> vars.containsAll(a.getVars()))
                     .forEach(f -> addFilter(leafNode, f));
             result.add(leafNode);
         }
@@ -77,15 +77,15 @@ public class FilterAssigner {
     }
 
     private static boolean canFilter(@Nonnull Op node, @Nonnull SPARQLFilter filter) {
-        return node.getAllVars().containsAll(filter.getVarTermNames());
+        return node.getAllVars().containsAll(filter.getVarNames());
     }
 
     public void placeBottommost(@Nonnull Op plan) {
         for (SPARQLFilter filter : filters) {
             if (!placeBottommost(plan, filter)) {
-                HashSet<String> missing = new HashSet<>(filter.getVarTermNames());
+                HashSet<String> missing = new HashSet<>(filter.getVarNames());
                 missing.removeAll(plan.getAllVars());
-                SPARQLFilter clean = filter.withVarTermsUnbound(missing);
+                SPARQLFilter clean = filter.withVarsEvaluatedAsUnbound(missing);
                 if (!placeBottommost(plan, clean)) {
                     logger.warn("{} mentions variables not found in the plan, and after " +
                                 "statically evaluating bound() calls on those missing variables " +

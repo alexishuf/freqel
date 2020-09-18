@@ -120,8 +120,8 @@ public class FilterAssignerTest implements TestContext {
     @Test
     public void testApplyOnJoin() {
         SPARQLFilter annEquals, annGreater;
-        annEquals = SPARQLFilter.builder("iri(?x) != iri(?y)").map(x).map(y).build();
-        annGreater = SPARQLFilter.builder("?u > ?v").map(u).map(v).build();
+        annEquals = SPARQLFilter.build("iri(?x) != iri(?y)");
+        annGreater = SPARQLFilter.build("?u > ?v");
         CQuery fullQuery = createQuery(
                 Alice, knows,   x,
                 x,     manages, y, annEquals,

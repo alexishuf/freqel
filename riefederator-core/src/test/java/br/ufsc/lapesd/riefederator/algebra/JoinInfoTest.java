@@ -64,7 +64,7 @@ public class JoinInfoTest implements TestContext {
         int oldModifiersCount = query.getModifiers().size();
         Set<Var> termVars = query.attr().tripleVars();
         Set<Var> filterVars = query.getModifiers().stream().filter(SPARQLFilter.class::isInstance)
-                .flatMap(m -> ((SPARQLFilter) m).getVarTerms().stream())
+                .flatMap(m -> ((SPARQLFilter) m).getVars().stream())
                 .filter(v -> !termVars.contains(v))
                 .collect(toSet());
         if (!filterVars.isEmpty()) {

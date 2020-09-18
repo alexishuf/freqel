@@ -285,11 +285,11 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
             List<SPARQLFilter> allFilters = streamPreOrder(query)
                     .flatMap(o -> o.modifiers().filters().stream())
                     .map(f -> {
-                        if (allVars.containsAll(f.getVarTermNames()))
+                        if (allVars.containsAll(f.getVarNames()))
                             return f;
-                        HashSet<String> missing = new HashSet<>(f.getVarTermNames());
+                        HashSet<String> missing = new HashSet<>(f.getVarNames());
                         missing.removeAll(allVars);
-                        return f.withVarTermsUnbound(missing);
+                        return f.withVarsEvaluatedAsUnbound(missing);
                     }).collect(toList());
             //all filters are placed somewhere
             List<SPARQLFilter> missingFilters = allFilters.stream()
@@ -318,14 +318,14 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
             List<ImmutablePair<? extends Op, SPARQLFilter>> badFilterAssignments;
             badFilterAssignments = dqDeepStreamPreOrder(root)
                     .flatMap(n -> n.modifiers().filters().stream().map(f -> ImmutablePair.of(n, f)))
-                    .filter(p -> !p.left.getAllVars().containsAll(p.right.getVarTermNames()))
+                    .filter(p -> !p.left.getAllVars().containsAll(p.right.getVarNames()))
                     .collect(toList());
             assertEquals(badFilterAssignments, emptyList());
 
             // do not place a filter on a node where all of the filter variables are input variables
             List<ImmutablePair<Op, SPARQLFilter>> fullyInputFilters = dqDeepStreamPreOrder(root)
                     .flatMap(n -> n.modifiers().filters().stream().map(f -> ImmutablePair.of(n, f)))
-                    .filter(p -> p.left.getInputVars().containsAll(p.right.getVarTermNames()))
+                    .filter(p -> p.left.getInputVars().containsAll(p.right.getVarNames()))
                     .collect(toList());
             assertEquals(fullyInputFilters, emptyList());
 
@@ -336,7 +336,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
                     .flatMap(n -> n.getQuery().getModifiers().stream()
                                               .filter(SPARQLFilter.class::isInstance)
                                               .map(f -> ImmutablePair.of(n, (SPARQLFilter)f)))
-                    .filter(p -> !p.left.getAllVars().containsAll(p.right.getVarTermNames()))
+                    .filter(p -> !p.left.getAllVars().containsAll(p.right.getVarNames()))
                     .collect(toList());
             assertEquals(badFilterAssignments, emptyList());
         }
@@ -350,7 +350,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
     }
 
     private static @Nonnull Set<SPARQLFilter> conjunctiveComponents(@Nonnull SPARQLFilter filter) {
-        List<Expr> componentExprs = new ArrayList<>();
+        List<SPARQLFilter> components = new ArrayList<>();
         ArrayDeque<Expr> stack = new ArrayDeque<>();
         stack.push(filter.getExpr());
         while (!stack.isEmpty()) {
@@ -361,17 +361,11 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
                     function.getArgs().forEach(stack::push);
                 continue; //expr is a inner node, do not store
             }
-            componentExprs.add(expr);
+            components.add(SPARQLFilter.build(expr));
         }
 
-        Set<SPARQLFilter> set = new HashSet<>();
-        for (Expr expr : componentExprs) {
-            SPARQLFilter.Builder b = SPARQLFilter.builder(expr);
-            for (org.apache.jena.sparql.core.Var v : expr.getVarsMentioned())
-                b.map(v.getVarName(), filter.getVar2Term().get(v.getVarName()));
-            set.add(b.build());
-        }
-        assert set.size() == componentExprs.size();
+        HashSet<SPARQLFilter> set = new HashSet<>(components);
+        assert set.size() == components.size();
         return set;
     }
 

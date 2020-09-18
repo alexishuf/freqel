@@ -3,18 +3,22 @@ package br.ufsc.lapesd.riefederator.query.modifiers;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.Term;
+import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
+import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import com.google.common.collect.Sets;
-import org.apache.jena.sparql.core.Var;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
@@ -30,53 +34,50 @@ public class SPARQLFilterTest implements TestContext {
     @DataProvider
     public static Object[][] parseData() {
         return Stream.of(
-                asList("FILTER(?x > 23)", "x", x, true),
-                asList("FILTER(?x > 23)", "x", y, true),
-                asList("FILTER($x > 23)", "x", x, true),
-                asList("FILTER($x > 23)", "x", y, true),
-                asList("FILTER(23 > $y)", "y", x, true),
-                asList("FILTER(?y = 23)", "y", y, true),
-                asList("?x > 23", "x", x, true),
-                asList("?x > 23", "x", y, true),
-                asList("$x > 23", "x", x, true),
-                asList("$x > 23", "x", y, true),
-                asList("23 > $y", "y", x, true),
-                asList("?y = 23", "y", y, true),
+                asList("FILTER(?x > 23)", x, true),
+                asList("FILTER(?x > 23)", x, true),
+                asList("FILTER($x > 23)", x, true),
+                asList("FILTER($x > 23)", x, true),
+                asList("FILTER(23 > $y)", y, true),
+                asList("FILTER(?y = 23)", y, true),
+                asList("?x > 23", x, true),
+                asList("?x > 23", x, true),
+                asList("$x > 23", x, true),
+                asList("$x > 23", x, true),
+                asList("23 > $y", y, true),
+                asList("?y = 23", y, true),
 
-                asList("FILTER()", "y", y, false),
-                asList("FILTER()", "y", y, false),
-                asList("FILTER", "y", y, false),
-                asList("", "y", y, false),
-                asList("y", "y", y, false),
-                asList("$", "y", y, false),
-                asList("?", "y", y, false)
+                asList("FILTER()", y, false),
+                asList("FILTER()", y, false),
+                asList("FILTER", y, false),
+                asList("", y, false),
+                asList("y", y, false),
+                asList("$", y, false),
+                asList("?", y, false)
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "parseData")
-    public void testParse(@Nonnull String filter, @Nonnull String var, @Nonnull Term term,
-                          boolean ok) {
+    public void testParse(@Nonnull String filter, @Nonnull Var singleVar, boolean ok) {
         if (ok) {
-            SPARQLFilter annotation = SPARQLFilter.builder(filter).map(var, term).build();
-            assertEquals(annotation.get(var), term);
-            assertNull(annotation.get(var + "~dummy"));
-            assertEquals(annotation.getVars(), Collections.singleton(var));
-            assertTrue(annotation.getTerms().contains(term));
+            SPARQLFilter annotation = SPARQLFilter.build(filter);
+            assertEquals(annotation.getVars(), singleton(singleVar));
+            assertEquals(annotation.getVarNames(), singleton(singleVar.getName()));
+            assertTrue(annotation.getTerms().contains(singleVar));
             assertTrue(annotation.getSparqlFilter().matches("^FILTER(.*)$"));
             assertFalse(annotation.getFilterString().matches("^FILTER(.*)$"));
         } else {
             @SuppressWarnings("MismatchedReadAndWriteOfArray") SPARQLFilter[] dummy = {null};
-            expectThrows(FilterParsingException.class,
-                    () -> dummy[0] = SPARQLFilter.builder(filter).map(var, term).build());
+            expectThrows(FilterParsingException.class, () -> dummy[0] = SPARQLFilter.build(filter));
         }
     }
 
     @Test
     public void testBoundTerms() {
         SPARQLFilter filter = SPARQLFilter.build("?x < 23 && ?x = str(xsd:string)");
-        assertEquals(filter.getVars(), singleton("x"));
-        assertEquals(filter.getVarTerms(), singleton(x));
-        assertEquals(filter.getVarTermNames(), singleton("x"));
+        assertEquals(filter.getVarNames(), singleton("x"));
+        assertEquals(filter.getVars(), singleton(x));
+        assertEquals(filter.getVarNames(), singleton("x"));
         assertEquals(filter.getTerms(), Sets.newHashSet(x, integer(23), xsdString));
     }
 
@@ -84,8 +85,8 @@ public class SPARQLFilterTest implements TestContext {
     public void tesBoundTermsAfterBind() {
         SPARQLFilter filter = SPARQLFilter.build("?x < ?u");
         SPARQLFilter bound = filter.bind(MapSolution.build(u, lit(23)));
-        assertEquals(bound.getVars(), singleton("x"));
-        assertEquals(bound.getVarTerms(), singleton(x));
+        assertEquals(bound.getVarNames(), singleton("x"));
+        assertEquals(bound.getVars(), singleton(x));
         assertEquals(bound.getTerms(), Sets.newHashSet(x, lit(23)));
     }
 
@@ -101,59 +102,40 @@ public class SPARQLFilterTest implements TestContext {
     @Test
     public void testFilterQuery() {
         SPARQLFilter ann;
-        ann = SPARQLFilter.builder("FILTER($input > 23)")
-                          .map("input", TestContext.z).build();
+        ann = SPARQLFilter.build("FILTER($z > 23)");
         CQuery query = createQuery(Alice, knows, y, y, age, z, ann);
         assertEquals(query.getModifiers(), singletonList(ann));
+        assertTrue(query.attr().allTerms().contains(integer(23)));
+        assertTrue(query.attr().allTerms().contains(StdLit.fromUnescaped("23", xsdInteger)));
     }
 
     @DataProvider
     public static Object[][] equalsData() {
         return Stream.of(
                 asList(
-                        SPARQLFilter.builder("FILTER(iri(?x) = ?y)")
-                                .map("x", x)
-                                .map("y", y).build(),
-                        SPARQLFilter.builder("FILTER(iri(?x) = ?y)")
-                                .map("x", x)
-                                .map("y", y).build(),
+                        SPARQLFilter.build("FILTER(iri(?x) = ?y)"),
+                        SPARQLFilter.build("FILTER(iri(?x) = ?y)"),
                         true
                 ),
                 asList(
-                        SPARQLFilter.builder("FILTER(iri(?x) = ?y)")
-                                    .map("x", x)
-                                    .map("y", y).build(),
-                        SPARQLFilter.builder("iri(?x) = ?y")
-                                    .map("x", x)
-                                    .map("y", y).build(),
+                        SPARQLFilter.build("FILTER(iri(?x) = ?y)"),
+                        SPARQLFilter.build("iri(?x) = ?y"),
                         true
                 ),
                 asList(
-                        SPARQLFilter.builder("FILTER(iri(?x) = ?y)")
-                                .map("x", x)
-                                .map("y", y).build(),
-                        SPARQLFilter.builder("iri($x)=$y")
-                                .map("x", x)
-                                .map("y", y).build(),
+                        SPARQLFilter.build("FILTER(iri(?x) = ?y)"),
+                        SPARQLFilter.build("iri($x)=$y"),
                         true
                 ),
                 asList(
-                        SPARQLFilter.builder("FILTER(iri(?x) = ?y)")
-                                .map("x", x)
-                                .map("y", y).build(),
-                        SPARQLFilter.builder("FILTER(iri(?x) = ?z)")
-                                .map("x", x)
-                                .map("z", z).build(),
+                        SPARQLFilter.build("FILTER(iri(?x) = ?y)"),
+                        SPARQLFilter.build("FILTER(iri(?x) = ?z)"),
                         false
                 ),
                 asList(
-                        SPARQLFilter.builder("FILTER(iri(?x) = ?y)")
-                                .map("x", x)
-                                .map("y", y).build(),
-                        SPARQLFilter.builder("FILTER(iri(?x) = ?y)")
-                                .map("x", x)
-                                .map("y", z).build(),
-                        false
+                        SPARQLFilter.build("FILTER(iri(?x) = ?y)"),
+                        SPARQLFilter.build("FILTER(iri(?x) = ?y)"),
+                        true
                 )
         ).map(List::toArray).toArray(Object[][]::new);
     }
@@ -292,13 +274,12 @@ public class SPARQLFilterTest implements TestContext {
                        SPARQLFilter.build("?x < 23 && ?x >= 0")),
                 asList(SPARQLFilter.build("?x < ?y"), MapSolution.build(z, i23),
                        SPARQLFilter.build("?x < ?y")),
-                asList(SPARQLFilter.builder("?x < ?y").map("y", z).build(),
-                       MapSolution.build(z, i23),
+                asList(SPARQLFilter.build("?x < ?y"),
+                       MapSolution.build(y, i23),
                        SPARQLFilter.build("?x < 23")),
-                asList(SPARQLFilter.builder("?z < ?y").map("z", y)
-                                                            .map("y", z).build(),
-                       MapSolution.build(z, i23),
-                       SPARQLFilter.builder("?z < 23").map("z", y).build())
+                asList(SPARQLFilter.build("?z < ?y"),
+                       MapSolution.build(y, i23),
+                       SPARQLFilter.build("?z < 23"))
         ).map(List::toArray).toArray(Object[][]::new);
     }
 
@@ -306,15 +287,15 @@ public class SPARQLFilterTest implements TestContext {
     public void testBind(@Nonnull SPARQLFilter filter, @Nonnull Solution solution,
                          @Nonnull SPARQLFilter bound) {
         assertEquals(filter.bind(solution), bound);
-        Set<String> vars = bound.getExpr().getVarsMentioned().stream().map(Var::getVarName)
-                                                                      .collect(toSet());
-        assertEquals(bound.getVar2Term().keySet(), vars);
-        assertEquals(bound.getVarTerms().size(), vars.size());
+        Set<String> names = bound.getExpr().getVarsMentioned().stream()
+                                 .map(org.apache.jena.sparql.core.Var::getVarName)
+                                 .collect(toSet());
+        assertEquals(bound.getVarNames(), names);
+        assertEquals(bound.getVars(), names.stream().map(StdVar::new).collect(toSet()));
 
-        Set<String> expectedVarNames;
-        expectedVarNames = vars.stream().map(v -> bound.getVar2Term().get(v).asVar().getName())
-                                        .collect(toSet());
-        assertEquals(bound.getVarTermNames(), expectedVarNames);
+        Set<String> boundNames = solution.getVarNames().stream()
+                .filter(n -> solution.get(n) != null).collect(toSet());
+        assertTrue(boundNames.stream().noneMatch(bound.getVarNames()::contains));
     }
 
     @DataProvider
@@ -360,6 +341,6 @@ public class SPARQLFilterTest implements TestContext {
     public void testWithTermVarsUnbound(@Nonnull SPARQLFilter filter,
                                        @Nonnull Collection<String> names,
                                        @Nullable SPARQLFilter expected) {
-        assertEquals(filter.withVarTermsUnbound(names), expected);
+        assertEquals(filter.withVarsEvaluatedAsUnbound(names), expected);
     }
 }
