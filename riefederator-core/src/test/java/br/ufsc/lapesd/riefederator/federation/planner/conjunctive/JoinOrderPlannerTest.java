@@ -123,7 +123,7 @@ public class JoinOrderPlannerTest implements TestContext {
 
         // all leaf QueryNode was present in expectedLeaves
         Set<Op> expectedQNLeaves = expectedLeaves.stream()
-                .flatMap(n -> childrenIfMulti(n).stream()).collect(toSet());
+                .flatMap(n -> childrenIfUnion(n).stream()).collect(toSet());
         assertTrue(expectedQNLeaves.containsAll(leaves)); //no made-up QueryNodes
 
         // every QueryNode from expectedQNLeaves missing from leaves must be equivalent to another

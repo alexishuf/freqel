@@ -38,8 +38,7 @@ public abstract class UndirectedIrreflexiveArrayGraph<N, W> {
     protected UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nullable W zero,
                                            @Nonnull List<N> nodes) {
         Preconditions.checkArgument(!nodes.isEmpty());
-        Preconditions.checkArgument(nodes.stream().noneMatch(Objects::isNull),
-                "There can be no null node");
+        assert nodes.stream().noneMatch(Objects::isNull) : "There can be no null node";
         this.nodes = nodes;
         this.wClass = wClass;
         this.zero = zero;
@@ -66,8 +65,7 @@ public abstract class UndirectedIrreflexiveArrayGraph<N, W> {
     protected UndirectedIrreflexiveArrayGraph(@Nonnull Class<W> wClass, @Nullable W zero,
                                               @Nonnull List<N> nodes, @Nonnull W[] weights) {
         Preconditions.checkArgument(weights.length >= totalCells(nodes.size()));
-        if (UndirectedIrreflexiveArrayGraph.class.desiredAssertionStatus())
-            Preconditions.checkArgument(nodes.stream().noneMatch(Objects::isNull));
+        assert nodes.stream().noneMatch(Objects::isNull) : "Nodes cannot be null";
         this.nodes = nodes;
         this.wClass = wClass;
         this.zero = zero;

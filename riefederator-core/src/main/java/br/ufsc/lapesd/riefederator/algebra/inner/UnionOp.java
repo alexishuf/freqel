@@ -1,8 +1,6 @@
 package br.ufsc.lapesd.riefederator.algebra.inner;
 
-import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -61,9 +59,6 @@ public class UnionOp extends AbstractInnerOp {
 
     protected UnionOp(@Nonnull Collection<Op> children) {
         super(children);
-        setCardinality(children.stream().map(Op::getCardinality)
-                .min(ThresholdCardinalityComparator.DEFAULT)
-                .orElse(Cardinality.UNSUPPORTED));
         assertAllInvariants();
     }
 

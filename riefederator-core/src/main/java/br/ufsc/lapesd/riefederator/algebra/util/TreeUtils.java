@@ -258,9 +258,9 @@ public class TreeUtils {
         return new IdentityHashSet<>(map);
     }
 
-    public static @Nonnull List<Op> childrenIfMulti(@Nonnull Op node) {
-        return node instanceof UnionOp ? Collections.unmodifiableList(node.getChildren())
-                                              : singletonList(node);
+    public static @Nonnull List<Op> childrenIfUnion(@Nonnull Op node) {
+        return node instanceof UnionOp ? node.getChildren()
+                                       : singletonList(node);
     }
 
     public static  @Nonnull Op cleanEquivalents(@Nonnull Op node) {
@@ -269,8 +269,9 @@ public class TreeUtils {
 
     public static  @Nonnull Op cleanEquivalents(@Nonnull Op node,
                                                 @Nonnull Comparator<Op> comparator) {
-        node = flattenMultiQuery(node);
         if (!(node instanceof UnionOp)) return node;
+        assert node.getChildren().stream().noneMatch(UnionOp.class::isInstance)
+                : "UnionOp has another UnionOp as child";
 
         List<Op> children = node.getChildren();
         ListMultimap<CQuery, EndpointQueryOp> mm;
@@ -315,35 +316,15 @@ public class TreeUtils {
         if (node instanceof UnionOp) {
             for (Op child : node.getChildren())
                 child.setCardinality(estimate(child, ensemble, adder));
-            return node.getChildren().stream().map(Op::getCardinality)
-                                     .reduce(adder).orElse(Cardinality.EMPTY);
+            Cardinality sum = Cardinality.UNSUPPORTED;
+            for (Op child : node.getChildren())
+                adder.apply(sum, child.getCardinality());
+            return sum;
         } else if (node instanceof EndpointQueryOp) {
             EndpointQueryOp qn = (EndpointQueryOp) node;
             return ensemble.estimate(qn.getQuery(), qn.getEndpoint());
         }
         return node.getCardinality();
-    }
-
-    public static  @Nonnull Op flattenMultiQuery(@Nonnull Op node) {
-        if (!(node instanceof UnionOp)) return node;
-
-        if (node.getChildren().size() == 1) {
-            return node.getChildren().get(0);
-        } else if (node.getChildren().stream().anyMatch(UnionOp.class::isInstance)) {
-            UnionOp.Builder builder = UnionOp.builder();
-            node.getChildren().forEach(c -> flattenMultiQuery(c, builder));
-            return builder.build();
-        } else {
-            return node;
-        }
-    }
-
-    private static void flattenMultiQuery(@Nonnull Op node,
-                                   @Nonnull UnionOp.Builder builder) {
-        if (node instanceof UnionOp)
-            node.getChildren().forEach(c -> flattenMultiQuery(c, builder));
-        else
-            builder.add(node);
     }
 
     public static void nameNodes(@Nonnull Op root) {

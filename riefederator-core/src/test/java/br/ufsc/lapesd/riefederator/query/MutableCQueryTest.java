@@ -82,7 +82,7 @@ public class MutableCQueryTest implements TestContext {
         MutableCQuery q = new MutableCQuery();
         assertTrue(q.isEmpty());
         assertEquals(q.size(), 0);
-        assertFalse(q.attr().isAsk());
+        assertTrue(q.attr().isAsk());
 
         assertTrue(q.add(new Triple(x, knows, y)));
         assertFalse(q.isEmpty());

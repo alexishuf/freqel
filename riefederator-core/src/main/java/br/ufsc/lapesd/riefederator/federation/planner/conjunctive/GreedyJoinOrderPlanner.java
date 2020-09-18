@@ -17,7 +17,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGrap
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
-import br.ufsc.lapesd.riefederator.webapis.WebApiEndpoint;
+import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -219,9 +219,11 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
         }
 
         public static boolean hasWebApi(@Nonnull Op node) {
-            return TreeUtils.childrenIfMulti(node).stream()
-                    .anyMatch(n -> n instanceof EndpointQueryOp &&
-                            ((EndpointQueryOp)n).getEndpoint() instanceof WebApiEndpoint);
+            for (Op op : TreeUtils.childrenIfUnion(node)) {
+                if (!(op instanceof EndpointQueryOp))                                continue;
+                if (((EndpointQueryOp)op).getEndpoint() instanceof WebAPICQEndpoint) return true;
+            }
+            return false;
         }
 
         @Override

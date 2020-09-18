@@ -268,7 +268,7 @@ public class CQueryCache {
     public @Nonnull IndexedSet<String> publicVarNames() {
         if (publicVarNames != null)
             return publicVarNames;
-        if (isAsk())
+        if (d.modifiers.ask() != null)
             return publicVarNames = IndexedSet.empty();
         Projection projection = d.modifiers.projection();
         if (projection == null)
@@ -486,10 +486,9 @@ public class CQueryCache {
     }
 
     public boolean isAsk() {
-        if (ask != null)
-            return ask;
-        return ask = d.modifiers.ask() != null
-                || (!d.list.isEmpty() && d.list.stream().allMatch(Triple::isBound));
+        if (ask == null)
+            ask = d.modifiers.ask() != null || publicVarNames().isEmpty();
+        return ask;
     }
 
     /** All terms are bound, either because <code>isAsk()</code> or because it is empty. */

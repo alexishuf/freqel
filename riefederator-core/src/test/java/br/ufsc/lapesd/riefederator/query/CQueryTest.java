@@ -282,7 +282,7 @@ public class CQueryTest implements TestContext {
         assertTrue(CQuery.from(t1).attr().isAsk());
         assertTrue(CQuery.from(asList(t1, t2)).attr().isAsk());
 
-        assertFalse(CQuery.EMPTY.attr().isAsk());
+        assertTrue(CQuery.EMPTY.attr().isAsk());
         assertFalse(CQuery.from(t3).attr().isAsk());
         assertFalse(CQuery.from(asList(t1, t3)).attr().isAsk());
         assertFalse(CQuery.from(asList(t1, t3, t2)).attr().isAsk());

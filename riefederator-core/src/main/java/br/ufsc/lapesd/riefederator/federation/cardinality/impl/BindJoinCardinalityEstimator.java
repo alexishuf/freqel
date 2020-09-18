@@ -3,17 +3,14 @@ package br.ufsc.lapesd.riefederator.federation.cardinality.impl;
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
-import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
-import java.util.Collection;
-import java.util.LinkedHashSet;
+
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 
 /**
  * A {@link JoinCardinalityEstimator} that simulates the effect of a bidn join to re-estimate
@@ -31,18 +28,8 @@ public class BindJoinCardinalityEstimator implements JoinCardinalityEstimator {
 
     @Override
     public @Nonnull Cardinality estimate(@Nonnull JoinInfo i) {
-        CQuery union = CQuery.merge(getTriples(i.getLeft()), getTriples(i.getRight()));
-        return cardinalityEnsemble.estimate(union, null);
-    }
-
-    private @Nonnull Collection<Triple> getTriples(@Nonnull Op node) {
-        if (node instanceof EndpointQueryOp)
-            return ((EndpointQueryOp) node).getQuery().attr().getSet();
-        if (node instanceof UnionOp) {
-            LinkedHashSet<Triple> set = new LinkedHashSet<>();
-            node.getChildren().stream().flatMap(n -> getTriples(n).stream()).forEach(set::add);
-            return set;
-        }
-        return node.getMatchedTriples();
+        Op l = i.getLeft(), r = i.getRight();
+        CQuery merged = CQuery.from(union(l.getMatchedTriples(), r.getMatchedTriples()));
+        return cardinalityEnsemble.estimate(merged, null);
     }
 }
