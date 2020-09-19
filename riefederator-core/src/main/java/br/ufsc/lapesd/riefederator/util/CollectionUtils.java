@@ -69,16 +69,37 @@ public class CollectionUtils {
         return set;
     }
 
-    public static @Nonnull <T> Set<T> intersect(@Nullable Collection<T> left,
-                                                @Nullable Collection<T> right) {
-        if (left == null || right == null)
+    public static @Nonnull <T> Set<T> intersect(@Nonnull Set<T> left, @Nonnull Set<T> right) {
+        int ls = left.size(), rs = right.size();
+        int capacity = Math.min(ls, rs);
+        if (capacity == 0)
             return emptySet();
-        final int ls = left.size(), rs = right.size();
-        if (ls == 0 || rs == 0)
-            return emptySet();
-        Set<T> result = new HashSet<>(ls < rs ? left : right);
-        result.retainAll(ls < rs ? right : left);
-        return result;
+        HashSet<T> set = Sets.newHashSetWithExpectedSize(capacity);
+        for (T s : left) {
+            if (right.contains(s))
+                set.add(s);
+        }
+        return set;
+    }
+
+    public static @Nonnull <T> Set<T> intersect(@Nonnull Collection<T> left,
+                                                @Nonnull Collection<T> right) {
+        boolean leftIsSet = left instanceof Set, rightIsSet = right instanceof Set;
+
+        if (leftIsSet && rightIsSet) {
+            return intersect((Set<T>)left, (Set<T>)right);
+        }
+        int ls = left.size(), rs = right.size();
+        int capacity = Math.min(ls, rs);
+        if (leftIsSet || (!rightIsSet && ls < rs)) {
+            Collection<T> tmp = left; left = right; right = tmp;
+        }
+        Set<T> set = Sets.newHashSetWithExpectedSize(capacity);
+        for (T v : left) {
+            if (right.contains(v))
+                set.add(v);
+        }
+        return set;
     }
 
     public static <T> boolean hasIntersect(@Nullable Collection<T> left,

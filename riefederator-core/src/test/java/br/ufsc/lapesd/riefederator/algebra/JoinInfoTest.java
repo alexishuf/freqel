@@ -165,20 +165,11 @@ public class JoinInfoTest implements TestContext {
     public void testPlainSubJoin() {
         Op n1 = node(createQuery(x, p1, y, y, p1, z));
         Op n2 = node(createQuery(x, p2, z));
-        assertEquals(JoinInfo.getJoinability(n1, n2).getJoinVars(), Sets.newHashSet("x", "z"));
-
-        JoinInfo info = getJoinability(n1, n2, singleton("x"));
-        assertTrue(info.isValid());
-        assertEquals(info.getJoinVars(), singleton("x"));
-        assertEquals(info.getPendingRequiredInputs(), emptySet());
-
-        info = getJoinability(n1, n2, Sets.newHashSet("x", "z"));
+        JoinInfo info = getJoinability(n1, n2);
         assertTrue(info.isValid());
         assertEquals(info.getJoinVars(), Sets.newHashSet("x", "z"));
         assertEquals(info.getPendingRequiredInputs(), emptySet());
-
-        info = getJoinability(n1, n2, Sets.newHashSet("x", "y"));
-        assertFalse(info.isValid());
+        assertEquals(info.getPendingOptionalInputs(), emptySet());
     }
 
     @Test
@@ -187,16 +178,9 @@ public class JoinInfoTest implements TestContext {
         Op n2 = node(xpyi);
         JoinInfo info = JoinInfo.getJoinability(n1, n2);
         assertTrue(info.isValid());
-
-        info = getJoinability(n1, n2, singleton("y"));
-        assertTrue(info.isValid());
-        assertEquals(info.getJoinVars(), singleton("y"));
+        assertEquals(info.getJoinVars(), Sets.newHashSet("x", "y"));
         assertEquals(info.getPendingRequiredInputs(), emptySet());
-
-        info = getJoinability(n1, n2, singleton("x"));
-        assertTrue(info.isValid());
-        assertEquals(info.getJoinVars(), singleton("x"));
-        assertEquals(info.getPendingRequiredInputs(), singleton("y"));
+        assertEquals(info.getPendingOptionalInputs(), emptySet());
     }
 
     @Test(dataProvider = "plainData") @SuppressWarnings("unused")
