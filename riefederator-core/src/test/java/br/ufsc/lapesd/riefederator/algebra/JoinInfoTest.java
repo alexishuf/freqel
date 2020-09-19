@@ -29,7 +29,8 @@ import java.util.stream.Stream;
 import static br.ufsc.lapesd.riefederator.algebra.JoinInfo.getJoinability;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
@@ -152,11 +153,12 @@ public class JoinInfoTest implements TestContext {
             assertEquals(j.getPendingRequiredInputs(), new HashSet<>(pendingInputs));
             assertEquals(j.isSubsumed(), subsumed);
 
-            if (j.getLeftNodes().equals(singletonList(l))) {
-                assertEquals(j.getRightNodes(), singletonList(r));
+            if (j.getLeft().equals(l)) {
+                assertSame(j.getLeft(), l);
+                assertSame(j.getRight(), r);
             } else {
-                assertEquals(j.getLeftNodes(), singletonList(r));
-                assertEquals(j.getRightNodes(), singletonList(l));
+                assertSame(j.getLeft(), r);
+                assertSame(j.getRight(), l);
             }
         }
     }
@@ -195,8 +197,8 @@ public class JoinInfoTest implements TestContext {
         assertEquals(from.getJoinVars(), to.getJoinVars());
         assertEquals(from.getPendingRequiredInputs(), to.getPendingRequiredInputs());
         assertEquals(from.isSubsumed(), to.isSubsumed());
-        assertEquals(from.getLeftNodes(), to.getRightNodes());
-        assertEquals(from.getRightNodes(), to.getLeftNodes());
+        assertSame(from.getLeft(), to.getRight());
+        assertSame(from.getRight(), to.getLeft());
         assertEquals(from, to);
     }
 
@@ -266,17 +268,6 @@ public class JoinInfoTest implements TestContext {
         assertEquals(info.isLinkedTo(other), expected);
         assertEquals(other.isLinkedTo(info), expected);
     }
-
-    @Test
-    public void testGetByPosition() {
-        Op n1 = node(xpy), n2 = node(ypz);
-        JoinInfo info1 = JoinInfo.getJoinability(n1, n2);
-        assertSame(info1.get(JoinInfo.Position.LEFT), n1);
-        assertSame(info1.get(JoinInfo.Position.RIGHT), n2);
-        assertEquals(info1.getNodes(JoinInfo.Position.LEFT), singleton(n1));
-        assertEquals(info1.getNodes(JoinInfo.Position.RIGHT), singleton(n2));
-    }
-
 
     @DataProvider
     public static Object[][] oppositeToLinkedData() {

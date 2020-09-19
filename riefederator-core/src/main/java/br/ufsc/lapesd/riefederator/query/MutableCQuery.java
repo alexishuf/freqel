@@ -699,7 +699,7 @@ public class MutableCQuery extends CQuery {
         if (p == null) return false;
         IndexedSet<String> allowed = strict ? attr().tripleVarNames() : attr().allVarNames();
         Set<String> current = p.getVarNames();
-        IndexedSubset<String> fixed = allowed.subset(current);
+        IndexedSubset<String> fixed = allowed.immutableSubset(current);
         if (fixed.size() == current.size())
             return false; // no change
         boolean change = d.modifiers.add(new Projection(fixed));

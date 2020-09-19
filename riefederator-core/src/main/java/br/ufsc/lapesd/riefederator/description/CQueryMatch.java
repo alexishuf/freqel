@@ -6,7 +6,6 @@ import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.jetbrains.annotations.Contract;
@@ -127,11 +126,11 @@ public class CQueryMatch {
      * Gets all triples which are not in <code>getAllRelevant()</code>.
      * @return An unmodifiable List with the triples
      */
-    public @Nonnull List<Triple> getIrrelevant(@Nonnull CQuery query) {
+    public @Nonnull Collection<Triple> getIrrelevant(@Nonnull CQuery query) {
         Set<Triple> set = new LinkedHashSet<>(query);
         Stream.concat(exclusiveGroups.stream().flatMap(Collection::stream),
                 nonExclusiveRelevant.stream()).forEach(set::remove);
-        return ImmutableList.copyOf(set);
+        return set;
     }
 
     /**

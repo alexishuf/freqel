@@ -138,7 +138,7 @@ public class TreeUtils {
                 Projection p = (Projection) modifier;
                 HashSet<String> set = new HashSet<>(p.getVarNames());
                 if (set.removeAll(solution.getVarNames())) {
-                    change |= out.add(new Projection(set));
+                    change |= out.add(Projection.of(set));
                 } else {
                     change |= out.add(p);
                 }

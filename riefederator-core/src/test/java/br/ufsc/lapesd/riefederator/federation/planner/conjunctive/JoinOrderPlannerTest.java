@@ -164,9 +164,8 @@ public class JoinOrderPlannerTest implements TestContext {
     }
 
     private @Nonnull Set<Op> getPlanNodes(List<JoinInfo> list) {
-        Set<Op> expectedLeaves;
-        expectedLeaves = list.stream().flatMap(i -> i.getNodes().stream()).collect(toSet());
-        return expectedLeaves;
+        return list.stream().flatMap(i -> Stream.of(i.getLeft(), i.getRight()))
+                            .collect(toSet());
     }
 
     private boolean isBadPath(List<JoinInfo> list) {

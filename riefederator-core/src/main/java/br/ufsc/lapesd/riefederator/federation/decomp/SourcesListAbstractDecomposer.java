@@ -17,8 +17,6 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.SetMultimap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,10 +24,13 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import java.util.*;
 
+import static java.util.Collections.unmodifiableList;
+
 public abstract class SourcesListAbstractDecomposer implements DecompositionStrategy {
     private static final Logger logger
             = LoggerFactory.getLogger(SourcesListAbstractDecomposer.class);
     protected final @Nonnull List<Source> sources = new ArrayList<>();
+    protected final @Nonnull List<Source> unmodifiableSources = unmodifiableList(sources);
     protected final @Nonnull ConjunctivePlanner planner;
     protected final @Nonnull PerformanceListener performance;
 
@@ -45,8 +46,8 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     }
 
     @Override
-    public @Nonnull ImmutableCollection<Source> getSources() {
-        return ImmutableList.copyOf(sources);
+    public @Nonnull List<Source> getSources() {
+        return sources;
     }
 
     @Override

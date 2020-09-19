@@ -2,14 +2,15 @@ package br.ufsc.lapesd.riefederator.algebra;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
-import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.Immutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 import static java.util.Collections.emptySet;
 
@@ -89,36 +90,6 @@ public class JoinInfo {
         }
     }
 
-//    private static @Nonnull ImmutableSet<String>
-//    joinVars(@Nonnull Op l, @Nonnull Op r, @Nonnull ImmutableSet.Builder<String> pendingReqIns,
-//             @Nonnull ImmutableSet.Builder<String> pendingOptIns, @Nullable Set<String> allowed) {
-//        Set<String> set = CollectionUtils.intersect(l.getPublicVars(), r.getPublicVars());
-//
-//        if (allowed != null) {
-//            if (!set.containsAll(allowed)) {
-//                logger.warn("Join will fail because allowed={} has variables not contained " +
-//                            "in {}, shared by l and r nodes.", allowed, set);
-//                return ImmutableSet.of(); //deliberate fail
-//            }
-//            set.retainAll(allowed);
-//        }
-//        final Set<String> s = set; //final for lambda usage
-//
-//        Set<String> lIn = l.getRequiredInputVars();
-//        Set<String> rIn = r.getRequiredInputVars();
-//        if (!lIn.isEmpty() && !rIn.isEmpty())
-//            s.removeIf(n -> lIn.contains(n) && rIn.contains(n));
-//        concat(lIn.stream(), rIn.stream()).filter(n -> !s.contains(n)).forEach(pendingReqIns::add);
-//        concat(l.getOptionalInputVars().stream(),
-//               r.getOptionalInputVars().stream()).filter(n -> !s.contains(n))
-//                                                 .forEach(pendingOptIns::add);
-//        return ImmutableSet.copyOf(s);
-//    }
-
-    enum Position {
-        LEFT, RIGHT
-    }
-
     public static @Nonnull JoinInfo getJoinability(@Nonnull Op left, @Nonnull Op right) {
         return new JoinInfo(left, right);
     }
@@ -166,36 +137,6 @@ public class JoinInfo {
 
     public @Nonnull Op getRight() {
         return right;
-    }
-
-    public @Nonnull Op get(@Nonnull Position position) {
-        switch (position) {
-            case LEFT: return getLeft();
-            case RIGHT: return getRight();
-            default: break;
-        }
-        throw new IllegalArgumentException("Bad Position: "+position);
-    }
-
-    public @Nonnull List<Op> getLeftNodes() {
-        return ImmutableList.of(left);
-    }
-
-    public @Nonnull List<Op> getRightNodes() {
-        return ImmutableList.of(right);
-    }
-
-    public @Nonnull List<Op> getNodes() {
-        return Arrays.asList(left, right);
-    }
-
-    public @Nonnull List<Op> getNodes(@Nonnull Position position) {
-        switch (position) {
-            case LEFT: return getLeftNodes();
-            case RIGHT: return getRightNodes();
-            default: break;
-        }
-        throw new IllegalArgumentException("Bad Position: "+position);
     }
 
     public @Nonnull StringBuilder toString(StringBuilder builder) {

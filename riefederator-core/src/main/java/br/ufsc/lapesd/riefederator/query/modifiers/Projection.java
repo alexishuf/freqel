@@ -1,38 +1,39 @@
 package br.ufsc.lapesd.riefederator.query.modifiers;
 
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 import static java.lang.String.join;
 
 @Immutable
 public class Projection implements Modifier {
-    private final @Nonnull ImmutableSet<String> varNames;
+    private final @SuppressWarnings("Immutable") @Nonnull Set<String> varNames;
     private @LazyInit int hash = 0;
 
     /* ~~~ Constructor & builder ~~~ */
 
     public Projection(@Nonnull Set<String> varNames) {
-        this.varNames = ImmutableSet.copyOf(varNames);
+        this.varNames = varNames;
     }
 
     public static @Nonnull Projection of(String... names) {
-        //noinspection UnstableApiUsage
-        ImmutableSet.Builder<String> b = ImmutableSet.builderWithExpectedSize(names.length);
+        Set<String> set = Sets.newHashSetWithExpectedSize(names.length);
         for (String name : names)
-            b.add(name);
-
-        return new Projection(b.build());
+            set.add(name);
+        return new Projection(Collections.unmodifiableSet(set));
     }
 
     public static @Nonnull Projection of(@Nonnull Collection<String> names) {
-        return new Projection(ImmutableSet.copyOf(names));
+        Set<String> set = names instanceof Set ? (Set<String>) names : new HashSet<>(names);
+        return new Projection(Collections.unmodifiableSet(set));
     }
 
     /* ~~~ actual methods ~~~ */

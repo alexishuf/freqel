@@ -25,7 +25,6 @@ import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableCollection;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -35,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
+import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 import static br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics.INIT_SOURCES_MS;
@@ -103,7 +103,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return this;
     }
 
-    public @Nonnull ImmutableCollection<Source> getSources() {
+    public @Nonnull Collection<Source> getSources() {
         return strategy.getSources();
     }
 

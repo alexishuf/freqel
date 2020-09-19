@@ -216,7 +216,7 @@ public class ModifiersSet extends AbstractSet<Modifier> {
                 Projection theirs = (Projection)modifier;
                 Projection mine = projection();
                 Collection<String> myVars = mine == null ? fallbackProjection : mine.getVarNames();
-                change |= add(new Projection(union(myVars, theirs.getVarNames())));
+                change |= add(Projection.of(union(myVars, theirs.getVarNames())));
             } else {
                 change = mergeNonProjection(modifier, change);
             }
@@ -224,7 +224,7 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         Projection p = projection();
         if (!gotProjection && p != null && !collectionFallbackProjection.isEmpty()) {
             Set<String> vars = union(p.getVarNames(), collectionFallbackProjection);
-            change |= add(new Projection(vars));
+            change |= add(Projection.of(vars));
         }
         return change;
     }
