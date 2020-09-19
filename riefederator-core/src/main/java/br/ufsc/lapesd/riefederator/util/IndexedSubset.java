@@ -34,6 +34,10 @@ public class IndexedSubset<T> extends AbstractSet<T> implements Set<T> {
         return bitSet;
     }
 
+    public @Nonnull ImmutableIndexedSubset<T> toImmutable() {
+        return new ImmutableIndexedSubset<>(parent, bitSet);
+    }
+
     public void complement() {
         bitSet.flip(0, parent.size());
     }

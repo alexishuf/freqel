@@ -8,8 +8,6 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.URI;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
@@ -39,7 +37,6 @@ import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
@@ -313,39 +310,6 @@ public class CQueryTest implements TestContext {
             exec.awaitTermination(10, TimeUnit.SECONDS);
         }
         for (Future<?> f : futures) f.get(); // throws AssertionError as ExecutionException
-    }
-
-    @Test(dataProvider = "streamVarsData")
-    public void testStreamVars(@Nonnull List<Triple> query, @Nonnull List<Var> expected) {
-        CQuery cQuery = CQuery.from(query);
-        Set<Var> actual = cQuery.streamTerms(Var.class).collect(toSet());
-        assertEquals(actual, new HashSet<>(expected));
-    }
-
-    @Test(dataProvider = "streamVarsData")
-    public void testParallelStreamVars(@Nonnull List<Triple> query,
-                                       @Nonnull List<Var> expected) throws Exception {
-        ExecutorService exec = Executors.newCachedThreadPool();
-        List<Future<?>> futures = new ArrayList<>();
-        CQuery cQuery = CQuery.from(query);
-        try {
-            for (int i = 0; i < 64; i++) {
-                futures.add(exec.submit(() -> assertEquals(cQuery.streamTerms(Var.class)
-                                                                 .collect(toSet()),
-                                                           new HashSet<>(expected))));
-            }
-        } finally {
-            exec.shutdown();
-            exec.awaitTermination(10, TimeUnit.SECONDS);
-        }
-        for (Future<?> f : futures) f.get(); // throws on test failure
-    }
-
-    @Test(dataProvider = "streamURIsData")
-    public void testStreamURIs(@Nonnull List<Triple> query, @Nonnull List<URI> expected) {
-        CQuery cQuery = CQuery.from(query);
-        Set<URI> actual = cQuery.streamTerms(URI.class).collect(toSet());
-        assertEquals(actual, new HashSet<>(expected));
     }
 
     @Test

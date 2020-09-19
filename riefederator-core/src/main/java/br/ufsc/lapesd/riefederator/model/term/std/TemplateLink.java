@@ -8,7 +8,6 @@ import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Immutable
 public class TemplateLink extends StdURI {
@@ -18,10 +17,10 @@ public class TemplateLink extends StdURI {
     public TemplateLink(@Nonnull String uri, @Nonnull CQuery template,
                         @Nonnull Term sub, @Nonnull Term obj) {
         super(uri);
-        Set<Term> vars = template.streamTerms(Var.class).collect(Collectors.toSet());
-        if (!vars.contains(sub))
+        Set<Var> vars = template.attr().allVars();
+        if (!(sub instanceof Var) || !vars.contains(sub.asVar()))
             throw new IllegalArgumentException("Subject "+sub+" missing from template "+template);
-        if (!vars.contains(obj))
+        if (!(obj instanceof Var) || !vars.contains(obj.asVar()))
             throw new IllegalArgumentException("Object " +obj+" missing from template "+template);
         this.template = template;
         this.subject = sub;

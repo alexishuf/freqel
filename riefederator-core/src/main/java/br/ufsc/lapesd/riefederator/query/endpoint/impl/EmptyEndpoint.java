@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.endpoint.impl;
 
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
@@ -12,8 +11,6 @@ import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collections;
-
-import static java.util.stream.Collectors.toSet;
 
 public class EmptyEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private @Nullable String name;
@@ -28,8 +25,7 @@ public class EmptyEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
-        return new CollectionResults(Collections.emptyList(),
-                query.streamTerms(Var.class).map(Var::getName).collect(toSet()));
+        return new CollectionResults(Collections.emptyList(), query.attr().allVarNames());
     }
 
     @Override

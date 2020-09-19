@@ -887,4 +887,39 @@ public class IndexedSetTest implements TestContext {
             assertEquals(set.indexOf(copy), -1);
         }
     }
+
+    @Test(dataProvider = "sizesData")
+    public void testFullPartition(int size) {
+        List<Integer> in = randomValues(size);
+        ArrayList<Integer> expected = new ArrayList<>(in);
+        IndexedSet<Integer> set = IndexedSet.fromDistinct(in);
+        assertEquals(new ArrayList<>(set), expected);
+
+        IndexedSetPartition<Integer> partition = set.partition(0, in.size());
+        assertEquals(partition.size(), expected.size());
+        assertEquals(new ArrayList<>(partition), expected);
+        //noinspection SimplifiableAssertion
+        assertTrue(partition.equals(set));
+        //noinspection SimplifiableAssertion
+        assertTrue(partition.equals(expected));
+        assertEquals(partition.hashCode(), new HashSet<>(expected).hashCode());
+    }
+
+    @Test(dataProvider = "sizesData")
+    public void testHalfPartition(int size) {
+        if (size < 2) return;
+
+        List<Integer> in = randomValues(size);
+        ArrayList<Integer> expected = new ArrayList<>(in.size()/2);
+        for (int i = 0; i < size / 2; i++)
+            expected.add(in.get(i));
+        IndexedSet<Integer> set = IndexedSet.fromDistinct(in);
+
+        IndexedSetPartition<Integer> partition = set.partition(0, in.size()/2);
+        assertEquals(partition.size(), expected.size());
+        assertEquals(new ArrayList<>(partition), expected);
+        //noinspection SimplifiableAssertion
+        assertTrue(partition.equals(expected));
+        assertEquals(partition.hashCode(), new HashSet<>(expected).hashCode());
+    }
 }

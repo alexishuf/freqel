@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -20,7 +21,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     protected final @Nonnull List<T> data;
     @SuppressWarnings("Immutable")
     protected final @Nonnull Map<T, Integer> indexMap;
-    private @LazyInit int hash = 0;
+    protected @LazyInit int hash = 0;
 
     private static final @Nonnull IndexedSet<?> EMPTY
             = new IndexedSet<>(Collections.emptyList(), ImmutableMap.of());
@@ -113,9 +114,23 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
         return from(Arrays.asList(values));
     }
 
+    public @Nonnull IndexedSet<T> createMutation(BiConsumer<Map<T, Integer>, List<T>> consumer) {
+        HashMap<T, Integer> indexMap = new HashMap<>(this.indexMap);
+        ArrayList<T> data = new ArrayList<>(this.data);
+        consumer.accept(indexMap, data);
+        return fromMap(indexMap, data);
+    }
 
-    public @Nonnull Map<T, Integer> getPositionsMap() {
-        return Collections.unmodifiableMap(indexMap);
+    protected class EntrySetIt<T> implements Iterator<Map.Entry<T, Integer>> {
+        protected Iterator<Map.Entry<T, Integer>> it;
+
+        public EntrySetIt(@Nonnull Iterator<Map.Entry<T, Integer>> it) { this.it = it; }
+        @Override public boolean hasNext() { return it.hasNext(); }
+        @Override public Map.Entry<T, Integer> next() { return it.next(); }
+    }
+
+    public @Nonnull Iterator<Map.Entry<T, Integer>> entryIterator() {
+        return new EntrySetIt<>(indexMap.entrySet().iterator());
     }
 
     @CheckReturnValue
@@ -195,6 +210,11 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
         return immutableSubset(Collections.singletonList(value));
     }
 
+    @CheckReturnValue
+    public @Nonnull IndexedSetPartition<T> partition(int begin, int end) {
+        return IndexedSetPartition.from(this, begin, end);
+    }
+
     @Override
     public boolean contains(Object o) {
         return indexOf(o) >= 0;
@@ -254,11 +274,8 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
     public @Nonnull String toString() {
         if (isEmpty())
             return "{}";
-        ArrayList<T> ordered = new ArrayList<>(data);
-        ordered.sort(Comparator.comparing(Objects::hashCode));
-        StringBuilder b = new StringBuilder();
-        b.append('{');
-        for (T obj : ordered)
+        StringBuilder b = new StringBuilder("{");
+        for (T obj : this)
             b.append(obj).append(", ");
         b.setLength(b.length()-2);
         return b.append('}').toString();
@@ -329,7 +346,7 @@ public class IndexedSet<T> extends AbstractCollection<T> implements List<T>, Set
 
     @Override
     public @Nonnull Spliterator<T> spliterator() {
-        return Spliterators.spliterator(data.iterator(), data.size(),
+        return Spliterators.spliterator(iterator(), data.size(),
                 DISTINCT|NONNULL|SIZED|ORDERED);
     }
 }

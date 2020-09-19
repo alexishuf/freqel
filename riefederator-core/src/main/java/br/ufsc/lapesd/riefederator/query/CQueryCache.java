@@ -11,6 +11,7 @@ import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;
 import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.IndexedSetPartition;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
@@ -32,14 +33,15 @@ public class CQueryCache {
     private Set<QueryAnnotation> unmodifiableQueryAnnotations;
 
     private IndexedSet<Triple> set;
-    private IndexedSet<Term> tripleTerms;
     private IndexedSet<Term> allTerms;
-    private IndexedSet<Var> tripleVars;
-    private IndexedSet<Var> allVars;
-    private IndexedSet<String> tripleVarNames;
+    private IndexedSetPartition<Term> tripleTerms;
+    private ImmutableIndexedSubset<Var> allVars;
+    private ImmutableIndexedSubset<Var> tripleVars;
+    private IndexedSet<String> varNamesUniverse;
     private IndexedSet<String> allVarNames;
-    private IndexedSet<String> publicTripleVarNames;
-    private IndexedSet<String> publicVarNames;
+    private IndexedSetPartition<String> tripleVarNames;
+    private ImmutableIndexedSubset<String> publicTripleVarNames;
+    private ImmutableIndexedSubset<String> publicVarNames;
     private ImmutableIndexedSubset<String> inputVarNames, reqInputVarNames, optInputVarNames;
 
     private final AtomicInteger indexTriplesState = new AtomicInteger(0);
@@ -66,6 +68,7 @@ public class CQueryCache {
         allVars = other.allVars;
         tripleVarNames = other.tripleVarNames;
         allVarNames = other.allVarNames;
+        varNamesUniverse = other.varNamesUniverse;
         inputVarNames = other.inputVarNames;
         reqInputVarNames = other.reqInputVarNames;
         optInputVarNames = other.optInputVarNames;
@@ -83,13 +86,19 @@ public class CQueryCache {
         queryHash = other.queryHash;
     }
 
+    void invalidateAllTerms() {
+        allTerms = null;
+    }
+
     void invalidateTriples() {
         set = null;
         unmodifiableList = null;
         tripleTerms = null;
         allTerms = null;
         tripleVars = allVars = null;
-        tripleVarNames = allVarNames = null;
+        tripleVarNames = null;
+        allVarNames = null;
+        varNamesUniverse = null;
         inputVarNames = null;
         reqInputVarNames = null;
         optInputVarNames = null;
@@ -141,6 +150,7 @@ public class CQueryCache {
         if (SPARQLFilter.class.isAssignableFrom(modClass)) {
             allVars = null;
             allVarNames = null;
+            varNamesUniverse = null;
             allTerms = null;
             publicVarNames = null;
             inputVarNames = null;
@@ -178,144 +188,209 @@ public class CQueryCache {
     }
 
     public @Nonnull IndexedSet<Term> tripleTerms() {
-        if (tripleTerms == null) {
-            int capacity = d.list.size() * 2;
-            List<Term> list = new ArrayList<>(capacity);
-            HashMap<Term, Integer> map = new HashMap<>(capacity);
-            for (Triple t : d.list) {
-                Term s = t.getSubject(), p = t.getPredicate(), o = t.getObject();
-                if (map.putIfAbsent(s, list.size()) == null) list.add(s);
-                if (map.putIfAbsent(p, list.size()) == null) list.add(p);
-                if (map.putIfAbsent(o, list.size()) == null) list.add(o);
-            }
-            tripleTerms = IndexedSet.fromMap(map, list);
-        }
+        if (tripleTerms == null)
+            indexTerms();
         return tripleTerms;
     }
 
-    public @Nonnull IndexedSet<Var> tripleVars() {
+    public @Nonnull ImmutableIndexedSubset<Var> tripleVars() {
         if (tripleVars == null) {
             IndexedSet<Term> terms = tripleTerms();
-            List<Var> list = new ArrayList<>(terms.size());
+            BitSet bs = new BitSet(terms.size());
+            int i = 0;
             for (Term term : terms) {
                 if (term.isVar())
-                    list.add(term.asVar());
+                    bs.set(i);
+                ++i;
             }
-            tripleVars = IndexedSet.fromDistinct(list);
+            @SuppressWarnings("UnnecessaryLocalVariable") IndexedSet<?> erased = terms;
+            //noinspection unchecked
+            tripleVars = new ImmutableIndexedSubset<>((IndexedSet<Var>) erased, bs);
         }
         return tripleVars;
     }
 
+    private void indexTerms() {
+        int capacity = d.list.size()*3 + d.modifiers.filters().size()*2;
+        Map<Term, Integer> map = Maps.newHashMapWithExpectedSize(capacity);
+        List<Term> list = new ArrayList<>(capacity);
+        for (Triple t : d.list) {
+            Term s = t.getSubject(), p = t.getPredicate(), o = t.getObject();
+            if (map.putIfAbsent(s, list.size()) == null) list.add(s);
+            if (map.putIfAbsent(p, list.size()) == null) list.add(p);
+            if (map.putIfAbsent(o, list.size()) == null) list.add(o);
+        }
+        int tripleTermsCount = list.size();
+        for (SPARQLFilter filter : d.modifiers.filters()) {
+            for (Term term : filter.getTerms())
+                if (map.putIfAbsent(term, list.size()) == null) list.add(term);
+        }
+        allTerms = IndexedSet.fromMap(map, list);
+        BitSet bs = new BitSet();
+        bs.set(0, tripleTermsCount);
+        tripleTerms = allTerms.partition(0, tripleTermsCount);
+    }
+
     public @Nonnull IndexedSet<Term> allTerms() {
-        if (allTerms != null)
-            return allTerms;
-        Set<SPARQLFilter> filters = d.modifiers.filters();
-        IndexedSet<Term> tripleTerms = tripleTerms();
-        int capacity = tripleTerms.size() + 2*filters.size();
-        ArrayList<Term> list = new ArrayList<>(capacity);
-        HashMap<Term, Integer> map = Maps.newHashMapWithExpectedSize(capacity);
-        list.addAll(tripleTerms);
-        map.putAll(tripleTerms.getPositionsMap());
-        for (SPARQLFilter filter : filters) {
-            for (Term term : filter.getTerms()) {
-                if (map.putIfAbsent(term, list.size()) == null)
-                    list.add(term);
-            }
-        }
-        return allTerms = IndexedSet.fromMap(map, list);
+        if (allTerms == null)
+            indexTerms();
+        return allTerms;
     }
 
-    public @Nonnull IndexedSet<Var> allVars() {
-        if (allVars != null)
-            return allVars;
-        Set<SPARQLFilter> filters = d.modifiers.filters();
-        IndexedSet<Var> tripleVars = tripleVars();
-        int capacity = tripleVars.size() + filters.size();
-        List<Var> list = new ArrayList<>(capacity);
-        Map<Var, Integer> map = Maps.newHashMapWithExpectedSize(capacity);
-        list.addAll(tripleVars);
-        map.putAll(tripleVars.getPositionsMap());
-        for (SPARQLFilter filter : filters) {
-            for (Var var : filter.getVars()) {
-                if (map.putIfAbsent(var, list.size()) == null)
-                    list.add(var);
+    public @Nonnull ImmutableIndexedSubset<Var> allVars() {
+        if (allVars == null) {
+            IndexedSet<Term> terms = allTerms();
+            BitSet bs = (BitSet) tripleVars().getBitSet().clone();
+            for (int i = tripleTerms.getEnd(); i < terms.size(); i++) {
+                Term term = terms.get(i);
+                if (term.isVar())
+                    bs.set(i);
             }
+            @SuppressWarnings("UnnecessaryLocalVariable") IndexedSet<?> cleared = terms;
+            //noinspection unchecked
+            allVars = new ImmutableIndexedSubset<>((IndexedSet<Var>) cleared, bs);
         }
-        return allVars = IndexedSet.fromMap(map, list);
+        return allVars;
     }
 
-    public @Nonnull IndexedSet<String> tripleVarNames() {
-        if (tripleVarNames == null) {
-            IndexedSet<Var> vars = tripleVars();
-            ArrayList<String> list = new ArrayList<>(vars.size());
-            for (Var var : vars)
-                list.add(var.getName());
-            tripleVarNames = IndexedSet.fromDistinct(list);
-        }
+    public @Nonnull IndexedSetPartition<String> tripleVarNames() {
+        if (tripleVarNames == null)
+            indexVarNames();
         return tripleVarNames;
     }
 
     public @Nonnull IndexedSet<String> allVarNames() {
-        if (allVarNames == null) {
-            IndexedSet<Var> vars = allVars();
-            List<String> list = new ArrayList<>(vars.size());
-            for (Var var : vars)
-                list.add(var.getName());
-            allVarNames = IndexedSet.fromDistinct(list);
-        }
+        if (allVarNames == null)
+            indexVarNames();
         return allVarNames;
     }
 
-    public @Nonnull IndexedSet<String> publicVarNames() {
-        if (publicVarNames != null)
-            return publicVarNames;
-        if (d.modifiers.ask() != null)
-            return publicVarNames = IndexedSet.empty();
-        Projection projection = d.modifiers.projection();
-        if (projection == null)
-            return publicVarNames = allVarNames();
-        return publicVarNames = IndexedSet.fromDistinct(projection.getVarNames());
+    private @Nonnull IndexedSet<String> varNamesUniverse() {
+        if (varNamesUniverse == null)
+            indexVarNames();
+        return varNamesUniverse;
     }
 
-    public @Nonnull IndexedSet<String> publicTripleVarNames() {
-        if (publicTripleVarNames != null)
-            return publicTripleVarNames;
-        if (isAsk())
-            return publicTripleVarNames = IndexedSet.empty();
-        IndexedSet<String> pub = publicVarNames();
-        IndexedSet<String> prv = tripleVarNames();
-        Map<String, Integer> map = Maps.newHashMapWithExpectedSize(pub.size());
-        List<String> list = new ArrayList<>();
-        for (String var : prv) {
-            if (pub.contains(var)) {
-                Integer old = map.putIfAbsent(var, list.size());
-                assert old == null;
-                list.add(var);
+    private void indexVarNames() {
+        IndexedSet<Term> terms = allTerms();
+        int capacity = d.list.size()*2, size = 0;
+        Map<String, Integer> map = new HashMap<>(capacity);
+        List<String> list = new ArrayList<>(capacity);
+        int tripleVarsEnd = -1, termsIdx  = -1, tripleTermsEnd = tripleTerms.getEnd();
+        for (Term term : terms) {
+            ++termsIdx;
+            if (term.isVar()) {
+                if (termsIdx >= tripleTermsEnd && tripleVarsEnd < 0)
+                    tripleVarsEnd = list.size();
+                String name = term.asVar().getName();
+                map.put(name, size++);
+                list.add(name);
             }
         }
-        return publicTripleVarNames = IndexedSet.fromMap(map, list);
+        assert map.size() == size;
+        assert size == list.size();
+        if (tripleVarsEnd < 0)
+            tripleVarsEnd = list.size();
+        Projection projection = d.modifiers.projection();
+        if (projection == null) {
+            allVarNames = varNamesUniverse = IndexedSet.fromMap(map, list);
+        } else {
+            int allVarsEnd = size;
+            for (String name : projection.getVarNames()) {
+                if (map.putIfAbsent(name, size) == null) {
+                    list.add(name);
+                    ++size;
+                }
+            }
+            assert map.size() == size;
+            assert size == list.size();
+            varNamesUniverse = IndexedSet.fromMap(map, list);
+            allVarNames = map.size() == allVarsEnd ? varNamesUniverse
+                                                   : varNamesUniverse.partition(0, allVarsEnd);
+        }
+        tripleVarNames = allVarNames.partition(0, tripleVarsEnd);
     }
 
-    private @Nonnull ImmutableIndexedSubset<String> scanInputs(boolean required) {
-        IndexedSubset<String> set = allVarNames().emptySubset();
+    public @Nonnull ImmutableIndexedSubset<String> publicVarNames() {
+        if (publicVarNames == null) {
+            if (d.modifiers.ask() != null) {
+                IndexedSet<String> set = IndexedSet.empty();
+                return publicVarNames = set.immutableEmptySubset();
+            }
+            Projection projection = d.modifiers.projection();
+            if (projection == null)
+                return publicVarNames = varNamesUniverse().fullImmutableSubset();
+            if (varNamesUniverse == null)
+                return varNamesUniverse().immutableSubset(projection.getVarNames());
+
+            BitSet bs = new BitSet();
+            boolean failed = false;
+            for (String name : projection.getVarNames()) {
+                int idx = varNamesUniverse.indexOf(name);
+                if ((failed = idx < 0)) break;
+                else                    bs.set(idx);
+            }
+            if (failed) {
+                varNamesUniverse = varNamesUniverse.createMutation((m, l) -> {
+                    int size = l.size();
+                    for (String name : projection.getVarNames()) {
+                        int idx = m.getOrDefault(name, -1);
+                        if (idx < 0) {
+                            m.put(name, size);
+                            l.add(name);
+                            bs.set(size++);
+                        } else {
+                            bs.set(idx);
+                        }
+                    }
+                    assert size == l.size();
+                });
+                assert varNamesUniverse.containsAll(projection.getVarNames());
+            }
+            publicVarNames = new ImmutableIndexedSubset<>(varNamesUniverse, bs);
+            assert publicVarNames.containsAll(projection.getVarNames());
+        }
+        return publicVarNames;
+    }
+
+    public @Nonnull ImmutableIndexedSubset<String> publicTripleVarNames() {
+        if (publicTripleVarNames == null) {
+            ImmutableIndexedSubset<String> pub = publicVarNames();
+            BitSet bs = (BitSet) pub.getBitSet().clone();
+            int tripleVarNamesEnd = tripleVarNames().getEnd();
+            assert tripleVarNamesEnd <= varNamesUniverse.size();
+            int size = bs.size();
+            if (size > tripleVarNamesEnd) bs.clear(tripleVarNamesEnd, size);
+            publicTripleVarNames = new ImmutableIndexedSubset<>(allVarNames(), bs);
+        }
+        return publicTripleVarNames;
+    }
+
+    private void scanInputs() {
+        IndexedSet<String> allVarNames = allVarNames();
+        IndexedSubset<String> req = allVarNames.emptySubset(), opt = allVarNames.emptySubset();
         IndexedSet<String> tripleVarNames = tripleVarNames();
-        for (Var v : allVars()) {
-            String name = v.getName();
-            boolean hasAnnotation = false;
-            for (TermAnnotation a : d.termAnnotations.get(v)) {
+        for (Map.Entry<Term, Collection<TermAnnotation>> e : d.termAnns.asMap().entrySet()) {
+            Term term = e.getKey();
+            if (!term.isVar()) continue;
+            String name = term.asVar().getName();
+            for (TermAnnotation a : e.getValue()) {
                 if (!(a instanceof AtomInputAnnotation))
                     continue;
-                hasAnnotation = true;
                 AtomInputAnnotation ia = (AtomInputAnnotation) a;
                 if (ia.isOverride() && requireNonNull(ia.getOverrideValue()).isGround())
                     continue; //not a input anymore
-                if (ia.isRequired() == required)
-                    set.add(name);
+                (ia.isRequired() ? req : opt).add(name);
             }
-            if (required && !hasAnnotation && !tripleVarNames.contains(name))
-                set.add(name); //FILTER input var
         }
-        return ImmutableIndexedSubset.copyOf(set);
+        for (Iterator<Map.Entry<String, Integer>> it = allVarNames.entryIterator(); it.hasNext(); ){
+            Map.Entry<String, Integer> e = it.next();
+            int idx = e.getValue();
+            if (!opt.hasIndex(idx, allVarNames) && !tripleVarNames.contains(e.getKey()))
+                req.setIndex(idx, allVarNames); //FILTER input var
+        }
+        reqInputVarNames = req.toImmutable();
+        optInputVarNames = opt.toImmutable();
     }
 
     public @Nonnull ImmutableIndexedSubset<String> inputVarNames() {
@@ -329,12 +404,12 @@ public class CQueryCache {
     }
     public @Nonnull ImmutableIndexedSubset<String> reqInputVarNames() {
         if (reqInputVarNames == null)
-            reqInputVarNames = scanInputs(true);
+            scanInputs();
         return reqInputVarNames;
     }
     public @Nonnull ImmutableIndexedSubset<String> optInputVarNames() {
         if (optInputVarNames == null)
-            optInputVarNames = scanInputs(false);
+            scanInputs();
         return optInputVarNames;
     }
 
@@ -345,7 +420,7 @@ public class CQueryCache {
         List<Triple> list = new ArrayList<>(d.list.size());
         for (Triple triple : d.list) {
             boolean has = false;
-            for (TripleAnnotation a : d.tripleAnnotations.get(triple)) {
+            for (TripleAnnotation a : d.tripleAnns.get(triple)) {
                 if (a instanceof MatchAnnotation) {
                     has = true;
                     Triple matched = ((MatchAnnotation) a).getMatched();
@@ -441,7 +516,7 @@ public class CQueryCache {
         if (strong != null)
             return strong;
         SetMultimap<Term, Atom> map = HashMultimap.create(tripleTerms().size(), 2);
-        for (Map.Entry<Term, TermAnnotation> e : d.termAnnotations.entries()) {
+        for (Map.Entry<Term, TermAnnotation> e : d.termAnns.entries()) {
             if (e.getValue() instanceof AtomAnnotation)
                 map.put(e.getKey(), ((AtomAnnotation)e.getValue()).getAtom());
         }
@@ -522,8 +597,8 @@ public class CQueryCache {
         int code = d.list.hashCode();
         code = 37*code + d.modifiers.hashCode();
         code = 37*code + d.queryAnnotations.hashCode();
-        code = 37*code + d.termAnnotations.hashCode();
-        code = 37*code + d.tripleAnnotations.hashCode();
+        code = 37*code + d.termAnns.hashCode();
+        code = 37*code + d.tripleAnns.hashCode();
         return queryHash = code;
     }
 }

@@ -10,7 +10,6 @@ import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -100,12 +99,12 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
         int hash = 0;
 
         public Signature(@Nonnull ProtoQueryOp qn, @Nonnull IndexedSet<Triple> allTriples,
-                         @Nonnull IndexedSet<Var> allVars) {
+                         @Nonnull IndexedSet<String> allVarNames) {
             this.endpoint = qn.getEndpoint();
             this.triples = allTriples.subset(qn.getMatchedQuery()).getBitSet();
-            IndexedSubset<Var> inputsSubset = allVars.emptySubset();
+            IndexedSubset<String> inputsSubset = allVarNames.emptySubset();
             qn.getMatchedQuery().forEachTermAnnotation(InputAnnotation.class, (t, a) -> {
-                if (t.isVar()) inputsSubset.add(t.asVar());
+                if (t.isVar()) inputsSubset.add(t.asVar().getName());
             });
             this.inputs = inputsSubset.getBitSet();
         }
@@ -141,7 +140,7 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     groupAndDedup(@Nonnull CQuery query, @Nonnull Collection<ProtoQueryOp> in) {
         SetMultimap<Signature, ProtoQueryOp> sig2pn = HashMultimap.create();
         IndexedSet<Triple> triples = query.attr().getSet();
-        IndexedSet<Var> vars = query.attr().allVars();
+        IndexedSet<String> vars = query.attr().allVarNames();
         for (ProtoQueryOp pn : in) sig2pn.put(new Signature(pn, triples, vars), pn);
 
         Set<CQuery> tmp = new HashSet<>();

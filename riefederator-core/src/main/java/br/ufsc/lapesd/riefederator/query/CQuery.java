@@ -5,14 +5,13 @@ import br.ufsc.lapesd.riefederator.model.Triple.Position;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.model.term.Var;
 import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.IndexedSetPartition;
 import br.ufsc.lapesd.riefederator.util.IndexedSubset;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -28,12 +27,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.lang.ref.SoftReference;
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.stream.Stream;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.unmodifiableSet;
-import static java.util.stream.Collectors.toSet;
-import static java.util.stream.Stream.concat;
 
 /**
  * A {@link CQuery} is essentially a list of {@link Triple} instances which MAY contain variables.
@@ -64,25 +59,10 @@ public class CQuery implements  List<Triple> {
         this.d = d;
         this.prefixDict = prefixDict;
 
-        if (CQuery.class.desiredAssertionStatus()) {
-            checkArgument(d.cache.getSet().size() == d.list.size(), "Non-distinct triple list");
-            Set<Term> terms = concat(
-                    streamTerms(Term.class),
-                    d.modifiers.stream().filter(SPARQLFilter.class::isInstance)
-                                      .flatMap(m -> ((SPARQLFilter)m).getTerms().stream())
-            ).collect(toSet());
-            boolean[] fail = {false};
-            forEachTermAnnotation((t, a) -> {
-                if ((fail[0] |= !terms.contains(t)))
-                    logger.error("Foreign term {} has annotation {} in {}!", t, a, CQuery.this);
-            });
-            IndexedSet<Triple> triples = d.cache.getSet();
-            forEachTripleAnnotation((t, a) -> {
-                if ((fail[0] |= !triples.contains(t)))
-                    logger.error("Foreign Triple {} has annotation {} in {}!", t, a, CQuery.this);
-            });
-            checkArgument(!fail[0], "Foreign annotations (see the logger output)");
-        }
+        //noinspection AssertWithSideEffects
+        assert d.cache.getSet().size() == d.list.size() : "Duplicate triples";
+        assert d.cache.allTerms().containsAll(d.termAnns.keySet()) : "Foreign term annotation";
+        assert d.cache.getSet().containsAll(d.tripleAnns.keySet()) : "Foreign triple annotation";
     }
 
     @CheckReturnValue
@@ -143,19 +123,19 @@ public class CQuery implements  List<Triple> {
     }
 
     /** Indicates if there is any triple annotation. */
-    public boolean hasTripleAnnotations() { return !d.tripleAnnotations.isEmpty(); }
+    public boolean hasTripleAnnotations() { return !d.tripleAnns.isEmpty(); }
 
     /** Indicates if there is any triple with an annotation of the given class. */
     public boolean hasTripleAnnotations(@Nonnull Class<? extends TripleAnnotation> ann) {
-        return d.tripleAnnotations.entries().stream().anyMatch(e -> ann.isInstance(e.getValue()));
+        return d.tripleAnns.entries().stream().anyMatch(e -> ann.isInstance(e.getValue()));
     }
 
     /** Indicates whether there is some term annotation in this query. */
-    public boolean hasTermAnnotations() { return !d.termAnnotations.isEmpty();}
+    public boolean hasTermAnnotations() { return !d.termAnns.isEmpty();}
 
     /** Indicates if there is any term with an annotation of the given class. */
     public boolean hasTermAnnotations(@Nonnull Class<? extends TermAnnotation> ann) {
-        return d.termAnnotations.entries().stream().anyMatch(e -> ann.isInstance(e.getValue()));
+        return d.termAnns.entries().stream().anyMatch(e -> ann.isInstance(e.getValue()));
     }
 
     public @Nonnull Set<QueryAnnotation> getQueryAnnotations() {
@@ -168,7 +148,7 @@ public class CQuery implements  List<Triple> {
      * @return Possibly-empty {@link Set} of {@link TermAnnotation}s.
      */
     public @Nonnull Set<TermAnnotation> getTermAnnotations(@Nonnull Term term) {
-        return unmodifiableSet(d.termAnnotations.get(term));
+        return unmodifiableSet(d.termAnns.get(term));
     }
 
     /**
@@ -177,11 +157,11 @@ public class CQuery implements  List<Triple> {
      * @return Possibly-empty {@link Set} of {@link TripleAnnotation}s.
      */
     public @Nonnull Set<TripleAnnotation> getTripleAnnotations(@Nonnull Triple triple) {
-        return unmodifiableSet(d.tripleAnnotations.get(triple));
+        return unmodifiableSet(d.tripleAnns.get(triple));
     }
 
     public void forEachTermAnnotation(@Nonnull BiConsumer<Term, TermAnnotation> consumer) {
-        d.termAnnotations.forEach(consumer);
+        d.termAnns.forEach(consumer);
     }
 
     @CanIgnoreReturnValue
@@ -199,7 +179,7 @@ public class CQuery implements  List<Triple> {
     }
 
     public void forEachTripleAnnotation(@Nonnull BiConsumer<Triple, TripleAnnotation> consumer) {
-        d.tripleAnnotations.forEach(consumer);
+        d.tripleAnns.forEach(consumer);
     }
 
     @CanIgnoreReturnValue
@@ -225,22 +205,6 @@ public class CQuery implements  List<Triple> {
         return prefixDict == null ? fallback : prefixDict;
     }
 
-    @SuppressWarnings("unchecked")
-    public <T extends Term> Stream<T> streamTerms(@Nonnull Class<T> cls) {
-        if (cls == Var.class)
-            return (Stream<T>) d.cache.allVars().stream();
-        return d.cache.allTerms().stream().filter(t -> cls.isAssignableFrom(t.getClass()))
-                                  .map(t -> (T)t);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T extends Term> Stream<T> streamTripleTerms(@Nonnull Class<T> cls) {
-        if (cls == Var.class)
-            return (Stream<T>) d.cache.tripleVars().stream();
-        return d.cache.tripleTerms().stream().filter(t -> cls.isAssignableFrom(t.getClass()))
-                                              .map(t -> (T)t);
-    }
-
     /**
      * Gets a sub-query with all triples where the given term appears in one of the positions.
      *
@@ -254,8 +218,20 @@ public class CQuery implements  List<Triple> {
             triples.addAll(d.cache.triplesWithTermAt(term, position));
 
         MutableCQuery other = MutableCQuery.from(triples);
-        other.mutateModifiers().addAll(getModifiers());
-        other.sanitizeFiltersStrict();
+        IndexedSetPartition<String> allowed = other.attr().tripleVarNames();
+        other.d.modifiers.silenced = true;
+        boolean hadFilter = false;
+        for (Modifier m : getModifiers()) {
+            if (m instanceof SPARQLFilter) {
+                hadFilter = true;
+                if (!allowed.containsAll(((SPARQLFilter) m).getVarNames()))
+                    continue;
+            }
+            other.d.modifiers.add(m);
+        }
+        if (hadFilter)
+            d.cache.invalidateAllTerms(); // new filters may have introduced new ground terms
+        other.d.modifiers.silenced = false;
         other.copyTripleAnnotations(this);
         other.copyTermAnnotations(this);
         other.sanitizeProjectionStrict();
@@ -360,8 +336,8 @@ public class CQuery implements  List<Triple> {
         return d.cache.getSet().equals(((CQuery) o).d.cache.getSet())
                 && d.modifiers.equals(((CQuery) o).d.modifiers)
                 && Objects.equals(d.queryAnnotations, ((CQuery) o).d.queryAnnotations)
-                && Objects.equals(d.termAnnotations, ((CQuery) o).d.termAnnotations)
-                && Objects.equals(d.tripleAnnotations, ((CQuery) o).d.tripleAnnotations);
+                && Objects.equals(d.termAnns, ((CQuery) o).d.termAnns)
+                && Objects.equals(d.tripleAnns, ((CQuery) o).d.tripleAnns);
     }
 
     @Override

@@ -18,24 +18,29 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CQueryData {
     private int references;
     public @Nonnull List<Triple> list;
-    public final @Nonnull ModifiersSet modifiers, modifiersView;
+    public final @Nonnull NotifyingModifierSet modifiers;
+    public final @Nonnull ModifiersSet modifiersView;
 
-    public @Nonnull SetMultimap<Term, TermAnnotation> termAnnotations;
+    public @Nonnull SetMultimap<Term, TermAnnotation> termAnns;
     public @Nonnull Set<QueryAnnotation> queryAnnotations;
-    public @Nonnull SetMultimap<Triple, TripleAnnotation> tripleAnnotations;
+    public @Nonnull SetMultimap<Triple, TripleAnnotation> tripleAnns;
     private @Nullable AtomicInteger nextHiddenId;
     public final @Nonnull CQueryCache cache;
 
-    private class NotifyingModifierSet extends ModifiersSet {
+    class NotifyingModifierSet extends ModifiersSet {
+        boolean silenced = false;
+
         public NotifyingModifierSet(@Nullable Collection<? extends Modifier> collection) {
             super(collection);
         }
 
         @Override protected void added(@Nonnull Modifier modifier) {
-            cache.notifyModifierChange(modifier.getClass());
+            if (!silenced)
+                cache.notifyModifierChange(modifier.getClass());
         }
         @Override protected void removed(@Nonnull Modifier modifier) {
-            cache.notifyModifierChange(modifier.getClass());
+            if (!silenced)
+                cache.notifyModifierChange(modifier.getClass());
         }
     }
 
@@ -51,9 +56,9 @@ public class CQueryData {
         this.list = list;
         this.modifiers = new NotifyingModifierSet(modifiers);
         this.modifiersView = this.modifiers.getLockedView();
-        this.termAnnotations = termAnn == null ? HashMultimap.create() : termAnn;
+        this.termAnns = termAnn == null ? HashMultimap.create() : termAnn;
         this.queryAnnotations = queryAnn == null ? new HashSet<>() : queryAnn;
-        this.tripleAnnotations = tripleAnn == null ? HashMultimap.create() : tripleAnn;
+        this.tripleAnns = tripleAnn == null ? HashMultimap.create() : tripleAnn;
         this.cache = new CQueryCache(this);
     }
 
@@ -63,8 +68,8 @@ public class CQueryData {
         this.modifiers = new NotifyingModifierSet(other.modifiers);
         this.modifiersView = this.modifiers.getLockedView();
         this.queryAnnotations = new HashSet<>(other.queryAnnotations);
-        this.termAnnotations = HashMultimap.create(other.termAnnotations);
-        this.tripleAnnotations = HashMultimap.create(other.tripleAnnotations);
+        this.termAnns = HashMultimap.create(other.termAnns);
+        this.tripleAnns = HashMultimap.create(other.tripleAnns);
         this.nextHiddenId = null;
         this.cache = new CQueryCache(this, other.cache);
     }
