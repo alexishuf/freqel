@@ -132,7 +132,7 @@ public class MutableCQuery extends CQuery {
      */
     public @CanIgnoreReturnValue boolean annotate(@Nonnull QueryAnnotation queryAnnotation) {
         makeExclusive();
-        boolean change = d.queryAnnotations.add(queryAnnotation);
+        boolean change = d.queryAnns().add(queryAnnotation);
         if (change)
             d.cache.invalidateQueryAnnotations();
         return change;
@@ -160,7 +160,7 @@ public class MutableCQuery extends CQuery {
                      @Nonnull Collection<TripleAnnotation> coll) throws IllegalArgumentException {
         checkArgument(d.cache.getSet().contains(triple), "Triple not in query");
         makeExclusive();
-        boolean change = d.tripleAnns.putAll(triple, coll);
+        boolean change = d.tripleAnns().putAll(triple, coll);
         if (change) {
             for (TripleAnnotation a : coll) d.cache.notifyTripleAnnotationChange(a.getClass());
         }
@@ -176,7 +176,7 @@ public class MutableCQuery extends CQuery {
         makeExclusive();
         boolean change = false;
         for (Triple triple : d.list)
-            change |= d.tripleAnns.putAll(triple, other.d.tripleAnns.get(triple));
+            change |= d.tripleAnns().putAll(triple, other.d.tripleAnns.get(triple));
         if (change)
             d.cache.invalidateTermAnnotations();
         return change;
@@ -205,7 +205,7 @@ public class MutableCQuery extends CQuery {
              @Nonnull Collection<TermAnnotation> collection) throws IllegalArgumentException {
         checkArgument(d.cache.allTerms().contains(term), "Term not in any triple or filter");
         makeExclusive();
-        boolean change = d.termAnns.putAll(term, collection);
+        boolean change = d.termAnns().putAll(term, collection);
         if (change) {
             for (TermAnnotation annotation : collection)
                 d.cache.notifyTermAnnotationChange(annotation.getClass());
@@ -222,7 +222,7 @@ public class MutableCQuery extends CQuery {
         makeExclusive();
         boolean change = false;
         for (Term term : d.cache.allTerms())
-            change |= d.termAnns.putAll(term, other.d.termAnns.get(term));
+            change |= d.termAnns().putAll(term, other.d.termAnns.get(term));
         if (change)
             d.cache.invalidateTermAnnotations();
         return change;
@@ -234,7 +234,7 @@ public class MutableCQuery extends CQuery {
      */
     public @CanIgnoreReturnValue boolean deannotate(@Nonnull QueryAnnotation annotation) {
         makeExclusive();
-        boolean change = d.queryAnnotations.remove(annotation);
+        boolean change = d.queryAnns.remove(annotation);
         if (change)
             d.cache.invalidateQueryAnnotations();
         return change;
@@ -428,7 +428,7 @@ public class MutableCQuery extends CQuery {
                 d.list.add(triple);
             }
             for (TripleAnnotation a : other.getTripleAnnotations(triple)) {
-                if (d.tripleAnns.put(triple, a)) {
+                if (d.tripleAnns().put(triple, a)) {
                     d.cache.notifyTripleAnnotationChange(a.getClass());
                     change = true;
                 }
@@ -438,7 +438,7 @@ public class MutableCQuery extends CQuery {
             d.cache.invalidateTriples();
         for (Term term : other.attr().tripleTerms()) {
             for (TermAnnotation a : other.getTermAnnotations(term)) {
-                if (d.termAnns.put(term, a)) {
+                if (d.termAnns().put(term, a)) {
                     d.cache.notifyTermAnnotationChange(a.getClass());
                     change = true;
                 }

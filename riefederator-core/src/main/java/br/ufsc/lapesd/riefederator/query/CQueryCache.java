@@ -183,7 +183,7 @@ public class CQueryCache {
 
     public @Nonnull Set<QueryAnnotation> unmodifiableQueryAnnotations() {
         if (unmodifiableQueryAnnotations == null)
-            unmodifiableQueryAnnotations = unmodifiableSet(d.queryAnnotations);
+            unmodifiableQueryAnnotations = unmodifiableSet(d.queryAnns);
         return unmodifiableQueryAnnotations;
     }
 
@@ -596,7 +596,7 @@ public class CQueryCache {
             return queryHash;
         int code = d.list.hashCode();
         code = 37*code + d.modifiers.hashCode();
-        code = 37*code + d.queryAnnotations.hashCode();
+        code = 37*code + d.queryAnns.hashCode();
         code = 37*code + d.termAnns.hashCode();
         code = 37*code + d.tripleAnns.hashCode();
         return queryHash = code;

@@ -115,11 +115,11 @@ public class CQuery implements  List<Triple> {
     public @Nonnull ModifiersSet getModifiers() { return d.modifiersView; }
 
     /** Indicates if there is any triple annotation. */
-    public boolean hasQueryAnnotations() { return !d.queryAnnotations.isEmpty(); }
+    public boolean hasQueryAnnotations() { return !d.queryAnns.isEmpty(); }
 
     /** Indicates if there is any query annotation of the given class. */
     public boolean hasQueryAnnotations(@Nonnull Class<? extends QueryAnnotation> ann) {
-        return d.queryAnnotations.stream().anyMatch(ann::isInstance);
+        return d.queryAnns.stream().anyMatch(ann::isInstance);
     }
 
     /** Indicates if there is any triple annotation. */
@@ -335,7 +335,7 @@ public class CQuery implements  List<Triple> {
             return d.list.equals(o); // fallback to list comparison when comparing with a list
         return d.cache.getSet().equals(((CQuery) o).d.cache.getSet())
                 && d.modifiers.equals(((CQuery) o).d.modifiers)
-                && Objects.equals(d.queryAnnotations, ((CQuery) o).d.queryAnnotations)
+                && Objects.equals(d.queryAnns, ((CQuery) o).d.queryAnns)
                 && Objects.equals(d.termAnns, ((CQuery) o).d.termAnns)
                 && Objects.equals(d.tripleAnns, ((CQuery) o).d.tripleAnns);
     }

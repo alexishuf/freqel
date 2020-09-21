@@ -19,8 +19,8 @@ public class ModifiersSet extends AbstractSet<Modifier> {
     private static final int FILTER_ORDINAL = Capability.SPARQL_FILTER.ordinal();
     protected static final class Data {
         private final @Nonnull Modifier[] uniqueModifiers;
-        private final @Nonnull Set<SPARQLFilter> filters;
-        private final @Nonnull Set<SPARQLFilter> filtersView;
+        private Set<SPARQLFilter> filters;
+        private Set<SPARQLFilter> filtersView;
         private int size;
 
         public Data(@Nullable Data other) {
@@ -39,6 +39,12 @@ public class ModifiersSet extends AbstractSet<Modifier> {
             this.filters = filters == null ? new HashSet<>() : filters;
             this.filtersView = unmodifiableSet(this.filters);
             this.size = other == null ? 0 : other.size;
+        }
+
+        @Nonnull Set<SPARQLFilter> createFilters() {
+            if (filters == null)
+                filtersView = unmodifiableSet(filters = new HashSet<>());
+            return filters;
         }
     }
     protected final @Nonnull Data d;
@@ -95,7 +101,7 @@ public class ModifiersSet extends AbstractSet<Modifier> {
                             current = this.it.next();
                         else
                             this.it = null;
-                    } else {
+                    } else if (d.filters != null) {
                         Iterator<SPARQLFilter> it = d.filters.iterator();
                         if (it.hasNext())
                             current = (this.it = it).next();
@@ -148,7 +154,8 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         if (!(o instanceof Modifier)) return false;
         Modifier m = (Modifier) o;
         int ord = m.getCapability().ordinal();
-        return ord == FILTER_ORDINAL ? d.filters.contains(m) : d.uniqueModifiers[ord] != null;
+        return ord == FILTER_ORDINAL ? d.filters != null && d.filters.contains(m)
+                                     : d.uniqueModifiers[ord] != null;
     }
 
     @Override
@@ -159,7 +166,7 @@ public class ModifiersSet extends AbstractSet<Modifier> {
         int ordinal = modifier.getCapability().ordinal();
         boolean change;
         if (ordinal == FILTER_ORDINAL) {
-            change = d.filters.add((SPARQLFilter) modifier);
+            change = d.createFilters().add((SPARQLFilter) modifier);
             if (change)
                 ++d.size;
         } else {
@@ -187,7 +194,7 @@ public class ModifiersSet extends AbstractSet<Modifier> {
 
         boolean change;
         if (ordinal == FILTER_ORDINAL) {
-            change = d.filters.remove(m);
+            change = d.filters != null && d.filters.remove(m);
         } else {
             assert m.getCapability().isUniqueModifier();
             Modifier old = d.uniqueModifiers[ordinal];
@@ -237,8 +244,9 @@ public class ModifiersSet extends AbstractSet<Modifier> {
                 int ordinal = cap.ordinal();
                 assert ordinal == FILTER_ORDINAL || cap.isUniqueModifier();
                 //noinspection SuspiciousMethodCalls
-                boolean bad = ordinal == FILTER_ORDINAL ? !d.filters.contains(modifier)
-                            : !Objects.equals(d.uniqueModifiers[ordinal], modifier);
+                boolean bad = ordinal == FILTER_ORDINAL
+                        ? d.filters == null || !d.filters.contains(modifier)
+                        : !Objects.equals(d.uniqueModifiers[ordinal], modifier);
                 if (bad) {
                     if (list == null) list = new ArrayList<>();
                     list.add(modifier);

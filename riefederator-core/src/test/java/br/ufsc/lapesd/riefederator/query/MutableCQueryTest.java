@@ -573,7 +573,7 @@ public class MutableCQueryTest implements TestContext {
             }
         }
         heatCache(q);
-        q.removeAll(evenTriples);
+        assertEquals(q.removeAll(evenTriples), !evenTriples.isEmpty());
         checkCache(q);
         checkConstellationAnnotations(q, size);
         assertEqualQueries(q, expected);
