@@ -10,8 +10,8 @@ import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
@@ -52,7 +52,7 @@ public class MutableCQuery extends CQuery {
     from(@Nonnull Collection<Triple> c) {
         if (c instanceof CQuery)
             return new MutableCQuery((CQuery)c);
-        if (c instanceof IndexedSet || c instanceof ImmutableList)
+        if (c instanceof IndexSet || c instanceof ImmutableList)
             c = new ArrayList<>(c); // do not use a immutable list as storage
         return new MutableCQuery(c instanceof List ? (List<Triple>)c
                                                             : new ArrayList<>(c));
@@ -420,7 +420,7 @@ public class MutableCQuery extends CQuery {
         d.modifiers.checkCanMergeWith(other.getModifiers());
         boolean change = false, triplesChange = false;
         Set<String> oldPublicVars = attr().publicVarNames();
-        IndexedSet<Triple> oldSet = attr().getSet();
+        IndexSet<Triple> oldSet = attr().getSet();
         makeExclusive();
         for (Triple triple : other) {
             if (!oldSet.contains(triple)) {
@@ -609,7 +609,7 @@ public class MutableCQuery extends CQuery {
     }
     @Override
     public boolean addAll(int index, @Nonnull Collection<? extends Triple> c) {
-        IndexedSet<Triple> set = attr().getSet();
+        IndexSet<Triple> set = attr().getSet();
         boolean change = c.stream().anyMatch(t -> !set.contains(t));
         if (change) {
             makeExclusive();
@@ -636,7 +636,7 @@ public class MutableCQuery extends CQuery {
     @Override
     public boolean retainAll(@Nonnull Collection<?> c) {
         @SuppressWarnings("unchecked")
-        IndexedSubset<Triple> victims = attr().getSet().subset((Collection<Triple>) c);
+        IndexSubset<Triple> victims = attr().getSet().subset((Collection<Triple>) c);
         assert victims.getBitSet().length() <= d.list.size();
         victims.getBitSet().flip(0, d.list.size());
         return doRemoveAll(victims, "retainAll", c);
@@ -659,7 +659,7 @@ public class MutableCQuery extends CQuery {
         // apply effects of removing old triple at index
         d.tripleAnns.removeAll(old);
         d.cache.invalidateTriples();
-        IndexedSet<Term> allTerms = d.cache.allTerms();
+        IndexSet<Term> allTerms = d.cache.allTerms();
         d.termAnns.keySet().removeIf(t -> !allTerms.contains(t));
         assert checkNewFilterInputs(oldInputs, "set", index+","+element);
         return old;
@@ -697,9 +697,9 @@ public class MutableCQuery extends CQuery {
     private boolean sanitizeProjection(boolean strict) {
         Projection p = d.modifiers.projection();
         if (p == null) return false;
-        IndexedSet<String> allowed = strict ? attr().tripleVarNames() : attr().allVarNames();
+        IndexSet<String> allowed = strict ? attr().tripleVarNames() : attr().allVarNames();
         Set<String> current = p.getVarNames();
-        IndexedSubset<String> fixed = allowed.immutableSubset(current);
+        IndexSubset<String> fixed = allowed.immutableSubset(current);
         if (fixed.size() == current.size())
             return false; // no change
         boolean change = d.modifiers.add(new Projection(fixed));
@@ -713,7 +713,7 @@ public class MutableCQuery extends CQuery {
             return Collections.emptySet();
         makeExclusive();
         Set<SPARQLFilter> set = Sets.newHashSetWithExpectedSize(filters.size());
-        IndexedSet<String> tripleVars = attr().tripleVarNames();
+        IndexSet<String> tripleVars = attr().tripleVarNames();
         for (Iterator<Modifier> it = d.modifiers.iterator(); it.hasNext(); ){
             Modifier modifier = it.next();
             if (modifier instanceof SPARQLFilter) {
@@ -731,8 +731,8 @@ public class MutableCQuery extends CQuery {
     }
 
     private boolean doRemoveAll(@Nonnull Collection<Triple> coll, String method, Object arg) {
-        IndexedSet<Triple> set = attr().getSet();
-        IndexedSubset<Triple> subset = set.subset(coll);
+        IndexSet<Triple> set = attr().getSet();
+        IndexSubset<Triple> subset = set.subset(coll);
         if (subset.isEmpty())
             return false;
         Set<String> oldInputs = getFilterInputsIfAsserting();
@@ -744,7 +744,7 @@ public class MutableCQuery extends CQuery {
         coll.forEach(d.tripleAnns::removeAll);
         d.list = updated;
         d.cache.invalidateTriples();
-        IndexedSet<Term> allTerms = d.cache.allTerms();
+        IndexSet<Term> allTerms = d.cache.allTerms();
         d.termAnns.keySet().removeIf(t -> !allTerms.contains(t));
         d.cache.invalidateTermAnnotations();
         assert checkNewFilterInputs(oldInputs, method, arg);
@@ -753,7 +753,7 @@ public class MutableCQuery extends CQuery {
 
     private @Nullable Set<String> getFilterInputsIfAsserting() {
         if (MutableCQuery.class.desiredAssertionStatus()) {
-            IndexedSet<String> tripleVars = d.cache.tripleVarNames();
+            IndexSet<String> tripleVars = d.cache.tripleVarNames();
             return d.modifiers.filters().stream()
                     .flatMap(f -> f.getVarNames().stream())
                     .filter(n -> !tripleVars.contains(n)).collect(toSet());

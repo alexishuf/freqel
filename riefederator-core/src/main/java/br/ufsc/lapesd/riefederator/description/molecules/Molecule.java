@@ -5,7 +5,8 @@ import br.ufsc.lapesd.riefederator.description.molecules.tags.MoleculeLinkTag;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.model.term.Term;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.MultimapBuilder;
@@ -30,7 +31,7 @@ public class Molecule {
     private @Nonnull final ImmutableSet<AtomFilter> filters;
     private @Nonnull final ImmutableSetMultimap<String, AtomFilter> atom2Filters;
     @SuppressWarnings("Immutable")
-    private @LazyInit @Nonnull SoftReference<IndexedSet<String>> atomNames
+    private @LazyInit @Nonnull SoftReference<IndexSet<String>> atomNames
             = new SoftReference<>(null);
     @SuppressWarnings("Immutable")
     private @LazyInit @Nonnull SoftReference<Map<String, Atom>> atomMap
@@ -122,10 +123,10 @@ public class Molecule {
         return builder.toString();
     }
 
-    public @Nonnull IndexedSet<String> getAtomNames() {
-        IndexedSet<String> strong = atomNames.get();
+    public @Nonnull IndexSet<String> getAtomNames() {
+        IndexSet<String> strong = atomNames.get();
         if (strong == null) {
-            strong = IndexedSet.fromDistinct(getAtomMap().keySet());
+            strong = FullIndexSet.fromDistinct(getAtomMap().keySet());
             atomNames = new SoftReference<>(strong);
         }
         return strong;

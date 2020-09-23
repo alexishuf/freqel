@@ -5,7 +5,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.common.StarSubQuery;
 import br.ufsc.lapesd.riefederator.rel.common.StarVarIndex;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -15,15 +15,15 @@ public class RelationalRewriting {
     private @Nonnull final StarVarIndex index;
     private @Nonnull final Set<String> vars;
     private final boolean distinct, limited;
-    private @Nonnull final IndexedSubset<SPARQLFilter> pendingFilters;
-    private @Nonnull final IndexedSubset<SPARQLFilter> doneFilters;
+    private @Nonnull final IndexSubset<SPARQLFilter> pendingFilters;
+    private @Nonnull final IndexSubset<SPARQLFilter> doneFilters;
     private @Nonnull final List<List<String>> starVars = new ArrayList<>();
     private @Nonnull final List<List<Column>> starColumns = new ArrayList<>();
 
     public RelationalRewriting(@Nonnull String relationalQuery, @Nonnull Set<String> sqlVars,
                                boolean distinct, boolean limited,
-                               @Nonnull IndexedSubset<SPARQLFilter> pendingFilters,
-                               @Nonnull IndexedSubset<SPARQLFilter> doneFilters,
+                               @Nonnull IndexSubset<SPARQLFilter> pendingFilters,
+                               @Nonnull IndexSubset<SPARQLFilter> doneFilters,
                                @Nonnull StarVarIndex varIndex) {
         this.relationalQuery = relationalQuery;
         this.vars = sqlVars;
@@ -71,10 +71,10 @@ public class RelationalRewriting {
     public @Nonnull Set<String> getVars() {
         return vars;
     }
-    public @Nonnull IndexedSubset<SPARQLFilter> getPendingFilters() {
+    public @Nonnull IndexSubset<SPARQLFilter> getPendingFilters() {
         return pendingFilters;
     }
-    public @Nonnull IndexedSubset<SPARQLFilter> getDoneFilters() {
+    public @Nonnull IndexSubset<SPARQLFilter> getDoneFilters() {
         return doneFilters;
     }
     public int getStarsCount() {

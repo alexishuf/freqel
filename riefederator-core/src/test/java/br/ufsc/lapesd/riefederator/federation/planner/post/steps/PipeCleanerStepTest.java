@@ -11,7 +11,7 @@ import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.ref.EmptyRefSet;
 import org.testng.annotations.Test;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;

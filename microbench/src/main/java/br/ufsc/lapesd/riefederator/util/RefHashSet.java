@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
+
 import javax.annotation.Nonnull;
 import java.util.AbstractSet;
 import java.util.Collection;

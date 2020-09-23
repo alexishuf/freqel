@@ -11,7 +11,7 @@ import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.DefaultSqlTermWriter;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.SqlSelectorFactory;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.StarSqlWriter;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -107,7 +107,7 @@ public class SqlGenerator {
 
 
 
-        IndexedSubset<SPARQLFilter> pendingFilters, doneFilters;
+        IndexSubset<SPARQLFilter> pendingFilters, doneFilters;
         pendingFilters = vars.getAllFilters().subset(vars.getCrossStarFilters());
         for (int i = 0, size = vars.getStarCount(); i < size; i++)
             pendingFilters.addAll(vars.getPendingFilters(i));

@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;
-import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.ImmIndexSubset;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -17,24 +17,24 @@ import static com.google.common.base.Preconditions.checkArgument;
 @Immutable
 public class JoinComponent {
     @SuppressWarnings("Immutable")
-    private final @Nonnull ImmutableIndexedSubset<Op> nodes;
+    private final @Nonnull ImmIndexSubset<Op> nodes;
     private @LazyInit int hash = 0;
 
     @SuppressWarnings("ReferenceEquality")
-    public JoinComponent(@Nonnull RefIndexedSet<Op> allNodes,
+    public JoinComponent(@Nonnull RefIndexSet<Op> allNodes,
                          @Nonnull Collection<Op> component) {
         checkArgument(!component.isEmpty(), "Empty component not allowed");
         checkArgument(allNodes.containsAll(component),
                 "There nodes of component ∉ allNodes");
-        if (component instanceof ImmutableIndexedSubset
-                && ((ImmutableIndexedSubset<Op>) component).getParent() == allNodes) {
-            nodes = (ImmutableIndexedSubset<Op>) component; //avoid copy
+        if (component instanceof ImmIndexSubset
+                && ((ImmIndexSubset<Op>) component).getParent() == allNodes) {
+            nodes = (ImmIndexSubset<Op>) component; //avoid copy
         } else {
             nodes = allNodes.immutableSubset(component);
         }
     }
 
-    public JoinComponent(@Nonnull RefIndexedSet<Op> allNodes,
+    public JoinComponent(@Nonnull RefIndexSet<Op> allNodes,
                          @Nonnull Op... nodes) {
         this(allNodes, Arrays.asList(nodes));
     }
@@ -44,7 +44,7 @@ public class JoinComponent {
         this(graph.getNodes(), component);
     }
 
-    public JoinComponent(@Nonnull RefIndexedSet<Op> allNodes,
+    public JoinComponent(@Nonnull RefIndexSet<Op> allNodes,
                          @Nonnull Op node) {
         checkArgument(allNodes.contains(node), "node ∉ allNodes");
         nodes = allNodes.immutableSubset(node);
@@ -62,7 +62,7 @@ public class JoinComponent {
         return nodes.iterator().next();
     }
 
-    public @Nonnull ImmutableIndexedSubset<Op> getNodes() {
+    public @Nonnull ImmIndexSubset<Op> getNodes() {
         return nodes;
     }
 

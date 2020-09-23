@@ -19,8 +19,8 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.IdentityHashSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.MultimapBuilder;
@@ -124,6 +124,7 @@ public class TreeUtils {
             if (change && cardinality != null)
                 op.setCardinality(cardinality.compute(op));
         }
+        root.assertTreeInvariants();
         return root;
     }
 

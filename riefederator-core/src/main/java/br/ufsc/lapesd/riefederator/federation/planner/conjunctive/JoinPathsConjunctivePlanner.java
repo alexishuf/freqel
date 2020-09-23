@@ -18,10 +18,11 @@ import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.SubPathA
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.util.ImmutableIndexedSubset;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
-import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.ImmIndexSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -66,7 +67,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
             logger.debug("No subqueries (lack of sources?). Query: \"\"\"{}\"\"\"", query);
             return new EmptyOp(new QueryOp(query));
         }
-        IndexedSet<Triple> full = IndexedSet.fromDistinctCopy(query.attr().matchedTriples());
+        IndexSet<Triple> full = FullIndexSet.fromDistinctCopy(query.attr().matchedTriples());
         if (JoinPathsConjunctivePlanner.class.desiredAssertionStatus()) {
             checkArgument(qns.stream().allMatch(n -> full.containsAll(n.getMatchedTriples())),
                           "Some QueryNodes match triples not in query");
@@ -83,7 +84,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
                         "continue, but planning may fail. Query: {}", query);
             plan = TreeUtils.replaceNodes(plan, innerCardComputer, op -> {
                 if (!(op.getClass().equals(QueryOp.class))) return op;
-                IndexedSet<Triple> component = ((QueryOp) op).getQuery().attr().getSet();
+                IndexSet<Triple> component = ((QueryOp) op).getQuery().attr().getSet();
                 List<Op> relevant = qns.stream()
                         .filter(qn -> component.containsAny(qn.getMatchedTriples()))
                         .collect(toList());
@@ -111,7 +112,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     }
 
     private void assertValidJoinComponents(@Nonnull Collection<JoinComponent> components,
-                                           @Nonnull IndexedSet<Triple> full) {
+                                           @Nonnull IndexSet<Triple> full) {
         if (!JoinPathsConjunctivePlanner.class.desiredAssertionStatus())
             return;
         for (JoinComponent component : components) {
@@ -132,8 +133,8 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     }
 
     private @Nullable Op plan(@Nonnull Collection<Op> qns,
-                              @Nonnull IndexedSet<Triple> triples) {
-        RefIndexedSet<Op> leaves = groupNodes(qns);
+                              @Nonnull IndexSet<Triple> triples) {
+        RefIndexSet<Op> leaves = groupNodes(qns);
         JoinGraph g = new JoinGraph(leaves);
         List<JoinComponent> pathsSet = getPaths(triples, g);
         assertValidJoinComponents(pathsSet, triples);
@@ -156,15 +157,15 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
 
     @VisibleForTesting
     void removeAlternativePaths(@Nonnull List<JoinComponent> paths) {
-        RefIndexedSet<Op> set = getNodesIndexedSetFromPaths(paths);
+        RefIndexSet<Op> set = getNodesIndexedSetFromPaths(paths);
         BitSet marked = new BitSet(paths.size());
         for (int i = 0; i < paths.size(); i++) {
-            IndexedSubset<Op> outer = set.subset(paths.get(i).getNodes());
+            IndexSubset<Op> outer = set.subset(paths.get(i).getNodes());
             assert outer.size() == paths.get(i).getNodes().size();
             for (int j = i+1; j < paths.size(); j++) {
                 if (marked.get(j))
                     continue;
-                IndexedSubset<Op> inner = set.subset(paths.get(j).getNodes());
+                IndexSubset<Op> inner = set.subset(paths.get(j).getNodes());
                 assert inner.size() == paths.get(j).getNodes().size();
                 if (outer.equals(inner))
                     marked.set(j);
@@ -176,7 +177,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     }
 
     @VisibleForTesting
-    @Nonnull RefIndexedSet<Op> getNodesIndexedSetFromPaths(@Nonnull List<JoinComponent> paths) {
+    @Nonnull RefIndexSet<Op> getNodesIndexedSetFromPaths(@Nonnull List<JoinComponent> paths) {
         List<Op> list = new ArrayList<>();
         IdentityHashMap<Op, Integer> n2idx = new IdentityHashMap<>();
         Multimap<Set<Triple>, EndpointQueryOp> mm = MultimapBuilder.hashKeys().arrayListValues().build();
@@ -211,17 +212,17 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
                 list.add(node);
             }
         }
-        return RefIndexedSet.fromMap(n2idx, list);
+        return new RefIndexSet<>(n2idx, list);
     }
 
-    private boolean satisfiesAll(@Nonnull IndexedSet<Triple> all,
+    private boolean satisfiesAll(@Nonnull IndexSet<Triple> all,
                                  @Nonnull Collection<? extends Op> nodes,
                                  @Nullable CQuery query) {
-        IndexedSubset<Triple> subset = all.emptySubset();
+        IndexSubset<Triple> subset = all.emptySubset();
         for (Op node : nodes)
-            subset.union(node.getMatchedTriples());
+            subset.addAll(node.getMatchedTriples());
         if (subset.size() != all.size()) {
-            IndexedSubset<Triple> missing = all.fullSubset();
+            IndexSubset<Triple> missing = all.fullSubset();
             missing.removeAll(subset);
             if (query != null) {
                 logger.info("QueryNodes miss triples {}. Full query was {}. Returning EmptyNode",
@@ -235,7 +236,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     }
 
     @VisibleForTesting
-    @Nonnull RefIndexedSet<Op> groupNodes(@Nonnull Collection<Op> queryNodes) {
+    @Nonnull RefIndexSet<Op> groupNodes(@Nonnull Collection<Op> queryNodes) {
         ListMultimap<JoinInterface, Op> mm;
         mm = MultimapBuilder.hashKeys(queryNodes.size()).arrayListValues().build();
 
@@ -252,7 +253,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
             list.add(node);
             n2idx.put(node, size++);
         }
-        return RefIndexedSet.fromMap(n2idx, list);
+        return new RefIndexSet<>(n2idx, list);
     }
 
 //    @VisibleForTesting
@@ -281,7 +282,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
 //    }
 
     @VisibleForTesting
-    List<JoinComponent> getPaths(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g) {
+    List<JoinComponent> getPaths(@Nonnull IndexSet<Triple> full, @Nonnull JoinGraph g) {
         if (g.isEmpty())
             return Collections.emptyList();
         PathsContext context = new PathsContext(full, g);
@@ -291,7 +292,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
             context.missingSmall.forEach(s -> b1.append("  ").append(s).append('\n'));
 
             StringBuilder b2 = new StringBuilder();
-            for (IndexedSubset<Op> c : context.unresolvedInputsComponents) {
+            for (IndexSubset<Op> c : context.unresolvedInputsComponents) {
                 b2.append("  {")
                         .append(c.stream().map(n -> String.valueOf(g.getNodes().indexOf(n)))
                                           .collect(joining(", ")))
@@ -320,27 +321,27 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     private final static class PathsContext {
         private final List<JoinComponent> result;
         private final ArrayDeque<State> queue;
-        private final @Nonnull IndexedSet<Triple> full;
+        private final @Nonnull IndexSet<Triple> full;
         private final @Nonnull JoinGraph g;
         private final @Nonnull Cache<State, Boolean> recent;
-        private final @Nonnull IndexedSubset<Triple> globallyUnsatisfied;
-        private final @Nonnull Set<IndexedSubset<Triple>> missingSmall;
-        private final @Nonnull Set<IndexedSubset<Op>> unresolvedInputsComponents;
+        private final @Nonnull IndexSubset<Triple> globallyUnsatisfied;
+        private final @Nonnull Set<IndexSubset<Triple>> missingSmall;
+        private final @Nonnull Set<IndexSubset<Op>> unresolvedInputsComponents;
 
         private static final class State {
-            final @Nonnull ImmutableIndexedSubset<Op> nodes;
-            final @Nonnull ImmutableIndexedSubset<Triple> matched;
+            final @Nonnull ImmIndexSubset<Op> nodes;
+            final @Nonnull ImmIndexSubset<Triple> matched;
             final int[] tripleOccurrences;
 
-            private State(@Nonnull ImmutableIndexedSubset<Op> nodes,
-                          @Nonnull ImmutableIndexedSubset<Triple> matched,
+            private State(@Nonnull ImmIndexSubset<Op> nodes,
+                          @Nonnull ImmIndexSubset<Triple> matched,
                           int[] tripleOccurrences) {
                 this.nodes = nodes;
                 this.matched = matched;
                 this.tripleOccurrences = tripleOccurrences;
             }
 
-            private static int[] initTripleOccurrences(ImmutableIndexedSubset<Triple> matched) {
+            private static int[] initTripleOccurrences(ImmIndexSubset<Triple> matched) {
                 int[] occurrences = new int[matched.getParent().size()];
                 BitSet bs = matched.getBitSet();
                 for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1))
@@ -348,8 +349,8 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
                 return occurrences;
             }
 
-            public State(@Nonnull ImmutableIndexedSubset<Op> nodes,
-                         @Nonnull ImmutableIndexedSubset<Triple> matched) {
+            public State(@Nonnull ImmIndexSubset<Op> nodes,
+                         @Nonnull ImmIndexSubset<Triple> matched) {
                 this(nodes, matched, initTripleOccurrences(matched));
             }
 
@@ -381,12 +382,12 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
                 // invariant: matched is the union of all matched triples
                 assert nodes.stream().flatMap(n -> n.getMatchedTriples().stream())
                             .collect(toSet()).equals(matched);
-                return new JoinComponent((RefIndexedSet<Op>) nodes.getParent(), nodes); //share nodes
+                return new JoinComponent((RefIndexSet<Op>) nodes.getParent(), nodes); //share nodes
             }
 
-            boolean hasConflictingNode(@Nonnull IndexedSubset<Triple> candidateMatched) {
+            boolean hasConflictingNode(@Nonnull IndexSubset<Triple> candidateMatched) {
                 BitSet bs = candidateMatched.getBitSet();
-                IndexedSet<Triple> all = candidateMatched.getParent();
+                IndexSet<Triple> all = candidateMatched.getParent();
                 assert tripleOccurrences.length == all.size();
                 outer:
                 for (Op old : nodes) {
@@ -402,11 +403,11 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
             }
 
             @Nullable State tryAdvance(@Nonnull Op node) {
-                IndexedSubset<Triple> nodeMatched;
+                IndexSubset<Triple> nodeMatched;
                 nodeMatched = matched.getParent().subset(node.getMatchedTriples());
                 assert nodeMatched.size() == node.getMatchedTriples().size();
 
-                ImmutableIndexedSubset<Triple> novel = matched.createUnion(nodeMatched);
+                ImmIndexSubset<Triple> novel = matched.createImmutableUnion(nodeMatched);
                 if (novel.size() == matched.size())
                     return null; //no new triples
                 if (hasConflictingNode(nodeMatched))
@@ -417,11 +418,11 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
                 BitSet bs = nodeMatched.getBitSet();
                 for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1))
                     ++occurrences[i];
-                return new State(nodes.createAdding(node), novel, occurrences);
+                return new State(nodes.createImmutableUnion(node), novel, occurrences);
             }
         }
 
-        public PathsContext(@Nonnull IndexedSet<Triple> full, @Nonnull JoinGraph g) {
+        public PathsContext(@Nonnull IndexSet<Triple> full, @Nonnull JoinGraph g) {
             this.full = full;
             this.g = g;
             int nodesSize = g.getNodes().size();
@@ -461,7 +462,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
         }
 
         private State createState(@Nonnull Op node) {
-            ImmutableIndexedSubset<Triple> matched = full.immutableSubset(node.getMatchedTriples());
+            ImmIndexSubset<Triple> matched = full.immutableSubset(node.getMatchedTriples());
             globallyUnsatisfied.removeAll(matched);
             return new State(g.getNodes().immutableSubset(node), matched);
         }
@@ -484,8 +485,8 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
                         globallyUnsatisfied.removeAll(neighbor.getMatchedTriples());
                         queue.add(next);
                     } else {
-                        IndexedSubset<Triple> m = full.fullSubset();
-                        m.difference(state.matched);
+                        IndexSubset<Triple> m = full.fullSubset();
+                        m.removeAll(state.matched);
                         if (!m.isEmpty() && (m.size() <= 4 || m.size() < full.size()/4))
                             missingSmall.add(m);
                     }

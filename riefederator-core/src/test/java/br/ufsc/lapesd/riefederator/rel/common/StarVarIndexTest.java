@@ -17,8 +17,9 @@ import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.DefaultSqlTermWriter;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.FilterSelector;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.SqlSelectorFactory;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import org.testng.annotations.Test;
 
@@ -27,7 +28,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.riefederator.util.IndexedSet.newIndexedSet;
+import static br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet.newIndexedSet;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -103,8 +104,8 @@ public class StarVarIndexTest implements TestContext {
     private static final AtomAnnotation aaLu = AtomAnnotation.of(atomLu);
     private static final AtomAnnotation aaLv = AtomAnnotation.of(atomLv);
 
-    private static final IndexedSubset<SPARQLFilter> EMPTY_FILTERS =
-            IndexedSet.from(new ArrayList<SPARQLFilter>()).emptySubset();
+    private static final IndexSubset<SPARQLFilter> EMPTY_FILTERS =
+            FullIndexSet.from(new ArrayList<SPARQLFilter>()).emptySubset();
 
     private static final ContextMapping mappingIdU = ContextMapping.builder()
             .beginTable("T")
@@ -130,7 +131,7 @@ public class StarVarIndexTest implements TestContext {
     @Test
     public void testOrderJoinableSingle() {
         CQuery q = createQuery(x, name, y);
-        IndexedSet<String> allVars = q.attr().tripleVarNames();
+        IndexSet<String> allVars = q.attr().tripleVarNames();
 
         StarSubQuery star = new StarSubQuery(q.attr().getSet().fullSubset(),
                 allVars.fullSubset(), EMPTY_FILTERS, q);
@@ -140,13 +141,13 @@ public class StarVarIndexTest implements TestContext {
     @Test
     public void testOrderGoodOrder() {
         CQuery q = createQuery(x, name, u, y, nameEx, u);
-        IndexedSet<String> allVars = newIndexedSet("x", "y", "u");
+        IndexSet<String> allVars = newIndexedSet("x", "y", "u");
         StarSubQuery star0 = new StarSubQuery(
                 q.attr().getSet().subset(new Triple(x, name, u)),
-                allVars.subsetWith("x", "u"), EMPTY_FILTERS, q);
+                allVars.subset(asList("x", "u")), EMPTY_FILTERS, q);
         StarSubQuery star1 = new StarSubQuery(
                 q.attr().getSet().subset(new Triple(y, nameEx, u)),
-                allVars.subsetWith("y", "u"), EMPTY_FILTERS, q);
+                allVars.subset(asList("y", "u")), EMPTY_FILTERS, q);
         assertEquals(StarVarIndex.orderJoinable(asList(star0, star1)),
                 asList(star0, star1));
         assertEquals(StarVarIndex.orderJoinable(asList(star1, star0)),
@@ -158,16 +159,16 @@ public class StarVarIndexTest implements TestContext {
         CQuery q = createQuery(o, age, v,
                 x, name, u,
                 y, nameEx, u, y, knows, o);
-        IndexedSet<String> allVars = newIndexedSet("o", "v", "x", "u", "y");
+        IndexSet<String> allVars = newIndexedSet("o", "v", "x", "u", "y");
         StarSubQuery star0 = new StarSubQuery(
                 q.attr().getSet().subset(new Triple(o, age, v)),
-                allVars.subsetWith("o", "v"), EMPTY_FILTERS, q);
+                allVars.subset(asList("o", "v")), EMPTY_FILTERS, q);
         StarSubQuery star1 = new StarSubQuery(
                 q.attr().getSet().subset(new Triple(x, name, u)),
-                allVars.subsetWith("x", "u"), EMPTY_FILTERS, q);
+                allVars.subset(asList("x", "u")), EMPTY_FILTERS, q);
         StarSubQuery star2 = new StarSubQuery(
                 q.attr().getSet().subset(asList(new Triple(y, nameEx, u), new Triple(y, knows, o))),
-                allVars.subsetWith("y", "u", "o"), EMPTY_FILTERS, q);
+                allVars.subset(asList("y", "u", "o")), EMPTY_FILTERS, q);
 
         List<StarSubQuery> badOrder = asList(star0, star1, star2);
         List<StarSubQuery> reorder = StarVarIndex.orderJoinable(badOrder);
@@ -289,7 +290,7 @@ public class StarVarIndexTest implements TestContext {
         }
 
         //check that for every result sparql variable there is a pending triple with it
-        IndexedSubset<Triple> pendingTriples = index.getQuery().attr().getSet().emptySubset();
+        IndexSubset<Triple> pendingTriples = index.getQuery().attr().getSet().emptySubset();
         for (int i = 0, size = index.getStarCount(); i < size; i++)
             pendingTriples.addAll(index.getPendingTriples(i));
 
@@ -439,7 +440,7 @@ public class StarVarIndexTest implements TestContext {
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
         assertEquals(index.getStar(0).getTriples(), q.attr().getSet().subset(q.get(0)));
-        IndexedSubset<Triple> star1Triples = q.attr().getSet().fullSubset();
+        IndexSubset<Triple> star1Triples = q.attr().getSet().fullSubset();
         star1Triples.remove(q.get(0));
         assertEquals(index.getStar(1).getTriples(), star1Triples);
 
@@ -464,7 +465,7 @@ public class StarVarIndexTest implements TestContext {
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
         assertEquals(index.getStar(0).getTriples(), q.attr().getSet().subset(q.get(0)));
-        IndexedSubset<Triple> star1Triples = q.attr().getSet().fullSubset();
+        IndexSubset<Triple> star1Triples = q.attr().getSet().fullSubset();
         star1Triples.remove(q.get(0));
         assertEquals(index.getStar(1).getTriples(), star1Triples);
 
@@ -489,7 +490,7 @@ public class StarVarIndexTest implements TestContext {
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
         assertEquals(index.getStar(0).getTriples(), q.attr().getSet().subset(q.get(0)));
-        IndexedSubset<Triple> star1Triples = q.attr().getSet().fullSubset();
+        IndexSubset<Triple> star1Triples = q.attr().getSet().fullSubset();
         star1Triples.remove(q.get(0));
         assertEquals(index.getStar(1).getTriples(), star1Triples);
 

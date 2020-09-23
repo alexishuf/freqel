@@ -6,8 +6,8 @@ import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
-import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.IdentityHashSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 
 import javax.annotation.Nonnull;
 import java.util.List;

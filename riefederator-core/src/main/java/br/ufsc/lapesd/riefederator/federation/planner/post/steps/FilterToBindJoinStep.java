@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.federation.planner.utils.FilterJoinPlanner;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

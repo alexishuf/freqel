@@ -3,7 +3,9 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.results.MutableSolution;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.ImmFullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -16,13 +18,13 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class ArraySolution extends AbstractSolution implements MutableSolution {
-    private final @Nonnull IndexedSet<String> vars;
+    private final @Nonnull IndexSet<String> vars;
     private final @Nonnull Term[] values;
     public static final @Nonnull ArraySolution EMPTY
-            = new ArraySolution(IndexedSet.empty(), new Term[0]);
+            = new ArraySolution(ImmFullIndexSet.empty(), new Term[0]);
 
 
-    public ArraySolution(@Nonnull IndexedSet<String> vars, @Nonnull Term[] values) {
+    public ArraySolution(@Nonnull IndexSet<String> vars, @Nonnull Term[] values) {
         this.vars = vars;
         this.values = values;
     }
@@ -98,25 +100,25 @@ public class ArraySolution extends AbstractSolution implements MutableSolution {
     }
 
     public static @Nonnull ArraySolution empty(@Nonnull Collection<String> vars) {
-        IndexedSet<String> indexedSet = IndexedSet.from(vars);
-        return new ArraySolution(indexedSet, new Term[indexedSet.size()]);
+        IndexSet<String> indexSet = FullIndexSet.from(vars);
+        return new ArraySolution(indexSet, new Term[indexSet.size()]);
     }
 
     public static @Nonnull ValueFactory forVars(@Nonnull Collection<String> vars) {
-        IndexedSet<String> indexedSet = IndexedSet.fromDistinct(vars);
-        assert new ArrayList<>(indexedSet).equals(new ArrayList<>(vars)); //order must be preserved!
-        return new ValueFactory(indexedSet);
+        IndexSet<String> indexSet = FullIndexSet.fromDistinct(vars);
+        assert new ArrayList<>(indexSet).equals(new ArrayList<>(vars)); //order must be preserved!
+        return new ValueFactory(indexSet);
     }
 
     public static class ValueFactory  {
-        private final @Nonnull IndexedSet<String> vars;
+        private final @Nonnull IndexSet<String> vars;
 
-        public ValueFactory(@Nonnull IndexedSet<String> vars) {
+        public ValueFactory(@Nonnull IndexSet<String> vars) {
             this.vars = vars;
         }
 
         @CheckReturnValue
-        public @Nonnull IndexedSet<String> getVarNames() {
+        public @Nonnull IndexSet<String> getVarNames() {
             return vars;
         }
 

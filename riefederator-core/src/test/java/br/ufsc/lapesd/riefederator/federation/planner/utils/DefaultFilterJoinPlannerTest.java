@@ -10,7 +10,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArbitraryJoinO
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.parse.CQueryContext;
-import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.ref.EmptyRefSet;
 import org.apache.jena.sparql.expr.Expr;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

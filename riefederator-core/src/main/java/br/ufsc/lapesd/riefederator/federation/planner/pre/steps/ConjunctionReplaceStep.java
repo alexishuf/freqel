@@ -9,7 +9,7 @@ import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.federation.planner.utils.StepUtils;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

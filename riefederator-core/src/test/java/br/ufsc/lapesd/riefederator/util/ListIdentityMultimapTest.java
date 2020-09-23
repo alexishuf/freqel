@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import br.ufsc.lapesd.riefederator.util.ref.ListIdentityMultimap;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;

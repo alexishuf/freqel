@@ -11,7 +11,7 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.UnsafeMergeException;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -14,7 +14,7 @@ import br.ufsc.lapesd.riefederator.jena.ExprUtils;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;

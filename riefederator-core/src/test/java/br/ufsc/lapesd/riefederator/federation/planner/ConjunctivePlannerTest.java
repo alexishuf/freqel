@@ -28,9 +28,10 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.ref.IdentityHashSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
@@ -137,7 +138,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
     }
     public static void assertPlanAnswers(@Nonnull Op root, @Nonnull Op query,
                                          boolean allowEmptyNode, boolean forgiveFilters) {
-        IndexedSet<Triple> triples = IndexedSet.from(query.getMatchedTriples());
+        IndexSet<Triple> triples = FullIndexSet.from(query.getMatchedTriples());
 
         // the plan is acyclic
         assertTrue(isAcyclic(root));
@@ -561,25 +562,6 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         );
         assertEquals(queries, expectedQueries);
         assertPlanAnswers(root, query);
-    }
-
-    @Test(dataProvider = "suppliersData", groups={"fast"})
-    public void testSameQuerySameEp(@Nonnull Supplier<ConjunctivePlanner> supplier) {
-        ConjunctivePlanner planner = supplier.get();
-        CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
-        EndpointQueryOp q1 = new EndpointQueryOp(empty1, CQuery.from(query.get(0)));
-        EndpointQueryOp q2 = new EndpointQueryOp(empty1, CQuery.from(query.get(0)));
-        EndpointQueryOp q3 = new EndpointQueryOp(empty1, CQuery.from(query.get(1)));
-
-        //noinspection UnstableApiUsage
-        for (List<Op> permutation : permutations(asList((Op)q1, q2, q3))) {
-            Op plan = planner.plan(query, permutation);
-            Set<Op> qns = streamPreOrder(plan)
-                    .filter(EndpointQueryOp.class::isInstance).collect(toSet());
-            assertTrue(qns.contains(q3));
-            assertEquals(qns.size(), 2);
-            assertPlanAnswers(plan, query);
-        }
     }
 
     @Test(dataProvider = "suppliersData", groups={"fast"})

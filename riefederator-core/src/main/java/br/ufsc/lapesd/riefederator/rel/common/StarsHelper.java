@@ -12,8 +12,9 @@ import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.PostRelationalTag;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.MoleculeLinkAnnotation;
 import org.slf4j.Logger;
@@ -29,8 +30,8 @@ import static java.util.stream.Collectors.toList;
 public class StarsHelper {
     private static final Logger logger = LoggerFactory.getLogger(StarsHelper.class);
 
-    public static @Nonnull IndexedSet<SPARQLFilter> getFilters(@Nonnull CQuery query) {
-        return IndexedSet.fromDistinctCopy(query.getModifiers().filters());
+    public static @Nonnull IndexSet<SPARQLFilter> getFilters(@Nonnull CQuery query) {
+        return FullIndexSet.fromDistinctCopy(query.getModifiers().filters());
     }
 
     public static @Nonnull List<StarSubQuery> findStars(@Nonnull CQuery query) {
@@ -38,25 +39,25 @@ public class StarsHelper {
     }
 
     public static @Nonnull List<StarSubQuery> findStars(@Nonnull CQuery query,
-                                                        @Nonnull IndexedSet<SPARQLFilter> filters) {
+                                                        @Nonnull IndexSet<SPARQLFilter> filters) {
         List<StarSubQuery> list = new ArrayList<>();
 
-        IndexedSubset<SPARQLFilter> pendingFilters = filters.fullSubset();
-        IndexedSet<String> allVarNames = query.attr().tripleVarNames();
-        IndexedSet<Triple> triples = query.attr().getSet();
-        IndexedSubset<Triple> visited = triples.emptySubset();
+        IndexSubset<SPARQLFilter> pendingFilters = filters.fullSubset();
+        IndexSet<String> allVarNames = query.attr().tripleVarNames();
+        IndexSet<Triple> triples = query.attr().getSet();
+        IndexSubset<Triple> visited = triples.emptySubset();
         ArrayDeque<Triple> queue = new ArrayDeque<>(triples);
         while (!queue.isEmpty()) {
             Triple triple = queue.remove();
             if (!visited.add(triple))
                 continue;
-            IndexedSubset<Triple> star = query.attr().triplesWithTermAt(triple.getSubject(), SUBJ);
+            IndexSubset<Triple> star = query.attr().triplesWithTermAt(triple.getSubject(), SUBJ);
             visited.addAll(star);
 
-            IndexedSubset<String> vars = allVarNames.subset(star.stream().flatMap(Triple::stream)
+            IndexSubset<String> vars = allVarNames.subset(star.stream().flatMap(Triple::stream)
                                           .filter(Term::isVar)
                                           .map(t -> t.asVar().getName()).collect(toList()));
-            IndexedSubset<SPARQLFilter> starFilters = filters.emptySubset();
+            IndexSubset<SPARQLFilter> starFilters = filters.emptySubset();
             for (Iterator<SPARQLFilter> it = pendingFilters.iterator(); it.hasNext(); ) {
                 SPARQLFilter filter = it.next();
                 if (vars.containsAll(filter.getVarNames())) {

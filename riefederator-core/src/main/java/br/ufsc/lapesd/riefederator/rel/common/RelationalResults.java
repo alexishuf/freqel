@@ -21,8 +21,8 @@ import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.riefederator.query.results.impl.LazyCartesianResults;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
 import br.ufsc.lapesd.riefederator.rel.sql.RelationalRewriting;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
@@ -70,7 +70,7 @@ public abstract class RelationalResults extends AbstractResults {
         this.jVars = new ArrayList<>(rw.getStarsCount());
         this.jrVars = new ArrayList<>(rw.getStarsCount());
         StarVarIndex index = rw.getIndex();
-        IndexedSet<String> allVars = index.getAllSparqlVars();
+        IndexSet<String> allVars = index.getAllSparqlVars();
         Set<String> projection = getVarNames();
         for (int i = 0, size = rw.getStarsCount(); i < size; i++) {
             MutableCQuery b = MutableCQuery.from(index.getPendingTriples(i));
@@ -100,9 +100,9 @@ public abstract class RelationalResults extends AbstractResults {
                 jrVars.add(jenaVars.get(i));
             } else {
                 // subseting on allVars avoid joining the over the dummy p and o vars
-                IndexedSubset<String> set = allVars.subset(jenaVars.get(i));
+                IndexSubset<String> set = allVars.subset(jenaVars.get(i));
                 jVars.add(set.createIntersection(jenaVars.get(i-1)));
-                set.union(jenaVars.get(i-1));
+                set.addAll(jenaVars.get(i-1));
                 jrVars.add(set);
             }
         }

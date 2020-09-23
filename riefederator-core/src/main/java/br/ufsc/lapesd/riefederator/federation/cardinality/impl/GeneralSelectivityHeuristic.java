@@ -9,8 +9,8 @@ import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import org.apache.jena.sparql.vocabulary.FOAF;
@@ -104,7 +104,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
     @VisibleForTesting
     class Estimator {
         @Nonnull CQuery query;
-        @Nonnull IndexedSubset<Triple> visited, pathVisited;
+        @Nonnull IndexSubset<Triple> visited, pathVisited;
         @Nonnull ArrayDeque<Triple> stack, pathStack;
         @Nonnull PathEstimator pathEstimator;
         int product = -1;
@@ -158,18 +158,18 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
     @VisibleForTesting
     class PathEstimator {
         @Nonnull CQuery query;
-        @Nonnull IndexedSubset<Triple> visited;
+        @Nonnull IndexSubset<Triple> visited;
         @Nonnull ArrayDeque<Triple> stack = new ArrayDeque<>();
         @Nullable Term core = null;
         @Nonnull Side fromSubj, fromObj;
-        @Nonnull IndexedSubset<Term> coreCandidates;
+        @Nonnull IndexSubset<Term> coreCandidates;
         @Nonnull int[] tripleCost;
 
         private class Side {
             @Nonnull final Triple.Position position, opposite;
             @Nonnull final ArrayDeque<Triple> queue = new ArrayDeque<>();
-            @Nonnull final IndexedSubset<Triple> localTriples, boundary;
-            @Nonnull final IndexedSubset<Term> localTerms;
+            @Nonnull final IndexSubset<Triple> localTriples, boundary;
+            @Nonnull final IndexSubset<Term> localTerms;
 
             public Side(@Nonnull Triple.Position position) {
                 assert position != Triple.Position.PRED;
@@ -188,7 +188,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             }
 
             private boolean visit(@Nonnull Triple t, int tripleIdx) {
-                IndexedSet<Triple> allTriples = localTriples.getParent();
+                IndexSet<Triple> allTriples = localTriples.getParent();
                 boolean added = localTriples.setIndex(tripleIdx, allTriples);
                 assert added : "Triple is new on shared, but is not new on the local version!";
 
@@ -212,7 +212,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             }
 
             public boolean step() {
-                IndexedSet<Triple> allTriples = visited.getParent();
+                IndexSet<Triple> allTriples = visited.getParent();
                 while (!queue.isEmpty()) {
                     Triple triple = queue.remove();
                     int tripleIdx = allTriples.indexOf(triple);
@@ -243,7 +243,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             private void addBoundary(@Nonnull Triple triple) {
                 assert query.attr().triplesWithTermAt(triple.get(opposite), position).isEmpty()
                         : "add() on non-boundary triple " + triple + " position="+position;
-                IndexedSet<Triple> allTriples = boundary.getParent();
+                IndexSet<Triple> allTriples = boundary.getParent();
                 int idx = allTriples.indexOf(triple);
                 boolean added = boundary.setIndex(idx, allTriples);
                 assert added : "Boundary triple had been previously added";
@@ -273,7 +273,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             }
 
             public int getEstimate() {
-                IndexedSet<Triple> allTriples = localTriples.getParent();
+                IndexSet<Triple> allTriples = localTriples.getParent();
                 assert localTriples.containsAll(boundary) : "Some boundary triples were not visited";
                 assert core != null : "No core term found, would overshoot estimates";
 
@@ -308,7 +308,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             coreCandidates.clear();
         }
 
-        public int visitPath(@Nonnull Triple triple, @Nonnull IndexedSubset<Triple> outerVisited) {
+        public int visitPath(@Nonnull Triple triple, @Nonnull IndexSubset<Triple> outerVisited) {
             assert stack.isEmpty();
             clear();
             Arrays.fill(tripleCost, -1);
@@ -365,7 +365,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             System.out.printf("Core: %s. Total path estimate: %d\n", core, sumCosts(visited));
         }
 
-        private int sumCosts(@Nonnull IndexedSubset<Triple> subset) {
+        private int sumCosts(@Nonnull IndexSubset<Triple> subset) {
             BitSet bs = subset.getBitSet();
             int sum = -2;
             for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1)) {
@@ -376,14 +376,14 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
         }
 
         private void applyStarSelectivity() {
-            IndexedSubset<Term> visitedSubjects = query.attr().tripleTerms().emptySubset();
-            IndexedSet<Triple> allTriples = visited.getParent();
+            IndexSubset<Term> visitedSubjects = query.attr().tripleTerms().emptySubset();
+            IndexSet<Triple> allTriples = visited.getParent();
             for (Triple triple : visited) {
                 Term s = triple.getSubject();
                 if (!visitedSubjects.add(s))
                     continue;
                 // get the star of this subject
-                IndexedSubset<Triple> star = query.attr().triplesWithTermAt(s, SUBJ);
+                IndexSubset<Triple> star = query.attr().triplesWithTermAt(s, SUBJ);
                 if (star.size() == 1)
                     continue; // no discount will ever be given
 
@@ -423,7 +423,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             double factor = 1/(boundSubjRate + boundObjRate);
 
             // do not apply bonus to the boundary triples
-            IndexedSubset<Triple> boundaries = visited.getParent().emptySubset();
+            IndexSubset<Triple> boundaries = visited.getParent().emptySubset();
             boundaries.addAll(fromSubj.boundary);
             boundaries.addAll(fromObj.boundary);
             BitSet bs = visited.getBitSet();
@@ -441,7 +441,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
                     continue;
 
                 // try subj --> obj joins
-                IndexedSubset<Triple> set = query.attr().triplesWithTermAt(t.getSubject(), OBJ);
+                IndexSubset<Triple> set = query.attr().triplesWithTermAt(t.getSubject(), OBJ);
                 if (set.isEmpty()) fromSubj.addBoundary(t);
                 else               set.forEach(stack::push);
                 // try obj --> subj joins

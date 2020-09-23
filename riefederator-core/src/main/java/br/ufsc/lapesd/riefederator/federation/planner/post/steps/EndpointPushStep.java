@@ -9,7 +9,7 @@ import br.ufsc.lapesd.riefederator.algebra.util.DQPushChecker;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.endpoint.DQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLDisjunctiveProfile;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

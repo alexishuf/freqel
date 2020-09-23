@@ -41,19 +41,20 @@ import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
 public class TreeUtilsTest implements TestContext {
-    private static final EmptyEndpoint ep = new EmptyEndpoint();
+    private static final EmptyEndpoint ep1 = new EmptyEndpoint();
+    private static final EmptyEndpoint ep2 = new EmptyEndpoint();
     private final Atom person = Molecule.builder("Person").buildAtom();
 
     @DataProvider
     public static Object[][] iterateDeepLeft() {
-        EndpointQueryOp q1 = new EndpointQueryOp(ep, createQuery(x, knows, Alice));
-        EndpointQueryOp q2 = new EndpointQueryOp(ep, createQuery(x, knows, y));
+        EndpointQueryOp q1 = new EndpointQueryOp(ep1, createQuery(x, knows, Alice));
+        EndpointQueryOp q2 = new EndpointQueryOp(ep1, createQuery(x, knows, y));
         JoinOp j1 = JoinOp.create(q1, q2);
-        EndpointQueryOp q3 = new EndpointQueryOp(ep, createQuery(y, knows, Charlie));
-        EndpointQueryOp q4 = new EndpointQueryOp(ep, createQuery(y, knows, Dave));
+        EndpointQueryOp q3 = new EndpointQueryOp(ep1, createQuery(y, knows, Charlie));
+        EndpointQueryOp q4 = new EndpointQueryOp(ep1, createQuery(y, knows, Dave));
         JoinOp j2 = JoinOp.create(q3, q4);
         JoinOp j3 = JoinOp.create(j1, j2);
-        EndpointQueryOp q5 = new EndpointQueryOp(ep, createQuery(z, knows, Alice));
+        EndpointQueryOp q5 = new EndpointQueryOp(ep1, createQuery(z, knows, Alice));
         CartesianOp c1 = new CartesianOp(asList(j3, q5));
 
         return new Object[][] {
@@ -78,9 +79,9 @@ public class TreeUtilsTest implements TestContext {
 
     @Test
     public void testIsTreeForgivesQueryNodes() {
-        EndpointQueryOp q1  = new EndpointQueryOp(ep, createQuery(x, knows, Alice));
-        EndpointQueryOp q2  = new EndpointQueryOp(ep, createQuery(x, knows, Bob));
-        EndpointQueryOp q1a = new EndpointQueryOp(ep, createQuery(
+        EndpointQueryOp q1  = new EndpointQueryOp(ep1, createQuery(x, knows, Alice));
+        EndpointQueryOp q2  = new EndpointQueryOp(ep1, createQuery(x, knows, Bob));
+        EndpointQueryOp q1a = new EndpointQueryOp(ep1, createQuery(
                 x, AtomInputAnnotation.asRequired(person, "person").get(),
                         knows, Alice));
         JoinOp j1 = JoinOp.create(q1,  q2);
@@ -95,8 +96,8 @@ public class TreeUtilsTest implements TestContext {
 
     @Test
     public void testIsAcyclicSimple() {
-        EndpointQueryOp n1 = new EndpointQueryOp(ep, createQuery(Alice, knows, x));
-        EndpointQueryOp n2 = new EndpointQueryOp(ep, createQuery(x, knows, Bob));
+        EndpointQueryOp n1 = new EndpointQueryOp(ep1, createQuery(Alice, knows, x));
+        EndpointQueryOp n2 = new EndpointQueryOp(ep1, createQuery(x, knows, Bob));
         JoinOp root = JoinOp.create(n1, n2);
 
         assertTrue(isAcyclic(n1));
@@ -105,10 +106,12 @@ public class TreeUtilsTest implements TestContext {
 
     @Test
     public void testIsAcyclicWithQueryNodeReuse() {
-        EndpointQueryOp n1 = new EndpointQueryOp(ep, createQuery(Alice, knows, x));
-        EndpointQueryOp n2 = new EndpointQueryOp(ep, createQuery(x, knows, Bob));
-        JoinOp j1 = JoinOp.create(n1, n2);
-        JoinOp j2 = JoinOp.create(n1, n2);
+        EndpointQueryOp n1a = new EndpointQueryOp(ep1, createQuery(Alice, knows, x));
+        EndpointQueryOp n2a = new EndpointQueryOp(ep1, createQuery(x, knows, Bob));
+        EndpointQueryOp n1b = new EndpointQueryOp(ep2, createQuery(Alice, knows, x));
+        EndpointQueryOp n2b = new EndpointQueryOp(ep2, createQuery(x, knows, Bob));
+        JoinOp j1 = JoinOp.create(n1a, n2a);
+        JoinOp j2 = JoinOp.create(n1b, n2b);
         Op r = UnionOp.builder().add(j1).add(j2).build();
 
         assertEquals(Stream.of(j1,j2,r).filter(n -> !isAcyclic(n)).collect(toList()), emptyList());
@@ -117,9 +120,9 @@ public class TreeUtilsTest implements TestContext {
     @Test
     public void testIsAcyclicWithJoinNodeReuse() {
         EmptyEndpoint ep2 = new EmptyEndpoint();
-        EndpointQueryOp n1 = new EndpointQueryOp(ep, createQuery(Alice, knows, x));
-        EndpointQueryOp n2 = new EndpointQueryOp(ep, createQuery(x, knows, y));
-        EndpointQueryOp n3a = new EndpointQueryOp(ep , createQuery(y, knows, Bob));
+        EndpointQueryOp n1 = new EndpointQueryOp(ep1, createQuery(Alice, knows, x));
+        EndpointQueryOp n2 = new EndpointQueryOp(ep1, createQuery(x, knows, y));
+        EndpointQueryOp n3a = new EndpointQueryOp(ep1, createQuery(y, knows, Bob));
         EndpointQueryOp n3b = new EndpointQueryOp(ep2, createQuery(y, knows, Bob));
         JoinOp j1 = JoinOp.create(n1, n2);
         JoinOp j2 = JoinOp.create(j1, n3a);
@@ -132,10 +135,10 @@ public class TreeUtilsTest implements TestContext {
 
     @DataProvider
     public static Object[][] intersectResultsData() {
-        EndpointQueryOp x = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, knows, Alice));
-        EndpointQueryOp xy = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, knows, y));
-        EndpointQueryOp z = new EndpointQueryOp(ep, createQuery(Alice, TreeUtilsTest.z, Bob));
-        EndpointQueryOp xyz = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
+        EndpointQueryOp x = new EndpointQueryOp(ep1, createQuery(TreeUtilsTest.x, knows, Alice));
+        EndpointQueryOp xy = new EndpointQueryOp(ep1, createQuery(TreeUtilsTest.x, knows, y));
+        EndpointQueryOp z = new EndpointQueryOp(ep1, createQuery(Alice, TreeUtilsTest.z, Bob));
+        EndpointQueryOp xyz = new EndpointQueryOp(ep1, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
 
         return new Object[][] {
                 new Object[] {emptyList(), emptySet(), false},
@@ -170,10 +173,10 @@ public class TreeUtilsTest implements TestContext {
 
     @DataProvider
     public static Object[][] unionResultsData() {
-        EndpointQueryOp x = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, knows, Alice));
-        EndpointQueryOp xy = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, knows, y));
-        EndpointQueryOp z = new EndpointQueryOp(ep, createQuery(Alice, TreeUtilsTest.z, Bob));
-        EndpointQueryOp xyz = new EndpointQueryOp(ep, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
+        EndpointQueryOp x = new EndpointQueryOp(ep1, createQuery(TreeUtilsTest.x, knows, Alice));
+        EndpointQueryOp xy = new EndpointQueryOp(ep1, createQuery(TreeUtilsTest.x, knows, y));
+        EndpointQueryOp z = new EndpointQueryOp(ep1, createQuery(Alice, TreeUtilsTest.z, Bob));
+        EndpointQueryOp xyz = new EndpointQueryOp(ep1, createQuery(TreeUtilsTest.x, y, TreeUtilsTest.z));
 
         return new Object[][] {
                 new Object[] {emptyList(), emptySet()},
@@ -213,14 +216,14 @@ public class TreeUtilsTest implements TestContext {
         Atom atom1 = new Atom("Atom1");
         Atom atom2 = new Atom("Atom2");
 
-        EndpointQueryOp xInYZOut = new EndpointQueryOp(ep, createQuery(
+        EndpointQueryOp xInYZOut = new EndpointQueryOp(ep1, createQuery(
                 x, AtomInputAnnotation.asRequired(atom1, "atom1").get(), y, z));
-        EndpointQueryOp xyInZOut = new EndpointQueryOp(ep, createQuery(
+        EndpointQueryOp xyInZOut = new EndpointQueryOp(ep1, createQuery(
                 x, AtomInputAnnotation.asRequired(atom1, "atom1").get(),
                         y, z, AtomInputAnnotation.asRequired(atom2, "atom2").get()));
-        EndpointQueryOp xKnowsALICE = new EndpointQueryOp(ep, createQuery(x, knows, Alice));
-        EndpointQueryOp xKnowsZ = new EndpointQueryOp(ep, createQuery(x, knows, z));
-        EndpointQueryOp xKnowsY = new EndpointQueryOp(ep, createQuery(x, knows, y));
+        EndpointQueryOp xKnowsALICE = new EndpointQueryOp(ep1, createQuery(x, knows, Alice));
+        EndpointQueryOp xKnowsZ = new EndpointQueryOp(ep1, createQuery(x, knows, z));
+        EndpointQueryOp xKnowsY = new EndpointQueryOp(ep1, createQuery(x, knows, y));
 
         return new Object[][] {
                 new Object[]{xKnowsALICE, xKnowsZ, singleton("x"), emptyList()},
@@ -382,7 +385,7 @@ public class TreeUtilsTest implements TestContext {
     @Test
     public void testLeafWithPrefixDict() {
         CQuery qry = createQuery(x, age, u, SPARQLFilter.build("?u > 23"), StdPrefixDict.DEFAULT);
-        EndpointQueryOp op = new EndpointQueryOp(ep, qry);
+        EndpointQueryOp op = new EndpointQueryOp(ep1, qry);
         assertTrue(TreeUtils.getPrefixDict(op).sameEntries(StdPrefixDict.DEFAULT));
         assertSame(TreeUtils.getPrefixDict(op), StdPrefixDict.DEFAULT);
     }

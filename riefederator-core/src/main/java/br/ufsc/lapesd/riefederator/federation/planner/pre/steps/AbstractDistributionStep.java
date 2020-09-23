@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.pre.steps;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerShallowStep;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

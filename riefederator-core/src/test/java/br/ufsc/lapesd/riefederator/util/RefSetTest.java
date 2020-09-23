@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import br.ufsc.lapesd.riefederator.util.ref.IdentityHashSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

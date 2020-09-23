@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.algebra;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
+import br.ufsc.lapesd.riefederator.util.ref.IdentityHashSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -63,6 +64,8 @@ public abstract class AbstractOp implements Op {
             assert getInputVars().containsAll(getOptionalInputVars());
             assert getResultVars().containsAll(getStrictResultVars());
             assert getStrictResultVars().stream().noneMatch(getInputVars()::contains);
+            assert parents == null || new IdentityHashSet<>(parents).size() == parents.size()
+                    : "Duplicate parents";
             return true;
         } finally {
             strictResultVarsCache = oldStrictResultVarsCache;

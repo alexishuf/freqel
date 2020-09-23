@@ -4,7 +4,7 @@ import br.ufsc.lapesd.riefederator.algebra.InnerOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;

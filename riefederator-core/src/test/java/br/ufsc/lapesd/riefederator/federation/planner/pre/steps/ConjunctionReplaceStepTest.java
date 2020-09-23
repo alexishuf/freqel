@@ -11,9 +11,9 @@ import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
-import br.ufsc.lapesd.riefederator.util.IdentityHashSet;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.ref.IdentityHashSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

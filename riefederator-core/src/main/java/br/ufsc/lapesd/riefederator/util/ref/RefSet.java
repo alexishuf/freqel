@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.util;
+package br.ufsc.lapesd.riefederator.util.ref;
 
 import java.util.Set;
 

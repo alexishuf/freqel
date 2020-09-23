@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator;
 
 import br.ufsc.lapesd.riefederator.util.ArraySet;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import com.google.common.collect.ImmutableSet;
 import org.openjdk.jmh.annotations.*;
 
@@ -29,7 +29,7 @@ public class SmallSetBenchmarks {
         Collections.shuffle(strings, rnd);
 
         stringsArraySet = ArraySet.fromDistinct(strings);
-        stringsIndexedSet = IndexedSet.fromDistinct(strings);
+        stringsIndexedSet = FullIndexSet.fromDistinct(strings);
         stringsHashSet = new HashSet<>(strings);
         stringsImmutableSet = ImmutableSet.copyOf(strings);
     }
@@ -41,12 +41,12 @@ public class SmallSetBenchmarks {
 
     @Benchmark
     public Set<String> indexedSetCreation() {
-        return IndexedSet.fromDistinctCopy(strings);
+        return FullIndexSet.fromDistinctCopy(strings);
     }
 
     @Benchmark
     public Set<String> indexedSetStealCreation() {
-        return IndexedSet.fromDistinct(strings);
+        return FullIndexSet.fromDistinct(strings);
     }
 
     @Benchmark
@@ -70,7 +70,7 @@ public class SmallSetBenchmarks {
     @Benchmark
     public List<String> indexedSetIteration() {
         List<String> sink = new ArrayList<>(size);
-        for (String s : IndexedSet.fromDistinctCopy(strings))
+        for (String s : FullIndexSet.fromDistinctCopy(strings))
             sink.add(s);
         return sink;
     }
@@ -98,7 +98,7 @@ public class SmallSetBenchmarks {
 
     @Benchmark
     public boolean indexedSetSelfEquals() {
-        return IndexedSet.fromDistinct(strings).equals(stringsIndexedSet);
+        return FullIndexSet.fromDistinct(strings).equals(stringsIndexedSet);
     }
 
     @Benchmark

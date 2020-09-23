@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.results.*;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +70,7 @@ public class BufferedResultsExecutor implements ResultsExecutor {
             logger.error("Race: close() called during async()! Will discard solutions");
         boolean projecting = false;
         if (namesHint != null) {
-            Set<String> set = names instanceof Set ? (Set<String>)names : IndexedSet.from(names);
+            Set<String> set = names instanceof Set ? (Set<String>)names : FullIndexSet.from(names);
             projecting = coll.stream().anyMatch(r -> !r.getVarNames().equals(set));
             names = set;
         }

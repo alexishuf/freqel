@@ -109,25 +109,6 @@ public class TakenChildrenTest implements TestContext {
     }
 
     @Test
-    public void testSuppressContentChange() {
-        Op n1 = qn(Alice, knows, x), n2 = qn(Alice, knows, x);
-        InnerOp parent = parent(n1);
-        try (TakenChildren children = parent.takeChildren()) {
-            assertTrue(children.hasContentChange());
-            children.setNoContentChange();
-            assertFalse(children.hasContentChange());
-            assertTrue(children.add(n2));
-            assertFalse(children.hasContentChange());
-            assertEquals(children.size(), 2);
-            assertEquals(children.get(0), n1);
-            assertEquals(children.get(1), n2);
-        }
-        assertEquals(parent.getChildren().size(), 2);
-        assertEquals(parent.getChildren().get(0), n1);
-        assertEquals(parent.getChildren().get(1), n2);
-    }
-
-    @Test
     public void testAssertOnClose() {
         InnerOp parent = parent(qn(Alice, knows, x), qn(x, knows, y));
         expectThrows(AssertionError.class, () -> {

@@ -21,7 +21,7 @@ import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
-import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.ref.EmptyRefSet;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.vocabulary.FOAF;

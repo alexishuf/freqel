@@ -12,9 +12,10 @@ import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +62,8 @@ public class CartesianIntroductionStep implements PlannerStep {
         MutableCQuery query = queryOp.getQuery();
         if (query.isEmpty())
             return new EmptyOp(queryOp);
-        IndexedSet<Triple> full = IndexedSet.fromDistinct(query.attr().matchedTriples());
-        List<IndexedSet<Triple>> components = getCartesianComponents(full);
+        IndexSet<Triple> full = FullIndexSet.fromDistinct(query.attr().matchedTriples());
+        List<IndexSet<Triple>> components = getCartesianComponents(full);
         assert !components.isEmpty();
         if (components.size() == 1) {
             query.attr().setJoinConnected(true);
@@ -70,7 +71,7 @@ public class CartesianIntroductionStep implements PlannerStep {
         }
 
         List<Op> componentNodes = new ArrayList<>();
-        for (IndexedSet<Triple> component : components) {
+        for (IndexSet<Triple> component : components) {
             MutableCQuery componentQuery = new MutableCQuery(query);
             componentQuery.removeIf(t -> !component.contains(t));
             componentQuery.mutateModifiers().removeIf(
@@ -97,10 +98,10 @@ public class CartesianIntroductionStep implements PlannerStep {
     }
 
     @VisibleForTesting
-    @Nonnull List<IndexedSet<Triple>> getCartesianComponents(@Nonnull IndexedSet<Triple> triples) {
-        List<IndexedSet<Triple>> components = new ArrayList<>();
+    @Nonnull List<IndexSet<Triple>> getCartesianComponents(@Nonnull IndexSet<Triple> triples) {
+        List<IndexSet<Triple>> components = new ArrayList<>();
 
-        IndexedSubset<Triple> visited = triples.emptySubset(), component = triples.emptySubset();
+        IndexSubset<Triple> visited = triples.emptySubset(), component = triples.emptySubset();
         ArrayDeque<Triple> stack = new ArrayDeque<>(triples.size());
         for (Triple start : triples) {
             if (visited.contains(start))
@@ -117,7 +118,7 @@ public class CartesianIntroductionStep implements PlannerStep {
                     }
                 }
             }
-            components.add(IndexedSet.fromDistinct(component));
+            components.add(FullIndexSet.fromDistinctCopy(component));
         }
         return components;
     }

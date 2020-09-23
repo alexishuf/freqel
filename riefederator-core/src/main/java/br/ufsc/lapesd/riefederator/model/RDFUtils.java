@@ -10,7 +10,8 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import org.apache.jena.vocabulary.XSD;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
@@ -246,7 +247,7 @@ public class RDFUtils {
         });
         if (!has[0])
             return solution;
-        IndexedSet<String> vars = IndexedSet.fromDistinct(solution.getVarNames());
+        IndexSet<String> vars = FullIndexSet.fromDistinct(solution.getVarNames());
         Term[] values = new Term[vars.size()];
         int i = 0;
         for (String var : vars) {

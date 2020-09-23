@@ -1,8 +1,9 @@
 package br.ufsc.lapesd.riefederator;
 
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -24,8 +25,8 @@ public class IntersectionBenchmarks {
 
     private List<ImmutablePair<Set<String>, Set<String>>> inputs;
     private List<ImmutablePair<List<String>, List<String>>> listInputs;
-    private List<ImmutablePair<IndexedSubset<String>, IndexedSubset<String>>> indexedInputs;
-    private IndexedSet<String> universe;
+    private List<ImmutablePair<IndexSubset<String>, IndexSubset<String>>> indexedInputs;
+    private IndexSet<String> universe;
     private Random random;
 
 
@@ -61,12 +62,12 @@ public class IntersectionBenchmarks {
             listInputs.add(ImmutablePair.of(new ArrayList<>(p.left), new ArrayList<>(p.right)));
     }
 
-    private @Nonnull IndexedSet<String> computeUniverse() {
+    private @Nonnull IndexSet<String> computeUniverse() {
         List<String> universeValues = new ArrayList<>();
         addAllPossibleVars(universeValues, LEFT_LETTERS);
         addAllPossibleVars(universeValues, RIGHT_LETTERS);
         addAllPossibleVars(universeValues, "k");
-        return IndexedSet.fromDistinct(universeValues);
+        return FullIndexSet.fromDistinct(universeValues);
     }
 
     private void addAllPossibleVars(List<String> universeValues, String letters) {
@@ -76,10 +77,10 @@ public class IntersectionBenchmarks {
         }
     }
 
-    private @Nonnull ImmutablePair<IndexedSubset<String>, IndexedSubset<String>>
+    private @Nonnull ImmutablePair<IndexSubset<String>, IndexSubset<String>>
     index(ImmutablePair<Set<String>, Set<String>> pair) {
-        IndexedSubset<String> l = universe.subset(pair.left);
-        IndexedSubset<String> r = universe.subset(pair.right);
+        IndexSubset<String> l = universe.subset(pair.left);
+        IndexSubset<String> r = universe.subset(pair.right);
         if (l.size() != pair.left.size() || r.size() != pair.right.size())
             throw new RuntimeException("universe misses variables");
         return ImmutablePair.of(l, r);
@@ -184,7 +185,7 @@ public class IntersectionBenchmarks {
     @Benchmark
     public int indexed() {
         int total = 0;
-        for (ImmutablePair<IndexedSubset<String>, IndexedSubset<String>> pair : indexedInputs) {
+        for (ImmutablePair<IndexSubset<String>, IndexSubset<String>> pair : indexedInputs) {
             total += pair.left.createIntersection(pair.right).size();
         }
         return total;

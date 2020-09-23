@@ -1,6 +1,7 @@
-package br.ufsc.lapesd.riefederator.util;
+package br.ufsc.lapesd.riefederator.util.indexed;
 
 import com.google.errorprone.annotations.Immutable;
+import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -9,11 +10,12 @@ import java.util.*;
 import static com.google.common.base.Preconditions.checkPositionIndex;
 
 @Immutable
-public class IndexedSetPartition<T>  extends IndexedSet<T> {
+public class IndexSetPartition<T>  extends BaseIndexSet<T> implements ImmIndexSet<T> {
     private final int begin, end, size;
+    private @LazyInit int hash = 0;
 
-    public IndexedSetPartition(@Nonnull Map<T, Integer> indexMap, @Nonnull List<T> data,
-                               int begin, int end) {
+    public IndexSetPartition(@Nonnull List<T> data, Map<T, Integer> indexMap,
+                             int begin, int end) {
         super(data, indexMap);
         if (end < begin)
             throw new IllegalArgumentException("Negative size: end < begin");
@@ -24,9 +26,16 @@ public class IndexedSetPartition<T>  extends IndexedSet<T> {
         this.size = end - begin;
     }
 
-    public static @Nonnull <U> IndexedSetPartition<U> from(@Nonnull IndexedSet<U> parent,
-                                                           int begin, int end) {
-        return new IndexedSetPartition<>(parent.indexMap, parent.data, begin, end);
+    @Override public @Nonnull ImmIndexSet<T> asImmutable() {
+        return this;
+    }
+
+    public static @Nonnull <U> IndexSetPartition<U> of(@Nonnull IndexSet<U> parent,
+                                                       int begin, int end) {
+        if (!(parent instanceof FullIndexSet))
+            throw new IllegalArgumentException("Expected a FullIndexedSet instance");
+        FullIndexSet<U> full = (FullIndexSet<U>) parent;
+        return new IndexSetPartition<>(full.getData(), full.getIndexMap(), begin, end);
     }
 
     public int getBegin() {
@@ -150,13 +159,14 @@ public class IndexedSetPartition<T>  extends IndexedSet<T> {
     }
 
     @Override public int hashCode() {
-        if (hash == 0) {
-            int local = 0;
-            for (int i = begin; i < end; i++)
-                local += data.get(i).hashCode();
-            hash = local;
-        }
-        return hash;
+        assert hash == 0 || hash == computeHashCode() : "Cached hash became invalid";
+        return hash == 0 ? (hash = computeHashCode()) : hash;
     }
 
+    private int computeHashCode() {
+        int local = 0;
+        for (int i = begin; i < end; i++)
+            local += data.get(i).hashCode();
+        return local;
+    }
 }

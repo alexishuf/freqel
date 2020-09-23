@@ -13,8 +13,8 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import org.slf4j.Logger;
@@ -98,11 +98,11 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
         final @Nonnull BitSet inputs;
         int hash = 0;
 
-        public Signature(@Nonnull ProtoQueryOp qn, @Nonnull IndexedSet<Triple> allTriples,
-                         @Nonnull IndexedSet<String> allVarNames) {
+        public Signature(@Nonnull ProtoQueryOp qn, @Nonnull IndexSet<Triple> allTriples,
+                         @Nonnull IndexSet<String> allVarNames) {
             this.endpoint = qn.getEndpoint();
             this.triples = allTriples.subset(qn.getMatchedQuery()).getBitSet();
-            IndexedSubset<String> inputsSubset = allVarNames.emptySubset();
+            IndexSubset<String> inputsSubset = allVarNames.emptySubset();
             qn.getMatchedQuery().forEachTermAnnotation(InputAnnotation.class, (t, a) -> {
                 if (t.isVar()) inputsSubset.add(t.asVar().getName());
             });
@@ -139,8 +139,8 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     protected @Nonnull SetMultimap<Signature, ProtoQueryOp>
     groupAndDedup(@Nonnull CQuery query, @Nonnull Collection<ProtoQueryOp> in) {
         SetMultimap<Signature, ProtoQueryOp> sig2pn = HashMultimap.create();
-        IndexedSet<Triple> triples = query.attr().getSet();
-        IndexedSet<String> vars = query.attr().allVarNames();
+        IndexSet<Triple> triples = query.attr().getSet();
+        IndexSet<String> vars = query.attr().allVarNames();
         for (ProtoQueryOp pn : in) sig2pn.put(new Signature(pn, triples, vars), pn);
 
         Set<CQuery> tmp = new HashSet<>();

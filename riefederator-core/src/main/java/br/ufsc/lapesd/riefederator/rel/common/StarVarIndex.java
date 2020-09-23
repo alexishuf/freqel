@@ -12,8 +12,8 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.MoleculeLinkAnnotation;
 import com.google.common.annotations.VisibleForTesting;
@@ -30,8 +30,8 @@ import static java.util.stream.Collectors.toSet;
 
 public class StarVarIndex {
     private final @Nonnull CQuery query;
-    private final @Nonnull IndexedSet<SPARQLFilter> allFilters;
-    private final @Nonnull IndexedSubset<SPARQLFilter> crossStarFilters;
+    private final @Nonnull IndexSet<SPARQLFilter> allFilters;
+    private final @Nonnull IndexSubset<SPARQLFilter> crossStarFilters;
     private final @Nonnull List<StarSubQuery> stars;
     private final @Nonnull SortedSet<String> outerVars;
     private final @Nonnull List<SortedSet<String>> starProjected;
@@ -39,8 +39,8 @@ public class StarVarIndex {
     private final @Nonnull List<Set<StarJoin>> star2joins;
     private final @Nonnull Map<String, Column> var2col;
     private final @Nonnull List<List<Selector>> star2selectors;
-    private final @Nonnull List<IndexedSubset<SPARQLFilter>> star2pendingFilters;
-    private final @Nonnull List<IndexedSubset<Triple>> star2pendingTriples;
+    private final @Nonnull List<IndexSubset<SPARQLFilter>> star2pendingFilters;
+    private final @Nonnull List<IndexSubset<Triple>> star2pendingTriples;
 
     public StarVarIndex(@Nonnull CQuery query,
                         @Nonnull SelectorFactory selectorFactory) {
@@ -73,7 +73,7 @@ public class StarVarIndex {
         private final Map<String, Column> var2col;
         private final List<Set<String>> star2vars;
         private final List<Map<Column, String>> star2col2var;
-        private final IndexedSubset<Triple> hasNonDirectJoin;
+        private final IndexSubset<Triple> hasNonDirectJoin;
         private final Set<String> nonDirectJoinSparqlVar;
         private int idVarNextId = 0;
 
@@ -144,7 +144,7 @@ public class StarVarIndex {
         }
 
         public Builder() {
-            IndexedSet<String> sparqlVars = stars.get(0).getVarNames().getParent();
+            IndexSet<String> sparqlVars = stars.get(0).getVarNames().getParent();
             sparqlVar2Var = HashMultimap.create(sparqlVars.size(), 2);
             var2col = Maps.newHashMapWithExpectedSize(sparqlVars.size()*2);
             star2vars = new ArrayList<>(stars.size());
@@ -204,7 +204,7 @@ public class StarVarIndex {
                 StarSubQuery star = stars.get(i);
                 SelectorContext ctx = new SelectorContext(i);
                 List<Selector> selectors = new ArrayList<>();
-                IndexedSubset<SPARQLFilter> pendingFilters
+                IndexSubset<SPARQLFilter> pendingFilters
                         = star.getAllQueryFilters().emptySubset();
                 for (SPARQLFilter filter : star.getFilters()) {
                     Selector selector = factory.create(ctx, filter);
@@ -212,7 +212,7 @@ public class StarVarIndex {
                     else                  selectors.add(selector);
                 }
                 star2pendingFilters.add(pendingFilters);
-                IndexedSubset<Triple> pendingTriples = star.getTriples().getParent().emptySubset();
+                IndexSubset<Triple> pendingTriples = star.getTriples().getParent().emptySubset();
                 for (Triple triple : star.getTriples()) {
                     Selector selector = factory.create(ctx, triple);
                     if (selector == null) pendingTriples.add(triple);
@@ -294,11 +294,11 @@ public class StarVarIndex {
             Projection projection = query.getModifiers().projection();
             if (projection != null) {
                 sparqlVars = new HashSet<>(projection.getVarNames());
-                for (IndexedSubset<SPARQLFilter> filters : star2pendingFilters) {
+                for (IndexSubset<SPARQLFilter> filters : star2pendingFilters) {
                     for (SPARQLFilter f : filters) sparqlVars.addAll(f.getVarNames());
                 }
             } else {
-                IndexedSet<String> allVars = stars.get(0).getVarNames().getParent();
+                IndexSet<String> allVars = stars.get(0).getVarNames().getParent();
                 sparqlVars = hasNonDirectJoin.isEmpty() ? allVars : new HashSet<>(allVars);
             }
             assert sparqlVars.stream().noneMatch(Objects::isNull);
@@ -312,7 +312,7 @@ public class StarVarIndex {
         }
 
         private void removeUselessPendingTriples(Set<String> sparqlVars) {
-            IndexedSubset<String> met = stars.get(0).getVarNames().getParent().emptySubset();
+            IndexSubset<String> met = stars.get(0).getVarNames().getParent().emptySubset();
             for (int i = 0, size = stars.size(); i < size; i++) {
                 StarSubQuery star = stars.get(i);
                 star2pendingTriples.get(i).removeIf(t -> {
@@ -434,7 +434,7 @@ public class StarVarIndex {
     public @Nonnull CQuery getQuery() {
         return query;
     }
-    public @Nonnull IndexedSet<String> getAllSparqlVars() {
+    public @Nonnull IndexSet<String> getAllSparqlVars() {
         return stars.get(0).getVarNames().getParent();
     }
     public int getStarCount() {
@@ -472,16 +472,16 @@ public class StarVarIndex {
     public @Nonnull List<Selector> getSelectors(int i) {
         return star2selectors.get(i);
     }
-    public @Nonnull IndexedSet<SPARQLFilter> getAllFilters() {
+    public @Nonnull IndexSet<SPARQLFilter> getAllFilters() {
         return allFilters;
     }
-    public @Nonnull IndexedSubset<SPARQLFilter> getCrossStarFilters() {
+    public @Nonnull IndexSubset<SPARQLFilter> getCrossStarFilters() {
         return crossStarFilters;
     }
-    public @Nonnull IndexedSubset<SPARQLFilter> getPendingFilters(int i) {
+    public @Nonnull IndexSubset<SPARQLFilter> getPendingFilters(int i) {
         return star2pendingFilters.get(i);
     }
-    public @Nonnull IndexedSubset<Triple> getPendingTriples(int i) {
+    public @Nonnull IndexSubset<Triple> getPendingTriples(int i) {
         return star2pendingTriples.get(i);
     }
 }

@@ -11,7 +11,8 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.model.term.std.TemplateLink;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.SimplePath;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMoleculeMatcher;
 import com.google.common.annotations.VisibleForTesting;
@@ -63,7 +64,7 @@ public class APIMoleculeInputsLinkedatorStrategy implements LinkedatorStrategy {
         assert outSig.getAtoms().containsAll(inSig.getRequiredAtoms());
         assert !outSig.getAtoms().isEmpty();
 
-        IndexedSet<String> joinAtoms = IndexedSet.from(outSig.getAtoms());
+        IndexSet<String> joinAtoms = FullIndexSet.from(outSig.getAtoms());
         MutableCQuery query = new MutableCQuery();
         Var effSrc = outSig.getAnchorPath().isEmpty() ? src : srcAnchor;
         if (!outSig.getAnchorPath().isEmpty())

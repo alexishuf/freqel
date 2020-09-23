@@ -11,7 +11,8 @@ import br.ufsc.lapesd.riefederator.query.results.ResultsCloseException;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.IteratorResults;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import org.apache.commons.collections4.iterators.TransformIterator;
 import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.Model;
@@ -79,18 +80,13 @@ public class ModelConsumptionBenchmark {
     private @Nonnull Results createUnpackedBindingsSolution() {
         QueryExecution exec = QueryExecutionFactory.create(query, model);
         ResultSet rs = exec.execSelect();
-        IndexedSet<String> vars = IndexedSet.fromDistinct(rs.getResultVars());
+        IndexSet<String> vars = FullIndexSet.fromDistinct(rs.getResultVars());
         ArraySolution.ValueFactory factory = ArraySolution.forVars(vars);
         return new AbstractResults(vars) {
 
             @Override
             public int getReadyCount() {
                 return hasNext() ? 1 : 0;
-            }
-
-            @Override
-            public boolean isAsync() {
-                return false;
             }
 
             @Override

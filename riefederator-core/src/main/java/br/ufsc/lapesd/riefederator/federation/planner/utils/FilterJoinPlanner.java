@@ -3,7 +3,7 @@ package br.ufsc.lapesd.riefederator.federation.planner.utils;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import com.google.inject.ImplementedBy;
 
 import javax.annotation.Nonnull;

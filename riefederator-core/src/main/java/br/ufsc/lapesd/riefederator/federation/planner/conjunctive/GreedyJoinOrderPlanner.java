@@ -15,8 +15,8 @@ import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
-import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
@@ -53,9 +53,9 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
     @VisibleForTesting
     class Data {
         private @Nonnull final JoinGraph graph;
-        public @Nonnull final RefIndexedSet<Op> clean;
-        public @Nonnull final IndexedSubset<Op> pending;
-        public @Nonnull final IndexedSubset<Op> webApi;
+        public @Nonnull final RefIndexSet<Op> clean;
+        public @Nonnull final IndexSubset<Op> pending;
+        public @Nonnull final IndexSubset<Op> webApi;
 
         public Data(@Nonnull JoinGraph graph, @Nonnull Collection<Op> nodesCollection) {
             this.graph = graph;
@@ -65,14 +65,14 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
                 c.setCardinality(TreeUtils.estimate(c, cardEnsemble, cardAdder));
                 cleanList.add(c);
             }
-            this.clean = RefIndexedSet.fromRefDistinct(cleanList);
+            this.clean = RefIndexSet.fromRefDistinct(cleanList);
             this.webApi = clean.subset(OrderTuple::hasWebApi);
             this.pending = clean.fullSubset();
 
         }
 
         @Nullable JoinInfo weight(@Nonnull Op a, @Nonnull Op b) {
-            RefIndexedSet<Op> nodes = graph.getNodes();
+            RefIndexSet<Op> nodes = graph.getNodes();
             if (nodes.contains(a) && nodes.contains(b))
                 return graph.getWeight(a, b);
             return JoinInfo.getJoinability(a, b);

@@ -11,6 +11,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
+import br.ufsc.lapesd.riefederator.util.ref.IdentityHashSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -41,6 +42,10 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         Set<String> oldReqInputsCache = reqInputsCache;
         Set<String> oldOptInputsCache = optInputsCache;
         try {
+            assert children == null || new IdentityHashSet<>(children).size() == children.size()
+                    : "Duplicate children (same instance appears twice)";
+            assert children == null || new HashSet<>(children).size() == children.size()
+                    : "Duplicate children (there are equal, but distinct, instances)";
             return super.assertAllInvariants(true);
         } finally {
             allVarsCache = oldAllVarsCache;
@@ -167,6 +172,8 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         this.children = children;
         for (Op child : children)
             child.attachTo(this);
+        //noinspection AssertWithSideEffects
+        assert assertAllInvariants(true);
         return old;
     }
 

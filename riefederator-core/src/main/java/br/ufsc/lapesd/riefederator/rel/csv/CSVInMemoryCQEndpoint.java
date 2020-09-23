@@ -38,8 +38,9 @@ import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.base.Preconditions;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -75,7 +76,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
     private static final Logger logger = LoggerFactory.getLogger(CSVInMemoryCQEndpoint.class);
     private static final URI xsdString = new StdURI(XSD.xstring.getURI());
 
-    private @Nonnull final IndexedSet<String> columns;
+    private @Nonnull final IndexSet<String> columns;
     private @Nonnull final List<Column> columnObjects;
     private final int rows;
     private @Nonnull final List<Object> data;
@@ -89,7 +90,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
 
     public CSVInMemoryCQEndpoint(@Nonnull Collection<String> columns, @Nonnull List<Object> data,
                                  @Nonnull RelationalMapping mapping) {
-        this.columns = IndexedSet.from(columns);
+        this.columns = FullIndexSet.from(columns);
         this.data = data;
         this.rows = data.size() / columns.size();
         assert rows * columns.size() == data.size();
@@ -353,8 +354,8 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
     }
 
     private class SolutionBuilder {
-        final IndexedSet<String> vars;
-        final IndexedSubset<String> matched;
+        final IndexSet<String> vars;
+        final IndexSubset<String> matched;
         final ArraySolution.ValueFactory factory;
         final List<Term> values;
         final StarSubQuery star;
@@ -367,7 +368,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             Term core = star.getCore();
             if (core.isVar())
                 varList.add(core.asVar().getName());
-            vars = IndexedSet.from(varList);
+            vars = FullIndexSet.from(varList);
 
             matched = vars.emptySubset();
             factory = ArraySolution.forVars(vars);

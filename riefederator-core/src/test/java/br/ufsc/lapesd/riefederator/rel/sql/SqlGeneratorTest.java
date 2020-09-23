@@ -15,7 +15,7 @@ import br.ufsc.lapesd.riefederator.rel.mappings.context.ContextMapping;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.util.DictTree;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -225,7 +225,7 @@ public class SqlGeneratorTest implements TestContext {
                                                           .collect(Collectors.toSet());
         assertEquals(actualColumns, expectedColumns);
 
-        IndexedSet<SPARQLFilter> filters = StarsHelper.getFilters(query);
+        IndexSet<SPARQLFilter> filters = StarsHelper.getFilters(query);
         assertTrue(filters.containsAll(pendingFilters));
         assertEquals(sql.getPendingFilters(), pendingFilters);
         assertEquals(sql.getDoneFilters(), filters.fullSubset().createDifference(pendingFilters));

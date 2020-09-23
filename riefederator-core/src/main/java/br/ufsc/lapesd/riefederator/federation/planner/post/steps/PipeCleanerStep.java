@@ -5,8 +5,8 @@ import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.riefederator.util.ListIdentityMultimap;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.ListIdentityMultimap;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

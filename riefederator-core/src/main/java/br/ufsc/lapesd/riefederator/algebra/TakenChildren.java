@@ -52,11 +52,21 @@ public class TakenChildren extends AbstractList<Op> implements AutoCloseable {
         return children.size();
     }
 
+    private boolean hasChild(@Nonnull Op child, int exceptAt) {
+        for (int i = 0, childrenSize = children.size(); i < childrenSize; i++) {
+            if (i == exceptAt) continue;
+            if (children.get(i) == child) return true;
+        }
+        return false;
+    }
+
     @Override public Op set(int index, Op element) {
+        assert !hasChild(element, index) : "Child already present in another position";
         return children.set(index, element);
     }
 
     @Override public void add(int index, Op element) {
+        assert !hasChild(element, -1) : "Child already present in this list";
         children.add(index, element);
     }
 

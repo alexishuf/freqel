@@ -6,8 +6,8 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
 import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.slf4j.Logger;
@@ -21,15 +21,15 @@ import java.util.Set;
 public class StarSubQuery {
     private static final Logger logger = LoggerFactory.getLogger(StarSubQuery.class);
 
-    private final @Nonnull IndexedSubset<Triple> triples;
-    private final @Nonnull IndexedSubset<String> varNames;
-    private final @Nonnull IndexedSubset<SPARQLFilter> filters;
+    private final @Nonnull IndexSubset<Triple> triples;
+    private final @Nonnull IndexSubset<String> varNames;
+    private final @Nonnull IndexSubset<SPARQLFilter> filters;
     private final @Nonnull CQuery query;
     private @LazyInit @Nullable String table;
 
-    public StarSubQuery(@Nonnull IndexedSubset<Triple> triples,
-                        @Nonnull IndexedSubset<String> varNames,
-                        @Nonnull IndexedSubset<SPARQLFilter> filters,
+    public StarSubQuery(@Nonnull IndexSubset<Triple> triples,
+                        @Nonnull IndexSubset<String> varNames,
+                        @Nonnull IndexSubset<SPARQLFilter> filters,
                         @Nonnull CQuery query) {
         Preconditions.checkArgument(!triples.isEmpty());
         this.triples = triples;
@@ -39,16 +39,16 @@ public class StarSubQuery {
         assert triples.stream().map(Triple::getSubject).allMatch(getCore()::equals);
     }
 
-    public @Nonnull IndexedSubset<Triple> getTriples() {
+    public @Nonnull IndexSubset<Triple> getTriples() {
         return triples;
     }
-    public @Nonnull IndexedSubset<String> getVarNames() {
+    public @Nonnull IndexSubset<String> getVarNames() {
         return varNames;
     }
-    public @Nonnull IndexedSubset<SPARQLFilter> getFilters() {
+    public @Nonnull IndexSubset<SPARQLFilter> getFilters() {
         return filters;
     }
-    public @Nonnull IndexedSet<SPARQLFilter> getAllQueryFilters() {
+    public @Nonnull IndexSet<SPARQLFilter> getAllQueryFilters() {
         return filters.getParent();
     }
     public @Nonnull CQuery getQuery() {

@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.util;
+package br.ufsc.lapesd.riefederator.util.ref;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -12,10 +12,15 @@ public class IdentityHashSet<T> extends AbstractSet<T> implements RefSet<T> {
     private int hash = 0;
     private static final Object PRESENT = new Object();
 
-
     public IdentityHashSet(@Nonnull IdentityHashMap<T, ?> map) {
         //noinspection unchecked
         this.map = (IdentityHashMap<T, Object>) map;
+    }
+
+    public IdentityHashSet(@Nonnull Collection<? extends T> collection) {
+        map = new IdentityHashMap<T, Object>((int)((float)collection.size() / 0.75f + 1.0f));
+        for (T value : collection)
+            map.put(value, PRESENT);
     }
 
     public IdentityHashSet(int capacity) {

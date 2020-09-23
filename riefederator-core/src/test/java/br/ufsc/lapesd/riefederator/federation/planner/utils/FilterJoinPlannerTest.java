@@ -18,7 +18,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.ref.EmptyRefSet;
 import com.google.inject.Injector;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.testng.annotations.DataProvider;

@@ -10,8 +10,9 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
-import br.ufsc.lapesd.riefederator.util.EmptyRefSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.ref.EmptyRefSet;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -70,8 +71,8 @@ public class CartesianIntroductionStepTest implements TestContext {
     public void testCartesianComponents(Collection<Triple> triples,
                                         Collection<Collection<Triple>> expected) {
         CartesianIntroductionStep step = new CartesianIntroductionStep();
-        List<IndexedSet<Triple>> list = step.getCartesianComponents(IndexedSet.from(triples));
-        assertEquals(new HashSet<>(list), expected.stream().map(IndexedSet::from).collect(toSet()));
+        List<IndexSet<Triple>> list = step.getCartesianComponents(FullIndexSet.from(triples));
+        assertEquals(new HashSet<>(list), expected.stream().map(FullIndexSet::from).collect(toSet()));
 
         assertEquals(MutableCQuery.from(triples).attr().isJoinConnected(), expected.size()==1);
     }

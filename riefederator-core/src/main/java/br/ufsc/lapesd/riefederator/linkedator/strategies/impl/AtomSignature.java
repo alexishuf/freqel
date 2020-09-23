@@ -4,8 +4,8 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeElement;
 import br.ufsc.lapesd.riefederator.query.SimplePath;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
@@ -112,12 +112,12 @@ public class AtomSignature {
     createSignatures(@Nonnull Molecule mol, @Nonnull Set<String> atoms,
                      @Nonnull ImmutableSet<String> requiredAtoms) {
         Multimap<String, AtomPath> pathsFromCore = findPathsFromCore(mol, atoms);
-        IndexedSet<String> allAtoms = mol.getAtomNames();
-        IndexedSubset<String> commonAncestors = allAtoms.fullSubset();
+        IndexSet<String> allAtoms = mol.getAtomNames();
+        IndexSubset<String> commonAncestors = allAtoms.fullSubset();
         for (String a : atoms) {
-            IndexedSubset<String> subset = allAtoms.emptySubset();
+            IndexSubset<String> subset = allAtoms.emptySubset();
             pathsFromCore.get(a).forEach(l -> subset.addAll(l.subList(0, l.size() - 1)));
-            commonAncestors.intersect(subset);
+            commonAncestors.retainAll(subset);
         }
         assert commonAncestors.contains(mol.getCore().getName());
 
@@ -199,7 +199,7 @@ public class AtomSignature {
         result = HashMultimap.create(atomNames.size(), 4);
 
         Molecule.Index idx = molecule.getIndex();
-        IndexedSubset<String> visited = molecule.getAtomNames().emptySubset();
+        IndexSubset<String> visited = molecule.getAtomNames().emptySubset();
         ArrayDeque<State> queue = new ArrayDeque<>();
         String coreAtom = molecule.getCore().getName();
         queue.add(new State(coreAtom));

@@ -16,8 +16,8 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
-import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.base.Preconditions;
@@ -34,7 +34,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.riefederator.util.IndexedSet.fromDistinctCopy;
+import static br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet.fromDistinctCopy;
 import static com.google.common.collect.Collections2.permutations;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
@@ -82,7 +82,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         EndpointQueryOp n1 = node(e1, Alice, p1, x);
         EndpointQueryOp n2 = node(e1, x, p1, y);
         EndpointQueryOp n3 = node(e2, y, p1, Bob);
-        RefIndexedSet<Op> all = RefIndexedSet.fromRefDistinct(asList(n1, n2, n3));
+        RefIndexSet<Op> all = RefIndexSet.fromRefDistinct(asList(n1, n2, n3));
         return Stream.of(
                 asList(new JoinComponent(all, n1), new JoinComponent(all, n1), true),
                 asList(new JoinComponent(all, n1), new JoinComponent(all, n2), false),
@@ -158,7 +158,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         EndpointQueryOp n2 = node(e1, x, p2, y);
         EndpointQueryOp n3 = new EndpointQueryOp(e2, createQuery(y, AtomInputAnnotation.asRequired(Atom1, "Atom1").get(),
                         p3, Bob, AtomAnnotation.of(Person)));
-        RefIndexedSet<Op> nodes = RefIndexedSet.fromRefDistinct(asList(n1, n2, n3));
+        RefIndexSet<Op> nodes = RefIndexSet.fromRefDistinct(asList(n1, n2, n3));
 
         JoinComponent path1, path2, path3;
         path1 = new JoinComponent(nodes, n3, n2, n1);
@@ -283,7 +283,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         // mXi == M(nX, nXi)
         Op m1i = m(n1, n1i);
 
-        RefIndexedSet<Op> nodes = RefIndexedSet.fromRefDistinct(
+        RefIndexSet<Op> nodes = RefIndexSet.fromRefDistinct(
                 asList(n1, n2, n3, n4, n5, n6, n1i, n2i, n4i, n5i, n1j, n2j, n5j, m1i));
 
         return Stream.of(
@@ -377,7 +377,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         double sum = 0;
         int count = 0;
         for (List<Op> permutation : permutations(nodes)) {
-            JoinGraph g = new JoinGraph(RefIndexedSet.fromRefDistinct(permutation));
+            JoinGraph g = new JoinGraph(RefIndexSet.fromRefDistinct(permutation));
             JoinPathsConjunctivePlanner planner = createPathsPlanner();
             Stopwatch sw = Stopwatch.createStarted();
             List<JoinComponent> paths = planner.getPaths(fromDistinctCopy(query.attr().matchedTriples()), g);
@@ -413,7 +413,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         EndpointQueryOp n3i = node(e1, b -> b.annotate(y, AtomInputAnnotation.asRequired(Person, "Person").get()), y, p3, z);
         EndpointQueryOp n4i = node(e1, b -> b.annotate(z, AtomInputAnnotation.asRequired(Person, "Person").get()), z, p4, Bob);
 
-        RefIndexedSet<Op> all = RefIndexedSet.fromRefDistinct(asList(n1 , n2 , n3 , n4 ,
+        RefIndexSet<Op> all = RefIndexSet.fromRefDistinct(asList(n1 , n2 , n3 , n4 ,
                                                           n1a, n2a, n3a, n4a,
                                                           n1i, n2i, n3i, n4i));
 
@@ -447,7 +447,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         List<JoinComponent> oldPaths = new ArrayList<>(paths);
 
         JoinPathsConjunctivePlanner planner = createPathsPlanner();
-        RefIndexedSet<Op> set = planner.getNodesIndexedSetFromPaths(paths);
+        RefIndexSet<Op> set = planner.getNodesIndexedSetFromPaths(paths);
 
         //all nodes are in set
         List<Op> missingNonQueryNodes = paths.stream().flatMap(p -> p.getNodes().stream())
@@ -473,11 +473,11 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         }
 
         // can subset any QueryNode
-        List<IndexedSubset<Op>> singletons = paths.stream()
+        List<IndexSubset<Op>> singletons = paths.stream()
                 .flatMap(p -> p.getNodes().stream())
                 .filter(n -> n instanceof EndpointQueryOp)
                 .map(set::subset).collect(toList());
-        assertTrue(singletons.stream().noneMatch(IndexedSubset::isEmpty));
+        assertTrue(singletons.stream().noneMatch(IndexSubset::isEmpty));
         assertTrue(singletons.stream().allMatch(s -> s.size() == 1));
     }
 
@@ -528,7 +528,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
                                            List<List<Integer>> equivIndices) {
         JoinPathsConjunctivePlanner planner = createPathsPlanner();
         //setup
-        RefIndexedSet<Op> nodes = RefIndexedSet.fromRefDistinct(
+        RefIndexSet<Op> nodes = RefIndexSet.fromRefDistinct(
                 nodesList.stream().flatMap(Collection::stream).collect(toSet()));
         JoinGraph graph = new JoinGraph(nodes);
         List<JoinComponent> pathsList;

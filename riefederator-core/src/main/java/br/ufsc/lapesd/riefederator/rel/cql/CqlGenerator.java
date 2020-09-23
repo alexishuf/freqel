@@ -7,7 +7,7 @@ import br.ufsc.lapesd.riefederator.rel.common.Selector;
 import br.ufsc.lapesd.riefederator.rel.common.StarVarIndex;
 import br.ufsc.lapesd.riefederator.rel.sql.RelationalRewriting;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.DefaultSqlTermWriter;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 
 import javax.annotation.Nonnull;
 
@@ -44,7 +44,7 @@ public class CqlGenerator {
             throw new IllegalArgumentException("No table found for the star "+query);
 
         String cql = write(distinct, limit, index, table);
-        IndexedSubset<SPARQLFilter> doneFilters = index.getStar(0).getFilters().copy();
+        IndexSubset<SPARQLFilter> doneFilters = index.getStar(0).getFilters().copy();
         doneFilters.removeAll(index.getPendingFilters(0));
         return new RelationalRewriting(cql, index.getOuterProjection(),
                                        distinct, limit > 0,

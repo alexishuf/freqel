@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner.phased;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
-import br.ufsc.lapesd.riefederator.util.RefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 import com.google.errorprone.annotations.Immutable;
 
 import javax.annotation.Nonnull;

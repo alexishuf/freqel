@@ -1,8 +1,9 @@
 package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.query.results.*;
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,14 +56,14 @@ public class LazyCartesianResults extends AbstractResults implements Results {
 
         // check varNames and non-joinable components
         if (LazyCartesianResults.class.desiredAssertionStatus()) {
-            IndexedSet<String> all = IndexedSet.fromDistinct(
+            IndexSet<String> all = FullIndexSet.fromDistinct(
                     ins.stream().flatMap(i -> i.getVarNames().stream()).collect(toSet()));
             assert all.containsAll(varNames) : "Some result variables not found in any input";
-            List<IndexedSubset<String>> varSets =
+            List<IndexSubset<String>> varSets =
                     ins.stream().map(r -> all.subset(r.getVarNames())).collect(toList());
             assert varSets.size() == size;
             for (int i = 0; i < size; i++) {
-                IndexedSubset<String> left = varSets.get(i);
+                IndexSubset<String> left = varSets.get(i);
                 for (int j = i+1; j < size; j++) {
                     assert left.createIntersection(varSets.get(j)).isEmpty()
                             : i+"-th and "+j+"-th input Results share variables, should be joining";

@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.riefederator.model.prefix;
 
-import br.ufsc.lapesd.riefederator.util.IndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.ImmFullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import org.apache.commons.collections4.keyvalue.UnmodifiableMapEntry;
 
 import javax.annotation.Nonnull;
@@ -56,7 +58,7 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
     }
 
     private final @Nonnull List<String> uriPrefixes;
-    private @Nonnull IndexedSet<String> prefixNames;
+    private @Nonnull IndexSet<String> prefixNames;
 
     private final @Nonnull Iterable<Map.Entry<String, String>> iterable =
             new Iterable<Map.Entry<String, String>>() {
@@ -81,10 +83,10 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
 
     public StdPrefixDict() {
         uriPrefixes = new ArrayList<>();
-        prefixNames = IndexedSet.empty();
+        prefixNames = ImmFullIndexSet.empty();
     }
 
-    protected StdPrefixDict(@Nonnull IndexedSet<String> prefixNames,
+    protected StdPrefixDict(@Nonnull IndexSet<String> prefixNames,
                                @Nonnull List<String> uriPrefixes) {
         this.uriPrefixes = uriPrefixes;
         this.prefixNames = prefixNames;
@@ -105,7 +107,7 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
             for (String prefix : prefixes)
                 names.add(prefix2name.get(prefix));
             assert names.stream().noneMatch(Objects::isNull);
-            IndexedSet<String> namesSet = IndexedSet.fromDistinct(names);
+            IndexSet<String> namesSet = FullIndexSet.fromDistinct(names);
             return new StdPrefixDict(namesSet, prefixes);
         }
     }
@@ -123,7 +125,7 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
         uriPrefixes.add(idx, uri);
         ArrayList<String> names = new ArrayList<>(prefixNames);
         names.add(idx, prefix);
-        prefixNames = IndexedSet.fromDistinct(names);
+        prefixNames = FullIndexSet.fromDistinct(names);
         assert prefixNames.size() == uriPrefixes.size();
         return null;
     }
@@ -136,7 +138,7 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
         uriPrefixes.remove(idx);
         ArrayList<String> names = new ArrayList<>(prefixNames);
         String old = names.remove(idx);
-        prefixNames = IndexedSet.fromDistinct(names);
+        prefixNames = FullIndexSet.fromDistinct(names);
         assert prefixNames.size() == uriPrefixes.size();
         return old;
     }

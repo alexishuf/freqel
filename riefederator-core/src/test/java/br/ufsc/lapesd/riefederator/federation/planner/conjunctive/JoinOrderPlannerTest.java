@@ -27,7 +27,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
-import br.ufsc.lapesd.riefederator.util.RefIndexedSet;
+import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Collections2;
 import com.google.inject.AbstractModule;
@@ -256,7 +256,7 @@ public class JoinOrderPlannerTest implements TestContext {
     public void testPlanGivenNodes(Supplier<JoinOrderPlanner> supplier, List<JoinInfo> list) {
         JoinOrderPlanner planner = supplier.get();
         Set<Op> leavesSet = getPlanNodes(list);
-        JoinGraph joinGraph = new JoinGraph(RefIndexedSet.fromRefDistinct(leavesSet));
+        JoinGraph joinGraph = new JoinGraph(RefIndexSet.fromRefDistinct(leavesSet));
         int rounds = 0;
         //noinspection UnstableApiUsage
         for (List<Op> permutation : Collections2.permutations(new ArrayList<>(leavesSet))) {
@@ -295,7 +295,7 @@ public class JoinOrderPlannerTest implements TestContext {
         EndpointQueryOp modalities = new EndpointQueryOp(e1, createQuery(o4, p9, d));
 
         JoinOrderPlanner planner = supplier.get();
-        RefIndexedSet<Op> leaves = RefIndexedSet.fromRefDistinct(asList(
+        RefIndexSet<Op> leaves = RefIndexSet.fromRefDistinct(asList(
                 contractorByName, procurementsOfContractor, contractById, modalities,
                 procurementById, orgByDesc, contract));
         JoinGraph graph = new JoinGraph(leaves);

@@ -11,8 +11,8 @@ import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.IndexedSetPartition;
-import br.ufsc.lapesd.riefederator.util.IndexedSubset;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSetPartition;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.DoNotCall;
@@ -213,12 +213,12 @@ public class CQuery implements  List<Triple> {
      * @return A possibly empty {@link CQuery} with the subset of triples
      */
     public @Nonnull CQuery containing(@Nonnull Term term, Collection<Position> positions) {
-        IndexedSubset<Triple> triples = d.cache.getSet().emptySubset();
+        IndexSubset<Triple> triples = d.cache.getSet().emptySubset();
         for (Position position : positions)
             triples.addAll(d.cache.triplesWithTermAt(term, position));
 
         MutableCQuery other = MutableCQuery.from(triples);
-        IndexedSetPartition<String> allowed = other.attr().tripleVarNames();
+        IndexSetPartition<String> allowed = other.attr().tripleVarNames();
         other.d.modifiers.silenced = true;
         boolean hadFilter = false;
         for (Modifier m : getModifiers()) {
