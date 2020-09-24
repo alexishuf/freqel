@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths;
+package br.ufsc.lapesd.riefederator.federation.planner.conjunctive;
 
 import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.algebra.Op;
@@ -9,12 +9,13 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 
-public class JoinGraph extends UndirectedIrreflexiveArrayGraph<Op, JoinInfo> {
-    public JoinGraph(@Nonnull RefIndexSet<Op> nodes) {
+public class ArrayJoinGraph extends UndirectedIrreflexiveArrayGraph<Op, JoinInfo>
+        implements JoinGraph {
+    public ArrayJoinGraph(@Nonnull RefIndexSet<Op> nodes) {
         super(JoinInfo.class, null, nodes);
     }
 
-    public JoinGraph() {
+    public ArrayJoinGraph() {
         super(JoinInfo.class);
     }
 

@@ -14,6 +14,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.modifiers.Limit;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParserTest;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import org.apache.commons.io.FileUtils;
@@ -178,7 +179,10 @@ public class BSBMSelfTest {
     @Test(groups = {"fast"}, dataProvider = "queryData")
     public void loadAllQueries(String fn) {
         try {
-            assertNotNull(loadQueryWithLimit(fn), "Got null from loadQuery("+fn+")");
+            Op query = loadQueryWithLimit(fn);
+            assertNotNull(query, "Got null from loadQuery("+fn+")");
+            SPARQLParserTest.assertVarsUniverse(query);
+            SPARQLParserTest.assertTripleUniverse(query);
         } catch (IOException | SPARQLParseException e) {
             fail("Failed to load query "+fn, e);
         }

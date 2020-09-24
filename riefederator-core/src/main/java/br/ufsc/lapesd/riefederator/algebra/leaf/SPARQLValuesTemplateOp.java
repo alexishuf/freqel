@@ -12,6 +12,8 @@ import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -26,6 +28,8 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
     private final @Nonnull TPEndpoint endpoint;
     private final @Nonnull String template;
     private final @Nonnull Set<String> vars;
+    private @Nullable IndexSet<String> varsUniverse;
+    private @Nullable IndexSubset<String> indexedVars;
     private final @Nonnull PrefixDict dict;
     private final boolean ask, distinct;
     private @Nullable ValuesModifier values;
@@ -117,6 +121,26 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
         return distinct;
     }
 
+    @Override public void offerVarsUniverse(@Nonnull IndexSet<String> universe) {
+        if (varsUniverse != universe) {
+            varsUniverse = universe;
+            indexedVars = null;
+        }
+    }
+
+    @Override public @Nullable IndexSet<String> getOfferedVarsUniverse() {
+        return varsUniverse;
+    }
+
+    @Override
+    public void offerTriplesUniverse(@Nonnull IndexSet<Triple> universe) {
+        /* ignore */
+    }
+
+    @Override public @Nullable IndexSet<Triple> getOfferedTriplesUniverse() {
+        return null;
+    }
+
     @Override
     public @Nonnull ModifiersSet modifiers() {
         return ModifiersSet.EMPTY;
@@ -125,13 +149,17 @@ public class SPARQLValuesTemplateOp extends AbstractOp {
     @Override
     public @Nonnull Set<String> getResultVars() {
         cacheHit = true;
-        return vars;
+        if (indexedVars != null)
+            return indexedVars;
+        else if (varsUniverse != null)
+            return indexedVars = varsUniverse.subset(vars);
+        else
+            return vars;
     }
 
     @Override
     public @Nonnull Set<String> getAllVars() {
-        cacheHit = true;
-        return vars;
+        return getResultVars();
     }
 
     @Override

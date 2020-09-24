@@ -13,7 +13,6 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimat
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;

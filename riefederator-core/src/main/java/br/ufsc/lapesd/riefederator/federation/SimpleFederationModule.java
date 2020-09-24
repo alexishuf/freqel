@@ -16,7 +16,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerDispatcher;
 import br.ufsc.lapesd.riefederator.federation.planner.post.PhasedPostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.post.steps.*;
 import br.ufsc.lapesd.riefederator.federation.planner.pre.PhasedPrePlanner;
@@ -57,7 +57,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         configurePrePlanner();
         configurePostPlanner();
         bind(DecompositionStrategy.class).to(StandardDecomposer.class);
-        bind(ConjunctivePlanner.class).to(JoinPathsConjunctivePlanner.class);
+        bind(ConjunctivePlanner.class).to(BitsetConjunctivePlannerDispatcher.class);
         bind(JoinOrderPlanner.class).to(GreedyJoinOrderPlanner.class);
         configureCardinalityEstimation();
     }

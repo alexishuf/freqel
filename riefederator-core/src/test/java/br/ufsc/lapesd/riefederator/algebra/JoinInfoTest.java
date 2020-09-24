@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -13,6 +14,9 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.util.UndirectedIrreflexiveArrayGraph;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.base.Preconditions;
@@ -297,5 +301,69 @@ public class JoinInfoTest implements TestContext {
         assertTrue(info.isLinkedTo(other));
         assertTrue(other.isLinkedTo(info));
         assertSame(info.getOppositeToLinked(other), expected);
+    }
+
+    @Test
+    public void testUseIndexSubsetsNoInputs() {
+        QueryOp l = new QueryOp(createQuery(Alice, knows, x, x, age, u));
+        QueryOp r = new QueryOp(createQuery(Bob, knows, y, y, age, u));
+
+        IndexSet<Triple> triplesUniverse = FullIndexSet.newIndexSet(
+                new Triple(Alice, knows, x),
+                new Triple(x, age, u),
+                new Triple(Bob, knows, y),
+                new Triple(y, age, u));
+        IndexSet<String> varsUniverse = FullIndexSet.newIndexSet("x", "u", "y");
+        l.offerTriplesUniverse(triplesUniverse); l.offerVarsUniverse(varsUniverse);
+        r.offerTriplesUniverse(triplesUniverse); r.offerVarsUniverse(varsUniverse);
+
+        JoinInfo i = getJoinability(l, r);
+        assertTrue(i.isValid());
+        assertTrue(i.getJoinVars() instanceof IndexSubset);
+
+
+        assertTrue(i.getJoinVars() instanceof IndexSubset);
+        assertTrue(i.getPendingRequiredInputs() instanceof IndexSubset);
+        assertTrue(i.getPendingOptionalInputs() instanceof IndexSubset);
+        assertSame(((IndexSubset<String>)i.getJoinVars()).getParent(), varsUniverse);
+        assertSame(((IndexSubset<String>)i.getPendingRequiredInputs()).getParent(), varsUniverse);
+        assertSame(((IndexSubset<String>)i.getPendingOptionalInputs()).getParent(), varsUniverse);
+    }
+
+    @Test
+    public void testUseIndexSubsetWithInputs() {
+        QueryOp l = new QueryOp(createQuery(
+                Alice, knows, x ,
+                x,     age,   u , SPARQLFilter.build("?u < ?v"),
+                x,     p1,    o1, SPARQLFilter.build("?o1 < ?o2")));
+        QueryOp r = new QueryOp(createQuery(
+                Bob, knows, y ,
+                y,   age,   v ,
+                y,   p2,    o3, SPARQLFilter.build("?o3 > ?o4")));
+        IndexSet<Triple> triplesUniverse = FullIndexSet.newIndexSet(
+                new Triple(Alice, knows, x),
+                new Triple(x,     age,   u),
+                new Triple(x,     p1,    o1),
+                new Triple(Bob,   knows, y),
+                new Triple(y,     age,   v),
+                new Triple(y,     p1,    o3));
+        IndexSet<String> varsUniverse = FullIndexSet.newIndexSet("x", "u", "v", "o1", "o2",
+                                                                 "y", "o3", "o4");
+        l.offerTriplesUniverse(triplesUniverse); l.offerVarsUniverse(varsUniverse);
+        r.offerTriplesUniverse(triplesUniverse); r.offerVarsUniverse(varsUniverse);
+
+        JoinInfo i = getJoinability(l, r);
+        assertTrue(i.isValid());
+
+        assertEquals(i.getJoinVars(), singleton("v"));
+        assertEquals(i.getPendingRequiredInputs(), Sets.newHashSet("o2", "o4"));
+        assertEquals(i.getPendingOptionalInputs(), emptySet());
+
+        assertTrue(i.getJoinVars() instanceof IndexSubset);
+        assertTrue(i.getPendingRequiredInputs() instanceof IndexSubset);
+        assertTrue(i.getPendingOptionalInputs() instanceof IndexSubset);
+        assertEquals(((IndexSubset<String>)i.getJoinVars()).getParent(), varsUniverse);
+        assertEquals(((IndexSubset<String>)i.getPendingRequiredInputs()).getParent(), varsUniverse);
+        assertEquals(((IndexSubset<String>)i.getPendingOptionalInputs()).getParent(), varsUniverse);
     }
 }

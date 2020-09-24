@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.federation.decomp;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
@@ -66,12 +66,12 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     private int countEndpoints(@Nonnull Collection<Op> leaves) {
         Set<TPEndpoint> endpoints = new HashSet<>(Math.max(10, leaves.size()));
         for (Op leaf : leaves) {
-            if (leaf instanceof EndpointQueryOp)
-                endpoints.add(((EndpointQueryOp) leaf).getEndpoint());
+            if (leaf instanceof EndpointOp)
+                endpoints.add(((EndpointOp) leaf).getEndpoint());
             else if (leaf instanceof UnionOp) {
                 for (Op child : leaf.getChildren()) {
-                    if (child instanceof EndpointQueryOp)
-                        endpoints.add(((EndpointQueryOp) child).getEndpoint());
+                    if (child instanceof EndpointOp)
+                        endpoints.add(((EndpointOp) child).getEndpoint());
                     else
                         assert false : "Expected all leaves to be QueryNodes";
                 }

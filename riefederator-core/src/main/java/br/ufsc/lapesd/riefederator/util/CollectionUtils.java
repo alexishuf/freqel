@@ -1,5 +1,8 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.NotInParentException;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.collect.Sets;
 import org.apache.commons.collections4.set.UnmodifiableSet;
 
@@ -57,9 +60,19 @@ public class CollectionUtils {
         return union == null ? emptySet() : union;
     }
 
-    public static @Nonnull <T> Set<T> union(@Nullable Collection<T> a, @Nullable Collection<T> b) {
-        a = a == null ? emptySet() : a;
-        b = b == null ? emptySet() : b;
+    public static @Nonnull <T, I>
+    IndexSubset<T> union(@Nonnull IndexSet<T> index, @Nullable Collection<I> input,
+                         @Nonnull Function<I, ? extends Collection<T>> getter) {
+        if (input == null || input.isEmpty())
+            return index.emptySubset();
+        IndexSubset<T> ss = index.emptySubset();
+        for (I i : input)
+            ss.addAll(getter.apply(i));
+        return ss;
+    }
+
+    public static @Nonnull <T> Set<T> hashUnion(@Nonnull Collection<T> a,
+                                                @Nonnull Collection<T> b) {
         int expected = a.size() + b.size();
         if (expected == 0)
             return emptySet();
@@ -69,7 +82,23 @@ public class CollectionUtils {
         return set;
     }
 
+    public static @Nonnull <T> Set<T> union(@Nonnull Collection<T> a, @Nonnull Collection<T> b) {
+        assert a != null;
+        assert b != null;
+        try {
+            if (a instanceof IndexSubset)
+                return ((IndexSubset<T>) a).createUnion(b);
+            else if (b instanceof IndexSubset)
+                return ((IndexSubset<T>) b).createUnion(a);
+        } catch (NotInParentException ignored) { /* build HashSet instead */ }
+        return hashUnion(a, b);
+    }
+
     public static @Nonnull <T> Set<T> intersect(@Nonnull Set<T> left, @Nonnull Set<T> right) {
+        if (left instanceof IndexSubset)
+            return ((IndexSubset<T>) left).createIntersection(right);
+        if (right instanceof IndexSubset)
+            return ((IndexSubset<T>) right).createIntersection(left);
         int ls = left.size(), rs = right.size();
         int capacity = Math.min(ls, rs);
         if (capacity == 0)
@@ -145,6 +174,8 @@ public class CollectionUtils {
                                                @Nullable Collection<T> right) {
         left  = left  == null ? emptySet() :  left;
         right = right == null ? emptySet() : right;
+        if (left instanceof IndexSet)
+            return ((IndexSet<T>) left).fullSubset().minus(right);
         HashSet<T> set = new HashSet<>(left);
         set.removeAll(right);
         return set;

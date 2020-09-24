@@ -28,7 +28,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet.newIndexedSet;
+import static br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet.newIndexSet;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -141,7 +141,7 @@ public class StarVarIndexTest implements TestContext {
     @Test
     public void testOrderGoodOrder() {
         CQuery q = createQuery(x, name, u, y, nameEx, u);
-        IndexSet<String> allVars = newIndexedSet("x", "y", "u");
+        IndexSet<String> allVars = newIndexSet("x", "y", "u");
         StarSubQuery star0 = new StarSubQuery(
                 q.attr().getSet().subset(new Triple(x, name, u)),
                 allVars.subset(asList("x", "u")), EMPTY_FILTERS, q);
@@ -159,7 +159,7 @@ public class StarVarIndexTest implements TestContext {
         CQuery q = createQuery(o, age, v,
                 x, name, u,
                 y, nameEx, u, y, knows, o);
-        IndexSet<String> allVars = newIndexedSet("o", "v", "x", "u", "y");
+        IndexSet<String> allVars = newIndexSet("o", "v", "x", "u", "y");
         StarSubQuery star0 = new StarSubQuery(
                 q.attr().getSet().subset(new Triple(o, age, v)),
                 allVars.subset(asList("o", "v")), EMPTY_FILTERS, q);

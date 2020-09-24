@@ -7,6 +7,8 @@ import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArbitraryJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArrayJoinGraph;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinOrderPlannerTest;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
@@ -107,7 +109,7 @@ public class SubPathAggregationTest implements TestContext {
             Collections.shuffle(permutation);
 
             //setup
-            JoinGraph joinGraph = new JoinGraph(RefIndexSet.fromRefDistinct(permutation));
+            JoinGraph joinGraph = new ArrayJoinGraph(RefIndexSet.fromRefDistinct(permutation));
             SubPathAggregation.State state = new SubPathAggregation.State(joinGraph);
             components.stream().map(allNodes::subset).forEach(state.getComponents()::add);
 
@@ -154,7 +156,7 @@ public class SubPathAggregationTest implements TestContext {
         for (int i = 0; i < 256; i++) {
             ArrayList<Op> permutation = new ArrayList<>(allNodes);
             Collections.shuffle(permutation);
-            JoinGraph graph = new JoinGraph(RefIndexSet.fromRefDistinct(permutation));
+            JoinGraph graph = new ArrayJoinGraph(RefIndexSet.fromRefDistinct(permutation));
             Set<IndexSubset<Op>> stored = new HashSet<>();
             SubPathAggregation.State state = new SubPathAggregation.State(graph) {
                 @Override
@@ -173,7 +175,7 @@ public class SubPathAggregationTest implements TestContext {
 
     @Test
     public void testReducedJoinGraphNoComponents() {
-        SubPathAggregation.State state = new SubPathAggregation.State(new JoinGraph(allNodes));
+        SubPathAggregation.State state = new SubPathAggregation.State(new ArrayJoinGraph(allNodes));
         state.planComponents(new ArbitraryJoinOrderPlanner());
         assertEquals(state.getPlanned().size(), 0);
 
@@ -184,7 +186,7 @@ public class SubPathAggregationTest implements TestContext {
 
     @Test
     public void testReducedJoinGraphOneComponent() {
-        SubPathAggregation.State state = new SubPathAggregation.State(new JoinGraph(allNodes));
+        SubPathAggregation.State state = new SubPathAggregation.State(new ArrayJoinGraph(allNodes));
         state.getComponents().add(allNodes.subset(asList(n1, n2)));
         state.planComponents(new ArbitraryJoinOrderPlanner());
         assertEquals(state.getPlanned().size(), 1);
@@ -197,7 +199,7 @@ public class SubPathAggregationTest implements TestContext {
 
     @Test
     public void testReducedJoinGraphThreeComponents() {
-        SubPathAggregation.State state = new SubPathAggregation.State(new JoinGraph(allNodes));
+        SubPathAggregation.State state = new SubPathAggregation.State(new ArrayJoinGraph(allNodes));
         state.getComponents().add(allNodes.subset(asList(o1, o2)));
         state.getComponents().add(allNodes.subset(asList(n3, n4)));
         state.getComponents().add(allNodes.subset(asList(l1, l2)));
@@ -213,7 +215,7 @@ public class SubPathAggregationTest implements TestContext {
 
     @Test
     public void testReducePath() {
-        SubPathAggregation.State state = new SubPathAggregation.State(new JoinGraph(allNodes));
+        SubPathAggregation.State state = new SubPathAggregation.State(new ArrayJoinGraph(allNodes));
         state.getComponents().add(allNodes.subset(n3));             // 0
         state.getComponents().add(allNodes.subset(asList(o1, o2))); // 1
         state.getComponents().add(allNodes.subset(asList(l1, l2))); // 2
@@ -248,7 +250,7 @@ public class SubPathAggregationTest implements TestContext {
 
     @Test
     public void testReducePathWithNoOp() {
-        SubPathAggregation.State state = new SubPathAggregation.State(new JoinGraph(allNodes));
+        SubPathAggregation.State state = new SubPathAggregation.State(new ArrayJoinGraph(allNodes));
         state.getComponents().add(allNodes.subset(asList(n3, o4))); // 0
         state.getComponents().add(allNodes.subset(asList(n1, n2))); // 1
         state.getComponents().add(allNodes.subset(asList(o1, o2))); // 2
@@ -286,7 +288,7 @@ public class SubPathAggregationTest implements TestContext {
 
     @Test
     public void testAggregateEmpty() {
-        SubPathAggregation aggregation = SubPathAggregation.aggregate(new JoinGraph(allNodes),
+        SubPathAggregation aggregation = SubPathAggregation.aggregate(new ArrayJoinGraph(allNodes),
                 emptyList(), new ArbitraryJoinOrderPlanner());
         assertEquals(aggregation.getGraph().size(), 0);
         assertEquals(aggregation.getJoinComponents(), emptyList());
@@ -296,7 +298,7 @@ public class SubPathAggregationTest implements TestContext {
     @Test(dataProvider = "joinOrderPlannerData")
     public void testAggregateSinglePath(Supplier<JoinOrderPlanner> supplier) {
         List<JoinComponent> paths = singletonList(new JoinComponent(allNodes, n1, n2, n3, n4));
-        SubPathAggregation aggregation = SubPathAggregation.aggregate(new JoinGraph(allNodes),
+        SubPathAggregation aggregation = SubPathAggregation.aggregate(new ArrayJoinGraph(allNodes),
                 paths, supplier.get());
         assertEquals(aggregation.getJoinComponents().size(), 1);
         assertSame(aggregation.getJoinComponents().get(0), paths.get(0));
@@ -309,13 +311,13 @@ public class SubPathAggregationTest implements TestContext {
                 new JoinComponent(allNodes, n1, n2, n3, n4),
                 new JoinComponent(allNodes, n1, n2, o3, o4));
         SubPathAggregation a;
-        a = SubPathAggregation.aggregate(new JoinGraph(allNodes), paths, supplier.get());
+        a = SubPathAggregation.aggregate(new ArrayJoinGraph(allNodes), paths, supplier.get());
 
         assertTrue(a.getGraph().getNodes().containsAll(asList(n3, n4, o3, o4)));
         assertFalse(a.getGraph().getNodes().containsAll(asList(n1, n2)));
 
         IndexSubset<Op> novel;
-        novel = a.getJoinComponents().get(0).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(0).getNodes().createMinus(allNodes);
         assertEquals(novel.size(), 1);
         Op common = novel.iterator().next();
         assertTrue(streamPreOrder(common).collect(toSet()).containsAll(newHashSet(n1, n2)));
@@ -333,7 +335,7 @@ public class SubPathAggregationTest implements TestContext {
                 new JoinComponent(allNodes, o1, o2, n3, o4)
         );
         SubPathAggregation a;
-        a = SubPathAggregation.aggregate(new JoinGraph(allNodes), paths, supplier.get());
+        a = SubPathAggregation.aggregate(new ArrayJoinGraph(allNodes), paths, supplier.get());
 
         assertEquals(a.getGraph().getNodes().fullSubset().createIntersection(allNodes),
                      allNodes.subset(asList(n3, o4, l4)));
@@ -342,12 +344,12 @@ public class SubPathAggregationTest implements TestContext {
                      asList(3, 3, 3, 3));
 
         IndexSubset<Op> novel;
-        novel = a.getJoinComponents().get(0).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(0).getNodes().createMinus(allNodes);
         assertEquals(novel.size(), 1);
         Op common0 = novel.iterator().next();
         assertTrue(streamPreOrder(common0).collect(toSet()).containsAll(newHashSet(l1, l2)));
 
-        novel = a.getJoinComponents().get(2).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(2).getNodes().createMinus(allNodes);
         assertEquals(novel.size(), 1);
         Op common2 = novel.iterator().next();
         assertTrue(streamPreOrder(common2).collect(toSet()).containsAll(newHashSet(o1, o2)));
@@ -367,7 +369,7 @@ public class SubPathAggregationTest implements TestContext {
                 new JoinComponent(allNodes, o1, n2, o3, o4)
         );
         SubPathAggregation a;
-        a = SubPathAggregation.aggregate(new JoinGraph(allNodes), paths, supplier.get());
+        a = SubPathAggregation.aggregate(new ArrayJoinGraph(allNodes), paths, supplier.get());
 
         assertEquals(a.getGraph().getNodes().fullSubset().createIntersection(allNodes),
                      allNodes.subset(asList(n2, l1, o1)));
@@ -376,12 +378,12 @@ public class SubPathAggregationTest implements TestContext {
                      asList(3, 3, 3, 3));
 
         IndexSubset<Op> novel;
-        novel = a.getJoinComponents().get(0).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(0).getNodes().createMinus(allNodes);
         assertEquals(novel.size(), 1);
         Op common0 = novel.iterator().next();
         assertTrue(streamPreOrder(common0).collect(toSet()).containsAll(newHashSet(l3, l4)));
 
-        novel = a.getJoinComponents().get(1).getNodes().createDifference(allNodes);
+        novel = a.getJoinComponents().get(1).getNodes().createMinus(allNodes);
         assertEquals(novel.size(), 1);
         Op common1 = novel.iterator().next();
         assertTrue(streamPreOrder(common1).collect(toSet()).containsAll(newHashSet(o3, o4)));

@@ -14,7 +14,7 @@ public class FullIndexSet<T> extends BaseIndexSet<T> {
     }
 
     public FullIndexSet(@Nonnull Map<T, Integer> indexMap, @Nonnull List<T> data) {
-        super(data, indexMap);
+        super(indexMap, data);
     }
 
     protected static @Nonnull <U> Map<U, Integer>
@@ -73,7 +73,7 @@ public class FullIndexSet<T> extends BaseIndexSet<T> {
                                          : fromDistinct(new LinkedHashSet<>(collection));
     }
 
-    public static @Nonnull <U> IndexSet<U> newIndexedSet(U... values) {
+    public static @Nonnull <U> IndexSet<U> newIndexSet(U... values) {
         ArrayList<U> list = new ArrayList<>(values.length);
         for (U value : values)
             list.add(value);
@@ -84,12 +84,29 @@ public class FullIndexSet<T> extends BaseIndexSet<T> {
         return new ImmFullIndexSet<>(indexMap, data);
     }
 
+    @Override public @Nonnull IndexSet<T> copy() {
+        return new FullIndexSet<>(new HashMap<>(indexMap), new ArrayList<>(data));
+    }
+
+    @Override public @Nonnull ImmIndexSet<T> immutableCopy() {
+        return new ImmFullIndexSet<>(new HashMap<>(indexMap), new ArrayList<>(data));
+    }
+
     @Override public boolean add(T t) {
         if (t == null) throw new NullPointerException();
         boolean change = indexMap.putIfAbsent(t, data.size()) == null;
         if (change)
             data.add(t);
         return change;
+    }
+
+    @Override synchronized public int safeAdd(T value) {
+        if (value == null) throw new NullPointerException();
+        int size = data.size();
+        int idx = indexMap.computeIfAbsent(value, k -> size);
+        if (idx == size)
+            data.add(value);
+        return idx;
     }
 
     @Override public boolean addAll(@Nonnull Collection<? extends T> c) {

@@ -11,16 +11,17 @@ import static com.google.common.base.Preconditions.checkPositionIndex;
 
 @Immutable
 public class IndexSetPartition<T>  extends BaseIndexSet<T> implements ImmIndexSet<T> {
+    private final @Nonnull BaseIndexSet<T> parent;
     private final int begin, end, size;
     private @LazyInit int hash = 0;
 
-    public IndexSetPartition(@Nonnull List<T> data, Map<T, Integer> indexMap,
-                             int begin, int end) {
-        super(data, indexMap);
+    public IndexSetPartition(@Nonnull BaseIndexSet<T> parent, int begin, int end) {
+        super(parent.getIndexMap(), parent.getData());
         if (end < begin)
             throw new IllegalArgumentException("Negative size: end < begin");
-        if (end > data.size())
-            throw new IllegalArgumentException("end > data.size()");
+        if (end > parent.size())
+            throw new IllegalArgumentException("end > parent.size()");
+        this.parent = parent;
         this.begin = begin;
         this.end = end;
         this.size = end - begin;
@@ -30,12 +31,25 @@ public class IndexSetPartition<T>  extends BaseIndexSet<T> implements ImmIndexSe
         return this;
     }
 
+    @Override public @Nonnull BaseIndexSet<T> getParent() {
+        return parent;
+    }
+
+    @Override public @Nonnull IndexSet<T> copy() {
+        return new IndexSetPartition<>((BaseIndexSet<T>) parent.copy(), begin, end);
+    }
+
+    @Override public @Nonnull ImmIndexSet<T> immutableCopy() {
+        return this;
+    }
+
     public static @Nonnull <U> IndexSetPartition<U> of(@Nonnull IndexSet<U> parent,
                                                        int begin, int end) {
-        if (!(parent instanceof FullIndexSet))
+        if (!(parent instanceof BaseIndexSet))
             throw new IllegalArgumentException("Expected a FullIndexedSet instance");
-        FullIndexSet<U> full = (FullIndexSet<U>) parent;
-        return new IndexSetPartition<>(full.getData(), full.getIndexMap(), begin, end);
+        BaseIndexSet<U> full = (BaseIndexSet<U>) parent;
+        assert !(full instanceof IndexSetPartition) : "Inneficient";
+        return new IndexSetPartition<>(full, begin, end);
     }
 
     public int getBegin() {

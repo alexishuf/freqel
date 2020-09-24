@@ -9,6 +9,7 @@ import javax.annotation.Nullable;
 import java.lang.reflect.Array;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import static java.lang.System.arraycopy;
 
@@ -156,9 +157,31 @@ public abstract class UndirectedIrreflexiveArrayGraph<N, W> {
         Preconditions.checkPositionIndex(l, size());
         Preconditions.checkPositionIndex(r, size());
         if (l == r)
-            throw new IllegalArgumentException("Cannot do reflexive getWeight("+l+", "+r+")");
+            return null;
         if (l > r) return getWeight(r, l);
         return weights[rowOffset(l) + (r-(l+1))];
+    }
+
+    @CanIgnoreReturnValue
+    public boolean forEachNeighborIndex(int idx, @Nonnull Consumer<Integer> consumer) {
+        Preconditions.checkPositionIndex(idx, size());
+        boolean got = false;
+        for (int i = 0; i < idx; i++) {
+            W w = weights[rowOffset(i) + (idx - (i + 1))];
+            if (!Objects.equals(w, zero)) {
+                consumer.accept(i);
+                got = true;
+            }
+        }
+        int rowOffset = rowOffset(idx);
+        for (int i = idx+1; i < size(); i++) {
+            W w = weights[rowOffset + (i - (idx + 1))];
+            if (!Objects.equals(w, zero)) {
+                consumer.accept(i);
+                got = true;
+            }
+        }
+        return got;
     }
 
     @CanIgnoreReturnValue

@@ -79,15 +79,15 @@ public abstract class CQueryContext {
         return new TermAnnotationPair(term, annotation);
     }
 
-    public static @Nonnull CQuery createQuery(Object... termAndAnnotations) {
+    public static @Nonnull MutableCQuery createQuery(Object... termAndAnnotations) {
         return createQuery(false, termAndAnnotations);
     }
 
-    public static @Nonnull CQuery createTolerantQuery(Object... termAndAnnotations) {
+    public static @Nonnull MutableCQuery createTolerantQuery(Object... termAndAnnotations) {
         return createQuery(true, termAndAnnotations);
     }
 
-    static @Nonnull CQuery createQuery(boolean tolerant, Object... termAndAnnotations) {
+    static @Nonnull MutableCQuery createQuery(boolean tolerant, Object... termAndAnnotations) {
         MutableCQuery query = new MutableCQuery(termAndAnnotations.length / 3);
         PrefixDict prefixDict = null;
         List<Term> window = new ArrayList<>();

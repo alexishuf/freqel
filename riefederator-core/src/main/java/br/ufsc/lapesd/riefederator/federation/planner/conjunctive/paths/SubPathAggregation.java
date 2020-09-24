@@ -2,6 +2,8 @@ package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArrayJoinGraph;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
@@ -24,7 +26,7 @@ public class SubPathAggregation {
     SubPathAggregation aggregate(@Nonnull JoinGraph g, @Nonnull Collection<JoinComponent> paths,
                                  @Nonnull JoinOrderPlanner joinOrderPlanner) {
         if (paths.isEmpty()) {
-            return new SubPathAggregation(new JoinGraph(), Collections.emptyList());
+            return new SubPathAggregation(new ArrayJoinGraph(), Collections.emptyList());
         }
         List<JoinComponent> pathsList = paths instanceof List ? (List<JoinComponent>)paths
                                                          : new ArrayList<>(paths);
@@ -117,12 +119,12 @@ public class SubPathAggregation {
                 visited.addAll(pc.component);
             }
             for (JoinComponent path : paths) {
-                IndexSubset<Op> novel = path.getNodes().createDifference(visited);
+                IndexSubset<Op> novel = path.getNodes().createMinus(visited);
                 nodes.addAll(novel);
                 visited.addAll(novel);
             }
 
-            reducedGraph = new JoinGraph(RefIndexSet.fromRefDistinct(nodes));
+            reducedGraph = new ArrayJoinGraph(RefIndexSet.fromRefDistinct(nodes));
             return reducedGraph;
         }
 

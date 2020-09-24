@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.riefederator.util.indexed.ref;
 
 import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.ImmIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -10,6 +12,10 @@ public class RefIndexSet<T> extends FullIndexSet<T> {
 
     private static final @Nonnull RefIndexSet<?> EMPTY =
             new RefIndexSet<>(EMPTY_MAP, Collections.emptyList());
+
+    public RefIndexSet(int capacity) {
+        super(new IdentityHashMap<>((int)(capacity/0.75f + 1f)), new ArrayList<>(capacity));
+    }
 
     public RefIndexSet(@Nonnull IdentityHashMap<T, Integer> indexMap, @Nonnull List<T> data) {
         super(indexMap, data);
@@ -38,6 +44,18 @@ public class RefIndexSet<T> extends FullIndexSet<T> {
         if (coll instanceof RefIndexSet)  return (RefIndexSet<U>) coll;
         else if (coll.isEmpty())         return empty();
         else                             return createRefDistinct(new ArrayList<>(coll));
+    }
+
+    @Override public @Nonnull ImmIndexSet<T> asImmutable() {
+        return new ImmRefIndexSet<>((IdentityHashMap<T, Integer>) indexMap, data);
+    }
+
+    @Override public @Nonnull IndexSet<T> copy() {
+        return new RefIndexSet<>(new IdentityHashMap<>(indexMap), new ArrayList<>(data));
+    }
+
+    @Override public @Nonnull ImmIndexSet<T> immutableCopy() {
+        return new ImmRefIndexSet<>(new IdentityHashMap<>(indexMap), new ArrayList<>(data));
     }
 
     @Override

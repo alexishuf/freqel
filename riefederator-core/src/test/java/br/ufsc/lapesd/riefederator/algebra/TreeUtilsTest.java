@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.algebra;
 
+import br.ufsc.lapesd.riefederator.BSBMSelfTest;
+import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
@@ -18,7 +20,10 @@ import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParserTest;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import org.apache.jena.shared.impl.PrefixMappingImpl;
 import org.testng.annotations.DataProvider;
@@ -431,5 +436,46 @@ public class TreeUtilsTest implements TestContext {
 
         assertTrue(merged.sameEntries(expected));
         assertTrue(expected.sameEntries(merged));
+    }
+
+    @DataProvider public @Nonnull Object[][] testCopyPreservesUniversesData() throws Exception {
+        List<Op> queries = new ArrayList<>();
+        for (String filename : LargeRDFBenchSelfTest.QUERY_FILENAMES)
+            queries.add(LargeRDFBenchSelfTest.loadQuery(filename));
+        for (String filename : BSBMSelfTest.QUERY_FILENAMES)
+            queries.add(BSBMSelfTest.loadQuery(filename));
+        return queries.stream().map(q -> new Object[] {q}).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "testCopyPreservesUniversesData")
+    public void testCopyPreservesUniversesAndMatchedTriples(@Nonnull Op root) {
+        SPARQLParserTest.assertUniverses(root);
+        IndexSet<Triple> triples = ((IndexSubset<Triple>) root.getMatchedTriples()).getParent();
+        IndexSet<String> vars = ((IndexSubset<String>) root.getAllVars()).getParent();
+        Set<Triple> matchedTriples = root.getMatchedTriples();
+        Set<String> allVars = root.getAllVars();
+        Set<String> inputVars = root.getInputVars();
+        Set<String> requiredInputVars = root.getRequiredInputVars();
+        Set<String> optionalInputVars = root.getOptionalInputVars();
+        Set<String> publicVars = root.getPublicVars();
+        Set<String> resultVars = root.getResultVars();
+        Set<String> strictResultVars = root.getStrictResultVars();
+
+        Op copy = TreeUtils.deepCopy(root);
+        SPARQLParserTest.assertUniverses(copy);
+
+        IndexSet<Triple> acTriples = ((IndexSubset<Triple>) copy.getMatchedTriples()).getParent();
+        IndexSet<String> acVars = ((IndexSubset<String>) copy.getAllVars()).getParent();
+        assertSame(acTriples, triples);
+        assertSame(acVars, vars);
+
+        assertSame(copy.getMatchedTriples(), matchedTriples);
+        assertSame(copy.getAllVars(), allVars);
+        assertSame(copy.getInputVars(), inputVars);
+        assertSame(copy.getRequiredInputVars(), requiredInputVars);
+        assertSame(copy.getOptionalInputVars(), optionalInputVars);
+        assertSame(copy.getPublicVars(), publicVars);
+        assertSame(copy.getResultVars(), resultVars);
+        assertSame(copy.getStrictResultVars(), strictResultVars);
     }
 }

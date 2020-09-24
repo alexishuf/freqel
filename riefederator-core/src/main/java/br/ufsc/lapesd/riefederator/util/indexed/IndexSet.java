@@ -12,7 +12,13 @@ import static java.util.Spliterator.*;
 
 public interface IndexSet<T> extends List<T>, Set<T> {
 
+    @Nonnull IndexSet<T> getParent();
+
     @Nonnull ImmIndexSet<T> asImmutable();
+
+    @Nonnull ImmIndexSet<T> immutableCopy();
+
+    @Nonnull IndexSet<T> copy();
 
     @Nonnull Iterator<Map.Entry<T, Integer>> entryIterator();
 
@@ -21,6 +27,10 @@ public interface IndexSet<T> extends List<T>, Set<T> {
     @CheckReturnValue @Nonnull IndexSubset<T> emptySubset();
 
     @CheckReturnValue @Nonnull IndexSubset<T> subset(@Nonnull Collection<? extends T> collection);
+
+    @CheckReturnValue @Nonnull IndexSubset<T> subsetExpanding(@Nonnull Collection<? extends T> collection);
+
+    @CheckReturnValue @Nonnull IndexSubset<T> subset(@Nonnull BitSet subset);
 
     @CheckReturnValue @Nonnull IndexSubset<T> subset(@Nonnull Predicate<? super T> predicate);
 
@@ -32,11 +42,27 @@ public interface IndexSet<T> extends List<T>, Set<T> {
 
     @CheckReturnValue @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull Collection<? extends T> collection);
 
+    @CheckReturnValue @Nonnull ImmIndexSubset<T> immutableSubsetExpanding(@Nonnull Collection<? extends T> collection);
+
+    @CheckReturnValue @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull BitSet subset);
+
     @CheckReturnValue @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull Predicate<? super T> predicate);
 
     @CheckReturnValue @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull T value);
 
     boolean containsAny(@Nonnull Collection<?> c);
+
+    /**
+     * Add a value, if not already present, and return its index within the IndexSet.
+     *
+     * Unlike {@link Collection#add(Object)}, this method is thread-safe <b>at least</b> among
+     * invocations of this particular method. Implementations need not ensure thread safety
+     * between invocations to this method and {@link Collection#add(Object)}.
+     *
+     * @param value object to add (if not already present)
+     * @return index of the (existing or new) value
+     */
+    int safeAdd(T value);
 
     int hash(@Nonnull T elem);
 

@@ -16,6 +16,9 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.apache.jena.graph.Triple;
@@ -37,7 +40,6 @@ import javax.annotation.Nonnull;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.fromJena;
-import static java.util.stream.Collectors.toSet;
 
 public class ConvertVisitor implements QueryVisitor {
     private static final Logger logger = LoggerFactory.getLogger(ConvertVisitor.class);
@@ -47,7 +49,11 @@ public class ConvertVisitor implements QueryVisitor {
     private ModifiersSet outerModifiers;
     private Set<SPARQLFilter> groupFilters;
     private PrefixDict prefixDict;
-    private Set<String> allVars;
+    private FullIndexSet<br.ufsc.lapesd.riefederator.model.Triple> triplesUniverse;
+    private FullIndexSet<String> varsUniverse;
+    private IndexSubset<String> tripleVars;
+    private IndexSet<String> projectionVars;
+
     private int lastHidden = -1;
 
     public ConvertVisitor(@Nonnull ConvertOptions convertOptions) {
@@ -66,7 +72,9 @@ public class ConvertVisitor implements QueryVisitor {
     @Override
     public void startVisit(Query query) {
         outerModifiers = new ModifiersSet();
-        allVars = new HashSet<>();
+        triplesUniverse = new FullIndexSet<>(32);
+        varsUniverse = new FullIndexSet<>(16);
+        tripleVars = varsUniverse.emptySubset();
     }
     @Override
     public void visitPrologue(Prologue p) {
@@ -81,8 +89,11 @@ public class ConvertVisitor implements QueryVisitor {
     public void visitSelectResultForm(Query query) {
         if (query.isDistinct())
             outerModifiers.add(Distinct.INSTANCE);
-        Set<String> vars = query.getProjectVars().stream().map(Var::getVarName).collect(toSet());
-        outerModifiers.add(Projection.of(vars));
+        assert varsUniverse.isEmpty();
+        for (Var v : query.getProjectVars())
+            varsUniverse.add(v.getVarName());
+        projectionVars = varsUniverse.immutableFullSubset();
+        outerModifiers.add(new Projection(projectionVars));
     }
     @Override
     public void visitConstructResultForm(Query query) {
@@ -106,14 +117,14 @@ public class ConvertVisitor implements QueryVisitor {
         addTriple(query, new br.ufsc.lapesd.riefederator.model.Triple(s, p, o));
     }
     private void addTriple(@Nonnull MutableCQuery query,
-                           @Nonnull br.ufsc.lapesd.riefederator.model.Triple triple) {
-        triple.forEach(t -> {
-            if (t.isVar())
-                allVars.add(t.asVar().getName());
-        });
-        query.add(triple);
+                           @Nonnull br.ufsc.lapesd.riefederator.model.Triple t) {
+        Term s = t.getSubject(), p = t.getPredicate(), o = t.getObject();
+        if (s.isVar()) tripleVars.parentAdd(s.asVar().getName());
+        if (p.isVar()) tripleVars.parentAdd(p.asVar().getName());
+        if (o.isVar()) tripleVars.parentAdd(o.asVar().getName());
+        triplesUniverse.add(t);
+        query.add(t);
     }
-
 
     @Override
     public void visitQueryPattern(Query query) {
@@ -165,18 +176,23 @@ public class ConvertVisitor implements QueryVisitor {
         Projection p = outerModifiers.projection();
         if (p != null && !q.isAskType()) {
             Set<String> pVars = p.getVarNames();
-            if (pVars.equals(allVars)) {
+            assert varsUniverse.containsAll(p.getVarNames());
+            if (projectionVars.equals(tripleVars)) {
                 outerModifiers.remove(p); // no projection
-            } else if (!convertOptions.getAllowExtraProjections() && !allVars.containsAll(pVars)) {
+            } else if (!convertOptions.getAllowExtraProjections()
+                    && !tripleVars.containsAll(pVars)) {
                 throw new IllegalArgumentException("There projected variables that cannot " +
                                                    "be bound from any triple pattern");
             }
         }
-        op.modifiers().addAll(outerModifiers);
-        if (prefixDict != null) {
-            TreeUtils.streamPreOrder(op).filter(QueryOp.class::isInstance)
-                     .forEach(o -> ((QueryOp) o).getQuery().setPrefixDict(prefixDict));
+        for (Iterator<Op> it = TreeUtils.iteratePreOrder(op); it.hasNext(); ) {
+            Op node = it.next();
+            node.offerVarsUniverse(varsUniverse);
+            node.offerTriplesUniverse(triplesUniverse);
+            if (prefixDict != null && node instanceof QueryOp)
+                ((QueryOp) node).getQuery().setPrefixDict(prefixDict);
         }
+        op.modifiers().addAll(outerModifiers);
     }
 
     private class ElementVisitor extends ElementVisitorBase {
@@ -195,6 +211,8 @@ public class ConvertVisitor implements QueryVisitor {
         }
 
         private void saveCQuery(@Nonnull MutableCQuery query) {
+            query.attr().offerVarNamesUniverse(varsUniverse);
+            query.attr().offerTriplesUniverse(triplesUniverse);
             if (op == null) {
                 op = new QueryOp(query);
             } else if (op instanceof QueryOp) {

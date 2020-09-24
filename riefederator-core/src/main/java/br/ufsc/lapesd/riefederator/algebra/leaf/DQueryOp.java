@@ -8,12 +8,13 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.endpoint.DQEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Set;
 
-public class DQueryOp extends AbstractOp {
+public class DQueryOp extends AbstractOp implements EndpointOp {
     protected @Nonnull DQEndpoint endpoint;
     protected @Nonnull Op query;
 
@@ -24,7 +25,7 @@ public class DQueryOp extends AbstractOp {
         assertAllInvariants();
     }
 
-    public @Nonnull DQEndpoint getEndpoint() {
+    @Override public @Nonnull DQEndpoint getEndpoint() {
         return endpoint;
     }
 
@@ -56,7 +57,10 @@ public class DQueryOp extends AbstractOp {
     }
 
     @Override public @Nonnull Op flatCopy() {
-        return new DQueryOp(endpoint, TreeUtils.deepCopy(query));
+        DQueryOp copy = new DQueryOp(endpoint, TreeUtils.deepCopy(query));
+        copy.copyCaches(this);
+        copy.setCardinality(getCardinality());
+        return copy;
     }
 
     @Override public @Nonnull StringBuilder toString(@Nonnull StringBuilder builder) {
@@ -85,6 +89,23 @@ public class DQueryOp extends AbstractOp {
 
 
     /* --- --- --- delegated interface methods --- --- --- */
+
+    @Override
+    public void offerTriplesUniverse(@Nonnull IndexSet<Triple> universe) {
+        query.offerTriplesUniverse(universe);
+    }
+
+    @Override public @Nullable IndexSet<Triple> getOfferedTriplesUniverse() {
+        return query.getOfferedTriplesUniverse();
+    }
+
+    @Override public void offerVarsUniverse(@Nonnull IndexSet<String> universe) {
+        query.offerVarsUniverse(universe);
+    }
+
+    @Override public @Nullable IndexSet<String> getOfferedVarsUniverse() {
+        return query.getOfferedVarsUniverse();
+    }
 
     @Override public @Nonnull Set<String> getResultVars() {
         return query.getResultVars();

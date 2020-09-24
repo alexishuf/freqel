@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinGraph;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.ImmIndexSubset;
 import com.google.errorprone.annotations.Immutable;

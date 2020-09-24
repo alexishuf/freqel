@@ -6,10 +6,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.*;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.DQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.DisjunctiveProfile;
@@ -122,8 +119,8 @@ public class DQPushChecker {
         TPEndpoint ep = null;
         if (op instanceof SPARQLValuesTemplateOp)
             ep = ((SPARQLValuesTemplateOp) op).getEndpoint();
-        else if (op instanceof EndpointQueryOp)
-            ep = ((EndpointQueryOp) op).getEndpoint();
+        else if (op instanceof EndpointOp)
+            ep = ((EndpointOp) op).getEndpoint();
         return ep instanceof DQEndpoint ? (DQEndpoint)ep : null;
     }
 }

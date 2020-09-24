@@ -228,7 +228,7 @@ public class SqlGeneratorTest implements TestContext {
         IndexSet<SPARQLFilter> filters = StarsHelper.getFilters(query);
         assertTrue(filters.containsAll(pendingFilters));
         assertEquals(sql.getPendingFilters(), pendingFilters);
-        assertEquals(sql.getDoneFilters(), filters.fullSubset().createDifference(pendingFilters));
+        assertEquals(sql.getDoneFilters(), filters.fullSubset().createMinus(pendingFilters));
 
         String rxString = expectedSql.replaceAll(" +", "\\\\s*")
                                      .replaceAll("@", "[ck][uvo]")

@@ -13,6 +13,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.SetMultimap;
@@ -54,6 +55,9 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
         Map<ImmutablePair<Triple, TPEndpoint>, Set<CQuery>> ne2alts
                 = new HashMap<>(query.size()* nSources);
 
+        IndexSet<String> varsUniverse = query.attr().varNamesUniverseOffer();
+        IndexSet<Triple> triplesUniverse = query.attr().triplesUniverseOffer();
+
         try (TimeSampler ignored = Metrics.SELECTION_MS.createThreadSampler(performance)) {
             (nSources > 8 ? sources.parallelStream() : sources.stream())
                     .map(src -> match(src, query))
@@ -61,17 +65,32 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
                         CQueryMatch m = p.right;
                         if (m instanceof SemanticCQueryMatch) {
                             SemanticCQueryMatch sm = (SemanticCQueryMatch) m;
-                            for (CQuery eg : sm.getKnownExclusiveGroups())
+                            for (CQuery eg : sm.getKnownExclusiveGroups()) {
+                                if (varsUniverse != null)
+                                    eg.attr().offerVarNamesUniverse(varsUniverse);
+                                if (triplesUniverse != null)
+                                    eg.attr().offerTriplesUniverse(triplesUniverse);
                                 qns.add(new ProtoQueryOp(p.left, eg, sm.getAlternatives(eg)));
+                            }
                             for (Triple t : sm.getNonExclusiveRelevant()) {
                                 ne2ep.put(t, p.left);
                                 Set<CQuery> alternatives = sm.getAlternatives(t);
-                                if (alternatives.size() > 1)
+                                if (alternatives.size() > 1) {
+                                    if (varsUniverse != null)
+                                        alternatives.forEach(a -> a.attr().offerVarNamesUniverse(varsUniverse));
+                                    if (triplesUniverse != null)
+                                        alternatives.forEach(a -> a.attr().offerTriplesUniverse(triplesUniverse));
                                     ne2alts.put(ImmutablePair.of(t, p.left), alternatives);
+                                }
                             }
                         } else {
-                            m.getKnownExclusiveGroups()
-                                    .forEach(eg -> qns.add(new ProtoQueryOp(p.left, eg)));
+                            for (CQuery eg : m.getKnownExclusiveGroups()) {
+                                if (varsUniverse != null)
+                                    eg.attr().offerVarNamesUniverse(varsUniverse);
+                                if (triplesUniverse != null)
+                                    eg.attr().offerTriplesUniverse(triplesUniverse);
+                                qns.add(new ProtoQueryOp(p.left, eg));
+                            }
                             m.getNonExclusiveRelevant().forEach(t -> ne2ep.put(t, p.left));
                         }
                     });
@@ -88,7 +107,12 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
                     for (TPEndpoint ep : eps) {
                         Set<CQuery> alts = ne2alts.get(ImmutablePair.of(triple, ep));
                         alts = alts == null ? Collections.emptySet() : alts;
-                        qns.add(new ProtoQueryOp(ep, CQuery.from(triple), alts));
+                        CQuery neQuery = CQuery.from(triple);
+                        if (triplesUniverse != null)
+                            neQuery.attr().offerTriplesUniverse(triplesUniverse);
+                        if (varsUniverse != null)
+                            neQuery.attr().offerVarNamesUniverse(varsUniverse);
+                        qns.add(new ProtoQueryOp(ep, neQuery, alts));
                     }
                 }
             }
@@ -104,28 +128,52 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
                         })
                         .collect(toList());
                 if (triplesWithAlts.isEmpty()) { // no special work to do ...
-                    qns.add(new ProtoQueryOp(ep, CQuery.from(triples)));
+                    CQuery eg = CQuery.from(triples);
+                    if (triplesUniverse != null)
+                        eg.attr().offerTriplesUniverse(triplesUniverse);
+                    if (varsUniverse != null)
+                        eg.attr().offerVarNamesUniverse(varsUniverse);
+                    qns.add(new ProtoQueryOp(ep, eg));
                 } else if (triplesWithAlts.size() == 1) {
                     // a single triple has alternatives, uses those to build the
                     // alternatives by combining them with the other triples which are fixed
                     Set<CQuery> alts = ne2alts.get(ImmutablePair.of(triplesWithAlts.get(0), ep));
                     triples.remove(triplesWithAlts.get(0));
                     CQuery fixed = CQuery.from(triples);
+                    if (triplesUniverse != null)
+                        fixed.attr().offerTriplesUniverse(triplesUniverse);
+                    if (varsUniverse != null)
+                        fixed.attr().offerVarNamesUniverse(varsUniverse);
                     List<CQuery> egAlts = alts.stream().map(q -> CQuery.merge(q, fixed))
                                               .collect(toList());
                     CQuery matched = CQuery.merge(CQuery.from(triplesWithAlts.get(0)), fixed);
+                    if (triplesUniverse != null)
+                        matched.attr().offerTriplesUniverse(triplesUniverse);
+                    if (varsUniverse != null)
+                        matched.attr().offerVarNamesUniverse(varsUniverse);
                     qns.add(new ProtoQueryOp(ep, matched, egAlts));
                 } else {
                     // Chaos ensues if we try to to build a single node for the EG
                     // (factorial explosion). Build a node for each member that has
                     // alternatives and a single node for all that have none
                     for (Triple triple : triplesWithAlts) {
-                        qns.add(new ProtoQueryOp(ep, CQuery.from(triple),
+                        CQuery eg = CQuery.from(triple);
+                        if (triplesUniverse != null)
+                            eg.attr().offerTriplesUniverse(triplesUniverse);
+                        if (varsUniverse != null)
+                            eg.attr().offerVarNamesUniverse(varsUniverse);
+                        qns.add(new ProtoQueryOp(ep, eg,
                                                    ne2alts.get(ImmutablePair.of(triple, ep))));
                     }
                     Set<Triple> safeTriples = CollectionUtils.setMinus(triples, triplesWithAlts);
-                    if (!safeTriples.isEmpty())
-                        qns.add(new ProtoQueryOp(ep, CQuery.from(safeTriples)));
+                    if (!safeTriples.isEmpty()) {
+                        CQuery eg = CQuery.from(safeTriples);
+                        if (triplesUniverse != null)
+                            eg.attr().offerTriplesUniverse(triplesUniverse);
+                        if (varsUniverse != null)
+                            eg.attr().offerVarNamesUniverse(varsUniverse);
+                        qns.add(new ProtoQueryOp(ep, eg));
+                    }
                 }
             }
             assert qns.stream().distinct().count() == qns.size();

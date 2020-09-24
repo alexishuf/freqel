@@ -8,7 +8,9 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.annotations.VisibleForTesting;
@@ -110,6 +112,12 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
         int product = -1;
 
         public Estimator(@Nonnull CQuery query) {
+            IndexSet<Triple> set = query.attr().getSet();
+            if (!(set instanceof FullIndexSet)) {
+                MutableCQuery copy = new MutableCQuery();
+                copy.addAll(query);
+                query = copy;
+            }
             this.query = query;
             visited = query.attr().getSet().emptySubset();
             pathVisited = query.attr().getSet().emptySubset();
@@ -291,6 +299,8 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
 
         public PathEstimator(@Nonnull CQuery query) {
             this.query = query;
+            //noinspection AssertWithSideEffects
+            assert query.attr().getSet() instanceof FullIndexSet;
             this.visited = query.attr().getSet().emptySubset();
             this.coreCandidates = query.attr().tripleTerms().emptySubset();
             this.fromSubj = new Side(OBJ);

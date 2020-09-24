@@ -1,5 +1,8 @@
 package br.ufsc.lapesd.riefederator.util.indexed.subset;
 
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.NotInParentException;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.BitSet;
@@ -16,6 +19,12 @@ public class BitSetOps {
                 return ss.getBitSet();
         }
         return null;
+    }
+
+    public static boolean containsAll(@Nonnull BitSet left, @Nonnull BitSet right) {
+        BitSet tmp = (BitSet) right.clone();
+        tmp.andNot(left);
+        return tmp.isEmpty();
     }
 
     public static @Nonnull BitSet intersect(@Nonnull List<?> parent, @Nonnull BitSet result,
@@ -42,18 +51,62 @@ public class BitSetOps {
         return result;
     }
 
-    public static @Nonnull BitSet union(@Nonnull List<?> parent, @Nonnull BitSet result,
-                                        @Nonnull Collection<?> other) {
+    public static @Nonnull <T> BitSet union(@Nonnull IndexSet<? super T> parent, @Nonnull BitSet result,
+                                        @Nonnull Collection<? extends T> other) {
         BitSet bs = getBitSet(parent, other);
         if (bs != null) {
             result.or(bs);
         } else {
-            for (Object v : other) {
-                int idx = parent.indexOf(v);
-                if (idx >= 0)
-                    result.set(idx);
-            }
+            for (T v : other)
+                setBitChecked(parent, result, v);
         }
+        return result;
+    }
+
+    public static @Nonnull <T> BitSet subset(@Nonnull IndexSet<? super T> index,
+                                             @Nonnull IndexSubset<? super T> subset,
+                                             @Nonnull BitSet bits,
+                                             @Nonnull Collection<T> collection) {
+        BitSet result = new BitSet(index.size());
+        for (T value : collection)
+            addToSubset(index, subset, bits, result, value);
+        return result;
+    }
+
+    public static @Nonnull <T> BitSet subset(@Nonnull IndexSet<? super T> index,
+                                             @Nonnull IndexSubset<? super T> subset,
+                                             @Nonnull BitSet bits,
+                                             @Nonnull T value) {
+        BitSet result = new BitSet(index.size());
+        addToSubset(index, subset, bits, result, value);
+        return result;
+    }
+
+    private static <T> void addToSubset(@Nonnull IndexSet<? super T> index,
+                                        @Nonnull IndexSubset<? super T> subset,
+                                        @Nonnull BitSet bits, @Nonnull BitSet result,
+                                        @Nonnull T value) {
+        int i = index.indexOf(value);
+        if (i >= 0) {
+            if (bits.get(i))
+                result.set(i);
+            else
+                throw new NotInParentException(value, subset);
+        } else {
+            throw new NotInParentException(value, index);
+        }
+    }
+
+    public static @Nonnull <T> BitSet subsetExpanding(@Nonnull IndexSet<? super T> parent,
+                                                      @Nonnull Collection<T> values) {
+        if (values.isEmpty())
+            return new BitSet();
+        BitSet bs = getBitSet(parent, values);
+        if (bs != null)
+            return (BitSet) bs.clone();
+        BitSet result = new BitSet(parent.size() + values.size());
+        for (T v : values)
+            result.set(parent.safeAdd(v));
         return result;
     }
 
@@ -69,16 +122,42 @@ public class BitSetOps {
         return result;
     }
 
-    public static @Nonnull <T> BitSet union(@Nonnull List<? super T> parent,
+    public static @Nonnull <T> BitSet union(@Nonnull IndexSet<? super T> parent,
                                             @Nonnull BitSet result, @Nonnull T value) {
+        setBitChecked(parent, result, value);
+        return result;
+    }
+
+    private static <T> void setBitChecked(@Nonnull IndexSet<? super T> parent,
+                                          @Nonnull BitSet result, @Nonnull T value) {
         int idx = parent.indexOf(value);
         if (idx >= 0)
             result.set(idx);
-        return result;
+        else
+            throw new NotInParentException(value, parent);
     }
 
     public static @Nonnull BitSet complement(@Nonnull List<?> parent, @Nonnull BitSet result) {
         result.flip(0, parent.size());
+        return result;
+    }
+
+    public static @Nonnull <T> BitSet symDiff(@Nonnull IndexSet<? super T> parent,
+                                              @Nonnull BitSet result,
+                                              @Nonnull Collection<? extends T> other) {
+        BitSet bs = getBitSet(parent, other);
+        if (bs != null) {
+            result.xor(bs);
+        } else if (result.isEmpty()) {
+            for (T v : other)
+                setBitChecked(parent, result, v);
+        } else if (!other.isEmpty()) {
+            for (T v : other) {
+                int idx = parent.indexOf(v);
+                if (idx < 0) throw new NotInParentException(v, parent);
+                result.set(idx, !result.get(idx));
+            }
+        }
         return result;
     }
 
@@ -114,22 +193,4 @@ public class BitSetOps {
         }
         return result;
     }
-
-    public static @Nonnull <T> BitSet subset(@Nonnull List<? super T> parent,
-                                             @Nonnull BitSet result,
-                                             @Nonnull Collection<? extends T> collection) {
-        BitSet bs = getBitSet(parent, collection);
-        if (bs != null) {
-            result.clear();
-            result.or(bs);
-        } else {
-            for (T o : collection) {
-                int i = parent.indexOf(o);
-                if (i >= 0)
-                    result.set(i);
-            }
-        }
-        return result;
-    }
-
 }

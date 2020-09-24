@@ -16,7 +16,6 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivit
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
 import br.ufsc.lapesd.riefederator.model.term.Var;
@@ -256,7 +255,7 @@ public class JoinOrderPlannerTest implements TestContext {
     public void testPlanGivenNodes(Supplier<JoinOrderPlanner> supplier, List<JoinInfo> list) {
         JoinOrderPlanner planner = supplier.get();
         Set<Op> leavesSet = getPlanNodes(list);
-        JoinGraph joinGraph = new JoinGraph(RefIndexSet.fromRefDistinct(leavesSet));
+        JoinGraph joinGraph = new ArrayJoinGraph(RefIndexSet.fromRefDistinct(leavesSet));
         int rounds = 0;
         //noinspection UnstableApiUsage
         for (List<Op> permutation : Collections2.permutations(new ArrayList<>(leavesSet))) {
@@ -298,7 +297,7 @@ public class JoinOrderPlannerTest implements TestContext {
         RefIndexSet<Op> leaves = RefIndexSet.fromRefDistinct(asList(
                 contractorByName, procurementsOfContractor, contractById, modalities,
                 procurementById, orgByDesc, contract));
-        JoinGraph graph = new JoinGraph(leaves);
+        JoinGraph graph = new ArrayJoinGraph(leaves);
         assertEquals(graph.size(), 7);
 
         Op plan = planner.plan(graph, new ArrayList<>(leaves));

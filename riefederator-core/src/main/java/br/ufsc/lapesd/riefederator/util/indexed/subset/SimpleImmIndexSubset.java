@@ -34,22 +34,26 @@ public class SimpleImmIndexSubset<T> extends SimpleIndexSubset<T>
         return new SimpleImmIndexSubset<>(parent, bs);
     }
 
-    public static @Nonnull <U> SimpleImmIndexSubset<U>
-    create(@Nonnull IndexSet<U> parent, @Nonnull Collection<? extends  U> collection) {
-        BitSet bs = BitSetOps.union(parent, new BitSet(), collection);
-        return new SimpleImmIndexSubset<>(parent, bs);
-    }
-
-    public static @Nonnull <U> SimpleImmIndexSubset<U>
-    create(@Nonnull IndexSet<U> parent, @Nonnull Predicate<? super   U> predicate) {
-        BitSet bs = BitSetOps.union(parent, new BitSet(), predicate);
-        return new SimpleImmIndexSubset<>(parent, bs);
-    }
-
     /* --- --- Implement IndexedSubset methods --- --- */
 
     @Override public @Nonnull ImmIndexSubset<T> asImmutable() {
         return this;
+    }
+
+    @Nonnull @Override public IndexSubset<T> complement() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Nonnull @Override public IndexSubset<T> intersect(@Nonnull Collection<? extends T> coll) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Nonnull @Override public IndexSubset<T> union(@Nonnull Collection<? extends T> coll) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Nonnull @Override public IndexSubset<T> minus(@Nonnull Collection<? extends T> coll) {
+        throw new UnsupportedOperationException();
     }
 
     /* --- --- Implement IndexedSet methods --- --- */
@@ -76,7 +80,15 @@ public class SimpleImmIndexSubset<T> extends SimpleIndexSubset<T>
         throw new UnsupportedOperationException();
     }
 
+    @Override public boolean parentAddAll(@Nonnull Collection<T> values) {
+        throw new UnsupportedOperationException();
+    }
+
     @Override public boolean addAll(@Nonnull Collection<? extends T> c) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override public boolean parentAdd(@Nonnull T value) {
         throw new UnsupportedOperationException();
     }
 

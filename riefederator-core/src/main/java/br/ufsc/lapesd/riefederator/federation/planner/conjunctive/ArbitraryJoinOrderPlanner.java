@@ -8,7 +8,6 @@ import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListene
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.query.modifiers.Optional;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
@@ -62,7 +61,11 @@ public class ArbitraryJoinOrderPlanner implements JoinOrderPlanner {
         }
     }
 
-//    @Override
+    @Override public @Nonnull String toString() {
+        return getClass().getSimpleName();
+    }
+
+    //    @Override
 //    public @Nonnull PlanNode plan(@Nonnull List<JoinInfo> joins, @Nullable JoinGraph ignored) {
 //        checkArgument(!joins.isEmpty());
 //        JoinNode root = null;

@@ -2,6 +2,8 @@ package br.ufsc.lapesd.riefederator.algebra;
 
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
+import br.ufsc.lapesd.riefederator.util.indexed.NotInParentException;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.errorprone.annotations.Immutable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,30 @@ public class JoinInfo {
         assert joinVars != null;
     }
 
+    public JoinInfo(@Nonnull Op left, @Nonnull Op right, @Nonnull Set<String> joinVars) {
+        this.left = left;
+        this.right = right;
+        this.joinVars = joinVars;
+        this.subsumed = false;
+        assert validJoinVars(left, right, joinVars);
+    }
+
+    private boolean validJoinVars(@Nonnull Op left, @Nonnull Op right,
+                                  @Nonnull Set<String> joinVars) {
+        if (joinVars.isEmpty())
+            return false; // no join variables
+        Set<String> shared = CollectionUtils.intersect(left.getPublicVars(), right.getPublicVars());
+        if (!shared.containsAll(joinVars))
+            return false; // joinVars has non-shared variable
+        Set<Triple> lm = left.getMatchedTriples(), rm = right.getMatchedTriples();
+        if (lm.containsAll(rm) || rm.containsAll(lm))
+            return false; // one node subsumes the other
+        for (String lIn : left.getRequiredInputVars()) {
+            if (right.getRequiredInputVars().contains(lIn))
+                shared.remove(lIn);
+        }
+        return shared.containsAll(joinVars); // fails if a join var is required on both sides
+    }
 
     private boolean computeJoinVars() {
         joinVars = CollectionUtils.intersect(left.getPublicVars(), right.getPublicVars());
@@ -50,6 +76,13 @@ public class JoinInfo {
 
     private boolean removeSharedRequiredInputs() {
         Set<String> lv = left.getRequiredInputVars(), rv = right.getRequiredInputVars();
+        if (lv instanceof IndexSubset) {
+            IndexSubset<String> shared = ((IndexSubset<String>) lv).createIntersection(rv);
+            joinVars.removeAll(shared);
+            return !joinVars.isEmpty();
+        }
+
+        // general case
         int lvs = lv.size(), rvs = rv.size();
         if (rvs < lvs) {
             Set<String> tmp = lv; lv = rv; rv = tmp;
@@ -63,6 +96,13 @@ public class JoinInfo {
 
     private @Nonnull Set<String> pending(@Nonnull Set<String> set1,
                                          @Nonnull Set<String> set2) {
+        if (set1 instanceof IndexSubset) {
+            try {
+                IndexSubset<String> ss = ((IndexSubset<String>) set1).createUnion(set2);
+                ss.minus(joinVars);
+                return ss;
+            } catch (NotInParentException ignored) { /* fallback */ }
+        }
         int size1 = set1.size();
         int capacity = size1 + set2.size();
         if (capacity == 0)

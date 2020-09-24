@@ -14,6 +14,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParserTest;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
@@ -230,6 +231,8 @@ public class LargeRDFBenchSelfTest {
             assertNotNull(stream);
             Op query = SPARQLParser.tolerant().parse(stream);
             assertFalse(query.getMatchedTriples().isEmpty());
+            SPARQLParserTest.assertVarsUniverse(query);
+            SPARQLParserTest.assertTripleUniverse(query);
         }
     }
 

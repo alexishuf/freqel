@@ -10,18 +10,21 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.util.CollectionUtils;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.ref.IdentityHashSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
 import static com.google.common.base.Preconditions.*;
 import static java.util.Collections.emptySet;
 
 public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     protected @Nullable Set<String> allVarsCache, resultVarsCache, reqInputsCache, optInputsCache;
+    protected @Nullable IndexSet<Triple> triplesUniverse;
+    protected @Nullable IndexSet<String> varsUniverse;
     private  @Nullable List<Op> children;
     private @Nullable Set<Triple> matchedTriples;
     private @Nonnull final ModifiersSet modifiers = new ModifiersSet();
@@ -29,8 +32,46 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     protected AbstractInnerOp(@Nonnull Collection<Op> children) {
         this.children = children instanceof List ? (List<Op>)children
                                                  : new ArrayList<>(children);
-        for (Op child : this.children)
+        for (Op child : this.children) {
             child.attachTo(this);
+            if (triplesUniverse == null) {
+                IndexSet<Triple> set = child.getOfferedTriplesUniverse();
+                if (set != null) triplesUniverse = set;
+            }
+            if (varsUniverse == null) {
+                IndexSet<String> set = child.getOfferedVarsUniverse();
+                if (set != null) varsUniverse = set;
+            }
+        }
+        assert children.stream().map(Op::getOfferedTriplesUniverse).distinct().count() <= 1;
+        assert children.stream().map(Op::getOfferedVarsUniverse).distinct().count() <= 1;
+    }
+
+    @Override public void offerTriplesUniverse(@Nonnull IndexSet<Triple> universe) {
+        if (triplesUniverse != universe) {
+            triplesUniverse = universe;
+            matchedTriples = null;
+            //noinspection AssertWithSideEffects
+            assert assertAllInvariants(true);
+        }
+    }
+
+    @Override public @Nullable IndexSet<Triple> getOfferedTriplesUniverse() {
+        return triplesUniverse;
+    }
+
+    @Override public void offerVarsUniverse(@Nonnull IndexSet<String> universe) {
+        if (varsUniverse != universe) {
+            varsUniverse = universe;
+            strictResultVarsCache = publicVarsCache = allInputVarsCache = null;
+            allVarsCache = resultVarsCache = reqInputsCache = optInputsCache = null;
+            //noinspection AssertWithSideEffects
+            assert assertAllInvariants(true);
+        }
+    }
+
+    @Override public @Nullable IndexSet<String> getOfferedVarsUniverse() {
+        return varsUniverse;
     }
 
     @Override
@@ -72,7 +113,10 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         if (allVarsCache == null) {
             cacheHit = true;
             assert children != null;
-            allVarsCache = CollectionUtils.union(children, Op::getPublicVars, 16);
+            if (varsUniverse != null)
+                allVarsCache = union(varsUniverse, children, Op::getPublicVars);
+            else
+                allVarsCache = union(children, Op::getPublicVars, 16);
         }
         return allVarsCache;
     }
@@ -83,10 +127,17 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
             cacheHit = true;
             assert children != null;
             Projection projection = modifiers().projection();
-            if (projection != null)
-                resultVarsCache = projection.getVarNames();
-            else
-                resultVarsCache = CollectionUtils.union(children, Op::getResultVars, 16);
+            if (projection != null) {
+                if (varsUniverse != null)
+                    resultVarsCache = varsUniverse.subset(projection.getVarNames());
+                else
+                    resultVarsCache = projection.getVarNames();
+            } else {
+                if (varsUniverse != null)
+                    resultVarsCache = union(varsUniverse, children, Op::getResultVars);
+                else
+                    resultVarsCache = union(children, Op::getResultVars, 16);
+            }
         }
         return resultVarsCache;
     }
@@ -96,7 +147,10 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         if (reqInputsCache == null) {
             cacheHit = true;
             assert children != null;
-            reqInputsCache = CollectionUtils.union(children, Op::getRequiredInputVars);
+            if (varsUniverse != null)
+                reqInputsCache = union(varsUniverse, children, Op::getRequiredInputVars);
+            else
+                reqInputsCache = union(children, Op::getRequiredInputVars);
             assert reqInputsCache.isEmpty() || hasInputs();
         }
         return reqInputsCache;
@@ -108,18 +162,23 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
             cacheHit = true;
             assert children != null;
             Set<String> required = getRequiredInputVars();
-            Set<String> set = null;
-            for (Op child : children) {
-                Set<String> candidates = child.getOptionalInputVars();
-                for (String var : candidates) {
-                    if (!required.contains(var)) {
-                        if (set == null)
-                            set = new HashSet<>(candidates.size()+10);
-                        set.add(var);
+            if (varsUniverse != null) {
+                optInputsCache = union(varsUniverse, children, Op::getOptionalInputVars);
+                optInputsCache.removeAll(required); //fast since required is a subset of universe
+            } else {
+                Set<String> set = null;
+                for (Op child : children) {
+                    Set<String> candidates = child.getOptionalInputVars();
+                    for (String var : candidates) {
+                        if (!required.contains(var)) {
+                            if (set == null)
+                                set = new HashSet<>(candidates.size() + 10);
+                            set.add(var);
+                        }
                     }
                 }
+                optInputsCache = set == null ? emptySet() : set;
             }
-            optInputsCache = set == null ? emptySet() : set;
             assert optInputsCache.isEmpty() || hasInputs();
         }
         return optInputsCache;
@@ -130,7 +189,10 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
         if (matchedTriples == null) {
             cacheHit = true;
             assert children != null;
-            matchedTriples = CollectionUtils.union(children, Op::getMatchedTriples, 16);
+            if (triplesUniverse != null)
+                matchedTriples = union(triplesUniverse, children, Op::getMatchedTriples);
+            else
+                matchedTriples = union(children, Op::getMatchedTriples, 16);
         }
         return matchedTriples;
     }
@@ -207,7 +269,22 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
     @Override
     public @Nonnull Op flatCopy() {
         checkState(children != null, "Previous takeChildren() handle not closed");
-        return createWith(new ArrayList<>(getChildren()), modifiers());
+        Op copy = createWith(new ArrayList<>(getChildren()), modifiers());
+        ((AbstractInnerOp)copy).copyCaches(this);
+        copyCaches((AbstractInnerOp) copy);
+        return copy;
+    }
+
+    @Override protected void copyCaches(@Nonnull AbstractOp other) {
+        super.copyCaches(other);
+        AbstractInnerOp otherInner = (AbstractInnerOp) other;
+        varsUniverse    = otherInner.varsUniverse;
+        allVarsCache    = otherInner.allVarsCache;
+        resultVarsCache = otherInner.resultVarsCache;
+        reqInputsCache  = otherInner.reqInputsCache;
+        optInputsCache  = otherInner.optInputsCache;
+        triplesUniverse = otherInner.triplesUniverse;
+        matchedTriples  = otherInner.matchedTriples;
     }
 
     protected abstract @Nonnull StringBuilder prettyPrintNodeType(@Nonnull StringBuilder builder);

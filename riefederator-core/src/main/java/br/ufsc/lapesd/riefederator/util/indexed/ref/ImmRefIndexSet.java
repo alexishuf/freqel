@@ -10,9 +10,12 @@ import java.util.List;
 public class ImmRefIndexSet<T> extends RefIndexSet<T> implements ImmIndexSet<T> {
     private @LazyInit int hash = 0;
 
-    protected ImmRefIndexSet(@Nonnull List<T> data,
-                             @Nonnull IdentityHashMap<T, Integer> indexMap) {
+    protected ImmRefIndexSet(@Nonnull IdentityHashMap<T, Integer> indexMap, @Nonnull List<T> data) {
         super(indexMap, data);
+    }
+
+    @Override public @Nonnull ImmIndexSet<T> asImmutable() {
+        return this;
     }
 
     @Override public int hashCode() {

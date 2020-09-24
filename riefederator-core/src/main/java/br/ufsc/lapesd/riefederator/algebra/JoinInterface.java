@@ -3,8 +3,6 @@ package br.ufsc.lapesd.riefederator.algebra;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
@@ -12,8 +10,6 @@ import java.util.Set;
 
 @Immutable
 public class JoinInterface {
-    private static Logger logger = LoggerFactory.getLogger(JoinInterface.class);
-
     @SuppressWarnings("Immutable")
     private final @Nonnull Set<String> resultVars, inputVars;
     @SuppressWarnings("Immutable")
@@ -24,10 +20,6 @@ public class JoinInterface {
         this.resultVars = node.getResultVars();
         this.inputVars = node.getRequiredInputVars();
         this.matchedTriples = node.getMatchedTriples();
-        if (!resultVars.containsAll(inputVars)) {
-            logger.warn("There are input variables ({}) that are not result variables ({})",
-                        inputVars, resultVars);
-        }
     }
 
     public @Nonnull Set<String> getResultVars() {

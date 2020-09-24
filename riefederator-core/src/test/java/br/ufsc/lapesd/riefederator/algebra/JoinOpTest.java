@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.algebra;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
@@ -10,6 +11,11 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParserTest;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
+import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Sets;
@@ -149,6 +155,36 @@ public class JoinOpTest implements TestContext {
         assertEquals(node.getInputVars(), emptySet());
         assertEquals(node.getStrictResultVars(), Sets.newHashSet("x", "y"));
         assertFalse(node.hasInputs());
+    }
 
+    @Test
+    public void testDeepCopyPreservesUniverseSets() {
+        QueryOp left = new QueryOp(createQuery(
+                Alice, knows, x, Alice, age, u, SPARQLFilter.build("?u < ?v")));
+        QueryOp right = new QueryOp(createQuery(x, age, v, SPARQLFilter.build("?v > 23")));
+        IndexSet<Triple> triplesUniverse = FullIndexSet.newIndexSet(
+                new Triple(Alice, knows, x),
+                new Triple(Alice, age, u),
+                new Triple(x, age, v)
+        );
+        IndexSet<String> varsUniverse = FullIndexSet.newIndexSet("x", "u", "v", "y");
+        left .offerVarsUniverse(varsUniverse); left .offerTriplesUniverse(triplesUniverse);
+        right.offerVarsUniverse(varsUniverse); right.offerTriplesUniverse(triplesUniverse);
+        SPARQLParserTest.assertUniverses(left);
+        SPARQLParserTest.assertUniverses(right);
+
+        JoinOp join = JoinOp.create(left, right);
+        join.modifiers().add(Projection.of("x", "y"));
+        join.offerTriplesUniverse(triplesUniverse);
+        join.offerVarsUniverse(varsUniverse);
+        SPARQLParserTest.assertUniverses(join);
+
+        Op copy = TreeUtils.deepCopy(join);
+        assertNotSame(copy, join);
+        assertEquals(copy, join);
+        SPARQLParserTest.assertUniverses(copy);
+
+        assertSame(((IndexSubset<Triple>)copy.getMatchedTriples()).getParent(), triplesUniverse);
+        assertSame(((IndexSubset<String>)copy.getAllVars()).getParent(), varsUniverse);
     }
 }

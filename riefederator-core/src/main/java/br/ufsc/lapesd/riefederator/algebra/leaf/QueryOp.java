@@ -14,6 +14,7 @@ import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.Set;
 
@@ -49,6 +50,28 @@ public class QueryOp extends AbstractOp {
 
     public QueryOp(@Nonnull CQuery query) {
         setQuery(query);
+    }
+
+    @Override
+    public void offerTriplesUniverse(@Nonnull IndexSet<Triple> universe) {
+        query.attr().offerTriplesUniverse(universe);
+    }
+
+    @Override public @Nullable IndexSet<Triple> getOfferedTriplesUniverse() {
+        return query.attr().triplesUniverseOffer();
+    }
+
+    @Override public void offerVarsUniverse(@Nonnull IndexSet<String> universe) {
+        if (query.attr().offerVarNamesUniverse(universe)) {
+            purgeCachesShallow();
+            //noinspection AssertWithSideEffects
+            assert assertAllInvariants(true);
+        }
+
+    }
+
+    @Override public @Nullable IndexSet<String> getOfferedVarsUniverse() {
+        return query.attr().varNamesUniverseOffer();
     }
 
     @Override
@@ -145,6 +168,7 @@ public class QueryOp extends AbstractOp {
     public @Nonnull  Op flatCopy() {
         QueryOp copy = createWith(new MutableCQuery(getQuery()));
         copy.setCardinality(getCardinality());
+        copy.copyCaches(this);
         return copy;
     }
 

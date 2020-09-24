@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -31,6 +32,25 @@ public class EmptyOp extends AbstractOp {
         this.resultVars = unmodifiableSet(resultVars);
         this.query = query;
         assertAllInvariants();
+    }
+
+    @Override
+    public void offerTriplesUniverse(@Nonnull IndexSet<Triple> universe) {
+        if (query != null)
+            query.offerTriplesUniverse(universe);
+    }
+
+    @Override public @Nullable IndexSet<Triple> getOfferedTriplesUniverse() {
+        return query == null ? null : query.getOfferedTriplesUniverse();
+    }
+
+    @Override public void offerVarsUniverse(@Nonnull IndexSet<String> universe) {
+        if (query != null)
+            query.offerVarsUniverse(universe);
+    }
+
+    @Override public @Nullable IndexSet<String> getOfferedVarsUniverse() {
+        return query == null ? null : query.getOfferedVarsUniverse();
     }
 
     @Override
@@ -61,9 +81,10 @@ public class EmptyOp extends AbstractOp {
         return query == null ? new EmptyOp(resultVars) : new EmptyOp(query);
     }
 
-    @Override
-    @Nonnull  public Op flatCopy() {
-        return query != null ? new EmptyOp(query) : new EmptyOp(resultVars);
+    @Override public @Nonnull Op flatCopy() {
+        EmptyOp op = query != null ? new EmptyOp(query) : new EmptyOp(resultVars);
+        op.copyCaches(this);
+        return op;
     }
 
     @Override

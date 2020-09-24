@@ -16,6 +16,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArbitraryJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerDispatcher;
 import br.ufsc.lapesd.riefederator.jena.ExprUtils;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
@@ -82,14 +83,13 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
     private static final Var t = new StdVar("t");
 
     public static @Nonnull List<Class<? extends ConjunctivePlanner>> plannerClasses
-            = singletonList(JoinPathsConjunctivePlanner.class);
+            = asList(JoinPathsConjunctivePlanner.class, BitsetConjunctivePlannerDispatcher.class);
     public static @Nonnull List<Class<? extends JoinOrderPlanner>> joinOrderPlannerClasses
             = asList(ArbitraryJoinOrderPlanner.class, GreedyJoinOrderPlanner.class);
 
     public static boolean isFast(@Nonnull Class<? extends ConjunctivePlanner> planner,
                                  @Nonnull Class<? extends JoinOrderPlanner> joinPlanner) {
-        return planner.equals(JoinPathsConjunctivePlanner.class)
-                && !joinPlanner.equals(ArbitraryJoinOrderPlanner.class);
+        return !joinPlanner.equals(ArbitraryJoinOrderPlanner.class);
     }
 
     public static @Nonnull List<Supplier<ConjunctivePlanner>> suppliers;

@@ -15,7 +15,7 @@ public abstract class BaseIndexSet<T> extends AbstractCollection<T> implements I
     protected final @Nonnull List<T> data;
     protected final @Nonnull Map<T, Integer> indexMap;
 
-    protected BaseIndexSet(@Nonnull List<T> data, @Nonnull Map<T, Integer> indexMap) {
+    protected BaseIndexSet(@Nonnull Map<T, Integer> indexMap, @Nonnull List<T> data) {
         this.data = data;
         this.indexMap = indexMap;
         checkIndex();
@@ -45,6 +45,10 @@ public abstract class BaseIndexSet<T> extends AbstractCollection<T> implements I
 
     /* --- --- implement IndexedSet --- --- */
 
+    @Override public @Nonnull IndexSet<T> getParent() {
+        return this;
+    }
+
     protected class EntrySetIt<T> implements Iterator<Map.Entry<T, Integer>> {
         protected Iterator<Map.Entry<T, Integer>> it;
 
@@ -71,14 +75,36 @@ public abstract class BaseIndexSet<T> extends AbstractCollection<T> implements I
 
     @Override @CheckReturnValue
     public @Nonnull IndexSubset<T> subset(@Nonnull Collection<? extends T> collection) {
-        BitSet bs = BitSetOps.subset(this, new BitSet(size()), collection);
+        BitSet bs = BitSetOps.union(this, new BitSet(size()), collection);
         return new SimpleIndexSubset<>(this, bs);
+    }
+
+    @Override
+    public @Nonnull IndexSubset<T> subsetExpanding(@Nonnull Collection<? extends T> c) {
+        return new SimpleIndexSubset<>(this, BitSetOps.subsetExpanding(this, c));
+    }
+
+    @Override public @Nonnull IndexSubset<T> subset(@Nonnull BitSet subset) {
+        if (subset.length() > size())
+            throw new NotInParentException(subset, this);
+        return new SimpleIndexSubset<>(this, subset);
     }
 
     @Override @CheckReturnValue
     public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull Collection<? extends T> collection) {
-        BitSet bs = BitSetOps.subset(this, new BitSet(size()), collection);
+        BitSet bs = BitSetOps.union(this, new BitSet(size()), collection);
         return new SimpleImmIndexSubset<>(this, bs);
+    }
+
+    @Override
+    public @Nonnull ImmIndexSubset<T> immutableSubsetExpanding(@Nonnull Collection<? extends T> c) {
+        return new SimpleImmIndexSubset<>(this, BitSetOps.subsetExpanding(this, c));
+    }
+
+    @Override public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull BitSet subset) {
+        if (subset.length() > size())
+            throw new NotInParentException(subset, this);
+        return new SimpleImmIndexSubset<>(this, subset);
     }
 
     @Override @CheckReturnValue
@@ -190,13 +216,20 @@ public abstract class BaseIndexSet<T> extends AbstractCollection<T> implements I
         return true;
     }
 
+    @Override public int safeAdd(T value) {
+        throw new UnsupportedOperationException();
+    }
+
     @Override
     public boolean addAll(int index, @NotNull Collection<? extends T> c) {
         throw new UnsupportedOperationException();
     }
 
     @Override public boolean addAll(@Nonnull Collection<? extends T> c) {
-        throw new UnsupportedOperationException();
+        boolean modified = false;
+        for (T e : c)
+            modified |= add(e);
+        return modified;
     }
 
     @Override

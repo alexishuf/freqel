@@ -1,16 +1,20 @@
 package br.ufsc.lapesd.riefederator.algebra.leaf;
 
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.query.parse.SPARQLParserTest;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.common.collect.Sets;
@@ -194,6 +198,23 @@ public class QueryOpTest implements TestContext {
         assertFalse(node.toString().startsWith("π"));
     }
 
+    @Test(dataProvider = "factoryData")
+    public void testCopyPreservesUniverse(BiFunction<CQuery, Set<String>, QueryOp> fac) {
+        MutableCQuery query = createQuery(
+                Alice, knows, x,
+                x, age, u, SPARQLFilter.build("?u < ?v"), Projection.of("u", "w"));
+        query.attr().offerTriplesUniverse(FullIndexSet.newIndexSet(
+                new Triple(Alice, knows, x),
+                new Triple(x, age, u)
+        ));
+        query.attr().offerVarNamesUniverse(FullIndexSet.newIndexSet("x", "u", "v", "w"));
+
+        QueryOp op = fac.apply(query, null);
+        SPARQLParserTest.assertUniverses(op);
+        Op copy = op.flatCopy();
+        assertEquals(copy, op);
+        SPARQLParserTest.assertUniverses(copy);
+    }
 
     @Test(dataProvider = "factoryData")
     public void testVarsInProjection(BiFunction<CQuery, Set<String>, QueryOp> fac) {

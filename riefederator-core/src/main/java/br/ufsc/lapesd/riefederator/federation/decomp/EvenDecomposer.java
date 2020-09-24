@@ -7,8 +7,10 @@ import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
+import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,18 +38,32 @@ public class EvenDecomposer extends SourcesListAbstractDecomposer {
         try (TimeSampler ignored = Metrics.SELECTION_MS.createThreadSampler(performance)) {
             Metrics.AGGLUTINATION_MS.createThreadSampler(performance).close();
             return sources.stream()
-                    .flatMap(s -> streamQueryNodes(s, s.getDescription().match(query)))
+                    .flatMap(s -> streamQueryNodes(query, s, s.getDescription().match(query)))
                     .collect(toList());
         }
     }
 
-    private @Nonnull Stream<ProtoQueryOp> streamQueryNodes(@Nonnull Source source,
-                                                           @Nonnull CQueryMatch m) {
+    private @Nonnull Stream<ProtoQueryOp>
+    streamQueryNodes(@Nonnull CQuery query, @Nonnull Source source, @Nonnull CQueryMatch m) {
         TPEndpoint ep = source.getEndpoint();
+        IndexSet<Triple> triplesUniverse = query.attr().triplesUniverseOffer();
+        IndexSet<String> varsUniverse = query.attr().varNamesUniverseOffer();
         return Stream.concat(
-                m.getKnownExclusiveGroups().stream().map(g -> new ProtoQueryOp(ep, g)),
-                m.getNonExclusiveRelevant().stream()
-                        .map(t -> new ProtoQueryOp(ep, CQuery.from(t))));
+                m.getKnownExclusiveGroups().stream().map(g -> {
+                    if (triplesUniverse != null)
+                        g.attr().offerTriplesUniverse(triplesUniverse);
+                    if (varsUniverse != null)
+                        g.attr().offerVarNamesUniverse(varsUniverse);
+                    return new ProtoQueryOp(ep, g);
+                }),
+                m.getNonExclusiveRelevant().stream().map(t -> {
+                    CQuery q = CQuery.from(t);
+                    if (triplesUniverse != null)
+                        q.attr().offerTriplesUniverse(triplesUniverse);
+                    if (varsUniverse != null)
+                        q.attr().offerVarNamesUniverse(varsUniverse);
+                    return new ProtoQueryOp(ep, q);
+                }));
     }
 
     @Override

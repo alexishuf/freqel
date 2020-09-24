@@ -2,14 +2,10 @@ package br.ufsc.lapesd.riefederator.util;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
-import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
-import br.ufsc.lapesd.riefederator.util.indexed.ImmFullIndexSet;
-import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
-import br.ufsc.lapesd.riefederator.util.indexed.IndexSetPartition;
+import br.ufsc.lapesd.riefederator.util.indexed.*;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.ImmIndexSubset;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
-import com.google.common.collect.Sets;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -17,6 +13,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
@@ -239,12 +236,12 @@ public class IndexSetTest implements TestContext {
                 assertTrue(set.containsAny(asList(0, 1, values.get(i), values.get(j))));
                 assertTrue(set.containsAny(asList(0, 1, values.get(i), values.get(j))));
 
-                assertTrue(set.containsAny(Sets.newHashSet(values.get(i), values.get(j))));
-                assertTrue(set.containsAny(Sets.newHashSet(0, values.get(i), values.get(j))));
-                assertTrue(set.containsAny(Sets.newHashSet(values.get(i), values.get(j), 9)));
-                assertTrue(set.containsAny(Sets.newHashSet(0, values.get(i), values.get(j), 9)));
-                assertTrue(set.containsAny(Sets.newHashSet(0, 1, values.get(i), values.get(j))));
-                assertTrue(set.containsAny(Sets.newHashSet(0, 1, values.get(i), values.get(j))));
+                assertTrue(set.containsAny(newHashSet(values.get(i), values.get(j))));
+                assertTrue(set.containsAny(newHashSet(0, values.get(i), values.get(j))));
+                assertTrue(set.containsAny(newHashSet(values.get(i), values.get(j), 9)));
+                assertTrue(set.containsAny(newHashSet(0, values.get(i), values.get(j), 9)));
+                assertTrue(set.containsAny(newHashSet(0, 1, values.get(i), values.get(j))));
+                assertTrue(set.containsAny(newHashSet(0, 1, values.get(i), values.get(j))));
             }
         }
 
@@ -351,7 +348,7 @@ public class IndexSetTest implements TestContext {
         assertFalse(it2.hasNext());
 
         assertEquals(new ArrayList<>(subset), asList(11, 13));
-        assertEquals(subset, Sets.newHashSet(11, 13));
+        assertEquals(subset, newHashSet(11, 13));
     }
 
     @Test
@@ -413,7 +410,7 @@ public class IndexSetTest implements TestContext {
                 IndexSubset<Integer> subset = set.subset(asList(10 + i, 10 + j));
                 assertEquals(subset.size(), i==j ? 1 : 2);
 
-                assertEquals(subset, Sets.newHashSet(10+i, 10+j));
+                assertEquals(subset, newHashSet(10+i, 10+j));
 
                 assertTrue(subset.contains(10+i));
                 assertTrue(subset.contains(10+j));
@@ -500,19 +497,19 @@ public class IndexSetTest implements TestContext {
         IndexSet<Integer> set = set(10, 11, 12);
         IndexSubset<Integer> sub = set.fullSubset();
 
-        assertEquals(sub, Sets.newHashSet(10, 11, 12));
-        assertTrue(sub.equals(Sets.newHashSet(10, 11, 12)));
-        assertTrue(Sets.newHashSet(10, 11, 12).equals(sub));
+        assertEquals(sub, newHashSet(10, 11, 12));
+        assertTrue(sub.equals(newHashSet(10, 11, 12)));
+        assertTrue(newHashSet(10, 11, 12).equals(sub));
 
         //bad order is OK
-        assertEquals(sub, Sets.newHashSet(12, 11, 10));
-        assertTrue(sub.equals(Sets.newHashSet(12, 11, 10)));
-        assertTrue(Sets.newHashSet(12, 11, 10).equals(sub));
+        assertEquals(sub, newHashSet(12, 11, 10));
+        assertTrue(sub.equals(newHashSet(12, 11, 10)));
+        assertTrue(newHashSet(12, 11, 10).equals(sub));
 
         sub.remove(Integer.valueOf(11));
-        assertEquals(sub, Sets.newHashSet(12, 10));
-        assertTrue(sub.equals(Sets.newHashSet(12, 10)));
-        assertTrue(Sets.newHashSet(12, 10).equals(sub));
+        assertEquals(sub, newHashSet(12, 10));
+        assertTrue(sub.equals(newHashSet(12, 10)));
+        assertTrue(newHashSet(12, 10).equals(sub));
     }
 
     @Test
@@ -530,9 +527,9 @@ public class IndexSetTest implements TestContext {
         assertTrue(full.containsAll(asList(10, 11, 12)));
         assertFalse(full.containsAll(asList(10, 11, 12, 13)));
 
-        assertTrue(full.containsAll(Sets.newHashSet(10, 11)));
-        assertTrue(full.containsAll(Sets.newHashSet(10, 11, 12)));
-        assertFalse(full.containsAll(Sets.newHashSet(10, 11, 12, 13)));
+        assertTrue(full.containsAll(newHashSet(10, 11)));
+        assertTrue(full.containsAll(newHashSet(10, 11, 12)));
+        assertFalse(full.containsAll(newHashSet(10, 11, 12, 13)));
 
         IndexSet<Integer> set2 = set(11, 12, 13);
         assertTrue(full.containsAll(set2.subset(asList(11, 12))));
@@ -549,14 +546,14 @@ public class IndexSetTest implements TestContext {
         IndexSubset<Integer> sub = set.subset(asList(11, 12));
         //noinspection SimplifiedTestNGAssertion
         assertTrue(sub.equals(asList(12, 11)));
-        assertEquals(sub, Sets.newHashSet(11, 12));
+        assertEquals(sub, newHashSet(11, 12));
 
         assertTrue(sub.containsAll(asList(11, 12)));
-        assertTrue(sub.containsAll(Sets.newHashSet(11, 12)));
+        assertTrue(sub.containsAll(newHashSet(11, 12)));
 
         assertFalse(sub.containsAll(asList(10, 13)));
         assertFalse(sub.containsAll(asList(10, 12)));
-        assertFalse(sub.containsAll(Sets.newHashSet(11, 13)));
+        assertFalse(sub.containsAll(newHashSet(11, 13)));
 
         assertFalse(sub.containsAll(set2.fullSubset()));
         assertTrue(sub.containsAll(set2.emptySubset()));
@@ -587,10 +584,10 @@ public class IndexSetTest implements TestContext {
         for (int i = 0; i < a.size(); i++) {
             for (int j = 0; j < a.size(); j++) {
                 for (int k = 0; k < a.size(); k++) {
-                    IndexSubset<Integer> aSubset = a.subset(asList(i, j, k));
-                    IndexSubset<Integer> aSubset2 = a.subset(asList(j, i, k));
-                    IndexSubset<Integer> bSubset = b.subset(asList(i, j, k));
-                    IndexSubset<Integer> cSubset = c.subset(asList(i, j, k));
+                    IndexSubset<Integer> aSubset = a.subset(asList(11+i, 11+j, 11+k));
+                    IndexSubset<Integer> aSubset2 = a.subset(asList(11+j, 11+i, 11+k));
+                    IndexSubset<Integer> bSubset = b.subset(asList(11+i, 11+j, 11+k));
+                    IndexSubset<Integer> cSubset = c.subset(asList(11+i, 11+j, 11+k));
 
                     assertEquals(aSubset, aSubset2);
                     assertEquals(aSubset.hashCode(), aSubset2.hashCode());
@@ -649,13 +646,13 @@ public class IndexSetTest implements TestContext {
     public void testSetDifference() {
         IndexSet<Integer> set = set(10, 11, 12, 13, 14, 15);
 
-        assertEquals(set.emptySubset().createDifference(set.fullSubset()), set.emptySubset());
-        assertEquals(set.emptySubset().createDifference(set.subset(10)), set.emptySubset());
-        assertEquals(set.fullSubset().createDifference(set.subset(11)),
+        assertEquals(set.emptySubset().createMinus(set.fullSubset()), set.emptySubset());
+        assertEquals(set.emptySubset().createMinus(set.subset(10)), set.emptySubset());
+        assertEquals(set.fullSubset().createMinus(set.subset(11)),
                      set.subset(asList(10, 12, 13, 14, 15)));
-        assertEquals(set.fullSubset().createDifference(set.subset(asList(11, 12, 13))),
+        assertEquals(set.fullSubset().createMinus(set.subset(asList(11, 12, 13))),
                      set.subset(asList(10, 14, 15)));
-        assertEquals(set.fullSubset().createDifference(set.subset(asList(11, 13, 15))),
+        assertEquals(set.fullSubset().createMinus(set.subset(asList(11, 13, 15))),
                      set.subset(asList(10, 12, 14)));
 
         IndexSubset<Integer> subset = set.fullSubset();
@@ -720,7 +717,7 @@ public class IndexSetTest implements TestContext {
         // compare with sets
         assertEquals(e, emptySet());
         assertEquals(s1, singleton(11));
-        assertEquals(s02, Sets.newHashSet(10, 12));
+        assertEquals(s02, newHashSet(10, 12));
 
         //throw on modifiers
         for (ImmIndexSubset<Integer> s : asList(e, s02, s1)) {
@@ -753,7 +750,7 @@ public class IndexSetTest implements TestContext {
     public void testHashCodeConsistencySingleton() {
         IndexSet<Integer> a = FullIndexSet.fromDistinct(singletonList(23));
         Set<Integer> aSingleton = singleton(23);
-        HashSet<Integer> aStd = Sets.newHashSet(23);
+        HashSet<Integer> aStd = newHashSet(23);
 
         assertEquals(a.hashCode(), aSingleton.hashCode());
         assertEquals(a.hashCode(), aStd.hashCode());
@@ -776,7 +773,7 @@ public class IndexSetTest implements TestContext {
     @Test
     public void testHashCodeStdConsistent() {
         IndexSet<Integer> a1 = FullIndexSet.fromDistinct(asList(1, 2, 3, 4));
-        HashSet<Integer> a2 = Sets.newHashSet(1, 2, 3, 4);
+        HashSet<Integer> a2 = newHashSet(1, 2, 3, 4);
         TreeSet<Integer> a3 = new TreeSet<>();
         a3.addAll(asList(1, 2, 3, 4));
         assertEquals(a1.hashCode(), a2.hashCode());
@@ -800,7 +797,7 @@ public class IndexSetTest implements TestContext {
         assertTrue(a.contains(a2));
 
         //noinspection unchecked
-        HashSet<Set<Triple>> b = Sets.newHashSet(b1, b2);
+        HashSet<Set<Triple>> b = newHashSet(b1, b2);
         assertEquals(b.size(), 2);
         assertTrue(b.contains(b1));
         assertTrue(b.contains(b2));
@@ -973,9 +970,9 @@ public class IndexSetTest implements TestContext {
     @Test
     public void testIterateFullSubset() {
         IndexSubset<Integer> s0 = new FullIndexSet<Integer>(0).fullSubset();
-        IndexSubset<Integer> s1 = FullIndexSet.newIndexedSet(10).fullSubset();
-        IndexSubset<Integer> s2 = FullIndexSet.newIndexedSet(10, 11).fullSubset();
-        IndexSubset<Integer> s3 = FullIndexSet.newIndexedSet(10, 11, 12).fullSubset();
+        IndexSubset<Integer> s1 = FullIndexSet.newIndexSet(10).fullSubset();
+        IndexSubset<Integer> s2 = FullIndexSet.newIndexSet(10, 11).fullSubset();
+        IndexSubset<Integer> s3 = FullIndexSet.newIndexSet(10, 11, 12).fullSubset();
 
         assertFalse(s0.iterator().hasNext());
 
@@ -1005,9 +1002,9 @@ public class IndexSetTest implements TestContext {
     @Test
     public void testIterateImmutableFullSubset() {
         IndexSubset<Integer> s0 = new FullIndexSet<Integer>(0).immutableFullSubset();
-        IndexSubset<Integer> s1 = FullIndexSet.newIndexedSet(10).immutableFullSubset();
-        IndexSubset<Integer> s2 = FullIndexSet.newIndexedSet(10, 11).immutableFullSubset();
-        IndexSubset<Integer> s3 = FullIndexSet.newIndexedSet(10, 11, 12).immutableFullSubset();
+        IndexSubset<Integer> s1 = FullIndexSet.newIndexSet(10).immutableFullSubset();
+        IndexSubset<Integer> s2 = FullIndexSet.newIndexSet(10, 11).immutableFullSubset();
+        IndexSubset<Integer> s3 = FullIndexSet.newIndexSet(10, 11, 12).immutableFullSubset();
 
         assertFalse(s0.iterator().hasNext());
 
@@ -1191,5 +1188,81 @@ public class IndexSetTest implements TestContext {
             assertFalse(even.contains(Integer.valueOf(i)));
         for (int i = pStart-1; i >= 0; i -= 2)
             assertFalse(even.contains(Integer.valueOf(i)));
+    }
+
+    private @Nonnull BitSet createBitSet(int... positions) {
+        BitSet bs = new BitSet();
+        for (int position : positions)
+            bs.set(position);
+        return bs;
+    }
+
+    @Test @SuppressWarnings("ResultOfMethodCallIgnored")
+    public void testCreateSubsetWithBadValues() {
+        FullIndexSet<Integer> parent = new FullIndexSet<>(10);
+        for (int i = 0; i < 4; i++)
+            parent.add(i);
+
+        assertEquals(parent.subset(0), singleton(0));
+        assertThrows(NotInParentException.class, () -> parent.subset(4));
+
+        assertEquals(parent.subset(newHashSet(0, 1)), newHashSet(0, 1));
+        assertThrows(NotInParentException.class, () -> parent.subset(newHashSet(0, 4)));
+
+        IndexSubset<Integer> subset01 = parent.subset(newHashSet(0, 1));
+        IndexSubset<Integer> subset03 = parent.subset(newHashSet(0, 3));
+        assertEquals(parent.subset(subset01), newHashSet(0, 1));
+        assertEquals(parent.subset(subset03), newHashSet(0, 3));
+
+        assertEquals(subset03.subset(0), newHashSet(0));
+        assertEquals(subset03.subset(newHashSet(0, 3)), newHashSet(0, 3));
+        assertThrows(NotInParentException.class, () -> subset03.subset(4));
+        assertThrows(NotInParentException.class, () -> subset03.subset(1));
+        assertThrows(NotInParentException.class, () -> subset03.subset(newHashSet(0, 4)));
+        assertThrows(NotInParentException.class, () -> subset03.subset(newHashSet(0, 1)));
+        assertThrows(NotInParentException.class, () -> subset03.subset(subset01));
+    }
+
+    @Test @SuppressWarnings("ResultOfMethodCallIgnored")
+    public void testCreateSubsetFromBitSet() {
+        FullIndexSet<Integer> p = new FullIndexSet<>(10);
+        for (int i = 0; i < 4; i++)
+            assertTrue(p.add(i));
+
+        assertEquals(p.subset(createBitSet(1)), newHashSet(1));
+        assertEquals(p.subset(createBitSet(0, 1, 2, 3)), newHashSet(0, 1, 2, 3));
+        assertThrows(NotInParentException.class, () -> p.subset(createBitSet(0, 4)));
+
+        assertEquals(p.subset(createBitSet(0, 1, 2)).subset(createBitSet(0, 1)), newHashSet(0, 1));
+        assertEquals(p.subset(createBitSet(0, 1, 2)).subset(createBitSet(1, 2)), newHashSet(1, 2));
+        IndexSubset<Integer> parentSubset = p.subset(createBitSet(0, 2));
+
+        // out of bounds for p and for parentSusbet
+        assertThrows(NotInParentException.class,
+                () -> parentSubset.subset(createBitSet(0, 4)));
+        // out of bounds for only for parentSusbet
+        assertThrows(NotInParentException.class,
+                () -> parentSubset.subset(createBitSet(0, 3)));
+    }
+
+    @Test
+    public void testSymDif() {
+        IndexSet<Integer> parent = FullIndexSet.newIndexSet(0, 1, 2, 3, 4, 5);
+        IndexSubset<Integer> a = parent.subset(asList(0, 1));
+        IndexSubset<Integer> b = parent.subset(asList(   1, 2));
+
+        IndexSubset<Integer> c = a.copy();
+        assertEquals(c.symDiff(b), newHashSet(0, 2));
+
+        assertEquals(a.createSymDiff(b), newHashSet(0, 2));
+        assertEquals(b.createSymDiff(a), newHashSet(0, 2));
+        assertEquals(a, newHashSet(0, 1));
+        assertEquals(b, newHashSet(1, 2));
+
+        assertEquals(a.createSymDiff(emptyList()), newHashSet(0, 1));
+        assertEquals(b.createSymDiff(emptySet()), newHashSet(1, 2));
+
+        assertEquals(a.createSymDiff(asList(1, 2)), newHashSet(0, 2));
+        assertEquals(b.createSymDiff(asList(0, 1)), newHashSet(0, 2));
     }
 }

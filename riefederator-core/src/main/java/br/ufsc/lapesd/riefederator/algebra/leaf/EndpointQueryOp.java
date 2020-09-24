@@ -5,8 +5,8 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
 
-public class EndpointQueryOp extends QueryOp {
-    private final @Nonnull TPEndpoint endpoint;
+public class EndpointQueryOp extends QueryOp implements EndpointOp {
+    protected final @Nonnull TPEndpoint endpoint;
 
     public EndpointQueryOp(@Nonnull TPEndpoint endpoint, @Nonnull CQuery query) {
         super(query);
@@ -14,7 +14,7 @@ public class EndpointQueryOp extends QueryOp {
         assertAllInvariants();
     }
 
-    public @Nonnull TPEndpoint getEndpoint() {
+    @Override public @Nonnull TPEndpoint getEndpoint() {
         return endpoint;
     }
 

@@ -11,7 +11,7 @@ import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.riefederator.util.indexed.IndexSetPartition;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -218,7 +218,7 @@ public class CQuery implements  List<Triple> {
             triples.addAll(d.cache.triplesWithTermAt(term, position));
 
         MutableCQuery other = MutableCQuery.from(triples);
-        IndexSetPartition<String> allowed = other.attr().tripleVarNames();
+        IndexSet<String> allowed = other.attr().tripleVarNames();
         other.d.modifiers.silenced = true;
         boolean hadFilter = false;
         for (Modifier m : getModifiers()) {

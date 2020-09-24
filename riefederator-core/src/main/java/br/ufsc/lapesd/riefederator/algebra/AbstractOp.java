@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.util.ref.IdentityHashSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.annotation.OverridingMethodsMustInvokeSuper;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.union;
@@ -79,10 +80,11 @@ public abstract class AbstractOp implements Op {
     public @Nonnull Set<String> getStrictResultVars() {
         if (strictResultVarsCache == null) {
             cacheHit = true;
-            if (hasInputs())
+            if (hasInputs()) {
                 strictResultVarsCache = CollectionUtils.setMinus(getResultVars(), getInputVars());
-            else
+            } else {
                 strictResultVarsCache = getResultVars();
+            }
             assert modifiers().projection() == null
                     || requireNonNull(modifiers().projection())
                             .getVarNames().containsAll(strictResultVarsCache);
@@ -178,6 +180,12 @@ public abstract class AbstractOp implements Op {
             assert parents.stream().noneMatch(o -> o == parent) : "parent appears twice in list";
         }
         assert found : "parent does not appear in parents list";
+    }
+
+    @OverridingMethodsMustInvokeSuper protected void copyCaches(@Nonnull AbstractOp other) {
+        strictResultVarsCache = other.strictResultVarsCache;
+        publicVarsCache = other.publicVarsCache;
+        allInputVarsCache = other.allInputVarsCache;
     }
 
     @Override

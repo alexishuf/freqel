@@ -9,7 +9,6 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.DefaultInnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinComponent;
-import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -206,49 +205,11 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
 //
 //    }
 
-    private static boolean nodeMatch(@Nonnull Op actual, @Nonnull Op expected) {
-        if (expected instanceof UnionOp) {
-            if (!(actual instanceof UnionOp)) return false;
-            if (expected.getChildren().size() != actual.getChildren().size()) return false;
-            return expected.getChildren().stream()
-                    .anyMatch(e -> actual.getChildren().stream().anyMatch(a -> nodeMatch(a, e)));
-        }
-        return actual.equals(expected);
-    }
 
-    @DataProvider
-    public static Object[][] groupNodesData() {
-        EndpointQueryOp n1 = node(e1, Alice, p1, x), n2 = node(e1, x, p2, y), n3 = node(e1, y, p3, Bob);
-        EndpointQueryOp o1 = node(e2, Alice, p1, x), o2 = node(e2, x, p2, y), o3 = node(e2, y, p3, Bob);
-        EndpointQueryOp i2 = new EndpointQueryOp(e2, createQuery(x, AtomInputAnnotation.asRequired(Atom1, "Atom1").get(),
-                        p2, y, AtomAnnotation.of(Atom1)));
-        EndpointQueryOp aliceKnowsX = node(e1, Alice, knows, x), yKnowsBob = node(e1, y, knows, Bob);
-
-        return Stream.of(
-                asList(singleton(n1), singleton(n1)),
-                asList(asList(n1, n2, n3), asList(n1, n2, n3)),
-                asList(asList(n1, n2, o1), asList(m(n1, o1), n2)),
-                asList(asList(n2, i2), asList(n2, i2)),
-                asList(asList(n1, n2, i2), asList(n1, n2, i2)),
-                asList(asList(n2, o2, i2), asList(m(n2, o2), i2)),
-                asList(asList(n2, o2, i2, n3), asList(m(n2, o2), i2, n3)),
-                asList(asList(n1, o1, n2, o2, i2, n3), asList(m(n1, o1), m(n2, o2), i2, n3)),
-                asList(asList(n1, o1, n2, o2, i2, n3, o3),
-                       asList(m(n1,o1), m(n2,o2), i2, m(n3,o3))),
-                asList(asList(aliceKnowsX, yKnowsBob), asList(aliceKnowsX, yKnowsBob))
-        ).map(List::toArray).toArray(Object[][]::new);
-    }
-
-    @Test(dataProvider = "groupNodesData", groups = {"fast"})
-    public void testGroupNodes(Collection<Op> in, Collection<Op> expected) {
-        for (List<Op> permutation : permutations(in)) {
-            JoinPathsConjunctivePlanner planner = createPathsPlanner();
-            List<Op> grouped = planner.groupNodes(permutation);
-            assertEquals(grouped.size(), expected.size());
-            for (Op expectedNode : expected) {
-                assertTrue(grouped.stream().anyMatch(actual -> nodeMatch(actual, expectedNode)),
-                        "No match for " + expectedNode);
-            }
+    @Test(groups = {"fast"})
+    public static class GroupNodesTest extends GroupNodesTestBase {
+        @Override protected @Nonnull List<Op> groupNodes(@Nonnull List<Op> list) {
+            return createPathsPlanner().groupNodes(list);
         }
     }
 
@@ -377,7 +338,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         double sum = 0;
         int count = 0;
         for (List<Op> permutation : permutations(nodes)) {
-            JoinGraph g = new JoinGraph(RefIndexSet.fromRefDistinct(permutation));
+            JoinGraph g = new ArrayJoinGraph(RefIndexSet.fromRefDistinct(permutation));
             JoinPathsConjunctivePlanner planner = createPathsPlanner();
             Stopwatch sw = Stopwatch.createStarted();
             List<JoinComponent> paths = planner.getPaths(fromDistinctCopy(query.attr().matchedTriples()), g);
@@ -530,7 +491,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         //setup
         RefIndexSet<Op> nodes = RefIndexSet.fromRefDistinct(
                 nodesList.stream().flatMap(Collection::stream).collect(toSet()));
-        JoinGraph graph = new JoinGraph(nodes);
+        JoinGraph graph = new ArrayJoinGraph(nodes);
         List<JoinComponent> pathsList;
         pathsList = nodesList.stream().map(n -> new JoinComponent(graph, n)).collect(toList());
         List<JoinComponent> origPaths = new ArrayList<>(pathsList);

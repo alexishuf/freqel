@@ -5,6 +5,7 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.jetbrains.annotations.Contract;
 
@@ -22,6 +23,52 @@ public interface Op {
      * this simply returns true without checking anything.
      */
     boolean assertTreeInvariants();
+
+    /**
+     * Offers a set to be considered the universe of matched triples.
+     *
+     * Implementations of {@link Op#getMatchedTriples()} will attempt to return a IndexSubset of
+     * the universe instead of an usual HashSet. The advantage of IndexSubset is enabling bitwise
+     * set operations, and improved memory efficiency (smaller size and GC footprint).
+     *
+     * If an implementation of {@link Op#getMatchedTriples()} fails to build such IndexSubset
+     * due to missing elements in the universe, a HashSet will be returned.
+     *
+     * @param universe the universe to be considered stored by reference (i.e., not copied)
+     */
+    void offerTriplesUniverse(@Nonnull IndexSet<Triple> universe);
+
+    /**
+     * Get the universe set set with {@link Op#offerTriplesUniverse(IndexSet)}.
+     */
+    @Nullable IndexSet<Triple> getOfferedTriplesUniverse();
+
+    /**
+     * Defines a universe set for building IndexSubset instances with var names.
+     *
+     * The universe works similarly to {@link Op#getMatchedTriples()}. If the universe is
+     * found to be incomplete, implementations will return HashSet instances as a fallback.
+     * Methods affected by this:
+     *
+     * <ul>
+     *     <li>{@link Op#getAllVars()}</li>
+     *     <li>{@link Op#getPublicVars()}</li>
+     *     <li>{@link Op#getResultVars()}</li>
+     *     <li>{@link Op#getStrictResultVars()}</li>
+     *     <li>{@link Op#getInputVars()}</li>
+     *     <li>{@link Op#getRequiredInputVars()}</li>
+     *     <li>{@link Op#getOptionalInputVars()}</li>
+     * </ul>
+     * @param universe the universe to be considered stored by reference (i.e., not copied)
+     *
+     * @see Op#getMatchedTriples()
+     */
+    void offerVarsUniverse(@Nonnull IndexSet<String> universe);
+
+    /**
+     * Get the last universe set set with {@link Op#offerVarsUniverse(IndexSet)}.
+     */
+    @Nullable IndexSet<String> getOfferedVarsUniverse();
 
     /**
      * Get the name for this node within its plan.

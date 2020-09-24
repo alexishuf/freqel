@@ -13,7 +13,6 @@ import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinComponent;
-import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.JoinGraph;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.SubPathAggregation;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -135,7 +134,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     private @Nullable Op plan(@Nonnull Collection<Op> qns,
                               @Nonnull IndexSet<Triple> triples) {
         RefIndexSet<Op> leaves = groupNodes(qns);
-        JoinGraph g = new JoinGraph(leaves);
+        JoinGraph g = new ArrayJoinGraph(leaves);
         List<JoinComponent> pathsSet = getPaths(triples, g);
         assertValidJoinComponents(pathsSet, triples);
         removeAlternativePaths(pathsSet);

@@ -699,7 +699,8 @@ public class MutableCQuery extends CQuery {
         if (p == null) return false;
         IndexSet<String> allowed = strict ? attr().tripleVarNames() : attr().allVarNames();
         Set<String> current = p.getVarNames();
-        IndexSubset<String> fixed = allowed.immutableSubset(current);
+
+        IndexSubset<String> fixed = allowed.fullSubset().intersect(current);
         if (fixed.size() == current.size())
             return false; // no change
         boolean change = d.modifiers.add(new Projection(fixed));
@@ -731,18 +732,24 @@ public class MutableCQuery extends CQuery {
     }
 
     private boolean doRemoveAll(@Nonnull Collection<Triple> coll, String method, Object arg) {
-        IndexSet<Triple> set = attr().getSet();
-        IndexSubset<Triple> subset = set.subset(coll);
-        if (subset.isEmpty())
+        if (coll.isEmpty())
             return false;
+        IndexSet<Triple> set = attr().getSet();
+        IndexSubset<Triple> remaining = set.fullSubset().minus(coll);
         Set<String> oldInputs = getFilterInputsIfAsserting();
         makeExclusive();
-        ArrayList<Triple> updated = new ArrayList<>(d.list.size());
-        BitSet bs = subset.getBitSet();
-        for (int i = bs.nextClearBit(0); i < d.list.size(); i = bs.nextClearBit(i+1))
-            updated.add(d.list.get(i));
         coll.forEach(d.tripleAnns::removeAll);
-        d.list = updated;
+        if (set instanceof IndexSubset) {
+            List<Triple> updated = new ArrayList<>(remaining.size());
+            for (Triple triple : d.list) { // preserve order
+                if (remaining.contains(triple))
+                    updated.add(triple);
+            }
+            d.list = updated;
+        } else {
+            d.list = new ArrayList<>(remaining);
+        }
+        assert remaining.equals(d.list);
         d.cache.invalidateTriples();
         IndexSet<Term> allTerms = d.cache.allTerms();
         d.termAnns.keySet().removeIf(t -> !allTerms.contains(t));

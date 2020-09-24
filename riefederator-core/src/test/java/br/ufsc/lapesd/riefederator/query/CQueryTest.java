@@ -15,10 +15,10 @@ import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.PureDescriptive;
-import com.google.common.collect.Sets;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
@@ -26,6 +26,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,6 +35,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
+import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createTolerantQuery;
+import static br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet.newIndexSet;
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
@@ -256,7 +260,7 @@ public class CQueryTest implements TestContext {
     @Test
     public void testGetSelfMatchedSet() {
         CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(x, knows, Bob));
-        assertEquals(query.attr().matchedTriples(), Sets.newHashSet(
+        assertEquals(query.attr().matchedTriples(), newHashSet(
                 new Triple(x, knows, y), new Triple(x, knows, Bob)
         ));
     }
@@ -266,7 +270,7 @@ public class CQueryTest implements TestContext {
         CQuery query = createQuery(
                 x, knows, y,
                 x, ageEx, AGE_1, new MatchAnnotation(new Triple(x, age, AGE_1)));
-        assertEquals(query.attr().matchedTriples(), Sets.newHashSet(
+        assertEquals(query.attr().matchedTriples(), newHashSet(
                 new Triple(x, knows, y),
                 new Triple(x, age, AGE_1)
         ));
@@ -352,12 +356,12 @@ public class CQueryTest implements TestContext {
                 x, age, u, SPARQLFilter.build("?u > 23"),
                 Projection.of("x", "y"));
         CQuery sub = query.containing(x, Triple.Position.SUBJ, Triple.Position.OBJ);
-        assertEquals(sub.attr().getSet(), Sets.newHashSet(
+        assertEquals(sub.attr().getSet(), newHashSet(
                 new Triple(Alice, knows, x),
                 new Triple(x, age, u)
         ));
 
-        assertEquals(sub.getModifiers(), Sets.newHashSet(
+        assertEquals(sub.getModifiers(), newHashSet(
                 SPARQLFilter.build("?u > 23"), Projection.of("x")));
         assertEquals(sub.getTermAnnotations(x),
                      singleton(AtomInputAnnotation.asRequired(A1, "a1").get()));
@@ -391,6 +395,145 @@ public class CQueryTest implements TestContext {
         CQuery query = queryObj instanceof CQuery ? (CQuery)queryObj
                                                   : ((QueryOp)queryObj).getQuery();
         assertEquals(query.attr().isJoinConnected(), expected);
+    }
+
+    @Test
+    public void testOfferVarUniverseSingleton() {
+        CQuery q = createQuery(Alice, knows, x);
+        q.attr().offerVarNamesUniverse(newIndexSet("x", "y"));
+        assertEquals(q.attr().tripleVarNames(),       singleton("x"));
+        assertEquals(q.attr().allVarNames(),          singleton("x"));
+        assertEquals(q.attr().publicVarNames(),       singleton("x"));
+        assertEquals(q.attr().publicTripleVarNames(), singleton("x"));
+    }
+
+    @Test
+    public void testOfferVarUniverseDistinctSets() {
+        CQuery q = createTolerantQuery(x, age, u,
+                SPARQLFilter.build("?u < ?v"), Projection.of("u", "y"));
+        q.attr().offerVarNamesUniverse(newIndexSet("u", "v", "x", "y", "z"));
+        assertEquals(q.attr().tripleVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().allVarNames(),          newHashSet("x", "u", "v"));
+        assertEquals(q.attr().publicVarNames(),       newHashSet("u", "y"));
+        assertEquals(q.attr().publicTripleVarNames(), singleton("u"));
+    }
+
+    @Test
+    public void testOfferUnorderedVarUniverseDistinctSets() {
+        CQuery q = createTolerantQuery(x, age, u,
+                SPARQLFilter.build("?u < ?v"), Projection.of("u", "y"));
+        q.attr().offerVarNamesUniverse(newIndexSet("z", "y", "x", "v", "u"));
+        assertEquals(q.attr().tripleVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().allVarNames(),          newHashSet("x", "u", "v"));
+        assertEquals(q.attr().publicVarNames(),       newHashSet("u", "y"));
+        assertEquals(q.attr().publicTripleVarNames(), singleton("u"));
+    }
+
+    @Test
+    public void testOfferVarUniverseThenAddBadProjection() {
+        MutableCQuery q = createQuery(Alice, knows, x);
+        q.attr().offerVarNamesUniverse(newIndexSet("x", "y"));
+        assertEquals(q.attr().allVarNames(),    singleton("x"));
+        assertEquals(q.attr().publicVarNames(), newHashSet("x"));
+
+        assertTrue(q.mutateModifiers().add(Projection.of(asList("x", "z"))));
+
+        assertEquals(q.attr().allVarNames(),    singleton("x"));
+        assertEquals(q.attr().publicVarNames(), newHashSet("x", "z"));
+    }
+
+    @Test
+    public void testOfferVarUniverseThenRemoveTriple() {
+        MutableCQuery q = createQuery(Alice, knows, x, x, age, u);
+        q.attr().offerVarNamesUniverse(newIndexSet("x", "y", "u"));
+        assertEquals(q.attr().allVarNames(),          newHashSet("x", "u"));
+        assertEquals(q.attr().tripleVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().publicVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().publicTripleVarNames(), newHashSet("x", "u"));
+
+        assertEquals(q.remove(1), new Triple(x, age, u));
+        assertEquals(q.attr().allVarNames(),          singleton("x"));
+        assertEquals(q.attr().tripleVarNames(),       singleton("x"));
+        assertEquals(q.attr().publicVarNames(),       singleton("x"));
+        assertEquals(q.attr().publicTripleVarNames(), singleton("x"));
+    }
+
+    @Test
+    public void testOfferVarUniverseMissingFilterVar() {
+        MutableCQuery q = createQuery(x, age, u, SPARQLFilter.build("?u < ?v"));
+        q.attr().offerVarNamesUniverse(newIndexSet("x", "y", "u", "z"));
+        assertEquals(q.attr().tripleVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().allVarNames(),          newHashSet("x", "u", "v"));
+        assertEquals(q.attr().publicVarNames(),       newHashSet("x", "u", "v"));
+        assertEquals(q.attr().publicTripleVarNames(), newHashSet("x", "u"));
+    }
+
+    @Test
+    public void testOfferVarUniverseMissingTripleVar() {
+        MutableCQuery q = createQuery(x, age, u, SPARQLFilter.build("?u < ?v"));
+        q.attr().offerVarNamesUniverse(newIndexSet("y", "u", "v", "z"));
+        assertEquals(q.attr().tripleVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().allVarNames(),          newHashSet("x", "u", "v"));
+        assertEquals(q.attr().publicVarNames(),       newHashSet("x", "u", "v"));
+        assertEquals(q.attr().publicTripleVarNames(), newHashSet("x", "u"));
+    }
+
+    @Test
+    public void testOfferVarUniverseThenRemoveFilter() {
+        MutableCQuery q = createQuery(x, age, u, SPARQLFilter.build("?u < ?v"));
+        q.attr().offerVarNamesUniverse(newIndexSet("x", "y", "u", "v", "z"));
+        assertEquals(q.attr().tripleVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().allVarNames(),          newHashSet("x", "u", "v"));
+        assertEquals(q.attr().publicVarNames(),       newHashSet("x", "u", "v"));
+        assertEquals(q.attr().publicTripleVarNames(), newHashSet("x", "u"));
+
+        q.mutateModifiers().removeIf(SPARQLFilter.class::isInstance);
+        assertEquals(q.attr().tripleVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().allVarNames(),          newHashSet("x", "u"));
+        assertEquals(q.attr().publicVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().publicTripleVarNames(), newHashSet("x", "u"));
+
+        assertTrue(q.mutateModifiers().add(Projection.of("u", "v")));
+        assertEquals(q.attr().tripleVarNames(),       newHashSet("x", "u"));
+        assertEquals(q.attr().allVarNames(),          newHashSet("x", "u"));
+        assertEquals(q.attr().publicVarNames(),       newHashSet("u", "v"));
+        assertEquals(q.attr().publicTripleVarNames(), newHashSet("u"));
+    }
+
+    private void testTermIndexing(@Nullable IndexSet<Triple> triplesUniverse) {
+        MutableCQuery q = createQuery(x, knows, y, x, age, u, y, knows, Bob);
+        if (triplesUniverse != null)
+            q.attr().offerTriplesUniverse(triplesUniverse);
+
+        assertEquals(q.attr().triplesWithTerm(x),
+                newHashSet(new Triple(x, age, u), new Triple(x, knows, y)));
+        assertEquals(q.attr().triplesWithTerm(y),
+                newHashSet(new Triple(y, knows, Bob), new Triple(x, knows, y)));
+        assertEquals(q.attr().triplesWithTermAt(y, Triple.Position.SUBJ),
+                singleton(new Triple(y, knows, Bob)));
+        assertEquals(q.attr().triplesWithTermAt(Bob, Triple.Position.OBJ),
+                singleton(new Triple(y, knows, Bob)));
+        assertEquals(q.attr().triplesWithTermAt(age, Triple.Position.PRED),
+                singleton(new Triple(x, age, u)));
+
+        assertEquals(q.attr().triplesWithTermAt(age, Triple.Position.SUBJ), emptySet());
+        assertEquals(q.attr().triplesWithTermAt(age, Triple.Position.OBJ),  emptySet());
+        assertEquals(q.attr().triplesWithTermAt(Bob, Triple.Position.PRED), emptySet());
+        assertEquals(q.attr().triplesWithTermAt(x,   Triple.Position.PRED), emptySet());
+    }
+
+    @Test
+    public void testTermIndexing() {
+        testTermIndexing(null);
+    }
+
+    @Test
+    public void testTermIndexingWithUniverse() {
+        IndexSet<Triple> triplesUniverse = newIndexSet(new Triple(y, knows, Bob),
+                new Triple(y, age, v),
+                new Triple(x, age, u),
+                new Triple(x, knows, y));
+        testTermIndexing(triplesUniverse);
     }
 
 }
