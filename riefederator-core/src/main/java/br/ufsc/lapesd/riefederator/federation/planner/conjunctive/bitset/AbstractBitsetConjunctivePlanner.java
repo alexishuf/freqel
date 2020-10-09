@@ -11,6 +11,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.BitJoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
@@ -52,7 +53,7 @@ public abstract class AbstractBitsetConjunctivePlanner implements ConjunctivePla
             return joinOrderPlanner.plan(joinGraph, component);
         }
 
-        List<BitSet> shared = findCommonSubsets(components, joinGraph);
+        List<Bitset> shared = findCommonSubsets(components, joinGraph);
         ArrayList<Op> plans = new ArrayList<>(components.size());
         for (IndexSubset<Op> subset : replaceShared(components, shared, joinGraph))
             plans.add(joinOrderPlanner.plan(joinGraph, subset));
@@ -69,11 +70,11 @@ public abstract class AbstractBitsetConjunctivePlanner implements ConjunctivePla
     @VisibleForTesting abstract @Nonnull Collection<?> findComponents(@Nonnull CQuery query,
                                                                 @Nonnull BitJoinGraph nodes);
 
-    @VisibleForTesting abstract @Nonnull List<BitSet>
+    @VisibleForTesting abstract @Nonnull List<Bitset>
     findCommonSubsets(@Nonnull Collection<?> components, @Nonnull BitJoinGraph graph);
 
     @VisibleForTesting abstract @Nonnull List<IndexSubset<Op>>
-    replaceShared(@Nonnull Collection<?> inComponents, @Nonnull List<BitSet> sharedSubsets,
+    replaceShared(@Nonnull Collection<?> inComponents, @Nonnull List<Bitset> sharedSubsets,
                   @Nonnull BitJoinGraph joinGraph);
 
     protected boolean checkEmptyPlan(@Nonnull CQuery query, @Nonnull Collection<Op> fragments) {
@@ -163,14 +164,14 @@ public abstract class AbstractBitsetConjunctivePlanner implements ConjunctivePla
         return sameUniverse(fragments, getter, null);
     }
 
-    protected static boolean validCommonSubsets(@Nonnull List<BitSet> sets) {
+    protected static boolean validCommonSubsets(@Nonnull List<Bitset> sets) {
         assert new HashSet<>(sets).size() == sets.size() : "Duplicate subsets";
         for (int i = 0, nSets = sets.size(); i < nSets; i++) {
-            BitSet previous = sets.get(i);
+            Bitset previous = sets.get(i);
             for (int j = i+1; j < nSets; j++)
                 assert !sets.get(j).intersects(previous) : "subsets intersect";
         }
-        assert sets.stream().noneMatch(BitSet::isEmpty) : "Empty subset";
+        assert sets.stream().noneMatch(Bitset::isEmpty) : "Empty subset";
         assert sets.stream().noneMatch(s -> s.cardinality() == 1) : "Singleton subset";
         return true;
     }

@@ -3,22 +3,39 @@ package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.BitJoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.RawAlignedBitSet;
+import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
+import br.ufsc.lapesd.riefederator.util.bitset.SegmentBitset;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.BitSet;
 
 public class InputStateHelper extends AbstractStateHelper {
     public static int INPUTS = 3;
+    private final @Nonnull Bitset[] triplesTmp;
+    private final @Nonnull Bitset contribTmp;
+    private final @Nonnull Bitset nodeOutVars, nodeInVars, stateOutVars;
+    private final @Nonnull SegmentBitset stateVarsSegment, stateInVarsSegment;
+    private static final long[] DUMMY = new long[1];
+
 
     public InputStateHelper(@Nonnull BitJoinGraph graph, @Nonnull IndexSet<String> vars,
                             @Nonnull IndexSubset<Triple> queryTriples) {
         super(graph, vars, queryTriples,
               new RawAlignedBitSet(graph.getNodes().size(), vars.size(),
                                    queryTriples.getParent().size(), vars.size()));
+        int nNodes = graph.size();
+        triplesTmp = new Bitset[nNodes];
+        contribTmp = Bitsets.createFixed(nNodes);
+        int nVars = vars.size();
+        nodeOutVars = Bitsets.createFixed(nVars);
+        nodeInVars = Bitsets.createFixed(nVars);
+        stateOutVars = Bitsets.createFixed(nVars);
+        stateVarsSegment = new SegmentBitset(DUMMY, 0, 1);
+        stateInVarsSegment = new SegmentBitset(DUMMY, 0, 1);
     }
 
     @Override public boolean isFinal(@Nonnull long[] state) {
@@ -26,15 +43,12 @@ public class InputStateHelper extends AbstractStateHelper {
     }
 
     public @Nonnull long[] createState(int nodeIdx) {
-        long[] data = bs.alloc(), tmp;
+        long[] data = bs.alloc();
         bs.set(data, NODES, nodeIdx);
         Op node = nodes.get(nodeIdx);
-        tmp = ((IndexSubset<String>)node.getPublicVars()).getBitSet().toLongArray();
-        bs.or(data, VARS, tmp);
-        tmp = ((IndexSubset<Triple>)node.getMatchedTriples()).getBitSet().toLongArray();
-        bs.or(data, TRIPLES, tmp);
-        tmp = ((IndexSubset<String>)node.getRequiredInputVars()).getBitSet().toLongArray();
-        bs.or(data, INPUTS, tmp);
+        bs.or(data, VARS, ((IndexSubset<String>)node.getPublicVars()).getBitset());
+        bs.or(data, TRIPLES, ((IndexSubset<Triple>)node.getMatchedTriples()).getBitset());
+        bs.or(data, INPUTS, ((IndexSubset<String>)node.getRequiredInputVars()).getBitset());
         return data;
     }
 
@@ -45,12 +59,11 @@ public class InputStateHelper extends AbstractStateHelper {
         assert ((IndexSubset<String>)n.getResultVars()).getParent() == vars;
         assert ((IndexSubset<Triple>)n.getMatchedTriples()).getParent() == triples;
 
-        long[] nodeVars = ((IndexSubset<String>) n.getResultVars()).getBitSet().toLongArray();
-        assert bs.intersects(nodeVars, state, VARS) : "New node shares no var with state";
+        Bitset nodeVars = ((IndexSubset<String>) n.getResultVars()).getBitset();
+        assert nodeVars.intersects(bs.asBitset(state, VARS)) : "New node shares no var with state";
 
         // check triples subsumption
-        BitSet nodeTriplesBS = ((IndexSubset<Triple>) n.getMatchedTriples()).getBitSet();
-        long[] nodeTriples = nodeTriplesBS.toLongArray();
+        Bitset nodeTriples = ((IndexSubset<Triple>) n.getMatchedTriples()).getBitset();
         if (bs.containsAll(nodeTriples, state, TRIPLES)
                 || bs.containsAll(state, TRIPLES, nodeTriples)) {
             return null; //one triple set subsumes the other
@@ -58,42 +71,41 @@ public class InputStateHelper extends AbstractStateHelper {
 
         // check if any old node would be subsumed by the other nodes and the new node
         int nNodes = 0;
-        BitSet[] sets = new BitSet[graph.size()];
         for (int i = bs.nextSet(state, NODES, 0); i >= 0; i = bs.nextSet(state, NODES, i+1))
-            sets[nNodes++] = ((IndexSubset<Triple>) graph.get(i).getMatchedTriples()).getBitSet();
+            triplesTmp[nNodes++] = ((IndexSubset<Triple>) graph.get(i).getMatchedTriples()).getBitset();
         for (int i = 0; i < nNodes; i++) {
-            BitSet contrib = (BitSet) sets[i].clone();
+            contribTmp.assign(triplesTmp[i]);
             for (int j = 0; j < nNodes; j++) {
-                if (i != j) contrib.andNot(sets[j]);
+                if (i != j) contribTmp.andNot(triplesTmp[j]);
             }
-            assert !contrib.isEmpty() : "State had node that contributed with  no triple!";
-            contrib.andNot(nodeTriplesBS);
-            if (contrib.isEmpty())
+            assert !contribTmp.isEmpty() : "State had node that contributed with  no triple!";
+            contribTmp.andNot(nodeTriples);
+            if (contribTmp.isEmpty())
                 return null; // adding this node causes an old node to be subsumed
         }
 
-        // handle inputs vars ...
-        long[] nodeInVars = ((IndexSubset<String>)n.getRequiredInputVars())
-                                                   .getBitSet().toLongArray();
-        // non-input vars provided by node
-        long[] nodeOutVars = new long[nodeVars.length];
-        RawAlignedBitSet.andNot(nodeOutVars, nodeVars, nodeInVars);
+        // handle node inputs/output vars ...
+        nodeInVars.assign(((IndexSubset<String>)n.getRequiredInputVars()).getBitset());
+        nodeOutVars.assign(((IndexSubset<String>)n.getPublicVars()).getBitset());
+        nodeOutVars.andNot(nodeInVars);
 
         // non-input vars provided by state
-        long[] stateOutVars = new long[bs.componentWords(VARS)];
-        bs.andNot(stateOutVars, state, VARS, state, INPUTS);
+        stateVarsSegment  .map(state, bs.componentBegin(VARS),   bs.componentEnd(VARS)  );
+        stateInVarsSegment.map(state, bs.componentBegin(INPUTS), bs.componentEnd(INPUTS));
+        stateOutVars.assign(stateVarsSegment);
+        stateOutVars.andNot(stateInVarsSegment);
 
         // vars that are provided by the state are not considered inputs anymore
-        RawAlignedBitSet.andNot(nodeInVars, stateOutVars);
+        nodeInVars.andNot(stateOutVars);
 
         // fill new state array
-        long[] next = new long[state.length];
+        long[] next = bs.alloc();
         System.arraycopy(state, 0, next, 0, state.length);
-        bs.set(   next, NODES,   nodeIdx    );
-        bs.or(    next, VARS,    nodeVars   );
-        bs.or(    next, TRIPLES, nodeTriples);
+        bs   .set(next, NODES,   nodeIdx    );
+        bs    .or(next, VARS,    nodeVars   );
+        bs    .or(next, TRIPLES, nodeTriples);
         bs.andNot(next, INPUTS,  nodeOutVars); // remove inputs satisfied by node
-        bs.or(    next, INPUTS,  nodeInVars);  // add new input vars
+        bs    .or(next, INPUTS,  nodeInVars ); // add new input vars
         return next;
     }
 }

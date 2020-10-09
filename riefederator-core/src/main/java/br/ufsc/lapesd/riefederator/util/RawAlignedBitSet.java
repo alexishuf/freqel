@@ -1,13 +1,15 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import br.ufsc.lapesd.riefederator.util.bitset.SegmentBitset;
+
 import javax.annotation.Nonnull;
 import java.util.Arrays;
-import java.util.BitSet;
 
 public class RawAlignedBitSet {
     private static long ALL_ON = 0xffffffffffffffffL;
     private int[] s;
     private int totalWords;
+    private long[] garbage = null;
 
     public RawAlignedBitSet(int... bitsPerComponent) {
         totalWords = 0;
@@ -28,7 +30,17 @@ public class RawAlignedBitSet {
     }
 
     public long[] alloc() {
+        if (garbage != null) {
+            long[] array = garbage;
+            Arrays.fill(array, 0);
+            garbage = null;
+            return array;
+        }
         return new long[totalWords];
+    }
+
+    public void dealloc(long[] array) {
+        garbage = array;
     }
 
     public int getComponentCount() {
@@ -93,6 +105,13 @@ public class RawAlignedBitSet {
         return and(o, 0, words, a, s[aComp], b, s[bComp]);
     }
 
+    public void and(long[] o, long[] a, @Nonnull Bitset b) {and(o, 0, o.length, a, 0, b);}
+    public void and(long[] o, long[] a, int aComp, @Nonnull Bitset b) {and(o, 0, Math.max(o.length, s[aComp+1]), a, s[aComp], b);}
+    public void and(long[] o, int comp, long[] a, int aComp, @Nonnull Bitset b) {and(o, s[comp], s[comp+1], a, s[aComp], b);}
+    public void and(int comp, long[] o, long[] a, @Nonnull Bitset b) {and(o, s[comp], s[comp+1], a, s[comp], b);}
+    public void and(long[] a, @Nonnull Bitset b) {and(a, 0, a.length, a, 0, b);}
+    public void and(long[] a, int aComp, @Nonnull Bitset b) {and(a, s[aComp], s[aComp+1], a, s[aComp], b);}
+
     public static boolean intersects(long[] a, long[] b) { return intersects(a, 0, a.length, b, 0); }
     public        boolean intersects(int comp, long[] a, long[] b) { return intersects(a, s[comp], s[comp+1], b, s[comp]); }
     public        boolean intersects(long[] a, int comp, long[] b) { return intersects(a, s[comp], s[comp+1], b, 0); }
@@ -115,6 +134,13 @@ public class RawAlignedBitSet {
         return or(o, 0, words, a, s[aComp], b, s[bComp]);
     }
 
+    public void or(long[] o, long[] a, @Nonnull Bitset b) {or(o, 0, o.length, a, 0, b);}
+    public void or(long[] o, long[] a, int aComp, @Nonnull Bitset b) {or(o, 0, Math.max(o.length, s[aComp+1]), a, s[aComp], b);}
+    public void or(long[] o, int comp, long[] a, int aComp, @Nonnull Bitset b) {or(o, s[comp], s[comp+1], a, s[aComp], b);}
+    public void or(int comp, long[] o, long[] a, @Nonnull Bitset b) {or(o, s[comp], s[comp+1], a, s[comp], b);}
+    public void or(long[] a, @Nonnull Bitset b) {or(a, 0, a.length, a, 0, b);}
+    public void or(long[] a, int aComp, @Nonnull Bitset b) {or(a, s[aComp], s[aComp+1], a, s[aComp], b);}
+
     public static boolean andNot(long[] a, long[] b) { return andNot(a, 0, a.length, a, 0, b, 0); }
     public static boolean andNot(long[] o, long[] a, long[] b) { return andNot(o, 0, o.length, a, 0, b, 0); }
     public boolean andNot(int comp, long[] a, long[] b) { return andNot(a, s[comp], s[comp+1], a, s[comp], b, s[comp]); }
@@ -131,6 +157,13 @@ public class RawAlignedBitSet {
         int words = Math.min(s[aComp + 1] - s[aComp], s[bComp + 1] - s[bComp]);
         return andNot(o, 0, words, a, s[aComp], b, s[bComp]);
     }
+
+    public void andNot(long[] o, long[] a, @Nonnull Bitset b) {andNot(o, 0, o.length, a, 0, b);}
+    public void andNot(long[] o, long[] a, int aComp, @Nonnull Bitset b) {andNot(o, 0, Math.max(o.length, s[aComp+1]), a, s[aComp], b);}
+    public void andNot(long[] o, int comp, long[] a, int aComp, @Nonnull Bitset b) {andNot(o, s[comp], s[comp+1], a, s[aComp], b);}
+    public void andNot(int comp, long[] o, long[] a, @Nonnull Bitset b) {andNot(o, s[comp], s[comp+1], a, s[comp], b);}
+    public void andNot(long[] a, @Nonnull Bitset b) {andNot(a, 0, a.length, a, 0, b);}
+    public void andNot(long[] a, int aComp, @Nonnull Bitset b) {andNot(a, s[aComp], s[aComp+1], a, s[aComp], b);}
 
     public static boolean xor(long[] a, long[] b) { return xor(a, 0, a.length, a, 0, b, 0); }
     public static boolean xor(long[] o, long[] a, long[] b) { return xor(o, 0, o.length, a, 0, b, 0); }
@@ -149,15 +182,27 @@ public class RawAlignedBitSet {
         return xor(o, 0, words, a, s[aComp], b, s[bComp]);
     }
 
+    public void xor(long[] o, long[] a, @Nonnull Bitset b) {xor(o, 0, o.length, a, 0, b);}
+    public void xor(long[] o, long[] a, int aComp, @Nonnull Bitset b) {xor(o, 0, Math.max(o.length, s[aComp+1]), a, s[aComp], b);}
+    public void xor(long[] o, int comp, long[] a, int aComp, @Nonnull Bitset b) {xor(o, s[comp], s[comp+1], a, s[aComp], b);}
+    public void xor(int comp, long[] o, long[] a, @Nonnull Bitset b) {xor(o, s[comp], s[comp+1], a, s[comp], b);}
+    public void xor(long[] a, @Nonnull Bitset b) {xor(a, 0, a.length, a, 0, b);}
+    public void xor(long[] a, int aComp, @Nonnull Bitset b) {xor(a, s[aComp], s[aComp+1], a, s[aComp], b);}
+
     public boolean containsAll(long[] a, long[] b) { return containsAll(a, 0, a.length, b, 0); }
     public boolean containsAll(int comp, long[] a, long[] b) { return containsAll(a, s[comp], s[comp+1], b, s[comp]); }
     public boolean containsAll(long[] a, int comp, long[] b) { return containsAll(a, s[comp], s[comp+1], b, 0); }
     public boolean containsAll(long[] a, long[] b, int comp) { return containsAll(a, 0, a.length, b, s[comp]); }
+    public boolean containsAll(@Nonnull Bitset a, long[] b, int comp) { return containsAll(a, b, s[comp], s[comp+1]); }
+    public boolean containsAll(long[] a, int comp, @Nonnull Bitset b) { return containsAll(a, s[comp], s[comp+1], b); }
 
     public boolean equals(long[] a, long[] b) { return equals(a, 0, a.length, b, 0); }
     public boolean equals(int comp, long[] a, long[] b) { return equals(a, s[comp], s[comp+1], b, s[comp]); }
     public boolean equals(long[] a, int comp, long[] b) { return equals(a, s[comp], s[comp+1], b, 0); }
     public boolean equals(long[] a, long[] b, int comp) { return equals(a, 0, a.length, b, s[comp]); }
+
+    public static boolean equals(long[] a, @Nonnull Bitset b) { return equals(a, 0, a.length, b);}
+    public boolean equals(long[] a, int comp, @Nonnull Bitset b) { return equals(a, s[comp], s[comp+1], b);}
 
     public static boolean and(long[] o, int oBegin, int oEnd, long[] a, int aBegin, long[] b, int bBegin) {
         assert a.length-aBegin >= oEnd-oBegin; // a range must be >= o range, but b can be smaller
@@ -168,6 +213,14 @@ public class RawAlignedBitSet {
             notEmpty |= (o[i] = a[i+ aAdjust] & b[i + bAdjust]) != 0;
         Arrays.fill(o, oEnd1, oEnd, 0); // a[i+aAdjust] & 0 == 0
         return notEmpty;
+    }
+
+    public static void and(long[] o, int oBegin, int oEnd, long[] a, int aBegin,
+                           @Nonnull Bitset b) {
+        int aAdjust = aBegin - oBegin;
+        assert oEnd + aAdjust <= a.length;
+        for (int i = oBegin; i < oEnd; i++)
+            o[i] = a[i + aAdjust] & b.word(i-oBegin);
     }
 
     public static boolean intersects(long[] a, int aBegin, int aEnd, long[] b, int bBegin) {
@@ -191,6 +244,13 @@ public class RawAlignedBitSet {
         return notEmpty;
     }
 
+    public static void or(long[] o, int oBegin, int oEnd, long[] a, int aBegin, @Nonnull Bitset b) {
+        int aAdjust = aBegin - oBegin;
+        assert oEnd + aAdjust <= a.length;
+        for (int i = oBegin; i < oEnd; i++)
+            o[i] = a[i + aAdjust] | b.word(i-oBegin);
+    }
+
     public static boolean xor(long[] o, int oBegin, int oEnd, long[] a, int aBegin,
                               long[] b, int bBegin) {
         assert a.length-aBegin >= oEnd-oBegin; // a range must be >= o range, but b can be smaller
@@ -202,6 +262,13 @@ public class RawAlignedBitSet {
         for (int i = oEnd1; i < oEnd; i++)
             notEmpty |= (o[i] = a[i+aAdjust]) != 0;
         return notEmpty;
+    }
+
+    public static void xor(long[] o, int oBegin, int oEnd, long[] a, int aBegin, @Nonnull Bitset b) {
+        int aAdjust = aBegin - oBegin;
+        assert oEnd + aAdjust <= a.length;
+        for (int i = oBegin; i < oEnd; i++)
+            o[i] = a[i + aAdjust] ^ b.word(i-oBegin);
     }
 
     public static boolean andNot(long[] o, int oBegin, int oEnd, long[] a, int aBegin, long[] b, int bBegin) {
@@ -216,11 +283,34 @@ public class RawAlignedBitSet {
         return notEmpty;
     }
 
+    public static void andNot(long[] o, int oBegin, int oEnd, long[] a, int aBegin, @Nonnull Bitset b) {
+        int aAdjust = aBegin - oBegin;
+        assert oEnd + aAdjust <= a.length;
+        for (int i = oBegin; i < oEnd; i++)
+            o[i] = a[i + aAdjust] &~ b.word(i-oBegin);
+    }
+
     public boolean containsAll(long[] a, int aBegin, int aEnd, long[] b, int bBegin) {
         int adjust = bBegin - aBegin;
         for (int i = aBegin; i < aEnd; i++) {
             if ((b[i + adjust] & ~a[i]) != 0)
                 return false; //there is a bit in b that is not in a
+        }
+        return true;
+    }
+
+    public static boolean containsAll(@Nonnull Bitset a, long[] b, int bBegin, int bEnd) {
+        for (int i = 0, words = bEnd-bBegin; i < words; i++) {
+            if ((b[bBegin+i] & ~a.word(i)) != 0)
+                return false;
+        }
+        return true;
+    }
+
+    public static boolean containsAll(long[] a, int aBegin, int aEnd, @Nonnull Bitset b) {
+        for (int i = 0, words = aEnd-aBegin; i < words; i++) {
+            if ((b.word(i) & ~a[aBegin+i]) != 0)
+                return false;
         }
         return true;
     }
@@ -231,6 +321,13 @@ public class RawAlignedBitSet {
             return false; // different sizes
         for (int i = aBegin; i < aEnd; i++) {
             if (a[i] != b[i + adjust]) return false;
+        }
+        return true;
+    }
+
+    public static boolean equals(long[] a, int aBegin, int aEnd, @Nonnull Bitset b) {
+        for (int i = aBegin; i < aEnd; i++) {
+            if (a[i] != b.word(i-aBegin)) return false;
         }
         return true;
     }
@@ -300,14 +397,11 @@ public class RawAlignedBitSet {
         }
     }
 
-    public @Nonnull BitSet toBitSet(long[] data, int component) {
-        int size = s[component + 1] - s[component];
-        long[] copy = new long[size];
-        System.arraycopy(data, s[component], copy, 0, size);
-        return BitSet.valueOf(copy);
+    public @Nonnull Bitset asBitset(long[] data, int component) {
+        return new SegmentBitset(data, s[component], s[component+1]);
     }
 
-    public static @Nonnull BitSet toBitSet(long[] data) {
-        return BitSet.valueOf(data);
+    public static @Nonnull Bitset asBitset(long[] data) {
+        return new SegmentBitset(data, 0, data.length);
     }
 }

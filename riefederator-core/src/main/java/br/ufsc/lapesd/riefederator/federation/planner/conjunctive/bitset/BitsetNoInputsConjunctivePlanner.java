@@ -9,7 +9,9 @@ import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.Bi
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.RawAlignedBitSet;
+import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.annotations.VisibleForTesting;
@@ -46,27 +48,27 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
     }
 
     @Override @Nonnull List<IndexSubset<Op>>
-    replaceShared(@Nonnull Collection<?> inComponents, @Nonnull List<BitSet> sharedSubsets,
+    replaceShared(@Nonnull Collection<?> inComponents, @Nonnull List<Bitset> sharedSubsets,
                   @Nonnull BitJoinGraph joinGraph) {
         RefIndexSet<Op> nodes = joinGraph.getNodes();
         List<IndexSubset<Op>> components = new ArrayList<>(inComponents.size());
         for (Object inComponent : inComponents)
-            components.add(nodes.subset(BitSet.valueOf((long[])inComponent)));
+            components.add(nodes.subset(Bitsets.wrap((long[]) inComponent)));
 
         if (extractCommonSubsets) {
-            for (BitSet shared : sharedSubsets) {
+            for (Bitset shared : sharedSubsets) {
                 Op plan = joinOrderPlanner.plan(joinGraph, nodes.subset(shared));
                 int planIdx = nodes.size();
                 boolean changed = nodes.add(plan);
                 assert changed;
-                BitSet sharedCopy = (BitSet) shared.clone();
+                Bitset sharedCopy = shared.copy();
                 for (IndexSubset<Op> component : components) {
                     sharedCopy.or(shared); // restore bits removed by andNot below
-                    BitSet componentBitSet = component.getBitSet();
-                    sharedCopy.andNot(componentBitSet);
+                    Bitset componentBitset = component.getBitset();
+                    sharedCopy.andNot(componentBitset);
                     if (sharedCopy.isEmpty()) { // component.containsAll(shared)
-                        componentBitSet.andNot(shared); // remove shared
-                        componentBitSet.set(planIdx);   // add the plan
+                        componentBitset.andNot(shared); // remove shared
+                        componentBitset.set(planIdx);   // add the plan
                     }
                 }
             }
@@ -76,7 +78,7 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
     }
 
     @SuppressWarnings("unchecked") @VisibleForTesting @Override
-    @Nonnull List<BitSet> findCommonSubsets(@Nonnull Collection<?> components,
+    @Nonnull List<Bitset> findCommonSubsets(@Nonnull Collection<?> components,
                                             @Nonnull BitJoinGraph graph) {
         if (extractCommonSubsets) {
             int nNodes = graph.size();
@@ -89,7 +91,7 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
     }
 
     @VisibleForTesting
-    static @Nonnull List<BitSet> findCommonSubsetsScalar(@Nonnull List<long[]> states) {
+    static @Nonnull List<Bitset> findCommonSubsetsScalar(@Nonnull List<long[]> states) {
         int nStates = states.size(), nResults = 0;
         if (nStates <= 1)
             return Collections.emptyList();
@@ -115,11 +117,11 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
             }
         }
         long[] tmp = new long[1];
-        List<BitSet> bsList = new ArrayList<>(nResults);
+        List<Bitset> bsList = new ArrayList<>(nResults);
         for (int i = 0; i < nResults; i++) {
             if (results[i] != 0) {
                 tmp[0] = results[i];
-                bsList.add(BitSet.valueOf(tmp));
+                bsList.add(Bitsets.wrap(tmp));
             }
         }
         assert validCommonSubsets(bsList);
@@ -127,7 +129,7 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
     }
 
     @VisibleForTesting
-    static @Nonnull List<BitSet> findCommonSubsetsArray(@Nonnull List<long[]> states, int nNodes) {
+    static @Nonnull List<Bitset> findCommonSubsetsArray(@Nonnull List<long[]> states, int nNodes) {
         int nStates = states.size();
         if (nStates <= 1)
             return Collections.emptyList();
@@ -151,10 +153,10 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
                     results.add(shared);
             }
         }
-        List<BitSet> bitSets = new ArrayList<>(results.size());
+        List<Bitset> bitSets = new ArrayList<>(results.size());
         for (long[] result : results) {
             if (!RawAlignedBitSet.isEmpty(result))
-                bitSets.add(BitSet.valueOf(result));
+                bitSets.add(Bitsets.wrap(result));
         }
         assert validCommonSubsets(bitSets);
         return bitSets;
@@ -180,11 +182,8 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
                         result.add(state);
                     }
                 } else {
-                    helper.forEachNeighbor(state, nextIdx -> {
-                        long[] next = helper.addNode(state, nextIdx);
-                        if (next != null)
-                            stack.push(next);
-                    });
+                    helper.forEachNeighbor(state, stack);
+                    helper.bs.dealloc(state);
                 }
             }
         }
@@ -194,7 +193,7 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
     @Override
     protected @Nonnull IndexSubset<Op> componentToSubset(@Nonnull RefIndexSet<Op> nodes,
                                                          @Nonnull Object component) {
-        return nodes.subset(BitSet.valueOf((long[]) component));
+        return nodes.subset(Bitsets.wrap((long[]) component));
     }
 
     @VisibleForTesting @Override @Nonnull RefIndexSet<Op> groupNodes(@Nonnull List<Op> nodes) {
@@ -203,7 +202,7 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
         long[] sorted = new long[nodes.size()];
         int nextIdx = 0;
         for (Op op : nodes) {
-            long hash = ((IndexSubset<Triple>) op.getMatchedTriples()).getBitSet().hashCode();
+            long hash = ((IndexSubset<Triple>) op.getMatchedTriples()).getBitset().hashCode();
             sorted[nextIdx] = (hash << 32) | (long)nextIdx;
             ++nextIdx;
         }
@@ -231,7 +230,7 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
         assert begin < end;
         if (end - begin > 1) { //there is a merge-able sequence of nodes
             ArrayList<Op> list = new ArrayList<>(end - begin);
-            BitSet ignore = new BitSet();
+            Bitset ignore = Bitsets.createFixed(end-begin);
             for (int i = begin; i < end; i++) {
                 if (ignore.get(i-begin)) continue;
                 Op op = nodes.get((int)sorted[i]);

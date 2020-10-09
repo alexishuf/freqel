@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.util.indexed;
 
+import br.ufsc.lapesd.riefederator.util.Bitset;
+import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.*;
 import com.google.errorprone.annotations.CheckReturnValue;
 import org.jetbrains.annotations.NotNull;
@@ -8,7 +10,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static br.ufsc.lapesd.riefederator.util.indexed.subset.BitSetOps.union;
+import static br.ufsc.lapesd.riefederator.util.indexed.subset.BitsetOps.union;
 
 
 public abstract class BaseIndexSet<T> extends AbstractCollection<T> implements IndexSet<T> {
@@ -63,28 +65,28 @@ public abstract class BaseIndexSet<T> extends AbstractCollection<T> implements I
 
     @Override @CheckReturnValue
     public @Nonnull IndexSubset<T> fullSubset() {
-        BitSet bitSet = new BitSet(size());
-        bitSet.set(0, size());
-        return new SimpleIndexSubset<>(this, bitSet);
+        Bitset bitset = Bitsets.create(size());
+        bitset.set(0, size());
+        return new SimpleIndexSubset<>(this, bitset);
     }
 
     @Override @CheckReturnValue
     public @Nonnull IndexSubset<T> emptySubset() {
-        return new SimpleIndexSubset<>(this, new BitSet(size()));
+        return new SimpleIndexSubset<>(this, Bitsets.create(size()));
     }
 
     @Override @CheckReturnValue
     public @Nonnull IndexSubset<T> subset(@Nonnull Collection<? extends T> collection) {
-        BitSet bs = BitSetOps.union(this, new BitSet(size()), collection);
+        Bitset bs = union(this, Bitsets.create(size()), collection);
         return new SimpleIndexSubset<>(this, bs);
     }
 
     @Override
     public @Nonnull IndexSubset<T> subsetExpanding(@Nonnull Collection<? extends T> c) {
-        return new SimpleIndexSubset<>(this, BitSetOps.subsetExpanding(this, c));
+        return new SimpleIndexSubset<>(this, BitsetOps.subsetExpanding(this, c));
     }
 
-    @Override public @Nonnull IndexSubset<T> subset(@Nonnull BitSet subset) {
+    @Override public @Nonnull IndexSubset<T> subset(@Nonnull Bitset subset) {
         if (subset.length() > size())
             throw new NotInParentException(subset, this);
         return new SimpleIndexSubset<>(this, subset);
@@ -92,16 +94,16 @@ public abstract class BaseIndexSet<T> extends AbstractCollection<T> implements I
 
     @Override @CheckReturnValue
     public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull Collection<? extends T> collection) {
-        BitSet bs = BitSetOps.union(this, new BitSet(size()), collection);
+        Bitset bs = union(this, Bitsets.createFixed(size()), collection);
         return new SimpleImmIndexSubset<>(this, bs);
     }
 
     @Override
     public @Nonnull ImmIndexSubset<T> immutableSubsetExpanding(@Nonnull Collection<? extends T> c) {
-        return new SimpleImmIndexSubset<>(this, BitSetOps.subsetExpanding(this, c));
+        return new SimpleImmIndexSubset<>(this, BitsetOps.subsetExpanding(this, c));
     }
 
-    @Override public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull BitSet subset) {
+    @Override public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull Bitset subset) {
         if (subset.length() > size())
             throw new NotInParentException(subset, this);
         return new SimpleImmIndexSubset<>(this, subset);
@@ -109,25 +111,25 @@ public abstract class BaseIndexSet<T> extends AbstractCollection<T> implements I
 
     @Override @CheckReturnValue
     public @Nonnull IndexSubset<T> subset(@Nonnull Predicate<? super T> predicate) {
-        BitSet bs = union(this, new BitSet(size()), predicate);
+        Bitset bs = union(this, Bitsets.create(size()), predicate);
         return new SimpleIndexSubset<>(this, bs);
     }
 
     @Override @CheckReturnValue public @Nonnull ImmIndexSubset<T>
     immutableSubset(@Nonnull Predicate<? super T> predicate) {
-        BitSet bs = union(this, new BitSet(size()), predicate);
+        Bitset bs = union(this, Bitsets.createFixed(size()), predicate);
         return new SimpleImmIndexSubset<>(this, bs);
     }
 
     @Override @CheckReturnValue
-    public @Nonnull final IndexSubset<T> subset(@Nonnull T value) {
-        BitSet bs = BitSetOps.union(this, new BitSet(size()), value);
+    public @Nonnull IndexSubset<T> subset(@Nonnull T value) {
+        Bitset bs = union(this, Bitsets.create(size()), value);
         return new SimpleIndexSubset<>(this, bs);
     }
 
     @Override @CheckReturnValue public @Nonnull ImmIndexSubset<T>
     immutableSubset(@Nonnull T value) {
-        BitSet bs = BitSetOps.union(this, new BitSet(size()), value);
+        Bitset bs = union(this, Bitsets.create(size()), value);
         return new SimpleImmIndexSubset<>(this, bs);
     }
 

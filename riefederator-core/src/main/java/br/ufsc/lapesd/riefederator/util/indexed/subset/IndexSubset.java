@@ -1,14 +1,14 @@
 package br.ufsc.lapesd.riefederator.util.indexed.subset;
 
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
-import java.util.BitSet;
 import java.util.Collection;
 
 public interface IndexSubset<T> extends IndexSet<T> {
-    @Nonnull BitSet getBitSet();
+    @Nonnull Bitset getBitset();
 
     @Override @Nonnull ImmIndexSubset<T> asImmutable();
 

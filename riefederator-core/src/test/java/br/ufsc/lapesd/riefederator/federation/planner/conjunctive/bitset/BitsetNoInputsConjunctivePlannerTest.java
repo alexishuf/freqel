@@ -10,7 +10,9 @@ import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.Bi
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.RawAlignedBitSet;
+import br.ufsc.lapesd.riefederator.util.bitset.DynamicBitset;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
@@ -18,7 +20,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerTest.withUniverseSets;
@@ -86,8 +91,8 @@ public class BitsetNoInputsConjunctivePlannerTest implements TestContext {
         }
     }
 
-    private static @Nonnull BitSet bs(int... values) {
-        BitSet bs = new BitSet();
+    private static @Nonnull Bitset bs(int... values) {
+        Bitset bs = new DynamicBitset();
         for (int i : values) bs.set(i);
         return bs;
     }
@@ -113,12 +118,12 @@ public class BitsetNoInputsConjunctivePlannerTest implements TestContext {
     }
 
     @Test(dataProvider = "testFindCommonSubsetsData")
-    public void testFindCommonSubsets(@Nonnull List<BitSet> components,
-                                      @Nonnull Collection<BitSet> expected) {
-        int nNodes = components.stream().map(BitSet::length).max(Integer::compareTo).orElse(-1);
+    public void testFindCommonSubsets(@Nonnull List<Bitset> components,
+                                      @Nonnull Collection<Bitset> expected) {
+        int nNodes = components.stream().map(Bitset::length).max(Integer::compareTo).orElse(-1);
         RawAlignedBitSet bs = new RawAlignedBitSet(nNodes, 8, 8);
         List<long[]> states = new ArrayList<>(components.size());
-        for (BitSet component : components) {
+        for (Bitset component : components) {
             long[] state = bs.alloc();
             long[] temp = component.toLongArray();
             assertTrue(temp.length < state.length);
@@ -138,8 +143,8 @@ public class BitsetNoInputsConjunctivePlannerTest implements TestContext {
 
         BitsetNoInputsConjunctivePlanner planner = SingletonSourceFederation.getInjector()
                 .getInstance(BitsetNoInputsConjunctivePlanner.class);
-        List<BitSet> list = planner.findCommonSubsets(states, dummyGraph);
-        assertEquals(new HashSet<BitSet>(list), new HashSet<>(expected));
+        List<Bitset> list = planner.findCommonSubsets(states, dummyGraph);
+        assertEquals(new HashSet<Bitset>(list), new HashSet<>(expected));
     }
 
     @Test(groups = {"fast"})

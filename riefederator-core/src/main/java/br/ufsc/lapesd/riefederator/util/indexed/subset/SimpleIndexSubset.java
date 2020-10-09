@@ -1,5 +1,7 @@
 package br.ufsc.lapesd.riefederator.util.indexed.subset;
 
+import br.ufsc.lapesd.riefederator.util.Bitset;
+import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.NotInParentException;
 import org.apache.commons.collections4.keyvalue.UnmodifiableMapEntry;
@@ -8,16 +10,16 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static br.ufsc.lapesd.riefederator.util.indexed.subset.BitSetOps.subtract;
+import static br.ufsc.lapesd.riefederator.util.indexed.subset.BitsetOps.subtract;
 import static com.google.common.base.Preconditions.checkElementIndex;
 import static com.google.common.base.Preconditions.checkPositionIndex;
 
 public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<T> {
     protected final @Nonnull IndexSet<T> parent;
-    protected final @Nonnull BitSet bs;
+    protected final @Nonnull Bitset bs;
 
 
-    public SimpleIndexSubset(@Nonnull IndexSet<T> parent, @Nonnull BitSet bitSet) {
+    public SimpleIndexSubset(@Nonnull IndexSet<T> parent, @Nonnull Bitset bitSet) {
         assert !(parent instanceof IndexSubset)
                 : "Creating a IndexedSubset of an IndexedSubst works but is inefficient!";
         this.parent = parent;
@@ -27,43 +29,43 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
     /* --- --- Implement IndexedSubset methods --- --- */
 
     @Override public @Nonnull IndexSet<T> getParent() { return parent; }
-    @Override public @Nonnull BitSet getBitSet() { return bs; }
+    @Override public @Nonnull Bitset getBitset() { return bs; }
 
     @Override public @Nonnull ImmIndexSubset<T> asImmutable() {
         return new SimpleImmIndexSubset<>(parent, bs);
     }
 
     @Override public @Nonnull IndexSubset<T> complement() {
-        BitSetOps.complement(parent, bs);
+        BitsetOps.complement(parent, bs);
         return this;
     }
 
     @Override public @Nonnull IndexSubset<T> intersect(@Nonnull Collection<? extends T> coll) {
-        BitSetOps.intersect(parent, bs, coll);
+        BitsetOps.intersect(parent, bs, coll);
         return this;
     }
 
     @Override public @Nonnull IndexSubset<T> union(@Nonnull Collection<? extends T> coll) {
-        BitSetOps.union(parent, bs, coll);
+        BitsetOps.union(parent, bs, coll);
         return this;
     }
 
     @Override public @Nonnull IndexSubset<T> minus(@Nonnull Collection<? extends T> coll) {
-        BitSetOps.subtract(parent, bs, coll);
+        BitsetOps.subtract(parent, bs, coll);
         return this;
     }
 
     @Override public @Nonnull IndexSubset<T> symDiff(@Nonnull Collection<? extends T> coll) {
-        BitSetOps.symDiff(parent, bs, coll);
+        BitsetOps.symDiff(parent, bs, coll);
         return this;
     }
 
     @Override public @Nonnull IndexSubset<T> copy() {
-        return new SimpleIndexSubset<>(parent, cloneBS());
+        return new SimpleIndexSubset<>(parent, bs.copy());
     }
 
     @Override public @Nonnull ImmIndexSubset<T> immutableCopy() {
-        return new SimpleImmIndexSubset<>(parent, cloneBS());
+        return new SimpleImmIndexSubset<>(parent, bs.copy());
     }
 
     @Override public @Nonnull IndexSubset<T> createComplement() {
@@ -71,28 +73,28 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
     }
 
     @Override public @Nonnull ImmIndexSubset<T> createImmutableComplement() {
-        return new SimpleImmIndexSubset<>(parent, BitSetOps.complement(parent, cloneBS()));
+        return new SimpleImmIndexSubset<>(parent, BitsetOps.complement(parent, bs.copy()));
     }
 
     @Override
     public @Nonnull IndexSubset<T> createIntersection(@Nonnull Collection<? extends T> coll) {
-        return new SimpleIndexSubset<>(parent, BitSetOps.intersect(parent, cloneBS(), coll));
+        return new SimpleIndexSubset<>(parent, BitsetOps.intersect(parent, bs.copy(), coll));
     }
 
     @Override public @Nonnull ImmIndexSubset<T>
     createImmutableIntersection(@Nonnull Collection<? extends T> coll) {
-        return new SimpleImmIndexSubset<>(parent, BitSetOps.intersect(parent, cloneBS(), coll));
+        return new SimpleImmIndexSubset<>(parent, BitsetOps.intersect(parent, bs.copy(), coll));
     }
 
     @Override
     public @Nonnull IndexSubset<T> createUnion(@Nonnull Collection<? extends T> collection) {
-        return new SimpleIndexSubset<>(parent, BitSetOps.union(parent, cloneBS(), collection));
+        return new SimpleIndexSubset<>(parent, BitsetOps.union(parent, bs.copy(), collection));
     }
 
     @Override
     public @Nonnull ImmIndexSubset<T>
     createImmutableUnion(@Nonnull Collection<? extends T> collection) {
-        BitSet bs = BitSetOps.union(parent, cloneBS(), collection);
+        Bitset bs = BitsetOps.union(parent, this.bs.copy(), collection);
         return new SimpleImmIndexSubset<>(parent, bs);
     }
 
@@ -102,17 +104,17 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
 
     @Override
     public @Nonnull <U extends T> ImmIndexSubset<T> createImmutableUnion(@Nonnull U value) {
-        return new SimpleImmIndexSubset<>(parent, BitSetOps.union(parent, cloneBS(), value));
+        return new SimpleImmIndexSubset<>(parent, BitsetOps.union(parent, bs.copy(), value));
     }
 
     @Override
     public @Nonnull IndexSubset<T> createSymDiff(@Nonnull Collection<? extends T> coll) {
-        return new SimpleIndexSubset<>(parent, BitSetOps.symDiff(parent, cloneBS(), coll));
+        return new SimpleIndexSubset<>(parent, BitsetOps.symDiff(parent, bs.copy(), coll));
     }
 
     @Override
     public @Nonnull ImmIndexSubset<T> createImmutableSymDiff(@Nonnull Collection<? extends T> c) {
-        return new SimpleImmIndexSubset<>(parent, BitSetOps.symDiff(parent, cloneBS(), c));
+        return new SimpleImmIndexSubset<>(parent, BitsetOps.symDiff(parent, bs.copy(), c));
     }
 
     @Override
@@ -166,64 +168,60 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
     }
 
     @Override public @Nonnull IndexSubset<T> fullSubset() {
-        return new SimpleIndexSubset<>(parent, cloneBS());
-    }
-
-    protected @Nonnull BitSet cloneBS() {
-        return (BitSet) bs.clone();
+        return new SimpleIndexSubset<>(parent, bs.copy());
     }
 
     @Override public @Nonnull IndexSubset<T> emptySubset() {
-        return new SimpleIndexSubset<>(parent, new BitSet());
+        return new SimpleIndexSubset<>(parent, Bitsets.create(parent.size()));
     }
 
     @Override public @Nonnull IndexSubset<T> subset(@Nonnull Collection<? extends T> coll) {
-        return new SimpleIndexSubset<>(parent, BitSetOps.subset(parent, this, this.bs, coll));
+        return new SimpleIndexSubset<>(parent, BitsetOps.subset(parent, this, this.bs, coll));
     }
 
     @Override
     public @Nonnull IndexSubset<T> subsetExpanding(@Nonnull Collection<? extends T> coll) {
-        return new SimpleIndexSubset<>(parent, BitSetOps.subsetExpanding(parent, coll));
+        return new SimpleIndexSubset<>(parent, BitsetOps.subsetExpanding(parent, coll));
     }
 
-    @Override public @Nonnull IndexSubset<T> subset(@Nonnull BitSet subset) {
+    @Override public @Nonnull IndexSubset<T> subset(@Nonnull Bitset subset) {
         if (subset.length() > size())
             throw new NotInParentException(subset, this);
-        return new SimpleImmIndexSubset<>(parent, subset);
+        return new SimpleIndexSubset<>(parent, subset);
     }
 
     @Override public @Nonnull ImmIndexSubset<T>
     immutableSubset(@Nonnull Collection<? extends T> coll) {
-        return new SimpleImmIndexSubset<>(parent, BitSetOps.subset(parent, this, this.bs, coll));
+        return new SimpleImmIndexSubset<>(parent, BitsetOps.subset(parent, this, this.bs, coll));
     }
 
     @Override
     public @Nonnull ImmIndexSubset<T> immutableSubsetExpanding(@Nonnull Collection<? extends T> c) {
-        return new SimpleImmIndexSubset<>(parent, BitSetOps.subsetExpanding(parent, c));
+        return new SimpleImmIndexSubset<>(parent, BitsetOps.subsetExpanding(parent, c));
     }
 
-    @Override public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull BitSet subset) {
+    @Override public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull Bitset subset) {
         if (subset.length() > size())
             throw new NotInParentException(subset, this);
         return new SimpleImmIndexSubset<>(parent, subset);
     }
 
     @Override public @Nonnull IndexSubset<T> subset(@Nonnull Predicate<? super T> predicate) {
-        return new SimpleIndexSubset<>(parent, subtract(parent, cloneBS(), predicate.negate()));
+        return new SimpleIndexSubset<>(parent, subtract(parent, bs.copy(), predicate.negate()));
     }
 
     @Override public @Nonnull ImmIndexSubset<T>
     immutableSubset(@Nonnull Predicate<? super T> p) {
-        return new SimpleImmIndexSubset<>(parent, subtract(parent, cloneBS(), p.negate()));
+        return new SimpleImmIndexSubset<>(parent, subtract(parent, bs.copy(), p.negate()));
     }
 
     @Override public @Nonnull IndexSubset<T> subset(@Nonnull T value) {
-        BitSet bs = BitSetOps.subset(parent, this, this.bs, value);
+        Bitset bs = BitsetOps.subset(parent, this, this.bs, value);
         return new SimpleIndexSubset<>(parent, bs);
     }
 
     @Override public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull T value) {
-        BitSet bs = BitSetOps.subset(parent, this, this.bs, value);
+        Bitset bs = BitsetOps.subset(parent, this, this.bs, value);
         return new SimpleImmIndexSubset<>(parent, bs);
     }
 
@@ -236,7 +234,7 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
     }
 
     @Override public boolean containsAny(@Nonnull Collection<?> c) {
-        BitSet rBS = BitSetOps.getBitSet(parent, c);
+        Bitset rBS = BitsetOps.getBitset(parent, c);
         if (rBS != null)
             return bs.intersects(rBS);
         for (Object o : c) {
@@ -322,7 +320,7 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
         if (c instanceof IndexSubset) {
             IndexSubset<?> that = (IndexSubset<?>) c;
             if (that.getParent() == parent)
-                return BitSetOps.containsAll(bs, that.getBitSet());
+                return bs.containsAll(that.getBitset());
         } else if (c == parent) {
             return size() == parent.size();
         } else if (size() < c.size()) {
@@ -361,13 +359,13 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
 
     @Override public boolean addAll(@Nonnull Collection<? extends T> c) {
         int old = bs.cardinality();
-        BitSetOps.union(parent, bs, c);
+        BitsetOps.union(parent, bs, c);
         assert bs.cardinality() >= old;
         return bs.cardinality() != old;
     }
 
     @Override public boolean parentAddAll(@Nonnull Collection<T> values) {
-        BitSet ss = BitSetOps.getBitSet(parent, values);
+        Bitset ss = BitsetOps.getBitset(parent, values);
         if (ss != null) {
             int old = bs.cardinality();
             bs.or(ss);
@@ -393,14 +391,14 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
 
     @Override public boolean retainAll(@Nonnull Collection<?> c) {
         int old = bs.cardinality();
-        BitSetOps.intersect(parent, bs, c);
+        BitsetOps.intersect(parent, bs, c);
         assert bs.cardinality() <= old;
         return old != bs.cardinality();
     }
 
     @Override public boolean removeAll(@Nonnull Collection<?> c) {
         int old = bs.cardinality();
-        BitSetOps.subtract(parent, bs, c);
+        BitsetOps.subtract(parent, bs, c);
         assert bs.cardinality() <= old;
         return old != bs.cardinality();
     }

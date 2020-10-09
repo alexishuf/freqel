@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.util.indexed;
 
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.ImmIndexSubset;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -52,7 +53,7 @@ public abstract class DelegatingIndexSet<T> implements IndexSet<T> {
         return delegate.subsetExpanding(collection);
     }
 
-    @Override public @Nonnull IndexSubset<T> subset(@Nonnull BitSet subset) {
+    @Override public @Nonnull IndexSubset<T> subset(@Nonnull Bitset subset) {
         return delegate.subset(subset);
     }
 
@@ -83,7 +84,7 @@ public abstract class DelegatingIndexSet<T> implements IndexSet<T> {
         return delegate.immutableSubsetExpanding(c);
     }
 
-    @Override public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull BitSet subset) {
+    @Override public @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull Bitset subset) {
         return delegate.immutableSubset(subset);
     }
 

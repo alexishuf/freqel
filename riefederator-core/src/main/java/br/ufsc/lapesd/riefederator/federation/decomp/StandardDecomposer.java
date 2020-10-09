@@ -12,7 +12,9 @@ import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.CollectionUtils;
+import br.ufsc.lapesd.riefederator.util.bitset.DynamicBitset;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -193,7 +195,7 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
         List<Signature> signatures = new ArrayList<>(sig2pn.keySet());
         List<ProtoQueryOp> reduced = new ArrayList<>(signatures.size());
         Map<TPEndpoint, List<ProtoQueryOp>> ep2pn = new HashMap<>();
-        BitSet exclusive = getExclusiveSignatures(signatures);
+        Bitset exclusive = getExclusiveSignatures(signatures);
         for (int i = 0, size = signatures.size(); i < size; i++) {
             Signature s = signatures.get(i);
             if (!exclusive.get(i) || !s.inputs.isEmpty()) {
@@ -242,15 +244,15 @@ public class StandardDecomposer extends SourcesListAbstractDecomposer {
 
     }
 
-    private @Nonnull BitSet getExclusiveSignatures(@Nonnull List<Signature> list) {
-        BitSet bad = new BitSet();
+    private @Nonnull Bitset getExclusiveSignatures(@Nonnull List<Signature> list) {
+        Bitset bad = new DynamicBitset();
         int chunks = Runtime.getRuntime().availableProcessors();
         int chunkSize = list.size()/chunks;
         IntStream.range(0, chunks).parallel().forEach(chunk -> {
-            BitSet partial = new BitSet(), tmp = new BitSet();
+            Bitset partial = new DynamicBitset(), tmp = new DynamicBitset();
             int last = chunk == chunks-1 ? list.size() : chunkSize*(chunk+1);
             for (int i = chunkSize*chunk; i < last; i++) {
-                BitSet mine = list.get(i).triples;
+                Bitset mine = list.get(i).triples;
                 for (int j = 0; j < i; j++) {
                     tmp.clear();
                     tmp.or(mine);

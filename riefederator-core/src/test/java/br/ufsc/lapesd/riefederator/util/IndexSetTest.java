@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.util;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.util.bitset.DynamicBitset;
 import br.ufsc.lapesd.riefederator.util.indexed.*;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.ImmIndexSubset;
@@ -269,7 +270,7 @@ public class IndexSetTest implements TestContext {
         IndexSet<Integer> set = FullIndexSet.fromDistinct(values);
 
         IndexSubset<Integer> empty = set.emptySubset();
-        assertEquals(empty.getBitSet().cardinality(), 0);
+        assertEquals(empty.getBitset().cardinality(), 0);
         assertTrue(empty.isEmpty());
         //noinspection ConstantConditions
         assertEquals(empty.size(), 0);
@@ -279,7 +280,7 @@ public class IndexSetTest implements TestContext {
         assertEquals(set.stream().filter(empty::contains).collect(toList()), emptyList());
 
         IndexSubset<Integer> all = set.fullSubset();
-        assertEquals(all.getBitSet().cardinality(), size);
+        assertEquals(all.getBitset().cardinality(), size);
         assertEquals(all.isEmpty(), size == 0);
         assertEquals(all.size(), size);
         assertEquals(all.iterator().hasNext(), size > 0);
@@ -1190,8 +1191,8 @@ public class IndexSetTest implements TestContext {
             assertFalse(even.contains(Integer.valueOf(i)));
     }
 
-    private @Nonnull BitSet createBitSet(int... positions) {
-        BitSet bs = new BitSet();
+    private @Nonnull Bitset createBitset(int... positions) {
+        Bitset bs = new DynamicBitset();
         for (int position : positions)
             bs.set(position);
         return bs;
@@ -1223,26 +1224,26 @@ public class IndexSetTest implements TestContext {
         assertThrows(NotInParentException.class, () -> subset03.subset(subset01));
     }
 
-    @Test @SuppressWarnings("ResultOfMethodCallIgnored")
+    @SuppressWarnings("ResultOfMethodCallIgnored") @Test
     public void testCreateSubsetFromBitSet() {
         FullIndexSet<Integer> p = new FullIndexSet<>(10);
         for (int i = 0; i < 4; i++)
             assertTrue(p.add(i));
 
-        assertEquals(p.subset(createBitSet(1)), newHashSet(1));
-        assertEquals(p.subset(createBitSet(0, 1, 2, 3)), newHashSet(0, 1, 2, 3));
-        assertThrows(NotInParentException.class, () -> p.subset(createBitSet(0, 4)));
+        assertEquals(p.subset(createBitset(1)), newHashSet(1));
+        assertEquals(p.subset(createBitset(0, 1, 2, 3)), newHashSet(0, 1, 2, 3));
+        assertThrows(NotInParentException.class, () -> p.subset(createBitset(0, 4)));
 
-        assertEquals(p.subset(createBitSet(0, 1, 2)).subset(createBitSet(0, 1)), newHashSet(0, 1));
-        assertEquals(p.subset(createBitSet(0, 1, 2)).subset(createBitSet(1, 2)), newHashSet(1, 2));
-        IndexSubset<Integer> parentSubset = p.subset(createBitSet(0, 2));
+        assertEquals(p.subset(createBitset(0, 1, 2)).subset(createBitset(0, 1)), newHashSet(0, 1));
+        assertEquals(p.subset(createBitset(0, 1, 2)).subset(createBitset(1, 2)), newHashSet(1, 2));
+        IndexSubset<Integer> parentSubset = p.subset(createBitset(0, 2));
 
-        // out of bounds for p and for parentSusbet
+        // out of bounds for p and for parentSubset
         assertThrows(NotInParentException.class,
-                () -> parentSubset.subset(createBitSet(0, 4)));
+                () -> parentSubset.subset(createBitset(0, 4)));
         // out of bounds for only for parentSusbet
         assertThrows(NotInParentException.class,
-                () -> parentSubset.subset(createBitSet(0, 3)));
+                () -> parentSubset.subset(createBitset(0, 3)));
     }
 
     @Test

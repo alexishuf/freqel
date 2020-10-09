@@ -97,6 +97,8 @@ public class JoinInfo {
     private @Nonnull Set<String> pending(@Nonnull Set<String> set1,
                                          @Nonnull Set<String> set2) {
         if (set1 instanceof IndexSubset) {
+            if (set1.isEmpty() && set2.isEmpty())
+                return ((IndexSubset<String>) set1).getParent().immutableEmptySubset();
             try {
                 IndexSubset<String> ss = ((IndexSubset<String>) set1).createUnion(set2);
                 ss.minus(joinVars);

@@ -6,7 +6,6 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.BitJoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
-import br.ufsc.lapesd.riefederator.util.RawAlignedBitSet;
 import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
@@ -102,17 +101,16 @@ public class NoInputStateHelperTest implements TestContext {
         for (Set<Op> subset : Sets.powerSet(nodes)) {
             Set<Triple> observed = subset.stream().flatMap(o -> o.getMatchedTriples().stream())
                     .collect(toSet());
-            IndexSubset<Triple> queryTriples =
-                    helper.triples.subset(RawAlignedBitSet.toBitSet(helper.queryTriples));
+            IndexSubset<Triple> queryTriples = helper.triples.subset(helper.queryTriples);
             if (!queryTriples.containsAll(observed))
                 continue; //ignore, since this is not a valid state
             boolean expected = observed.containsAll(queryTriples);
             long[] state = helper.createState();
-            helper.bs.or(state, 0, nodes.subset(subset).getBitSet().toLongArray());
+            helper.bs.or(state, 0, nodes.subset(subset).getBitset().toLongArray());
             helper.bs.or(state, 1, helper.vars.subset(subset.stream()
                     .flatMap(o -> o.getAllVars().stream()).collect(toList()))
-                    .getBitSet().toLongArray());
-            helper.bs.or(state, 2, helper.triples.subset(observed).getBitSet().toLongArray());
+                    .getBitset().toLongArray());
+            helper.bs.or(state, 2, helper.triples.subset(observed).getBitset().toLongArray());
             assertEquals(helper.isFinal(state), expected);
         }
     }
@@ -123,7 +121,7 @@ public class NoInputStateHelperTest implements TestContext {
         IndexSet<String> vars = helper.vars;
 
         long[] state = helper.createState(0);
-        helper.bs.or(state, 1, vars.subset("x").getBitSet().toLongArray());
+        helper.bs.or(state, 1, vars.subset("x").getBitset().toLongArray());
         helper.bs.set(state, 2, 2);
         long[] copy = Arrays.copyOf(state, state.length);
         assertEquals(state, copy);
@@ -142,7 +140,7 @@ public class NoInputStateHelperTest implements TestContext {
         assertEquals(helper.bs.cardinality(next, 0), 2);
 
         assertTrue(helper.bs.equals(next, 1,
-                   vars.subset(asList("x", "y")).getBitSet().toLongArray()));
+                   vars.subset(asList("x", "y")).getBitset().toLongArray()));
         assertTrue(helper.bs.get(next, 2, 2));
         assertTrue(helper.bs.get(next, 2, 3));
         assertEquals(helper.bs.cardinality(next, 2), 2);

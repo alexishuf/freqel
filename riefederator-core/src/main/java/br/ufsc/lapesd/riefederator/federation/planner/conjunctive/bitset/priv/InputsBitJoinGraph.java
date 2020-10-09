@@ -2,12 +2,12 @@ package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv;
 
 import br.ufsc.lapesd.riefederator.algebra.JoinInfo;
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 
 import javax.annotation.Nonnull;
-import java.util.BitSet;
 import java.util.Collection;
 
 public class InputsBitJoinGraph extends BitJoinGraph {
@@ -30,15 +30,15 @@ public class InputsBitJoinGraph extends BitJoinGraph {
         }
 
         @Override public boolean checkAdjacent() {
-            BitSet joinVars = (BitSet) lv.getBitSet().clone();
-            joinVars.and(rv.getBitSet());
+            Bitset joinVars = lv.getBitset().copy();
+            joinVars.and(rv.getBitset());
             if (!joinVars.isEmpty()) {
                 if (lt.containsAll(rt) || rt.containsAll(lt)) { // abort
                     this.jv = null;
                     return false;
                 } else { //remove vars that are required inputs on both sides
-                    BitSet sharedInputs = (BitSet) li.getBitSet().clone();
-                    sharedInputs.and(ri.getBitSet());
+                    Bitset sharedInputs = li.getBitset().copy();
+                    sharedInputs.and(ri.getBitset());
                     joinVars.andNot(sharedInputs);
                 }
             }

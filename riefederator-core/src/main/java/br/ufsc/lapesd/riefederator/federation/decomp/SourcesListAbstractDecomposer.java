@@ -13,6 +13,7 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.common.collect.HashMultimap;
@@ -94,19 +95,19 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
 
     protected static class Signature {
         final @Nonnull TPEndpoint endpoint;
-        final @Nonnull BitSet triples;
-        final @Nonnull BitSet inputs;
+        final @Nonnull Bitset triples;
+        final @Nonnull Bitset inputs;
         int hash = 0;
 
         public Signature(@Nonnull ProtoQueryOp qn, @Nonnull IndexSet<Triple> allTriples,
                          @Nonnull IndexSet<String> allVarNames) {
             this.endpoint = qn.getEndpoint();
-            this.triples = allTriples.subset(qn.getMatchedQuery()).getBitSet();
+            this.triples = allTriples.subset(qn.getMatchedQuery()).getBitset();
             IndexSubset<String> inputsSubset = allVarNames.emptySubset();
             qn.getMatchedQuery().forEachTermAnnotation(InputAnnotation.class, (t, a) -> {
                 if (t.isVar()) inputsSubset.add(t.asVar().getName());
             });
-            this.inputs = inputsSubset.getBitSet();
+            this.inputs = inputsSubset.getBitset();
         }
 
         @Override

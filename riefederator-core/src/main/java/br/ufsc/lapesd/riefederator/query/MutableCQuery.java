@@ -637,8 +637,8 @@ public class MutableCQuery extends CQuery {
     public boolean retainAll(@Nonnull Collection<?> c) {
         @SuppressWarnings("unchecked")
         IndexSubset<Triple> victims = attr().getSet().subset((Collection<Triple>) c);
-        assert victims.getBitSet().length() <= d.list.size();
-        victims.getBitSet().flip(0, d.list.size());
+        assert victims.getBitset().length() <= d.list.size();
+        victims.getBitset().flip(0, d.list.size());
         return doRemoveAll(victims, "retainAll", c);
     }
     @Override

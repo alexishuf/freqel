@@ -1,11 +1,13 @@
 package br.ufsc.lapesd.riefederator.util.indexed.subset;
 
+import br.ufsc.lapesd.riefederator.util.Bitset;
+import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
+import br.ufsc.lapesd.riefederator.util.bitset.LongBitset;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 
 import javax.annotation.Nonnull;
-import java.util.BitSet;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.ListIterator;
@@ -14,11 +16,11 @@ import java.util.function.Predicate;
 @Immutable
 public class SimpleImmIndexSubset<T> extends SimpleIndexSubset<T>
                                         implements ImmIndexSubset<T> {
-    private static final @Nonnull BitSet EMPTY_BITSET = new BitSet(0);
+    private static final @Nonnull Bitset EMPTY_BITSET = new LongBitset(0);
 
     private @LazyInit int hash;
 
-    public SimpleImmIndexSubset(@Nonnull IndexSet<T> parent, @Nonnull BitSet bitSet) {
+    public SimpleImmIndexSubset(@Nonnull IndexSet<T> parent, @Nonnull Bitset bitSet) {
         super(parent, bitSet);
     }
 
@@ -29,8 +31,9 @@ public class SimpleImmIndexSubset<T> extends SimpleIndexSubset<T>
 
     public static @Nonnull <U> SimpleImmIndexSubset<U>
     createFull(@Nonnull IndexSet<U> parent) {
-        BitSet bs = new BitSet();
-        bs.set(0, parent.size());
+        int size = parent.size();
+        Bitset bs = Bitsets.create(size);
+        bs.set(0, size);
         return new SimpleImmIndexSubset<>(parent, bs);
     }
 

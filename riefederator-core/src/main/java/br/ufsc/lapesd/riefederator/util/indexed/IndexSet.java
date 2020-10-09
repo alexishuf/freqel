@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.util.indexed;
 
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.ImmIndexSubset;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import com.google.errorprone.annotations.CheckReturnValue;
@@ -30,7 +31,7 @@ public interface IndexSet<T> extends List<T>, Set<T> {
 
     @CheckReturnValue @Nonnull IndexSubset<T> subsetExpanding(@Nonnull Collection<? extends T> collection);
 
-    @CheckReturnValue @Nonnull IndexSubset<T> subset(@Nonnull BitSet subset);
+    @CheckReturnValue @Nonnull IndexSubset<T> subset(@Nonnull Bitset subset);
 
     @CheckReturnValue @Nonnull IndexSubset<T> subset(@Nonnull Predicate<? super T> predicate);
 
@@ -44,7 +45,7 @@ public interface IndexSet<T> extends List<T>, Set<T> {
 
     @CheckReturnValue @Nonnull ImmIndexSubset<T> immutableSubsetExpanding(@Nonnull Collection<? extends T> collection);
 
-    @CheckReturnValue @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull BitSet subset);
+    @CheckReturnValue @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull Bitset subset);
 
     @CheckReturnValue @Nonnull ImmIndexSubset<T> immutableSubset(@Nonnull Predicate<? super T> predicate);
 

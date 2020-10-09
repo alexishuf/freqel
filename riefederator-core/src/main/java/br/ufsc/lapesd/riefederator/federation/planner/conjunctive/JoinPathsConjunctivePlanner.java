@@ -17,6 +17,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.paths.SubPathA
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
@@ -342,7 +343,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
 
             private static int[] initTripleOccurrences(ImmIndexSubset<Triple> matched) {
                 int[] occurrences = new int[matched.getParent().size()];
-                BitSet bs = matched.getBitSet();
+                Bitset bs = matched.getBitset();
                 for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1))
                     occurrences[i] = 1;
                 return occurrences;
@@ -355,7 +356,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
 
             @Override
             public @Nonnull String toString() {
-                return nodes.getBitSet().toString();
+                return nodes.getBitset().toString();
             }
 
             @Override
@@ -385,7 +386,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
             }
 
             boolean hasConflictingNode(@Nonnull IndexSubset<Triple> candidateMatched) {
-                BitSet bs = candidateMatched.getBitSet();
+                Bitset bs = candidateMatched.getBitset();
                 IndexSet<Triple> all = candidateMatched.getParent();
                 assert tripleOccurrences.length == all.size();
                 outer:
@@ -414,7 +415,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
 
                 // for every triple in the new node, increment its occurrence count
                 int[] occurrences = Arrays.copyOf(tripleOccurrences, tripleOccurrences.length);
-                BitSet bs = nodeMatched.getBitSet();
+                Bitset bs = nodeMatched.getBitset();
                 for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1))
                     ++occurrences[i];
                 return new State(nodes.createImmutableUnion(node), novel, occurrences);

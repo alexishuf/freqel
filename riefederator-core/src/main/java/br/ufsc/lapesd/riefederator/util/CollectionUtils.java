@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.NotInParentException;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
@@ -63,9 +64,9 @@ public class CollectionUtils {
     public static @Nonnull <T, I>
     IndexSubset<T> union(@Nonnull IndexSet<T> index, @Nullable Collection<I> input,
                          @Nonnull Function<I, ? extends Collection<T>> getter) {
+        IndexSubset<T> ss = index.subset(Bitsets.createFixed(index.size()));
         if (input == null || input.isEmpty())
-            return index.emptySubset();
-        IndexSubset<T> ss = index.emptySubset();
+            return ss;
         for (I i : input)
             ss.addAll(getter.apply(i));
         return ss;

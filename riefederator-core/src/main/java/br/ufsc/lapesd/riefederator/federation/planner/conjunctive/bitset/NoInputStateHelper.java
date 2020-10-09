@@ -3,30 +3,37 @@ package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.BitJoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.RawAlignedBitSet;
+import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.BitSet;
 
 class NoInputStateHelper extends AbstractStateHelper {
+    private @Nonnull Bitset[] triplesTmp;
+    private @Nonnull Bitset[] contribParts;
+    private @Nonnull Bitset contribTmp;
+
     public NoInputStateHelper(@Nonnull BitJoinGraph graph, @Nonnull IndexSet<String> vars,
                               @Nonnull IndexSubset<Triple> queryTriples) {
         super(graph, vars, queryTriples,
               new RawAlignedBitSet(graph.getNodes().size(), vars.size(),
                                    queryTriples.getParent().size()));
+        int nNodes = graph.size();
+        triplesTmp = new Bitset[nNodes];
+        contribTmp = Bitsets.createFixed(nNodes);
+        contribParts = new Bitset[] {Bitsets.createFixed(nNodes), Bitsets.createFixed(nNodes)};
     }
 
     public @Nonnull long[] createState(int nodeIdx) {
-        long[] data = bs.alloc(), tmp;
+        long[] data = bs.alloc();
         bs.set(data, NODES, nodeIdx);
         Op node = nodes.get(nodeIdx);
-        tmp = ((IndexSubset<String>)node.getPublicVars()).getBitSet().toLongArray();
-        bs.or(data, VARS, tmp);
-        tmp = ((IndexSubset<Triple>)node.getMatchedTriples()).getBitSet().toLongArray();
-        bs.or(data, TRIPLES, tmp);
+        bs.or(data, VARS, ((IndexSubset<String>)node.getPublicVars()).getBitset());
+        bs.or(data, TRIPLES, ((IndexSubset<Triple>)node.getMatchedTriples()).getBitset());
         return data;
     }
 
@@ -37,34 +44,36 @@ class NoInputStateHelper extends AbstractStateHelper {
         assert ((IndexSubset<String>)n.getResultVars()).getParent() == vars;
         assert ((IndexSubset<Triple>) n.getMatchedTriples()).getParent() == triples;
 
-        long[] nodeVars = ((IndexSubset<String>) n.getResultVars()).getBitSet().toLongArray();
-        assert bs.intersects(nodeVars, state, VARS) : "New node shares no variable with state";
+        Bitset nodeVars = ((IndexSubset<String>) n.getResultVars()).getBitset();
+        assert nodeVars.intersects(bs.asBitset(state, VARS)) : "New node shares no variable";
 
-        BitSet nodeTriplesBS = ((IndexSubset<Triple>) n.getMatchedTriples()).getBitSet();
-        long[] nodeTriples = nodeTriplesBS.toLongArray();
+        Bitset nodeTriples = ((IndexSubset<Triple>) n.getMatchedTriples()).getBitset();
         if (bs.containsAll(nodeTriples, state, TRIPLES)
                 || bs.containsAll(state, TRIPLES, nodeTriples)) {
             return null; //one triple set subsumes the other
         }
 
         // check if any old node is subsumed by all other old nodes and the new node
+        contribParts[0].assign(nodeTriples);
+        contribParts[1].assign(nodeTriples);
         int nNodes = 0;
-        BitSet[] sets = new BitSet[graph.size()];
-        for (int i = bs.nextSet(state, NODES, 0); i >= 0; i = bs.nextSet(state, NODES, i+1)) 
-            sets[nNodes++] = ((IndexSubset<Triple>)graph.get(i).getMatchedTriples()).getBitSet();
+        for (int i = bs.nextSet(state, NODES, 0); i >= 0; i = bs.nextSet(state, NODES, i+1)) {
+            Bitset bs = ((IndexSubset<Triple>) graph.get(i).getMatchedTriples()).getBitset();
+            contribParts[nNodes & 0x1].or(bs);
+            triplesTmp[nNodes++] = bs;
+        }
         for (int i = 0; i < nNodes; i++) {
-            BitSet contrib = (BitSet) sets[i].clone();
-            for (int j = 0; j < nNodes; j++) {
-                if (j != i) contrib.andNot(sets[j]);
-            }
-            assert !contrib.isEmpty() : "State had a node contributing no triple";
-            contrib.andNot(nodeTriplesBS);
-            if (contrib.isEmpty())
+            contribTmp.assign(triplesTmp[i]);
+            int part = i & 0x1;
+            contribTmp.andNot(contribParts[part ^ 0x1]);
+            for (int j = part; j < i     ; j += 2) contribTmp.andNot(triplesTmp[j]);
+            for (int j = i+2 ; j < nNodes; j += 2) contribTmp.andNot(triplesTmp[j]);
+            if (contribTmp.isEmpty())
                 return null; // adding the new node causes an old node to contribute nothing
         }
 
         // build next state
-        long[] next = new long[state.length];
+        long[] next = bs.alloc();
         System.arraycopy(state, 0, next, 0, state.length);
         bs.set(next, NODES, nodeIdx);
         bs.or(next, VARS, nodeVars);

@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
@@ -23,7 +24,10 @@ import org.apache.jena.vocabulary.RDFS;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.OBJ;
 import static br.ufsc.lapesd.riefederator.model.Triple.Position.SUBJ;
@@ -128,7 +132,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
 
         private boolean visitComponent() {
             int best = -1;
-            int clearIdx = visited.getBitSet().nextClearBit(0);
+            int clearIdx = visited.getBitset().nextClearBit(0);
             if (clearIdx >= visited.getParent().size())
                 return false; //no more components
             stack.push(visited.getParent().get(clearIdx));
@@ -285,7 +289,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
                 assert localTriples.containsAll(boundary) : "Some boundary triples were not visited";
                 assert core != null : "No core term found, would overshoot estimates";
 
-                BitSet bs = localTriples.getBitSet();
+                Bitset bs = localTriples.getBitset();
                 int sum = -2;
                 for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1)) {
                     if (allTriples.get(i).get(opposite).equals(core))
@@ -326,7 +330,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             outerVisited.addAll(visited);
             if (visited.size() == 1) {
                 applyStarSelectivity();
-                int idx = visited.getBitSet().nextSetBit(0);
+                int idx = visited.getBitset().nextSetBit(0);
                 assert idx >= 0;
                 assert tripleCost[idx] >= 0;
                 return tripleCost[idx];
@@ -351,7 +355,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             int[] indices = new int[visited.size()];
             int[] sizes = new int[visited.size()];
             int idx = 0;
-            BitSet bs = visited.getBitSet();
+            Bitset bs = visited.getBitset();
             for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1)) {
                 Triple triple = visited.getParent().get(i);
                 String s = triple.toString();
@@ -376,7 +380,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
         }
 
         private int sumCosts(@Nonnull IndexSubset<Triple> subset) {
-            BitSet bs = subset.getBitSet();
+            Bitset bs = subset.getBitset();
             int sum = -2;
             for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1)) {
                 if (sum == -2) sum = tripleCost[i];
@@ -405,7 +409,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
                 }
                 double factor = freeObj / (double) star.size();
 
-                BitSet bs = star.getBitSet();
+                Bitset bs = star.getBitset();
                 for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1)) {
                     if (visited.hasIndex(i, allTriples)
                             && star.getAtIndex(i, allTriples).getObject().isVar()) {
@@ -436,7 +440,7 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
             IndexSubset<Triple> boundaries = visited.getParent().emptySubset();
             boundaries.addAll(fromSubj.boundary);
             boundaries.addAll(fromObj.boundary);
-            BitSet bs = visited.getBitSet();
+            Bitset bs = visited.getBitset();
             for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i+1)) {
                 tripleCost[i] = (int)Math.ceil(factor * tripleCost[i]);
                 assert tripleCost[i] >= 1 : "Zeroed-out a cost! this is a bug";

@@ -9,6 +9,8 @@ import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
+import br.ufsc.lapesd.riefederator.util.Bitset;
+import br.ufsc.lapesd.riefederator.util.bitset.LongBitset;
 import br.ufsc.lapesd.riefederator.util.indexed.*;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.ImmIndexSubset;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
@@ -24,6 +26,7 @@ import java.lang.ref.SoftReference;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static br.ufsc.lapesd.riefederator.util.bitset.Bitsets.createFixed;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Objects.requireNonNull;
 
@@ -32,23 +35,23 @@ public class CQueryCache {
     private List<Triple> unmodifiableList;
     private Set<QueryAnnotation> unmodifiableQueryAnnotations;
 
-    private ImmIndexSet<Triple> set;
-    private ImmIndexSet<Term> allTerms;
+    private IndexSet<Triple> set;
+    private IndexSet<Term> allTerms;
     private IndexSetPartition<Term> tripleTerms;
-    private ImmIndexSubset<Var> allVars;
-    private ImmIndexSubset<Var> tripleVars;
+    private IndexSubset<Var> allVars;
+    private IndexSubset<Var> tripleVars;
     private IndexSet<Triple> offeredTriplesUniverse;
     private IndexSet<String> varNamesUniverse, offeredVarNamesUniverse;
-    private ImmIndexSet<String> allVarNames;
-    private ImmIndexSet<String> tripleVarNames;
-    private ImmIndexSubset<String> publicTripleVarNames;
-    private ImmIndexSet<String> publicVarNames;
-    private ImmIndexSubset<String> inputVarNames, reqInputVarNames, optInputVarNames;
+    private IndexSet<String> allVarNames;
+    private IndexSet<String> tripleVarNames;
+    private IndexSubset<String> publicTripleVarNames;
+    private IndexSet<String> publicVarNames;
+    private IndexSubset<String> inputVarNames, reqInputVarNames, optInputVarNames;
 
     private final AtomicInteger indexTriplesState = new AtomicInteger(0);
     private SoftReference<List<ImmIndexSubset<Triple>>> s2triple, p2triple, o2triple;
     private SoftReference<SetMultimap<Term, Atom>> t2atom;
-    private ImmIndexSet<Triple> matchedTriples;
+    private IndexSet<Triple> matchedTriples;
 
     private Boolean joinConnected, ask;
     private int limit = -1;
@@ -206,10 +209,18 @@ public class CQueryCache {
 
     public @Nonnull IndexSet<Triple> getSet() {
         if (set == null) {
-            if (offeredTriplesUniverse != null)
-                set = offeredTriplesUniverse.immutableSubsetExpanding(d.list);
-            else
-                set = FullIndexSet.from(d.list).asImmutable();
+            if (offeredTriplesUniverse != null) {
+                Bitset bs = createFixed(offeredTriplesUniverse.size());
+                for (Triple triple : d.list) {
+                    int idx = offeredTriplesUniverse.indexOf(triple);
+                    if (idx < 0) // do it the expensive way
+                        return set = offeredTriplesUniverse.immutableSubsetExpanding(d.list);
+                    bs.set(idx);
+                }
+                set = offeredTriplesUniverse.immutableSubset(bs);
+            } else {
+                set = FullIndexSet.from(d.list);
+            }
         }
         return set;
     }
@@ -232,10 +243,10 @@ public class CQueryCache {
         return tripleTerms;
     }
 
-    public @Nonnull ImmIndexSubset<Var> tripleVars() {
+    public @Nonnull IndexSubset<Var> tripleVars() {
         if (tripleVars == null) {
             IndexSet<Term> terms = tripleTerms();
-            BitSet bs = new BitSet(terms.size());
+            Bitset bs = createFixed(terms.size());
             int i = 0;
             for (Term term : terms) {
                 if (term.isVar())
@@ -262,7 +273,7 @@ public class CQueryCache {
             for (Term term : filter.getTerms())
                 allTerms.add(term);
         }
-        this.allTerms = allTerms.asImmutable();
+        this.allTerms = allTerms;
         tripleTerms = IndexSetPartition.of(this.allTerms, 0, tripleTermsCount);
     }
 
@@ -272,10 +283,10 @@ public class CQueryCache {
         return allTerms;
     }
 
-    public @Nonnull ImmIndexSet<Var> allVars() {
+    public @Nonnull IndexSet<Var> allVars() {
         if (allVars == null) {
             IndexSet<Term> terms = allTerms();
-            BitSet bs = (BitSet) tripleVars().getBitSet().clone();
+            Bitset bs = tripleVars().getBitset().copy();
             for (int i = tripleTerms.getEnd(); i < terms.size(); i++) {
                 Term term = terms.get(i);
                 if (term.isVar())
@@ -288,13 +299,13 @@ public class CQueryCache {
         return allVars;
     }
 
-    public @Nonnull ImmIndexSet<String> tripleVarNames() {
+    public @Nonnull IndexSet<String> tripleVarNames() {
         if (tripleVarNames == null)
             indexVarNames();
         return tripleVarNames;
     }
 
-    public @Nonnull ImmIndexSet<String> allVarNames() {
+    public @Nonnull IndexSet<String> allVarNames() {
         if (allVarNames == null)
             indexVarNames();
         return allVarNames;
@@ -324,7 +335,7 @@ public class CQueryCache {
             for (String name : filter.getVarNames())
                 allVarNames.parentAdd(name);
         }
-        this.allVarNames = allVarNames.asImmutable();
+        this.allVarNames = allVarNames;
         this.varNamesUniverse = CoWIndexSet.shared(offeredVarNamesUniverse);
     }
 
@@ -350,7 +361,7 @@ public class CQueryCache {
         varNamesUniverse = univ;
     }
 
-    public @Nonnull ImmIndexSet<String> publicVarNames() {
+    public @Nonnull IndexSet<String> publicVarNames() {
         if (publicVarNames == null) {
             if (d.modifiers.ask() != null) {
                 IndexSet<String> set;
@@ -367,25 +378,24 @@ public class CQueryCache {
 
             IndexSubset<String> subset = varNamesUniverse.emptySubset();
             subset.parentAddAll(projection.getVarNames());
-            publicVarNames = subset.asImmutable();
+            publicVarNames = subset;
             assert varNamesUniverse.containsAll(projection.getVarNames());
             assert publicVarNames.containsAll(projection.getVarNames());
         }
         return publicVarNames;
     }
 
-    public @Nonnull ImmIndexSubset<String> publicTripleVarNames() {
+    public @Nonnull IndexSubset<String> publicTripleVarNames() {
         if (publicTripleVarNames == null) {
-            publicTripleVarNames = publicVarNames().fullSubset().intersect(tripleVarNames())
-                                                   .asImmutable();
+            publicTripleVarNames = publicVarNames().fullSubset().intersect(tripleVarNames());
         }
         return publicTripleVarNames;
     }
 
     private void scanInputs() {
-        IndexSet<String> allVarNames = allVarNames();
-        IndexSubset<String> req = allVarNames.emptySubset(), opt = allVarNames.emptySubset();
-        IndexSet<String> parent = req.getParent();
+        IndexSet<String> allNames = allVarNames();
+        IndexSet<String> parent = allNames instanceof IndexSubset ? allNames.getParent() : allNames;
+        Bitset req = createFixed(parent.size()), opt = createFixed(parent.size());
         IndexSet<String> tripleVarNames = tripleVarNames();
         for (Map.Entry<Term, Collection<TermAnnotation>> e : d.termAnns.asMap().entrySet()) {
             Term term = e.getKey();
@@ -397,34 +407,35 @@ public class CQueryCache {
                 AtomInputAnnotation ia = (AtomInputAnnotation) a;
                 if (ia.isOverride() && requireNonNull(ia.getOverrideValue()).isGround())
                     continue; //not a input anymore
-                (ia.isRequired() ? req : opt).add(name);
+                (ia.isRequired() ? req : opt).set(parent.indexOf(name));
             }
         }
-        for (Iterator<Map.Entry<String, Integer>> it = allVarNames.entryIterator(); it.hasNext(); ){
+        for (Iterator<Map.Entry<String, Integer>> it = allNames.entryIterator(); it.hasNext(); ){
             Map.Entry<String, Integer> e = it.next();
             int idx = e.getValue();
-            if (!opt.hasIndex(idx, parent) && !tripleVarNames.contains(e.getKey()))
-                req.setIndex(idx, parent); //FILTER input var
+            if (!opt.get(idx) && !tripleVarNames.contains(e.getKey()))
+                req.set(idx); //FILTER input var
         }
-        reqInputVarNames = req.asImmutable();
-        optInputVarNames = opt.asImmutable();
+
+        reqInputVarNames = parent.immutableSubset(req);
+        optInputVarNames = parent.immutableSubset(opt);
     }
 
-    public @Nonnull ImmIndexSubset<String> inputVarNames() {
+    public @Nonnull IndexSubset<String> inputVarNames() {
         if (inputVarNames == null) {
             IndexSubset<String> set = allVarNames().emptySubset();
             set.addAll(reqInputVarNames());
             set.addAll(optInputVarNames());
-            inputVarNames = set.immutableCopy();
+            inputVarNames = set;
         }
         return inputVarNames;
     }
-    public @Nonnull ImmIndexSubset<String> reqInputVarNames() {
+    public @Nonnull IndexSubset<String> reqInputVarNames() {
         if (reqInputVarNames == null)
             scanInputs();
         return reqInputVarNames;
     }
-    public @Nonnull ImmIndexSubset<String> optInputVarNames() {
+    public @Nonnull IndexSubset<String> optInputVarNames() {
         if (optInputVarNames == null)
             scanInputs();
         return optInputVarNames;
@@ -432,6 +443,8 @@ public class CQueryCache {
 
     public @Nonnull IndexSet<Triple> matchedTriples() {
         if (matchedTriples == null) {
+            if (d.tripleAnns.isEmpty())
+                return matchedTriples = getSet();
             if (offeredTriplesUniverse != null) {
                 try {
                     return matchedTriples = fillMatched(offeredTriplesUniverse.emptySubset());
@@ -442,7 +455,7 @@ public class CQueryCache {
         return matchedTriples;
     }
 
-    private @Nonnull ImmIndexSet<Triple> fillMatched(@Nonnull IndexSet<Triple> set) {
+    private @Nonnull IndexSet<Triple> fillMatched(@Nonnull IndexSet<Triple> set) {
         for (Triple triple : d.list) {
             boolean has = false;
             for (TripleAnnotation a : d.tripleAnns.get(triple)) {
@@ -455,7 +468,7 @@ public class CQueryCache {
             if (!has)
                 set.safeAdd(triple);
         }
-        return set.asImmutable();
+        return set;
     }
 
     private void indexTriples() {
@@ -468,26 +481,26 @@ public class CQueryCache {
         IndexSet<Triple> triples = getSet();
         IndexSet<Triple> triplesUniverse = triples.getParent();
         IndexSet<Term> terms = tripleTerms();
-        int termCount = terms.size(), tripleCount = d.list.size();
-        BitSet[] sSets = new BitSet[termCount], pSets = new BitSet[termCount],
-                 oSets = new BitSet[termCount];
+        int termCount = terms.size(), ntriples = d.list.size();
+        Bitset[] sSets = new Bitset[termCount], pSets = new Bitset[termCount],
+                 oSets = new Bitset[termCount];
         if (triples instanceof IndexSubset) {
             for (Triple t : d.list) {
                 int sIdx = terms.indexOf(t.getSubject()), oIdx = terms.indexOf(t.getObject());
                 int pIdx = terms.indexOf(t.getPredicate()), i = triplesUniverse.indexOf(t);
-                (sSets[sIdx] == null ? sSets[sIdx] = new BitSet(tripleCount) : sSets[sIdx]).set(i);
-                (pSets[pIdx] == null ? pSets[pIdx] = new BitSet(tripleCount) : pSets[pIdx]).set(i);
-                (oSets[oIdx] == null ? oSets[oIdx] = new BitSet(tripleCount) : oSets[oIdx]).set(i);
+                (sSets[sIdx] == null ? sSets[sIdx] = createFixed(ntriples) : sSets[sIdx]).set(i);
+                (pSets[pIdx] == null ? pSets[pIdx] = createFixed(ntriples) : pSets[pIdx]).set(i);
+                (oSets[oIdx] == null ? oSets[oIdx] = createFixed(ntriples) : oSets[oIdx]).set(i);
             }
         } else {
             assert new ArrayList<>(triples).equals(d.list);
-            for (int i = 0; i < tripleCount; i++) {
+            for (int i = 0; i < ntriples; i++) {
                 Triple t = d.list.get(i);
                 int sIdx = terms.indexOf(t.getSubject()), oIdx = terms.indexOf(t.getObject());
                 int pIdx = terms.indexOf(t.getPredicate());
-                (sSets[sIdx] == null ? sSets[sIdx] = new BitSet(tripleCount) : sSets[sIdx]).set(i);
-                (pSets[pIdx] == null ? pSets[pIdx] = new BitSet(tripleCount) : pSets[pIdx]).set(i);
-                (oSets[oIdx] == null ? oSets[oIdx] = new BitSet(tripleCount) : oSets[oIdx]).set(i);
+                (sSets[sIdx] == null ? sSets[sIdx] = createFixed(ntriples) : sSets[sIdx]).set(i);
+                (pSets[pIdx] == null ? pSets[pIdx] = createFixed(ntriples) : pSets[pIdx]).set(i);
+                (oSets[oIdx] == null ? oSets[oIdx] = createFixed(ntriples) : oSets[oIdx]).set(i);
             }
         }
         s2triple = toImmIndexedSubset(triplesUniverse, sSets);
@@ -496,12 +509,12 @@ public class CQueryCache {
         indexTriplesState.set(2);
     }
 
-    private static final @Nonnull BitSet EMPTY_BITSET = new BitSet();
+    private static final @Nonnull Bitset EMPTY_BITSET = LongBitset.EMPTY;
 
     private static @Nonnull <T> SoftReference<List<ImmIndexSubset<T>>>
-    toImmIndexedSubset(@Nonnull IndexSet<T> parent, @Nonnull BitSet[] sets) {
+    toImmIndexedSubset(@Nonnull IndexSet<T> parent, @Nonnull Bitset[] sets) {
         List<ImmIndexSubset<T>> list = new ArrayList<>(sets.length);
-        for (BitSet set : sets)
+        for (Bitset set : sets)
             list.add(parent.immutableSubset(set == null ? EMPTY_BITSET : set));
         return new SoftReference<>(list);
     }
@@ -515,10 +528,10 @@ public class CQueryCache {
         while ((s2t = s2triple == null ? null : s2triple.get()) == null) indexTriples();
         while ((p2t = p2triple == null ? null : p2triple.get()) == null) indexTriples();
         while ((o2t = o2triple == null ? null : o2triple.get()) == null) indexTriples();
-        BitSet set = new BitSet();
-        set.or(s2t.get(idx).getBitSet());
-        set.or(p2t.get(idx).getBitSet());
-        set.or(o2t.get(idx).getBitSet());
+        Bitset set = createFixed(triples.getParent().size());
+        set.or(s2t.get(idx).getBitset());
+        set.or(p2t.get(idx).getBitset());
+        set.or(o2t.get(idx).getBitset());
         return triples.getParent().immutableSubset(set);
     }
 

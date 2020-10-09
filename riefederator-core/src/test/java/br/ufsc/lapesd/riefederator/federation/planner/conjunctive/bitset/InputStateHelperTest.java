@@ -110,10 +110,10 @@ public class InputStateHelperTest implements TestContext {
         }
 
         public boolean matches(@Nonnull InputStateHelper helper, @Nonnull long[] state) {
-            IndexSubset<Op> nodes = helper.nodes.subset(helper.bs.toBitSet(state, NODES));
-            IndexSubset<String> vars = helper.vars.subset(helper.bs.toBitSet(state, VARS));
-            IndexSubset<String> reqInputVars = helper.vars.subset(helper.bs.toBitSet(state, INPUTS));
-            IndexSubset<Triple> triples = helper.triples.subset(helper.bs.toBitSet(state, TRIPLES));
+            IndexSubset<Op> nodes = helper.nodes.subset(helper.bs.asBitset(state, NODES));
+            IndexSubset<String> vars = helper.vars.subset(helper.bs.asBitset(state, VARS));
+            IndexSubset<String> reqInputVars = helper.vars.subset(helper.bs.asBitset(state, INPUTS));
+            IndexSubset<Triple> triples = helper.triples.subset(helper.bs.asBitset(state, TRIPLES));
 
             if (!this.nodes.equals(nodes)) return false;
             if (!this.vars.equals(vars)) return false;

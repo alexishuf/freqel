@@ -391,12 +391,12 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             assert idx >= 0;
             assert matched.getParent() == vars;
             assert values.size() == vars.size();
-            if (matched.getBitSet().get(idx)) {
+            if (matched.getBitset().get(idx)) {
                 Node offer = toJenaNode(term), old = toJenaNode(values.get(idx));
                 return old.matches(offer);
             } else {
                 values.set(idx, term);
-                matched.getBitSet().set(idx);
+                matched.getBitset().set(idx);
                 return true;
             }
         }

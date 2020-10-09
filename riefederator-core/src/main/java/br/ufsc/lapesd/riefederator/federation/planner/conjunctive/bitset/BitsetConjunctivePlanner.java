@@ -10,7 +10,10 @@ import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.Bi
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.InputsBitJoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.RawAlignedBitSet;
+import br.ufsc.lapesd.riefederator.util.bitset.ArrayBitset;
+import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
@@ -57,13 +60,13 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
     @Override
     protected @Nonnull IndexSubset<Op> componentToSubset(@Nonnull RefIndexSet<Op> nodes,
                                                          @Nonnull Object component) {
-        return nodes.subset((BitSet)component);
+        return nodes.subset((Bitset)component);
     }
 
-    @Override @Nonnull Set<BitSet> findComponents(@Nonnull CQuery query,
+    @Override @Nonnull Set<Bitset> findComponents(@Nonnull CQuery query,
                                                   @Nonnull BitJoinGraph graph) {
         int nNodes = graph.size();
-        HashSet<BitSet> results = new HashSet<>(nNodes);
+        HashSet<Bitset> results = new HashSet<>(nNodes);
         InputStateHelper helper;
         helper = new InputStateHelper(graph, query.attr().varNamesUniverseOffer(),
                                       (IndexSubset<Triple>) query.attr().getSet());
@@ -75,23 +78,20 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
                 long[] state = stack.pop();
                 if (helper.isFinal(state)) {
                     assert validComponent(helper.bs, state, graph);
-                    helper.bs.clearFrom(state, 1);
-                    results.add(BitSet.valueOf(state));
+                    results.add(Bitsets.copyFixed(state, helper.bs.componentBegin(0),
+                                                         helper.bs.componentEnd(0)));
                 } else {
-                    helper.forEachNeighbor(state, nextIdx -> {
-                        long[] next = helper.addNode(state, nextIdx);
-                        if (next != null)
-                            stack.push(next);
-                    });
+                    helper.forEachNeighbor(state, stack);
+                    helper.bs.dealloc(state);
                 }
             }
         }
-        for (BitSet component : results)
+        for (Bitset component : results)
             assert validComponent(component, graph);
         return results;
     }
 
-    private boolean validComponent(@Nonnull BitSet subset, @Nonnull BitJoinGraph graph) {
+    private boolean validComponent(@Nonnull Bitset subset, @Nonnull BitJoinGraph graph) {
         assert subset.length()-1 <= graph.size();
         RawAlignedBitSet bs = new RawAlignedBitSet(graph.size());
         long[] state = bs.alloc();
@@ -113,24 +113,24 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
         if (!nonIn.containsAll(in))
             return false;
 
-        IndexSubset<Op> subset = graph.getNodes().subset(bs.toBitSet(state, NODES));
+        IndexSubset<Op> subset = graph.getNodes().subset(bs.asBitset(state, NODES));
         Op plan = joinOrderPlanner.plan(graph, subset);
         return !(plan instanceof EmptyOp);
     }
 
     @Override
-    @Nonnull List<BitSet> findCommonSubsets(@Nonnull Collection<?> componentsColl,
+    @Nonnull List<Bitset> findCommonSubsets(@Nonnull Collection<?> componentsColl,
                                             @Nonnull BitJoinGraph graph) {
         //noinspection unchecked
-        List<BitSet> comps = componentsColl instanceof List ? (List<BitSet>)componentsColl
-                                : new ArrayList<BitSet>((Collection<BitSet>) componentsColl);
-        List<BitSet> results = new ArrayList<>(comps.size());
+        List<Bitset> comps = componentsColl instanceof List ? (List<Bitset>)componentsColl
+                                : new ArrayList<Bitset>((Collection<Bitset>) componentsColl);
+        List<Bitset> results = new ArrayList<>(comps.size());
         Intersection shared = new Intersection(), notNovel = new Intersection();
         for (int i = 0, nComponents = comps.size(); i < nComponents; i++) {
             for (int j = i+1; j < nComponents; j++) {
                 if (!shared.intersect(comps.get(i), comps.get(j)) || !isConnected(shared, graph))
                     continue;
-                for (BitSet oldResult : results) {
+                for (Bitset oldResult : results) {
                     if (oldResult.equals(shared)) {
                         shared.clear();
                         break;
@@ -140,7 +140,7 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
                     int sharedCard = shared.cardinality(), oldCard = oldResult.cardinality();
                     boolean handled = false;
                     if (sharedCard > oldCard) {
-                        BitSet reduced = (BitSet) oldResult.clone();
+                        Bitset reduced = oldResult.copy();
                         reduced.andNot(notNovel);
                         if (isConnected(reduced, graph)) {
                             oldResult.andNot(notNovel);
@@ -148,7 +148,7 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
                         }
                     }
                     if (!handled) {
-                        BitSet reduced = (BitSet) shared.clone();
+                        Bitset reduced = shared.copy();
                         reduced.andNot(notNovel);
                         if (!isConnected(reduced, graph)) {
                             if (sharedCard > oldCard) { //keep only shared
@@ -165,28 +165,28 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
             }
         }
 
-        ArrayList<BitSet> cleanResults = new ArrayList<>(results.size());
-        for (BitSet set : results) {
+        ArrayList<Bitset> cleanResults = new ArrayList<>(results.size());
+        for (Bitset set : results) {
             if (!set.isEmpty()) cleanResults.add(set);
         }
         return cleanResults;
     }
 
-    private static class Intersection extends BitSet {
-        public boolean intersect(@Nonnull BitSet a, @Nonnull BitSet b) {
+    private static class Intersection extends ArrayBitset {
+        public boolean intersect(@Nonnull Bitset a, @Nonnull Bitset b) {
             clear();
             or(a);
             and(b);
             return !isEmpty();
         }
-        public @Nonnull BitSet take() {
-            BitSet copy = (BitSet) clone();
+        public @Nonnull Bitset take() {
+            Bitset copy = copy();
             clear();
             return copy;
         }
     }
 
-    private boolean isConnected(@Nonnull BitSet subset, @Nonnull BitJoinGraph graph) {
+    private boolean isConnected(@Nonnull Bitset subset, @Nonnull BitJoinGraph graph) {
         IndexSubset<Op> ss = graph.getNodes().subset(subset);
         IndexSubset<Triple> queryTriples = null;
         for (Op op : ss) {
@@ -219,27 +219,27 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
 
     @Override
     @Nonnull List<IndexSubset<Op>> replaceShared(@Nonnull Collection<?> inComponents,
-                                                 @Nonnull List<BitSet> sharedSubsets,
+                                                 @Nonnull List<Bitset> sharedSubsets,
                                                  @Nonnull BitJoinGraph joinGraph) {
         RefIndexSet<Op> nodes = joinGraph.getNodes();
         List<IndexSubset<Op>> components = new ArrayList<>(inComponents.size());
         for (Object inComponent : inComponents)
-            components.add(nodes.subset((BitSet) inComponent));
+            components.add(nodes.subset((Bitset) inComponent));
 
-        for (BitSet shared : sharedSubsets) {
+        for (Bitset shared : sharedSubsets) {
             Op plan = joinOrderPlanner.plan(joinGraph, nodes.subset(shared));
             int planIdx = nodes.size();
             boolean changed = nodes.add(plan);
             assert changed;
             assert nodes.indexOf(plan) == planIdx;
-            BitSet sharedCopy = (BitSet) shared.clone();
+            Bitset sharedCopy = shared.copy();
             for (IndexSubset<Op> component : components) {
                 sharedCopy.or(shared); // restore bits removed by andNot below
-                BitSet componentBitSet = component.getBitSet();
-                sharedCopy.andNot(componentBitSet);
+                Bitset componentBitset = component.getBitset();
+                sharedCopy.andNot(componentBitset);
                 if (sharedCopy.isEmpty()) { // component.containsAll(shared)
-                    componentBitSet.andNot(shared); // remove shared
-                    componentBitSet.set(planIdx);   // add the plan
+                    componentBitset.andNot(shared); // remove shared
+                    componentBitset.set(planIdx);   // add the plan
                 }
             }
         }

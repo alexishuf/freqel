@@ -1,37 +1,32 @@
 package br.ufsc.lapesd.riefederator.util.indexed.subset;
 
+import br.ufsc.lapesd.riefederator.util.Bitset;
+import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.NotInParentException;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.BitSet;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
-public class BitSetOps {
-    public static @Nullable BitSet getBitSet(@Nonnull List<?> parent, @Nonnull Collection<?> c) {
+public class BitsetOps {
+    public static @Nullable Bitset getBitset(@Nonnull List<?> parent, @Nonnull Collection<?> c) {
         if (c instanceof IndexSubset) {
             IndexSubset<?> ss = (IndexSubset<?>) c;
             if (ss.getParent() == parent)
-                return ss.getBitSet();
+                return ss.getBitset();
         }
         return null;
     }
 
-    public static boolean containsAll(@Nonnull BitSet left, @Nonnull BitSet right) {
-        BitSet tmp = (BitSet) right.clone();
-        tmp.andNot(left);
-        return tmp.isEmpty();
-    }
-
-    public static @Nonnull BitSet intersect(@Nonnull List<?> parent, @Nonnull BitSet result,
+    public static @Nonnull Bitset intersect(@Nonnull List<?> parent, @Nonnull Bitset result,
                                             @Nonnull Collection<?> other) {
-        BitSet bs = getBitSet(parent, other);
+        Bitset bs = getBitset(parent, other);
         if (bs == null) {
-            bs = new BitSet(result.size());
+            bs = Bitsets.createFixed(result.size());
             for (Object o : other) {
                 int idx = parent.indexOf(o);
                 if (idx >= 0)
@@ -42,7 +37,7 @@ public class BitSetOps {
         return result;
     }
 
-    public static @Nonnull <U> BitSet intersect(@Nonnull List<?> parent, @Nonnull BitSet result,
+    public static @Nonnull <U> Bitset intersect(@Nonnull List<?> parent, @Nonnull Bitset result,
                                                 @Nonnull U value) {
         int idx = parent.indexOf(value);
         boolean had = idx >= 0 && result.get(idx);
@@ -51,9 +46,9 @@ public class BitSetOps {
         return result;
     }
 
-    public static @Nonnull <T> BitSet union(@Nonnull IndexSet<? super T> parent, @Nonnull BitSet result,
+    public static @Nonnull <T> Bitset union(@Nonnull IndexSet<? super T> parent, @Nonnull Bitset result,
                                         @Nonnull Collection<? extends T> other) {
-        BitSet bs = getBitSet(parent, other);
+        Bitset bs = getBitset(parent, other);
         if (bs != null) {
             result.or(bs);
         } else {
@@ -63,28 +58,28 @@ public class BitSetOps {
         return result;
     }
 
-    public static @Nonnull <T> BitSet subset(@Nonnull IndexSet<? super T> index,
+    public static @Nonnull <T> Bitset subset(@Nonnull IndexSet<? super T> index,
                                              @Nonnull IndexSubset<? super T> subset,
-                                             @Nonnull BitSet bits,
+                                             @Nonnull Bitset bits,
                                              @Nonnull Collection<T> collection) {
-        BitSet result = new BitSet(index.size());
+        Bitset result = Bitsets.create(index.size());
         for (T value : collection)
             addToSubset(index, subset, bits, result, value);
         return result;
     }
 
-    public static @Nonnull <T> BitSet subset(@Nonnull IndexSet<? super T> index,
+    public static @Nonnull <T> Bitset subset(@Nonnull IndexSet<? super T> index,
                                              @Nonnull IndexSubset<? super T> subset,
-                                             @Nonnull BitSet bits,
+                                             @Nonnull Bitset bits,
                                              @Nonnull T value) {
-        BitSet result = new BitSet(index.size());
+        Bitset result = Bitsets.create(index.size());
         addToSubset(index, subset, bits, result, value);
         return result;
     }
 
     private static <T> void addToSubset(@Nonnull IndexSet<? super T> index,
                                         @Nonnull IndexSubset<? super T> subset,
-                                        @Nonnull BitSet bits, @Nonnull BitSet result,
+                                        @Nonnull Bitset bits, @Nonnull Bitset result,
                                         @Nonnull T value) {
         int i = index.indexOf(value);
         if (i >= 0) {
@@ -97,21 +92,21 @@ public class BitSetOps {
         }
     }
 
-    public static @Nonnull <T> BitSet subsetExpanding(@Nonnull IndexSet<? super T> parent,
+    public static @Nonnull <T> Bitset subsetExpanding(@Nonnull IndexSet<? super T> parent,
                                                       @Nonnull Collection<T> values) {
         if (values.isEmpty())
-            return new BitSet();
-        BitSet bs = getBitSet(parent, values);
+            return Bitsets.create(0);
+        Bitset bs = getBitset(parent, values);
         if (bs != null)
-            return (BitSet) bs.clone();
-        BitSet result = new BitSet(parent.size() + values.size());
+            return bs.copy();
+        Bitset result = Bitsets.create(parent.size() + values.size());
         for (T v : values)
             result.set(parent.safeAdd(v));
         return result;
     }
 
-    public static @Nonnull <T> BitSet union(@Nonnull List<? extends T> parent,
-                                            @Nonnull BitSet result,
+    public static @Nonnull <T> Bitset union(@Nonnull List<? extends T> parent,
+                                            @Nonnull Bitset result,
                                             @Nonnull Predicate<? super T> predicate) {
         int i = 0;
         for (T o : parent) {
@@ -122,14 +117,14 @@ public class BitSetOps {
         return result;
     }
 
-    public static @Nonnull <T> BitSet union(@Nonnull IndexSet<? super T> parent,
-                                            @Nonnull BitSet result, @Nonnull T value) {
+    public static @Nonnull <T> Bitset union(@Nonnull IndexSet<? super T> parent,
+                                            @Nonnull Bitset result, @Nonnull T value) {
         setBitChecked(parent, result, value);
         return result;
     }
 
     private static <T> void setBitChecked(@Nonnull IndexSet<? super T> parent,
-                                          @Nonnull BitSet result, @Nonnull T value) {
+                                          @Nonnull Bitset result, @Nonnull T value) {
         int idx = parent.indexOf(value);
         if (idx >= 0)
             result.set(idx);
@@ -137,15 +132,15 @@ public class BitSetOps {
             throw new NotInParentException(value, parent);
     }
 
-    public static @Nonnull BitSet complement(@Nonnull List<?> parent, @Nonnull BitSet result) {
+    public static @Nonnull Bitset complement(@Nonnull List<?> parent, @Nonnull Bitset result) {
         result.flip(0, parent.size());
         return result;
     }
 
-    public static @Nonnull <T> BitSet symDiff(@Nonnull IndexSet<? super T> parent,
-                                              @Nonnull BitSet result,
+    public static @Nonnull <T> Bitset symDiff(@Nonnull IndexSet<? super T> parent,
+                                              @Nonnull Bitset result,
                                               @Nonnull Collection<? extends T> other) {
-        BitSet bs = getBitSet(parent, other);
+        Bitset bs = getBitset(parent, other);
         if (bs != null) {
             result.xor(bs);
         } else if (result.isEmpty()) {
@@ -161,9 +156,9 @@ public class BitSetOps {
         return result;
     }
 
-    public static @Nonnull BitSet subtract(@Nonnull List<?> parent, @Nonnull BitSet result,
+    public static @Nonnull Bitset subtract(@Nonnull List<?> parent, @Nonnull Bitset result,
                                            @Nonnull Collection<?> other) {
-        BitSet bs = getBitSet(parent, other);
+        Bitset bs = getBitset(parent, other);
         if (bs != null) {
             result.andNot(bs);
         } else if (result.isEmpty() || other.isEmpty()) {
@@ -174,7 +169,7 @@ public class BitSetOps {
                     result.clear(i);
             }
         } else {
-            bs = new BitSet();
+            bs = Bitsets.createFixed(parent.size());
             for (Object v : other) {
                 int idx = parent.indexOf(v);
                 if (idx >= 0)
@@ -185,8 +180,8 @@ public class BitSetOps {
         return result;
     }
 
-    public static @Nonnull <T> BitSet subtract(@Nonnull List<? extends T> parent,
-                                               @Nonnull BitSet result, @Nonnull Predicate<T> p) {
+    public static @Nonnull <T> Bitset subtract(@Nonnull List<? extends T> parent,
+                                               @Nonnull Bitset result, @Nonnull Predicate<T> p) {
         for (int i = result.nextSetBit(0); i >= 0; i = result.nextSetBit(i+1)) {
             if (p.test(parent.get(i)))
                 result.clear(i);
