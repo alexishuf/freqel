@@ -29,6 +29,9 @@ import com.google.inject.multibindings.Multibinder;
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import java.util.Collections;
+
+import static java.util.Arrays.asList;
 
 public class SimpleFederationModule extends SimpleExecutionModule {
     private int estimatePolicy = EstimatePolicy.local(100);
@@ -90,13 +93,11 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         @Override
         public @Nonnull PrePlanner get() {
             return new PhasedPrePlanner(performanceListener)
-                    .appendPhase1(new FlattenStep())
-                    .appendPhase1(new CartesianIntroductionStep())
-                    .appendPhase1(new FlattenStep())
-                    .appendPhase2(new UnionDistributionStep())
-                    .appendPhase2(new CartesianDistributionStep())
-                    .appendPhase3(new FlattenStep())
-                    .appendPhase3(new PushFiltersStep());
+                    .addShallowPhase(asList(new FlattenStep(),
+                                            new CartesianIntroductionStep(),
+                                            new UnionDistributionStep(),
+                                            new CartesianDistributionStep()))
+                    .addDeepPhase(Collections.singletonList(new PushFiltersStep()));
         }
     }
 
@@ -117,13 +118,17 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         @Override
         public @Nonnull PostPlanner get() {
             return new PhasedPostPlanner(performanceListener)
-                    .appendPhase1(new ConjunctionReplaceStep(joinOrderPlanner))
-                    .appendPhase1(new FlattenStep())
-                    .appendPhase1(new FilterToBindJoinStep(filterJoinPlanner))
-                    .appendPhase1(new PushDistinctStep())
-                    .appendPhase1(new PushLimitStep())
-                    .appendPhase1(new PipeCleanerStep())
-                    .appendPhase1(new EndpointPushStep());
+                    .addDeepPhase(asList(
+                            // this first step can be run on shallow mode, but would be the
+                            // only step. Thus, it is simpler to run in the deep phase
+                            new ConjunctionReplaceStep(joinOrderPlanner),
+                            new FilterToBindJoinStep(filterJoinPlanner),
+                            new PushDistinctStep(),
+                            new PushLimitStep(),
+                            new PipeCleanerStep(),
+                            new EndpointPushStep()
+                    ));
+
         }
     }
 

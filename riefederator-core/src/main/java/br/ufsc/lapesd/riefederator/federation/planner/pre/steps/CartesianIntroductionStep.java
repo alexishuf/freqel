@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerShallowStep;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
@@ -28,27 +29,40 @@ import java.util.ListIterator;
 
 import static br.ufsc.lapesd.riefederator.util.CollectionUtils.hasIntersect;
 
-public class CartesianIntroductionStep implements PlannerStep {
+public class CartesianIntroductionStep implements PlannerStep, PlannerShallowStep {
     private static final Logger logger = LoggerFactory.getLogger(CartesianIntroductionStep.class);
 
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> locked) {
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> shared) {
         if (root instanceof InnerOp) {
             try (TakenChildren children = ((InnerOp) root).takeChildren().setNoContentChange()) {
                 for (ListIterator<Op> it = children.listIterator(); it.hasNext(); )
-                    it.set(plan(it.next(), locked));
+                    it.set(plan(it.next(), shared));
             }
             return root;
         } else if (root instanceof QueryOp) {
             Op replacement = handleCartesian((QueryOp) root);
-            if (replacement != root && locked.contains(root)) {
+            if (replacement != root && shared.contains(root)) {
                 logger.warn("Replaced join-disconnected locked QueryOp {} with a CartesianOp " +
                             "which was added to the locked set", root);
-                locked.add(replacement);
+                shared.add(replacement);
             }
             return replacement;
         }
         return root;
+    }
+
+    @Override public @Nonnull Op visit(@Nonnull Op op, @Nonnull RefSet<Op> shared) {
+        if (op instanceof QueryOp) {
+            Op replacement = handleCartesian((QueryOp) op);
+            if (replacement != op && shared.contains(op)) {
+                logger.warn("Replaced join-disconnected locked QueryOp {} with a CartesianOp " +
+                            "which was added to the locked set", op);
+                shared.add(replacement);
+            }
+            return replacement;
+        }
+        return op; // no change
     }
 
     @Override

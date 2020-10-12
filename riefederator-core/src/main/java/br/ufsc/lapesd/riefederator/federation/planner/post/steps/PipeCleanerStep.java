@@ -19,17 +19,17 @@ public class PipeCleanerStep implements PlannerStep {
      * with the node directly
      *
      * @param root the input plan (or query)
-     * @param locked a set of nodes (by reference) that should not be replaced or altered beyond
+     * @param shared a set of nodes (by reference) that should not be replaced or altered beyond
      *               addition of modifiers.
      * @return root, unless it was a {@link PipeOp} removed
      */
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> locked) {
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> shared) {
         ListIdentityMultimap<Op, PipeOp> n2pipe = findPipes(root);
         if (n2pipe == null)
             return root; // no work
         removeKeysWithDistinctPipes(n2pipe);
-        removeLockedPipeOps(locked, n2pipe);
+        removeLockedPipeOps(shared, n2pipe);
         return TreeUtils.replaceNodes(root, null, o -> {
             if (!(o instanceof PipeOp)) return o;
             assert o.getChildren().size() == 1;

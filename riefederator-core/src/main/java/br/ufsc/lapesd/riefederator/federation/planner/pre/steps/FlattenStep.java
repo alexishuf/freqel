@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.PipeOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
+import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerShallowStep;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.UnsafeMergeException;
@@ -23,22 +24,22 @@ import java.util.Set;
 
 import static java.util.Collections.emptySet;
 
-public class FlattenStep implements PlannerStep {
+public class FlattenStep implements PlannerStep, PlannerShallowStep {
     private static Logger logger = LoggerFactory.getLogger(FlattenStep.class);
 
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> locked) {
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> shared) {
         if (!(root instanceof InnerOp)) return root;
         InnerOp io = (InnerOp) root;
-        boolean ioShared = locked.contains(io);
+        boolean ioShared = shared.contains(io);
         Set<String> resultVars = io.getResultVars();
         try (TakenChildren children = io.takeChildren().setNoContentChange()) {
             for (ListIterator<Op> it = children.listIterator(); it.hasNext(); )
-                it.set(plan(it.next(), locked));
+                it.set(plan(it.next(), shared));
             if (io instanceof ConjunctionOp || io instanceof CartesianOp || io instanceof UnionOp)
-                flattenSameClass(locked, io, children, resultVars);
+                flattenSameClass(shared, io, children, resultVars);
             if (io instanceof ConjunctionOp)
-                mergeQueryOps(locked, children);
+                mergeQueryOps(shared, children);
             if (!(io instanceof PipeOp) && children.size() == 1 && !ioShared)
                 return children.get(0); // replace conj(a) with a
         } finally {
@@ -47,20 +48,38 @@ public class FlattenStep implements PlannerStep {
         return io; //changed in-place
     }
 
-    public boolean isFlat(@Nonnull Op op, @Nonnull RefSet<Op> locked) {
+    @Override public @Nonnull Op visit(@Nonnull Op op, @Nonnull RefSet<Op> shared) {
+        if (!(op instanceof InnerOp)) return op;
+        InnerOp io = (InnerOp) op;
+        boolean ioShared = shared.contains(io);
+        Set<String> resultVars = io.getResultVars();
+        try (TakenChildren children = io.takeChildren().setNoContentChange()) {
+            if (io instanceof ConjunctionOp || io instanceof CartesianOp || io instanceof UnionOp)
+                flattenSameClass(shared, io, children, resultVars);
+            if (io instanceof ConjunctionOp)
+                mergeQueryOps(shared, children);
+            if (!(io instanceof PipeOp) && children.size() == 1 && !ioShared)
+                return children.get(0); // replace conj(a) with a
+        } finally {
+            assert io.assertTreeInvariants();
+        }
+        return io; //changed in-place
+    }
+
+    public boolean isFlat(@Nonnull Op op, @Nonnull RefSet<Op> shared) {
         List<Op> list = op.getChildren();
         if (op instanceof ConjunctionOp
                 && list.stream().anyMatch(c -> c instanceof ConjunctionOp
-                && !locked.contains(c))) {
+                && !shared.contains(c))) {
             return false;
         }
-        if (list.size() == 1 && !locked.contains(op))
+        if (list.size() == 1 && !shared.contains(op))
             return false; // tree should've been replaced with the single child
         if ((op instanceof CartesianOp || op instanceof ConjunctionOp)
                 && list.stream().filter(c -> c instanceof QueryOp
                 && c.modifiers().optional() == null
-                && !locked.contains(c)).count() > 1) {
-            return false; //all non-locked query nodes under ×, or . should've been merged
+                && !shared.contains(c)).count() > 1) {
+            return false; //all non-shared query nodes under ×, or . should've been merged
         }
         // check same-class nesting:
         if (op instanceof CartesianOp && list.stream().anyMatch(CartesianOp.class::isInstance))
@@ -69,7 +88,7 @@ public class FlattenStep implements PlannerStep {
             return false;
         if (op instanceof UnionOp && list.stream().anyMatch(UnionOp.class::isInstance))
             return false;
-        return list.stream().allMatch(c -> isFlat(c, locked)); //recurse
+        return list.stream().allMatch(c -> isFlat(c, shared)); //recurse
     }
 
     @Override public String toString() {
@@ -95,8 +114,10 @@ public class FlattenStep implements PlannerStep {
                         while (it.hasNext())
                             children.add(++i, it.next());
                         size += c.getChildren().size() - 1;
-                    } catch (UnsafeMergeException e) { }
-                } else {
+                    } catch (UnsafeMergeException e) {
+                        // c remains unchanged in the tree
+                    }
+                } else { // no children in Conj/Union/Cart
                     children.remove(i--);
                     --size;
                 }

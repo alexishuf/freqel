@@ -12,8 +12,8 @@ public interface PlannerShallowStep {
      * Mutate or replace a node, without applying this same step in the {@link Op} children.
      *
      * @param op {@link Op} to be modified
-     * @param locked Set of nodes that should not be mutated more than receiving new modifiers
+     * @param shared Set of nodes that should not be mutated more than receiving new modifiers
      * @return op or a replacement for it
      */
-    @Nonnull Op visit(@Nonnull Op op, @Nonnull RefSet<Op> locked);
+    @Nonnull Op visit(@Nonnull Op op, @Nonnull RefSet<Op> shared);
 }

@@ -1,10 +1,13 @@
 package br.ufsc.lapesd.riefederator.federation.planner.utils;
 
+import br.ufsc.lapesd.riefederator.algebra.InnerOp;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArrayJoinGraph;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinGraph;
+import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 
@@ -16,18 +19,34 @@ import java.util.List;
 
 public class StepUtils {
     public static @Nonnull Op planConjunction(@Nonnull Collection<Op> nodes,
+                                              @Nonnull ModifiersSet parentModifiers,
                                               @Nonnull JoinOrderPlanner joinOrderPlanner) {
         RefIndexSet<Op> set = RefIndexSet.fromRefDistinct(nodes);
         JoinGraph jg = new ArrayJoinGraph(set);
         IndexSubset<Op> visited = set.emptySubset();
         List<Op> trees = new ArrayList<>();
         ArrayDeque<Op> stack = new ArrayDeque<>();
+        boolean hasCartesian = false;
         for (Op core : set) {
-            if (!visited.contains(core))
-                trees.add(getJoinTree(core, jg, visited, stack, joinOrderPlanner));
+            if (!visited.contains(core)) {
+                Op tree = getJoinTree(core, jg, visited, stack, joinOrderPlanner);
+                hasCartesian |= tree instanceof CartesianOp;
+                trees.add(tree);
+            }
         }
         assert !trees.isEmpty();
-        return trees.size() == 1 ? trees.get(0) : new CartesianOp(trees);
+        if (trees.size() > 1 && hasCartesian) {
+            for (int i = 0, size = trees.size(); i < size; i++) {
+                Op tree = trees.get(i);
+                if (tree instanceof CartesianOp && tree.modifiers().optional() == null) {
+                    trees.remove(i--);
+                    trees.addAll(((InnerOp) tree).takeChildren());
+                }
+            }
+        }
+        Op root = trees.size() == 1 ? trees.get(0) : new CartesianOp(trees);
+        TreeUtils.copyNonFilter(root, parentModifiers);
+        return root;
     }
 
     private static @Nonnull Op getJoinTree(@Nonnull Op core, @Nonnull JoinGraph jg,

@@ -18,11 +18,11 @@ import static br.ufsc.lapesd.riefederator.util.CollectionUtils.hasIntersect;
 public class UnionDistributionStep extends AbstractDistributionStep {
 
     @Override
-    public @Nonnull Op visit(@Nonnull Op parent, @Nonnull RefSet<Op> locked) {
+    public @Nonnull Op visit(@Nonnull Op parent, @Nonnull RefSet<Op> shared) {
         if (!(parent instanceof ConjunctionOp))
             return parent;
         // C(U(a{x}, b{x,y}, c{y}), P(d, e), f) --> C(U(af, bf, c), P(d, e))
-        QueryOp outerQueryOp = getQuery(parent, locked);
+        QueryOp outerQueryOp = getQuery(parent, shared);
         if (outerQueryOp == null) return parent; // no op to push into union
         MutableCQuery outerQuery = outerQueryOp.getQuery();
         Set<String> outerVars = outerQueryOp.getResultVars();
@@ -36,7 +36,7 @@ public class UnionDistributionStep extends AbstractDistributionStep {
                     if (hasIntersect(grandChild.getResultVars(), outerVars)) {
                         if (!(grandChild instanceof QueryOp)
                                 || !((QueryOp) grandChild).getQuery().canMergeWith(outerQuery)
-                                || locked.contains(grandChild)) {
+                                || shared.contains(grandChild)) {
                             return parent; //there is a inner node to which we cannot merge, abort
                         }
                         matches.add(grandChild);

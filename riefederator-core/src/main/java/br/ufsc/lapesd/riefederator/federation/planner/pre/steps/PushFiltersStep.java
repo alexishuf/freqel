@@ -26,24 +26,24 @@ public class PushFiltersStep implements PlannerStep {
      * is found on an UnionOp).
      *
      * @param root the input plan (or query)
-     * @param locked a set of nodes (by reference) that should not be replaced or altered beyond
+     * @param shared a set of nodes (by reference) that should not be replaced or altered beyond
      *               addition of modifiers.
      * @return a replacement node for root or root itself if it could be modified in-place
      */
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> locked) {
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> shared) {
         RefSet<Op> visited = null;
         ArrayDeque<ImmutablePair<Op, Integer>> stack = new ArrayDeque<>();
         stack.push(ImmutablePair.of(root, 0));
         while (!stack.isEmpty()) {
             ImmutablePair<Op, Integer> pair = stack.pop();
             if (pair.right == 1) {
-                pushFilters(locked, pair.left);
+                pushFilters(shared, pair.left);
             } else {
                 assert pair.right == 0;
-                if (locked.contains(pair.left)) {
+                if (shared.contains(pair.left)) {
                     if (visited == null)
-                        visited = new IdentityHashSet<>(locked.size());
+                        visited = new IdentityHashSet<>(shared.size());
                     if (!visited.add(pair.left))
                         continue;
                 }

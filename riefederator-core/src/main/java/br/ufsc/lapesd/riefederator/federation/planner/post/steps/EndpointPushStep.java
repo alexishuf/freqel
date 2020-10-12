@@ -17,7 +17,7 @@ import java.util.List;
 
 public class EndpointPushStep implements PlannerStep {
     @Override
-    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> ignored) {
+    public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> shared) {
         if (isTrivial(root))
             return root;
         Visitor.Result result = new Visitor().visit(root);

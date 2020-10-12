@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.planner.post;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
@@ -8,9 +9,11 @@ import br.ufsc.lapesd.riefederator.federation.planner.PostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.AbstractPhasedPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerShallowStep;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
+import java.util.List;
 
 public class PhasedPostPlanner extends AbstractPhasedPlanner implements PostPlanner {
     private final @Nonnull PerformanceListener performance;
@@ -20,16 +23,17 @@ public class PhasedPostPlanner extends AbstractPhasedPlanner implements PostPlan
         this.performance = performance;
     }
 
-    public @Nonnull PhasedPostPlanner appendPhase1(@Nonnull PlannerStep step) {
-        return (PhasedPostPlanner)super.appendPhase1(step);
+    @Override public @Nonnull PhasedPostPlanner addDeepPhase(@Nonnull List<PlannerStep> steps) {
+        return (PhasedPostPlanner) super.addDeepPhase(steps);
     }
 
-    public @Nonnull PhasedPostPlanner appendPhase2(@Nonnull PlannerShallowStep step) {
-        return (PhasedPostPlanner)super.appendPhase2(step);
+    @Override
+    public @Nonnull PhasedPostPlanner addShallowPhase(@Nonnull List<PlannerShallowStep> steps) {
+        return (PhasedPostPlanner) super.addShallowPhase(steps);
     }
 
-    public @Nonnull PhasedPostPlanner appendPhase3(@Nonnull PlannerStep step) {
-        return (PhasedPostPlanner)super.appendPhase3(step);
+    @Override protected @Nonnull RefSet<Op> getShared(@Nonnull Op tree) {
+        return TreeUtils.findSharedNodes(tree);
     }
 
     @Override

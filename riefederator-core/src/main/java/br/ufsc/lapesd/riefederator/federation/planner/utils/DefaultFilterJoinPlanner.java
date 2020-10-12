@@ -133,9 +133,8 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
             BitSet node2component = assignFilters();
             assert !node2component.isEmpty();
             pushDownFilters(node2component);
-            Op root = StepUtils.planConjunction(nodes, joinOrderPlanner);
+            Op root = StepUtils.planConjunction(nodes, parent.modifiers(), joinOrderPlanner);
             addOrphans(root);
-            TreeUtils.copyNonFilter(root, parent.modifiers());
             return root;
         }
 

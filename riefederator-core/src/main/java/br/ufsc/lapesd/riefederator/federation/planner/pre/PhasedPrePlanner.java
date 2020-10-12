@@ -8,9 +8,12 @@ import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.AbstractPhasedPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerShallowStep;
 import br.ufsc.lapesd.riefederator.federation.planner.phased.PlannerStep;
+import br.ufsc.lapesd.riefederator.util.ref.EmptyRefSet;
+import br.ufsc.lapesd.riefederator.util.ref.RefSet;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
+import java.util.List;
 
 public class PhasedPrePlanner extends AbstractPhasedPlanner implements PrePlanner {
     private final @Nonnull PerformanceListener performance;
@@ -20,16 +23,17 @@ public class PhasedPrePlanner extends AbstractPhasedPlanner implements PrePlanne
         this.performance = performance;
     }
 
-    public @Nonnull PhasedPrePlanner appendPhase1(@Nonnull PlannerStep step) {
-        return (PhasedPrePlanner)super.appendPhase1(step);
+    @Override public @Nonnull PhasedPrePlanner addDeepPhase(@Nonnull List<PlannerStep> steps) {
+        return (PhasedPrePlanner)super.addDeepPhase(steps);
     }
 
-    public @Nonnull PhasedPrePlanner appendPhase2(@Nonnull PlannerShallowStep step) {
-        return (PhasedPrePlanner)super.appendPhase2(step);
+    @Override
+    public @Nonnull PhasedPrePlanner addShallowPhase(@Nonnull List<PlannerShallowStep> steps) {
+        return (PhasedPrePlanner)super.addShallowPhase(steps);
     }
 
-    public @Nonnull PhasedPrePlanner appendPhase3(@Nonnull PlannerStep step) {
-        return (PhasedPrePlanner)super.appendPhase3(step);
+    @Override protected @Nonnull RefSet<Op> getShared(@Nonnull Op tree) {
+        return EmptyRefSet.emptySet();
     }
 
     @Override
