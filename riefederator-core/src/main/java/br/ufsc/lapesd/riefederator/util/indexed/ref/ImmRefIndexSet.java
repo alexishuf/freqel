@@ -14,7 +14,7 @@ public class ImmRefIndexSet<T> extends RefIndexSet<T> implements ImmIndexSet<T> 
         super(indexMap, data);
     }
 
-    @Override public @Nonnull ImmIndexSet<T> asImmutable() {
+    @Override public @Nonnull ImmRefIndexSet<T> asImmutable() {
         return this;
     }
 

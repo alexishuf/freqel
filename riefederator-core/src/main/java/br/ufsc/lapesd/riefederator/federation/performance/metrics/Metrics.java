@@ -86,7 +86,7 @@ public class Metrics {
 
     /**
      * Time within EXEC_MS until the first result is received by the outer iterator
-     * returned by {@link Federation#execute(CQuery, Op)}
+     * returned by {@link Federation#execute(Op)}
      *
      * This metric is measured in milliseconds and is contained by {@link Metrics#EXEC_MS}.
      */

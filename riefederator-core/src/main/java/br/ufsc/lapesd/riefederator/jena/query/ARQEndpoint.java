@@ -140,6 +140,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements DQEndpoint {
         switch (capability) {
             case PROJECTION:
             case DISTINCT:
+            case CARTESIAN:
             case LIMIT:
             case SPARQL_FILTER:
             case VALUES:

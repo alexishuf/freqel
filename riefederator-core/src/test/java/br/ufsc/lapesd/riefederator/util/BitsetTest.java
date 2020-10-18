@@ -71,6 +71,19 @@ public class BitsetTest {
         assertEquals(actual.cardinality(), expected.cardinality());
         for (int i = 0, end = Math.max(actual.size(), expected.size()); i < end; i++)
             assertEquals(actual.get(i), expected.get(i), "i="+i);
+
+    }
+
+    private void checkEquals(@Nonnull Bitset actual, @Nonnull BitSet expected,
+                             @Nonnull String context) {
+        String acStr = actual.toString(), exStr = expected.toString();
+        for (int i = 0, end = Math.max(actual.size(), expected.size()); i < end; i++) {
+            assertEquals(actual.get(i), expected.get(i), "i="+i+", context: "+context+
+                    "\nactual  :"+acStr+
+                    "\nexpected:"+exStr);
+        }
+        assertEquals(actual.length(), expected.length(), context);
+        assertEquals(actual.cardinality(), expected.cardinality(), context);
     }
 
     private void runGetSetFlip(@Nonnull Bitset actual, @Nonnull BitSet expected, int size) {
@@ -387,4 +400,99 @@ public class BitsetTest {
         assertEquals(a.nextClearBit(size), size);
     }
 
+    interface FragmentBinaryMutator {
+        void mutate(@Nonnull Bitset l, @Nonnull Bitset r, int lStart, int rStart, int bits);
+    }
+
+    @DataProvider public @Nonnull Object[][] fragmentBinaryMutationData() {
+        return Stream.of(
+                asList(new FragmentBinaryMutator() {
+                    @Override
+                    public void mutate(@Nonnull Bitset l, @Nonnull Bitset r,
+                                       int lStart, int rStart, int bits) {
+                        l.and(lStart, r, rStart, bits);
+                    }
+                }, (BiFunction<Boolean, Boolean, Boolean>)(l, r) -> l && r),
+
+                asList(new FragmentBinaryMutator() {
+                    @Override
+                    public void mutate(@Nonnull Bitset l, @Nonnull Bitset r,
+                                       int lStart, int rStart, int bits) {
+                        l.assign(lStart, r, rStart, bits);
+                    }
+                }, (BiFunction<Boolean, Boolean, Boolean>)(l, r) -> r),
+
+                asList(new FragmentBinaryMutator() {
+                    @Override
+                    public void mutate(@Nonnull Bitset l, @Nonnull Bitset r,
+                                       int lStart, int rStart, int bits) {
+                        l.or(lStart, r, rStart, bits);
+                    }
+                }, (BiFunction<Boolean, Boolean, Boolean>)(l, r) -> l || r),
+
+                asList(new FragmentBinaryMutator() {
+                    @Override
+                    public void mutate(@Nonnull Bitset l, @Nonnull Bitset r,
+                                       int lStart, int rStart, int bits) {
+                        l.xor(lStart, r, rStart, bits);
+                    }
+                }, (BiFunction<Boolean, Boolean, Boolean>)(l, r) -> l ^ r),
+
+                asList(new FragmentBinaryMutator() {
+                    @Override
+                    public void mutate(@Nonnull Bitset l, @Nonnull Bitset r,
+                                       int lStart, int rStart, int bits) {
+                        l.andNot(lStart, r, rStart, bits);
+                    }
+                }, (BiFunction<Boolean, Boolean, Boolean>)(l, r) -> l && !r)
+        ).flatMap(base -> Arrays.stream(factoriesAndSizeData()).map(array -> {
+            Object[] row = Arrays.copyOf(array, array.length + 2);
+            row[array.length  ] = base.get(0);
+            row[array.length+1] = base.get(1);
+            return row;
+        })).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "fragmentBinaryMutationData")
+    public void testFragmentBinaryMutation(Factory f, int size,
+                                                  FragmentBinaryMutator mutator,
+                                                  BiFunction<Boolean, Boolean, Boolean> booleanOp) {
+        BitSet jLeft = new BitSet(), jRight = new BitSet();
+        for (int i = 0; i < size+4; i += 4) {    // Generate this repeating pattern:
+            if (i+2 < size) jLeft .set(i+2);     // 0 0 1 1 (left)
+            if (i+3 < size) jLeft .set(i+3);
+            if (i+1 < size) jRight.set(i+1);     // 0 1 0 1 (right)
+            if (i+3 < size) jRight.set(i+3);
+        }
+        for (int lBegin = 0; lBegin < size - 1; lBegin++) {
+            for (int lEnd : asList(lBegin+1, lBegin+2, lBegin+3, lBegin+4, size)) {
+                if (lEnd > size)
+                    continue;
+                int bits = lEnd - lBegin;
+                if (lBegin + bits > f.sizeLimit())
+                    continue;
+                for (int rBegin : asList(0, 1, size - bits)) {
+                    if (rBegin + bits > f.sizeLimit())
+                        continue;
+                    Bitset left = f.fromJava(jLeft, size);
+                    Bitset right = f.fromJava(jRight, size);
+                    Bitset ac1 = left.copy(), ac2 = right.copy();
+                    mutator.mutate(ac1, right, lBegin, rBegin, bits);
+                    mutator.mutate(ac2, left, rBegin, lBegin, bits);
+
+                    BitSet ex1 = (BitSet) jLeft.clone();
+                    BitSet ex2 = (BitSet) jRight.clone();
+                    for (int i = lBegin; i < lEnd; i++)
+                        ex1.set(i, booleanOp.apply(jLeft.get(i), jRight.get(rBegin+i-lBegin)));
+                    for (int i = rBegin; i < rBegin + bits; i++)
+                        ex2.set(i, booleanOp.apply(jRight.get(i), jLeft.get(lBegin+i-rBegin)));
+
+                    String context = String.format("lBegin=%d, lEnd=%d, rBegin=%d, size=%d",
+                                                   lBegin, lEnd, rBegin, size);
+                    checkEquals(ac1, ex1, context);
+                    checkEquals(ac2, ex2, context);
+                }
+            }
+        }
+    }
 }

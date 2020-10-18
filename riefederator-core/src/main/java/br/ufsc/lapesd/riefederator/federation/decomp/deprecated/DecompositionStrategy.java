@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.decomp;
+package br.ufsc.lapesd.riefederator.federation.decomp.deprecated;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.Source;

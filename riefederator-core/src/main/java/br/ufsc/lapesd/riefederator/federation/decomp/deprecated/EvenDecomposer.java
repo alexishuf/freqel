@@ -1,9 +1,10 @@
-package br.ufsc.lapesd.riefederator.federation.decomp;
+package br.ufsc.lapesd.riefederator.federation.decomp.deprecated;
 
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
+import br.ufsc.lapesd.riefederator.federation.decomp.ProtoQueryOp;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;

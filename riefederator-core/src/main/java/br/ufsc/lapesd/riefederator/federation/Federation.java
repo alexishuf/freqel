@@ -8,7 +8,7 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
-import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
+import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;

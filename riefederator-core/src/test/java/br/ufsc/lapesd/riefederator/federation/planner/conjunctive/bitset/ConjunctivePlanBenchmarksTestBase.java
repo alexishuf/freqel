@@ -8,8 +8,8 @@ import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
+import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.DecompositionStrategy;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
@@ -36,7 +36,8 @@ import java.util.stream.Collectors;
 public abstract class ConjunctivePlanBenchmarksTestBase {
     private Injector defInjector = Guice.createInjector(new SimpleFederationModule());
 
-    private @Nonnull List<Source> largeRDFBenchSources() throws IOException {
+    @Test(enabled = false)
+    public static @Nonnull List<Source> largeRDFBenchSources() throws IOException {
         List<Source> list = new ArrayList<>();
         for (String filename : LargeRDFBenchSelfTest.DATA_FILENAMES) {
             ARQEndpoint ep = ARQEndpoint.forModel(LargeRDFBenchSelfTest.loadData(filename));
@@ -45,7 +46,8 @@ public abstract class ConjunctivePlanBenchmarksTestBase {
         return list;
     }
 
-    private @Nonnull List<Source> bsbmSources() throws IOException {
+    @Test(enabled = false)
+    public static @Nonnull List<Source> bsbmSources() throws IOException {
         ArrayList<Source> list = new ArrayList<>();
         for (String filename : BSBMSelfTest.DATA_FILENAMES) {
             ARQEndpoint ep = ARQEndpoint.forModel(BSBMSelfTest.loadData(filename));

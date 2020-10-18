@@ -179,6 +179,36 @@ public class BitSetDelegate extends AbstractBitset {
         delegate.or(BitSet.valueOf(mine));
     }
 
+    @Override public void and(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        ArrayBitset tmp = new ArrayBitset(toLongArray());
+        tmp.and(startBit, other, otherStartBit, bits);
+        assign(tmp);
+    }
+
+    @Override public void assign(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        ArrayBitset tmp = new ArrayBitset(toLongArray());
+        tmp.assign(startBit, other, otherStartBit, bits);
+        assign(tmp);
+    }
+
+    @Override public void or(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        ArrayBitset tmp = new ArrayBitset(toLongArray());
+        tmp.or(startBit, other, otherStartBit, bits);
+        assign(tmp);
+    }
+
+    @Override public void xor(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        ArrayBitset tmp = new ArrayBitset(toLongArray());
+        tmp.xor(startBit, other, otherStartBit, bits);
+        assign(tmp);
+    }
+
+    @Override public void andNot(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        ArrayBitset tmp = new ArrayBitset(toLongArray());
+        tmp.andNot(startBit, other, otherStartBit, bits);
+        assign(tmp);
+    }
+
     @Override public @Nonnull Bitset copy() {
         return new BitSetDelegate(toBitSet());
     }

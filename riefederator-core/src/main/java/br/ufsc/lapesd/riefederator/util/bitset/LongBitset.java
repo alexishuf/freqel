@@ -175,6 +175,50 @@ public class LongBitset extends AbstractBitset {
         value &= ~other.word(0);
     }
 
+    private long getOperand(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        assert bits <= 64;
+        assert startBit+bits <= 64;
+
+        int i = otherStartBit >> 6;
+        int opBits = Math.min(bits, Math.min((otherStartBit & ~0x3f) +64 - otherStartBit,
+                                             (startBit      & ~0x3f) +64 - startBit   ));
+        long op = (other.word(i) >>> otherStartBit);
+        if (opBits < 64)
+            op &= ~(ALL_BITS << opBits);
+        bits -= opBits;
+        if (bits > 0)
+            op |= (other.word(i+1) & (ALL_BITS << bits)) << opBits;
+        return op << startBit;
+    }
+
+    @Override public void or(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        if (startBit+bits > 64) throw new IndexOutOfBoundsException("Cannot write past bit 64");
+        value |= getOperand(startBit, other, otherStartBit, bits);
+    }
+
+    @Override public void and(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        if (startBit+bits > 64) throw new IndexOutOfBoundsException("Cannot write past bit 64");
+        long op = getOperand(startBit, other, otherStartBit, bits);
+        op |= ~((ALL_BITS << startBit) & (ALL_BITS >>> -(startBit+bits)));
+        value &= op;
+    }
+
+    @Override public void assign(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        if (startBit+bits > 64) throw new IndexOutOfBoundsException("Cannot write past bit 64");
+        value &= ~( (ALL_BITS << startBit) & (ALL_BITS >>> -(startBit+bits)) );
+        value |= getOperand(startBit, other, otherStartBit, bits);
+    }
+
+    @Override public void xor(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        if (startBit+bits > 64) throw new IndexOutOfBoundsException("Cannot write past bit 64");
+        value ^= getOperand(startBit, other, otherStartBit, bits);
+    }
+
+    @Override public void andNot(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        if (startBit+bits > 64) throw new IndexOutOfBoundsException("Cannot write past bit 64");
+        value &= ~getOperand(startBit, other, otherStartBit, bits);
+    }
+
     @Override public @Nonnull Bitset copy() {
         return new LongBitset(value);
     }

@@ -448,6 +448,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
     public boolean hasCapability(@Nonnull Capability capability) {
         switch (capability) {
             case ASK:
+            case CARTESIAN:
             case SPARQL_FILTER:
                 return true;
             default:

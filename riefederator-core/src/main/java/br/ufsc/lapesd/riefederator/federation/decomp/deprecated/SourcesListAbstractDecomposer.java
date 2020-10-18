@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.riefederator.federation.decomp;
+package br.ufsc.lapesd.riefederator.federation.decomp.deprecated;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
@@ -6,6 +6,8 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.Source;
+import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
+import br.ufsc.lapesd.riefederator.federation.decomp.ProtoQueryOp;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;

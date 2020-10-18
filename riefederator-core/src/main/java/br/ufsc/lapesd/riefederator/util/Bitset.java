@@ -39,6 +39,12 @@ public interface Bitset {
     void xor(@Nonnull Bitset other);
     void andNot(@Nonnull Bitset other);
 
+    void and(int startBit, @Nonnull Bitset other, int otherStartBit, int bits);
+    void assign(int startBit, @Nonnull Bitset other, int otherStartBit, int bits);
+    void or(int startBit, @Nonnull Bitset other, int otherStartBit, int bits);
+    void xor(int startBit, @Nonnull Bitset other, int otherStartBit, int bits);
+    void andNot(int startBit, @Nonnull Bitset other, int otherStartBit, int bits);
+
     @Nonnull Bitset copy();
     @Nonnull BitSet toBitSet();
     @Nonnull long[] toLongArray();

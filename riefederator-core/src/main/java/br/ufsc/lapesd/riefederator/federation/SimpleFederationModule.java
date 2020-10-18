@@ -8,8 +8,8 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.BindJoinCardinali
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.LimitCardinalityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
-import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
-import br.ufsc.lapesd.riefederator.federation.decomp.StandardDecomposer;
+import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.DecompositionStrategy;
+import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.StandardDecomposer;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;

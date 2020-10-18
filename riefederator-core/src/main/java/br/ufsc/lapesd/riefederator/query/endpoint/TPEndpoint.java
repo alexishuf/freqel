@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.OverrideAnnotation;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
@@ -117,6 +118,13 @@ public interface TPEndpoint extends AutoCloseable {
      * remote source.
      */
     boolean hasRemoteCapability(@Nonnull Capability capability);
+
+    /**
+     * There are two possibilities of binding a query in a bind join: replacing join variables or
+     * annotating the join variables with an {@link OverrideAnnotation}. This method returns true
+     * iff the endpoint requires the annotation method to be used.
+     */
+    boolean requiresBindWithOverride();
 
     /**
      * Some endpoint implementations may hold resources that should be released once the

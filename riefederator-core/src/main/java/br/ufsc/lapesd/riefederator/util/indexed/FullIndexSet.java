@@ -19,6 +19,8 @@ public class FullIndexSet<T> extends BaseIndexSet<T> {
 
     protected static @Nonnull <U> Map<U, Integer>
     createIndexMap(@Nonnull Collection<U> list) {
+        if (list instanceof BaseIndexSet)
+            return new HashMap<>(((BaseIndexSet<U>) list).indexMap);
         HashMap<U, Integer> map = Maps.newHashMapWithExpectedSize(list.size());
         int idx = 0;
         for (U obj : list)
@@ -45,7 +47,7 @@ public class FullIndexSet<T> extends BaseIndexSet<T> {
 
     public static @Nonnull <U> IndexSet<U> fromDistinct(@Nonnull Iterator<U> it) {
         if (!it.hasNext())
-            return ImmFullIndexSet.empty();
+            return new FullIndexSet<>(0);
         ArrayList<U> list = new ArrayList<>();
         it.forEachRemaining(list::add);
         assert new IdentityHashSet<>(list).size() == list.size()
@@ -57,7 +59,7 @@ public class FullIndexSet<T> extends BaseIndexSet<T> {
     @CheckReturnValue
     public static @Nonnull <U> IndexSet<U> fromDistinctCopy(@Nonnull Collection<U> collection) {
         if (collection.isEmpty())
-            return ImmFullIndexSet.empty();
+            return new FullIndexSet<>(0);
         assert new IdentityHashSet<>(collection).size() == collection.size()
                 : "Same instance is repeated in supposedly distinct collection";
         assert new HashSet<>(collection).size() == collection.size()

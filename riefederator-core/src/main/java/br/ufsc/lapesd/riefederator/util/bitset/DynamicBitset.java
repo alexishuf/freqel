@@ -352,6 +352,98 @@ public class DynamicBitset extends AbstractBitset {
         updateInUse();
     }
 
+    @Override public void and(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        expandingWordIndex(startBit+bits-1); //grow, if needed
+        while (bits > 0) {
+            int i = wordIndex(startBit), j = otherStartBit >> 6;
+            int opBits = Math.min(bits, Math.min((otherStartBit & ~0x3f) + 64 - otherStartBit,
+                    (startBit      & ~0x3f) + 64 - startBit));
+            long op = (other.word(j) >>> otherStartBit);
+            if (opBits < 64)
+                op |= (ALL_BITS << opBits);
+            wordAnd(i, (op << startBit) | ~(ALL_BITS << startBit));
+            startBit      += opBits;
+            otherStartBit += opBits;
+            bits          -= opBits;
+        }
+        updateInUse();
+    }
+
+    @Override public void assign(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        expandingWordIndex(startBit+bits-1); //grow, if needed
+        while (bits > 0) {
+            int i = wordIndex(startBit), j = otherStartBit >> 6;
+            int opBits = Math.min(bits, Math.min((otherStartBit & ~0x3f) + 64 - otherStartBit,
+                    (startBit      & ~0x3f) + 64 - startBit));
+            if (opBits < 64) {
+                long mask = (1L << opBits) - 1;
+                long op = (other.word(j) >>> otherStartBit) & mask;
+                wordAnd(i, ~(mask << startBit));
+                wordOr(i, op << startBit);
+            } else {
+                if (i == 0) value    = other.word(j);
+                else        rem[i-1] = other.word(j);
+            }
+            startBit      += opBits;
+            otherStartBit += opBits;
+            bits          -= opBits;
+        }
+        updateInUse();
+    }
+
+    @Override public void or(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        expandingWordIndex(startBit+bits-1);
+        while (bits > 0) {
+            int i = wordIndex(startBit), j = otherStartBit >> 6;
+            int opBits = Math.min(bits, Math.min((otherStartBit & ~0x3f) + 64 - otherStartBit,
+                    (startBit      & ~0x3f) + 64 - startBit));
+            long op = other.word(j) >>> otherStartBit;
+            if (opBits < 64)
+                op &= ~(ALL_BITS << opBits);
+            wordOr(i, op << startBit);
+            startBit      += opBits;
+            otherStartBit += opBits;
+            bits          -= opBits;
+        }
+        updateInUse();
+    }
+
+    @Override public void xor(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        expandingWordIndex(startBit+bits-1);
+        while (bits > 0) {
+            int i = wordIndex(startBit), j = otherStartBit >> 6;
+            int opBits = Math.min(bits, Math.min((otherStartBit & ~0x3f) + 64 - otherStartBit,
+                    (startBit      & ~0x3f) + 64 - startBit));
+            long op = other.word(j) >>> otherStartBit;
+            if (opBits < 64)
+                op &= ~(ALL_BITS << opBits);
+            wordXor(i, op << startBit);
+            startBit      += opBits;
+            otherStartBit += opBits;
+            bits          -= opBits;
+        }
+        updateInUse();
+    }
+
+    @Override public void andNot(int startBit, @Nonnull Bitset other, int otherStartBit, int bits) {
+        expandingWordIndex(startBit+bits-1);
+        while (bits > 0) {
+            int i = wordIndex(startBit), j = otherStartBit >> 6;
+            int opBits = Math.min(bits, Math.min((otherStartBit & ~0x3f) + 64 - otherStartBit,
+                    (startBit      & ~0x3f) + 64 - startBit));
+            long op = ~other.word(j) >>> otherStartBit;
+            if (opBits < 64)
+                op |= (ALL_BITS << opBits);
+            if ((startBit & 0x3f) != 0)
+                op = (op << startBit) | ~(ALL_BITS << startBit);
+            wordAnd(i, op);
+            startBit      += opBits;
+            otherStartBit += opBits;
+            bits          -= opBits;
+        }
+        updateInUse();
+    }
+
     @Override public @Nonnull Bitset copy() {
         return new DynamicBitset(value, rem == null ? null : Arrays.copyOf(rem, rem.length), inUse);
     }

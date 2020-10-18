@@ -4,8 +4,8 @@ import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.federation.decomp.DecompositionStrategy;
-import br.ufsc.lapesd.riefederator.federation.decomp.EvenDecomposer;
+import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.DecompositionStrategy;
+import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.EvenDecomposer;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
@@ -175,6 +175,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
         switch (capability) {
             case PROJECTION:
             case DISTINCT:
+            case CARTESIAN:
             case LIMIT:
             case ASK:
             case SPARQL_FILTER:

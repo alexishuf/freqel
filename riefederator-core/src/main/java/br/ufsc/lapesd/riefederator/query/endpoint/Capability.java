@@ -11,7 +11,8 @@ public enum  Capability {
     LIMIT,
     SPARQL_FILTER,
     VALUES,
-    OPTIONAL;
+    OPTIONAL,
+    CARTESIAN;
 
     public boolean isUniqueModifier() {
         switch (this) {
@@ -21,6 +22,7 @@ public enum  Capability {
             case PROJECTION:
             case VALUES:
             case OPTIONAL:
+            case CARTESIAN:
                 return true;
             default:
                 return false;
@@ -41,6 +43,7 @@ public enum  Capability {
         switch (this) {
             case VALUES:
             case PROJECTION:
+            case CARTESIAN:
             case SPARQL_FILTER:
                 return false;
             default:
@@ -54,6 +57,7 @@ public enum  Capability {
     public boolean hasParameter() {
         switch (this) {
             case ASK:
+            case CARTESIAN:
             case DISTINCT:
                 return false;
             default:

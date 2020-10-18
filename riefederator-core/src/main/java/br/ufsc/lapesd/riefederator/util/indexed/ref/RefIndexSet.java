@@ -13,6 +13,10 @@ public class RefIndexSet<T> extends FullIndexSet<T> {
     private static final @Nonnull RefIndexSet<?> EMPTY =
             new RefIndexSet<>(EMPTY_MAP, Collections.emptyList());
 
+    public RefIndexSet() {
+        this(16);
+    }
+
     public RefIndexSet(int capacity) {
         super(new IdentityHashMap<>((int)(capacity/0.75f + 1f)), new ArrayList<>(capacity));
     }
@@ -46,7 +50,7 @@ public class RefIndexSet<T> extends FullIndexSet<T> {
         else                             return createRefDistinct(new ArrayList<>(coll));
     }
 
-    @Override public @Nonnull ImmIndexSet<T> asImmutable() {
+    @Override public @Nonnull ImmRefIndexSet<T> asImmutable() {
         return new ImmRefIndexSet<>((IdentityHashMap<T, Integer>) indexMap, data);
     }
 
