@@ -1,7 +1,11 @@
 package br.ufsc.lapesd.riefederator.algebra.leaf;
 
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.OverrideAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.results.Solution;
 
 import javax.annotation.Nonnull;
 
@@ -26,6 +30,23 @@ public class EndpointQueryOp extends QueryOp implements EndpointOp {
     @Override
     protected @Nonnull QueryOp createWith(@Nonnull CQuery query) {
         return new EndpointQueryOp(getEndpoint(), query);
+    }
+
+    @Override
+    protected Term bind(@Nonnull Term term, @Nonnull Solution solution, Term fallback) {
+        return endpoint.requiresBindWithOverride() ? term : super.bind(term, solution, fallback);
+    }
+
+    @Override
+    protected void annotationBind(@Nonnull Term term, @Nonnull Solution solution, Term fallback,
+                                  @Nonnull MutableCQuery query) {
+        if (endpoint.requiresBindWithOverride()) {
+            Term bound = super.bind(term, solution, fallback);
+            if (bound != fallback) {
+                query.deannotateTermIf(term, OverrideAnnotation.class::isInstance);
+                query.annotate(term, new OverrideAnnotation(bound));
+            }
+        }
     }
 
     @Override

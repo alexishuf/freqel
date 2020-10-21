@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.util.ArraySet;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableSet;
@@ -39,6 +40,7 @@ public class SPARQLFilter implements Modifier {
     private final @Nonnull String filter;
     private final @SuppressWarnings("Immutable") @Nonnull Expr expr;
     private @LazyInit int hash = 0;
+    private @Nullable IndexSet<String> varNamesUniverse = null;
     private @SuppressWarnings("Immutable") @Nullable @LazyInit Set<Var> vars = null;
     private @SuppressWarnings("Immutable") @Nullable @LazyInit Set<String> varNames = null;
     private @SuppressWarnings("Immutable") @Nullable @LazyInit Set<Term> terms = null;
@@ -85,6 +87,14 @@ public class SPARQLFilter implements Modifier {
     }
 
     /* --- --- --- Getters --- --- --- */
+
+    public void offerVarsNamesUniverse(@Nonnull IndexSet<String> universe) {
+        if (varNamesUniverse == universe)
+            return;
+        varNamesUniverse = universe;
+        if (varNames != null)
+            varNames = universe.immutableSubsetExpanding(varNames);
+    }
 
     public @Nonnull Expr getExpr() {
         return expr;
@@ -162,13 +172,12 @@ public class SPARQLFilter implements Modifier {
 
     public @Nonnull Set<String> getVarNames() {
         if (varNames == null) {
-            Set<String> set;
+            Set<String> set = varNamesUniverse != null ? varNamesUniverse.emptySubset()
+                                                       : new HashSet<>();
             if (vars != null) {
-                set = Sets.newHashSetWithExpectedSize(vars.size());
                 for (Var v : vars) set.add(v.getName());
             } else {
                 Set<org.apache.jena.sparql.core.Var> jenaVars = expr.getVarsMentioned();
-                set = Sets.newHashSetWithExpectedSize(jenaVars.size());
                 for (org.apache.jena.sparql.core.Var v : jenaVars) set.add(v.getVarName());
             }
             varNames = set;

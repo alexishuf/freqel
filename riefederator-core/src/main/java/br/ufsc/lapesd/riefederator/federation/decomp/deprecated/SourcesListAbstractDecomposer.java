@@ -55,12 +55,11 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
     @Override
     public @Nonnull Op decompose(@Nonnull CQuery query) {
         try (TimeSampler ignored = Metrics.PLAN_MS.createThreadSampler(performance)) {
-            FilterAssigner p = new FilterAssigner(query.getModifiers().filters());
-            Collection<Op> leaves = decomposeIntoLeaves(query, p);
+            Collection<Op> leaves = decomposeIntoLeaves(query);
 
             performance.sample(Metrics.SOURCES_COUNT, countEndpoints(leaves));
             Op plan = planner.plan(query, leaves);
-            p.placeBottommost(plan);
+            FilterAssigner.placeInnerBottommost(plan, query.getModifiers().filters());
             TreeUtils.copyNonFilter(plan, query.getModifiers());
             return plan;
         }
@@ -85,14 +84,13 @@ public abstract class SourcesListAbstractDecomposer implements DecompositionStra
 
     @Override
     public @Nonnull List<Op> decomposeIntoLeaves(@Nonnull CQuery query) {
-        return decomposeIntoLeaves(query, new FilterAssigner(query.getModifiers().filters()));
-    }
-
-    public @Nonnull List<Op> decomposeIntoLeaves(@Nonnull CQuery query,
-                                                 @Nonnull FilterAssigner placement) {
         List<ProtoQueryOp> list = decomposeIntoProtoQNs(query);
         list = minimizeQueryNodes(query, list);
-        return placement.placeFiltersOnLeaves(list);
+        ArrayList<Op> nodes = new ArrayList<>(list.size());
+        for (ProtoQueryOp proto : list)
+            nodes.add(proto.toOp());
+        FilterAssigner.placeFiltersOnLeaves(nodes, query.getModifiers().filters());
+        return nodes;
     }
 
     protected static class Signature {

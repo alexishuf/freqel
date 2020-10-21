@@ -170,10 +170,10 @@ public class CQueryMatch {
         }
         StringBuilder b = new StringBuilder();
         b.append("CQueryMatch{\n");
-        for (List<Triple> group : exclusiveGroups) {
-            b.append("  EXCLUSIVE_GROUP {\n");
-            for (Triple t : group) b.append("    ").append(t.toString(dict)).append(" .\n");
-            b.append("  }\n");
+        for (CQuery group : exclusiveGroups) {
+            String string = group.toString(dict).replaceAll("\n", "\n    ");
+            b.append("  EXCLUSIVE_GROUP").append(string.contains("\n") ? "\n    " : " ")
+                                         .append(string).append('\n');
         }
         if (!nonExclusiveRelevant.isEmpty()) {
             b.append("  NON_EXCLUSIVE {\n");

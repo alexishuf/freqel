@@ -35,6 +35,7 @@ import java.util.concurrent.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -241,16 +242,38 @@ public class SelectDescription implements Description {
 
     @Override
     public boolean waitForInit(int timeoutMilliseconds) {
+        Future<?> localTask;
         synchronized (this) {
             if  (isUpdated) {
                 assert predicates != null && (!fetchClasses || classes != null);
                 return true; // is ready
             } else if (updateTask == null) {
                 return false; // init() not called
+            } else {
+                localTask = this.updateTask; // wait outside of the monitor
             }
-            // else: must wait (outside of the monitor)
         }
-        updateSync(timeoutMilliseconds);
+        try {
+            localTask.get(timeoutMilliseconds, MILLISECONDS);
+            synchronized (this) {
+                if (updateTask == localTask)
+                    updateTask = null;
+                assert isUpdated;
+            }
+        } catch (InterruptedException e) {
+            logger.warn("waitForInit({}) interrupted", timeoutMilliseconds);
+        } catch (ExecutionException e) {
+            logger.error("Failed to init descriptio. Will not match anything", e);
+            synchronized (this) {
+                if (localTask == updateTask) {
+                    updateTask = null;
+                    if (predicates == null) predicates = Collections.emptySet();
+                    if (fetchClasses && classes == null) classes = Collections.emptySet();
+                }
+            }
+        } catch (TimeoutException e) {
+            logger.warn("waitForInit timed out after {} ms", timeoutMilliseconds);
+        }
         assert !isUpdated || ( predicates != null && (!fetchClasses || classes != null) );
         return isUpdated;
     }

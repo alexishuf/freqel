@@ -9,7 +9,8 @@ import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
-import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.DecompositionStrategy;
+import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.Agglutinator;
+import br.ufsc.lapesd.riefederator.federation.decomp.match.MatchingStrategy;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
@@ -30,6 +31,7 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -68,14 +70,16 @@ public abstract class ConjunctivePlanBenchmarksTestBase {
         assert root.assertTreeInvariants();
         SPARQLParserTest.assertUniverses(root);
 
-        DecompositionStrategy decomposer = defInjector.getInstance(DecompositionStrategy.class);
-        sources.forEach(decomposer::addSource);
+        MatchingStrategy matchingStrategy = defInjector.getInstance(MatchingStrategy.class);
+        Agglutinator agglutinator = defInjector.getInstance(Agglutinator.class);
+        agglutinator.setMatchingStrategy(matchingStrategy);
+        sources.forEach(matchingStrategy::addSource);
         return TreeUtils.streamPreOrder(root).filter(QueryOp.class::isInstance).map(o -> {
             CQuery cQuery = ((QueryOp) o).getQuery();
-            List<Op> leaves = new ArrayList<>(decomposer.decomposeIntoLeaves(cQuery));
+            Collection<Op> leaves = matchingStrategy.match(cQuery, agglutinator);
             for (Op leaf : leaves)
                 SPARQLParserTest.assertUniverses(leaf);
-            return ImmutablePair.of(cQuery, leaves);
+            return ImmutablePair.of(cQuery, (List<Op>)leaves);
         }).collect(Collectors.toList());
     }
 
@@ -113,8 +117,7 @@ public abstract class ConjunctivePlanBenchmarksTestBase {
         ConjunctivePlanner planner = Guice.createInjector(module).getInstance(getPlannerClass());
         Op plan = planner.plan(query, fragments);
         // ConjunctivePlanner is modifier-oblivious. Add them so that assertPlanAnswers() passes.
-        FilterAssigner assigner = new FilterAssigner(query.getModifiers().filters());
-        assigner.placeBottommost(plan);
+        FilterAssigner.placeInnerBottommost(plan, query.getModifiers().filters());
         TreeUtils.copyNonFilter(plan, query.getModifiers());
         ConjunctivePlannerTest.assertPlanAnswers(plan, query);
     }

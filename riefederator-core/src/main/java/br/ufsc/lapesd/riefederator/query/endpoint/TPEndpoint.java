@@ -119,6 +119,8 @@ public interface TPEndpoint extends AutoCloseable {
      */
     boolean hasRemoteCapability(@Nonnull Capability capability);
 
+    boolean requiresBindWithOverride();
+
     /**
      * There are two possibilities of binding a query in a bind join: replacing join variables or
      * annotating the join variables with an {@link OverrideAnnotation}. This method returns true

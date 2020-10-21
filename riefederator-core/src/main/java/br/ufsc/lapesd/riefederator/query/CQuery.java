@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query;
 
+import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.Triple.Position;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
@@ -11,8 +12,12 @@ import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Modifier;
 import br.ufsc.lapesd.riefederator.query.modifiers.ModifiersSet;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.riefederator.rel.mappings.tags.ColumnsTag;
+import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.riefederator.webapis.description.AtomInputAnnotation;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
 import com.google.errorprone.annotations.DoNotCall;
@@ -29,6 +34,7 @@ import java.util.*;
 import java.util.function.BiConsumer;
 
 import static java.util.Collections.unmodifiableSet;
+import static java.util.stream.Collectors.joining;
 
 /**
  * A {@link CQuery} is essentially a list of {@link Triple} instances which MAY contain variables.
@@ -350,22 +356,45 @@ public class CQuery implements  List<Triple> {
         return toString(getPrefixDict(StdPrefixDict.DEFAULT));
     }
 
+    private @Nonnull String toString(@Nonnull Term term, @Nonnull PrefixDict dict) {
+        StringBuilder b = new StringBuilder(term.toString(dict));
+        for (TermAnnotation ann : getTermAnnotations(term)) {
+            if (ann instanceof AtomAnnotation) {
+                Atom atom = ((AtomAnnotation) ann).getAtom();
+                b.append('≪').append("atom=").append(atom.getName());
+                String columns = atom.getTags().stream().filter(ColumnsTag.class::isInstance)
+                                               .map(Object::toString).collect(joining(", "));
+                if (!columns.isEmpty()) b.append(", columns={").append(columns).append('}');
+                String tables = atom.getTags().stream().filter(TableTag.class::isInstance)
+                                              .map(Object::toString).collect(joining(", "));
+                if (!tables.isEmpty()) b.append(", tables={").append(tables).append('}');
+                if (ann instanceof AtomInputAnnotation) {
+                    AtomInputAnnotation inAnn = (AtomInputAnnotation) ann;
+                    b.append(", input=").append(inAnn.getInputName())
+                            .append(inAnn.isRequired() ? ", required" : ", optional");
+                }
+                b.append('≫');
+            }
+        }
+        return b.toString();
+    }
+
     public @Nonnull String toString(@Nonnull PrefixDict dict) {
-        if (d.list.isEmpty()) return "{}";
+        if (d.list.isEmpty()) return "{}"; // ⇝ ⤳ ➞
         StringBuilder b = new StringBuilder(d.list.size()*16);
         b.append('{');
         if (d.list.size() == 1 && d.modifiers.stream().noneMatch(SPARQLFilter.class::isInstance)) {
             Triple t = d.list.iterator().next();
-            return b.append(" ").append(t.getSubject().toString(dict)).append(' ')
-                    .append(t.getPredicate().toString(dict)).append(' ')
-                    .append(t.getObject().toString(dict)).append(" . }").toString();
+            return b.append(' ').append(toString(t.getSubject(), dict)).append(' ')
+                    .append(toString(t.getPredicate(), dict)).append(' ')
+                    .append(toString(t.getObject(), dict)).append(" . }").toString();
         }
         boolean firstTriple = true;
         for (Triple t : d.list) {
             b.append(firstTriple ? " " : "  ")
-                    .append(t.getSubject().toString(dict)).append(' ')
-                    .append(t.getPredicate().toString(dict)).append(' ')
-                    .append(t.getObject().toString(dict)).append(" .\n");
+                    .append(toString(t.getSubject(), dict)).append(' ')
+                    .append(toString(t.getPredicate(), dict)).append(' ')
+                    .append(toString(t.getObject(), dict)).append(" .\n");
             firstTriple = false;
         }
         for (SPARQLFilter modifier : d.modifiers.filters()) {

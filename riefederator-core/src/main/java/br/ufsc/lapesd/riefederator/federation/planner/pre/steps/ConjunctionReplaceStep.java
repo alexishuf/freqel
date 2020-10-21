@@ -95,7 +95,7 @@ public class ConjunctionReplaceStep implements PlannerStep, PlannerShallowStep {
 
     private @Nonnull Op visit(@Nonnull ConjunctionOp p) {
         Op op = StepUtils.planConjunction(p.getChildren(), p.modifiers(), joinOrderPlanner);
-        new FilterAssigner(p.modifiers().filters()).placeBottommost(op);
+        FilterAssigner.placeInnerBottommost(op, p.modifiers().filters());
         return op;
     }
 }

@@ -3,6 +3,8 @@ package br.ufsc.lapesd.riefederator.rel.sql.impl;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.query.annotations.OverrideAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.common.*;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
@@ -60,6 +62,12 @@ public class SqlSelectorFactory implements SelectorFactory {
             assert !ctx.getColumns(o).isEmpty() || StarsHelper.isPostRelational(ctx.getQuery(), o)
                     : o+" is not marked as post relational nor has any Column bound";
             return null;
+        }
+        assert ctx.getQuery().getTermAnnotations(o).stream()
+                  .filter(OverrideAnnotation.class::isInstance).count() <= 1;
+        for (TermAnnotation ann : ctx.getQuery().getTermAnnotations(o)) {
+            if (ann instanceof OverrideAnnotation)
+                o = ((OverrideAnnotation) ann).getValue();
         }
         if (o.isGround()) return new EqualsSqlSelector(column, o);
         if (o.isBlank()) return new ExistsSqlSelector(column, o.asBlank());

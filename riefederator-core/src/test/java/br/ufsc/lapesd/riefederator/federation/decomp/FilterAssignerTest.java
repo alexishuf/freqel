@@ -19,7 +19,6 @@ import static br.ufsc.lapesd.riefederator.util.CollectionUtils.intersect;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
-import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -62,21 +61,15 @@ public class FilterAssignerTest implements TestContext {
         JoinOp root = JoinOp.create(j1, q3);
 
         CQuery fullQuery = createQuery(Alice, knows, x, x, knows, y, y, age, u);
-        FilterAssigner assigner = new FilterAssigner(fullQuery.getModifiers().filters());
 
         // place on leaves
         List<EndpointQueryOp> queryOps = asList(q1, q2, q3);
-        List<ProtoQueryOp> prototypes;
-        prototypes = queryOps.stream().map(ProtoQueryOp::new).collect(toList());
 
-        List<EndpointQueryOp> annotated = assigner.placeFiltersOnLeaves(prototypes).stream()
-                .map(n -> (EndpointQueryOp)n).collect(toList());
-        assertEquals(annotated.size(), 3);
-        assertTrue(annotated.stream().noneMatch(Objects::isNull));
-        for (int i = 0; i < annotated.size(); i++)
-            assertEquals(annotated.get(i).getQuery(), queryOps.get(i).getQuery());
+        FilterAssigner.placeFiltersOnLeaves(queryOps, fullQuery.getModifiers().filters());
+        assertEquals(queryOps.size(), 3);
+        assertTrue(queryOps.stream().noneMatch(Objects::isNull));
 
-        assigner.placeBottommost(root);
+        FilterAssigner.placeInnerBottommost(root, fullQuery.getModifiers().filters());
         checkAllFilters(fullQuery.getModifiers().filters(), root);
     }
 
@@ -90,8 +83,7 @@ public class FilterAssignerTest implements TestContext {
                 .add(new EndpointQueryOp(ep1, query))
                 .add(new EndpointQueryOp(ep2, query))
                 .build();
-        FilterAssigner assigner = new FilterAssigner(query.getModifiers().filters());
-        assigner.placeBottommost(node);
+        FilterAssigner.placeInnerBottommost(node, query.getModifiers().filters());
         checkAllFilters(query.getModifiers().filters(), node);
     }
 
@@ -101,19 +93,17 @@ public class FilterAssignerTest implements TestContext {
                 Alice, knows, x,
                 x,     age,   u,
                 SPARQLFilter.build("?u > 23"));
-        List<ProtoQueryOp> prototypes = asList(
-                new ProtoQueryOp(ep1, query),
-                new ProtoQueryOp(ep2, query)
+        List<Op> leaves = asList(
+                new EndpointQueryOp(ep1, query),
+                new EndpointQueryOp(ep2, query)
         );
 
-        FilterAssigner assigner = new FilterAssigner(query.getModifiers().filters());
-        List<EndpointQueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
-                .map(n -> (EndpointQueryOp)n).collect(toList());
-        for (EndpointQueryOp queryOp : queryOps)
+        FilterAssigner.placeFiltersOnLeaves(leaves, query.getModifiers().filters());
+        for (Op queryOp : leaves)
             checkAllFilters(query.getModifiers().filters(), queryOp);
 
-        Op multi = UnionOp.builder().addAll(queryOps).build();
-        assigner.placeBottommost(multi);
+        Op multi = UnionOp.builder().addAll(leaves).build();
+        FilterAssigner.placeInnerBottommost(multi, query.getModifiers().filters());
         checkAllFilters(query.getModifiers().filters(), multi);
     }
 
@@ -127,31 +117,27 @@ public class FilterAssignerTest implements TestContext {
                 x,     manages, y, annEquals,
                 x,     age,     u,
                 y,     age,     v, annGreater);
-        List<ProtoQueryOp> prototypes = asList(
-                new ProtoQueryOp(ep1, createQuery(Alice, knows, x)),
-                new ProtoQueryOp(ep1, createQuery(x, manages, y, x, age, u)),
-                new ProtoQueryOp(ep2, createQuery(x, manages, y, y, age, v))
+        List<Op> nodes = asList(
+                new EndpointQueryOp(ep1, createQuery(Alice, knows, x)),
+                new EndpointQueryOp(ep1, createQuery(x, manages, y, x, age, u)),
+                new EndpointQueryOp(ep2, createQuery(x, manages, y, y, age, v))
         );
 
-        FilterAssigner assigner = new FilterAssigner(fullQuery.getModifiers().filters());
-        List<EndpointQueryOp> queryOps = assigner.placeFiltersOnLeaves(prototypes).stream()
-                .map(n -> (EndpointQueryOp)n).collect(toList());
+        FilterAssigner.placeFiltersOnLeaves(nodes, fullQuery.getModifiers().filters());
 
-        assertEquals(queryOps.size(), prototypes.size());
-        assertTrue(queryOps.stream().noneMatch(Objects::isNull));
-        for (int i = 0; i < queryOps.size(); i++)
-            assertEquals(prototypes.get(i).getMatchedQuery(), queryOps.get(i).getQuery());
-        assertEquals(queryOps.get(0).modifiers().filters(), emptySet());
-        assertEquals(queryOps.get(1).modifiers().filters(), singleton(annEquals));
-        assertEquals(queryOps.get(2).modifiers().filters(), singleton(annEquals));
+        assertEquals(nodes.size(), nodes.size());
+        assertTrue(nodes.stream().noneMatch(Objects::isNull));
+        assertEquals(nodes.get(0).modifiers().filters(), emptySet());
+        assertEquals(nodes.get(1).modifiers().filters(), singleton(annEquals));
+        assertEquals(nodes.get(2).modifiers().filters(), singleton(annEquals));
 
-        JoinOp joinLeft  = JoinOp.create(queryOps.get(1), queryOps.get(2));
-        JoinOp joinRight = JoinOp.create(queryOps.get(1), queryOps.get(2));
-        JoinOp leftDeep  = JoinOp.create(joinLeft,          queryOps.get(0));
-        JoinOp rightDeep = JoinOp.create(queryOps.get(0), joinRight        );
+        JoinOp joinLeft  = JoinOp.create(nodes.get(1), nodes.get(2));
+        JoinOp joinRight = JoinOp.create(nodes.get(1), nodes.get(2));
+        JoinOp leftDeep  = JoinOp.create(joinLeft,          nodes.get(0));
+        JoinOp rightDeep = JoinOp.create(nodes.get(0), joinRight        );
 
-        assigner.placeBottommost(leftDeep);
-        assigner.placeBottommost(rightDeep);
+        FilterAssigner.placeInnerBottommost(leftDeep, fullQuery.getModifiers().filters());
+        FilterAssigner.placeInnerBottommost(rightDeep, fullQuery.getModifiers().filters());
 
         assertEquals(joinLeft.modifiers().filters(), singleton(annGreater));
         assertEquals(joinRight.modifiers().filters(), singleton(annGreater));

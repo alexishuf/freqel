@@ -7,6 +7,7 @@ import br.ufsc.lapesd.riefederator.model.RDFUtils;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.CQueryCache;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -85,8 +86,16 @@ public class QueryOp extends AbstractOp {
     }
 
     public void setQuery(@Nonnull CQuery query) {
-        if (query != this.query)
+        if (query != this.query) {
             this.query = new MutableCQuery(query);
+            CQueryCache attr = this.query.attr();
+            IndexSet<String> vars = attr.varNamesUniverseOffer();
+            if (vars != null)
+                offerVarsUniverse(vars);
+            IndexSet<Triple> triples = attr.triplesUniverseOffer();
+            if (triples != null)
+                offerTriplesUniverse(triples);
+        }
     }
 
     public @Nonnull QueryOp withQuery(@Nonnull CQuery query) {
@@ -124,16 +133,27 @@ public class QueryOp extends AbstractOp {
     protected Term bind(@Nonnull Term term, @Nonnull Solution solution, Term fallback) {
         return term.isVar() ? solution.get(term.asVar().getName(), fallback) : fallback;
     }
+    protected void annotationBind(@Nonnull Term term, @Nonnull Solution solution, Term fallback,
+                                  @Nonnull MutableCQuery query) {
+        // do nothing by default
+    }
 
-    protected @Nonnull Triple bind(@Nonnull Triple t, @Nonnull Solution solution) {
+    protected @Nonnull Triple bind(@Nonnull Triple t, @Nonnull Solution solution,
+                                   @Nonnull MutableCQuery target) {
         Term s = bind(t.getSubject(), solution, null);
         Term p = bind(t.getPredicate(), solution, null);
         Term o = bind(t.getObject(), solution, null);
-        if (s == null && p == null && o == null)
-            return t;
-        return new Triple(s == null ? t.getSubject()   : s,
-                          p == null ? t.getPredicate() : p,
-                          o == null ? t.getObject()    : o);
+        Triple t2 = t;
+        if (s != null || p != null || o != null) {
+            t2 = new Triple(s == null ? t.getSubject()   : s,
+                            p == null ? t.getPredicate() : p,
+                            o == null ? t.getObject()    : o);
+        }
+        target.add(t2);
+        annotationBind(t.getSubject(), solution, null, target);
+        annotationBind(t.getPredicate(), solution, null, target);
+        annotationBind(t.getObject(), solution, null, target);
+        return t2;
     }
 
     protected @Nonnull MutableCQuery bindQuery(@Nonnull Solution solution) {
@@ -141,14 +161,15 @@ public class QueryOp extends AbstractOp {
         CQuery q = getQuery();
         MutableCQuery b = new MutableCQuery();
         for (Triple triple : q) {
-            Triple bound = bind(triple, s);
-            b.add(bound);
+            Triple bound = bind(triple, s, b);
             q.getTripleAnnotations(triple).forEach(a -> b.annotate(bound, a));
         }
         TreeUtils.addBoundModifiers(b.mutateModifiers(), q.getModifiers(), s);
         IndexSet<Term> tripleTerms = q.attr().tripleTerms();
         q.forEachTermAnnotation((t, a) -> {
+            assert t != null && a != null;
             Term boundTerm = bind(t, s, t);
+            assert boundTerm != null;
             if (tripleTerms.contains(t)) b.annotate(boundTerm, a);
             else                         b.annotate(boundTerm, a);
         });

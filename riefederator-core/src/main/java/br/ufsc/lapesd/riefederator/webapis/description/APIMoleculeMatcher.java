@@ -173,20 +173,12 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
         }
 
         protected class APIEGQueryBuilder extends EGQueryBuilder {
-            private final @Nullable CQuery parentEG;
-
             public APIEGQueryBuilder(int sizeHint) {
                 super(sizeHint);
-                parentEG = null;
             }
             public APIEGQueryBuilder(@Nonnull CQuery parentEG,
                                      @Nonnull EGQueryBuilder parentBuilder) {
-                super(parentEG.size());
-                Preconditions.checkArgument(parentBuilder instanceof APIEGQueryBuilder);
-                APIEGQueryBuilder apiBuilder = (APIEGQueryBuilder) parentBuilder;
-                this.parentEG = parentEG;
-                this.term2atom.putAll(apiBuilder.term2atom);
-                this.subsumption2matched.putAll(apiBuilder.subsumption2matched);
+                super(parentEG, parentBuilder);
             }
 
             @Override
@@ -239,12 +231,12 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
 
             @Override
             public CQuery build() {
-                if (parentEG != null) {
-                    mQuery.copyTermAnnotations(parentEG);
-                    mQuery.copyTripleAnnotations(parentEG);
+                if (matchedEG != null) {
+                    mQuery.copyTermAnnotations(matchedEG);
+                    mQuery.copyTripleAnnotations(matchedEG);
                 }
                 mQuery.copyTermAnnotations(parentQuery);
-                if (parentEG == null) { // only check if creating the top-level exclusive group
+                if (matchedEG == null) { // only check if creating the top-level exclusive group
                     getInputsFromFilters();
                     mQuery.annotate(NoMergePolicyAnnotation.INSTANCE);
                     CQuery query = mQuery;

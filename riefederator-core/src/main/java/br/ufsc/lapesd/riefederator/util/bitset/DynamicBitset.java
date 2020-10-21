@@ -323,6 +323,8 @@ public class DynamicBitset extends AbstractBitset {
     @Override public void assign(@Nonnull Bitset other) {
         if (other == this) return;
         int oWords = other.words();
+        if (oWords == 0)
+            clear();
         expandToWord(oWords);
         if (oWords > 0)
             value = other.word(0);

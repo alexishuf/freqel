@@ -251,7 +251,11 @@ public class ConvertVisitor implements QueryVisitor {
                 throw new FeatureException("FILTER EXISTS is not supported");
             if (expr instanceof E_NotExists)
                 throw new FeatureException("FILTER NOT EXISTS is not supported");
-            groupFilters.add(SPARQLFilter.build(expr));
+            for (Var v : expr.getVarsMentioned())
+                varsUniverse.add(v.getVarName());
+            SPARQLFilter filter = SPARQLFilter.build(expr);
+            filter.offerVarsNamesUniverse(varsUniverse);
+            groupFilters.add(filter);
         }
 
         @Override

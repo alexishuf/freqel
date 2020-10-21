@@ -307,6 +307,10 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
         }
     }
 
+    @Override public boolean requiresBindWithOverride() {
+        return true;
+    }
+
     @Override
     public void close() {
         if (!sharedSession)

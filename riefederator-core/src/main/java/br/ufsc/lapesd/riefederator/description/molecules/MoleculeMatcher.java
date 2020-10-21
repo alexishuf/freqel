@@ -535,6 +535,7 @@ public class MoleculeMatcher implements SemanticDescription {
         }
 
         protected class EGQueryBuilder {
+            protected CQuery matchedEG = null;
             protected MutableCQuery mQuery;
             protected Set<Var> allVars = new HashSet<>();
             protected SetMultimap<Term, String> term2atom = HashMultimap.create();
@@ -542,7 +543,18 @@ public class MoleculeMatcher implements SemanticDescription {
                     = new HashMap<>();
 
             public EGQueryBuilder(int sizeHint) {
-                mQuery = new MutableCQuery(sizeHint);
+                this.mQuery = new MutableCQuery(sizeHint);
+            }
+
+            /**
+             * Creates a buidler for an alternative (reasoning) query
+             */
+            public EGQueryBuilder(@Nonnull CQuery matchedEG,
+                                  @Nonnull EGQueryBuilder matchedBuilder) {
+                this.mQuery = new MutableCQuery(matchedEG.size());
+                this.matchedEG = matchedEG;
+                term2atom.putAll(matchedBuilder.term2atom);
+                subsumption2matched.putAll(matchedBuilder.subsumption2matched);
             }
 
             public void add(@Nonnull Triple triple, @Nonnull Collection<LinkMatch> matches) {
@@ -633,6 +645,10 @@ public class MoleculeMatcher implements SemanticDescription {
             }
 
             public CQuery build() {
+                if (matchedEG != null) {
+                    mQuery.copyTermAnnotations(matchedEG);
+                    mQuery.copyTripleAnnotations(matchedEG);
+                }
                 mQuery.copyTermAnnotations(parentQuery);
                 mQuery.annotate(mergePolicyAnnotation);
                 return mQuery;
@@ -643,8 +659,8 @@ public class MoleculeMatcher implements SemanticDescription {
             return new EGQueryBuilder(sizeHint);
         }
         protected @Nonnull EGQueryBuilder
-        createEGQueryBuilder(@Nonnull CQuery parent, @Nonnull EGQueryBuilder parentBuilder) {
-            return new EGQueryBuilder(parent.size());
+        createEGQueryBuilder(@Nonnull CQuery matched, @Nonnull EGQueryBuilder matchedBuilder) {
+            return new EGQueryBuilder(matched, matchedBuilder);
         }
 
         void saveExclusiveGroup(@Nonnull CQuery query, @Nonnull List<List<LinkMatch>> linkLists) {

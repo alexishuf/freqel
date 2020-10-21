@@ -219,6 +219,10 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         }
     }
 
+    @Override public boolean requiresBindWithOverride() {
+        return true;
+    }
+
     /* --- --- --- Object methods --- --- --- */
     @Override
     public String toString() {

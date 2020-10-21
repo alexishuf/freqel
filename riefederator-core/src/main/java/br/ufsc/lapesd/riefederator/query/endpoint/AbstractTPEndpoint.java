@@ -55,4 +55,8 @@ public abstract class AbstractTPEndpoint implements TPEndpoint {
             this.alternativesClosure = new SoftReference<>(null);
         }
     }
+
+    @Override public boolean requiresBindWithOverride() {
+        return false;
+    }
 }

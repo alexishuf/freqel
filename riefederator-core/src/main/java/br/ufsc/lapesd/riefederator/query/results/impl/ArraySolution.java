@@ -32,7 +32,7 @@ public class ArraySolution extends AbstractSolution implements MutableSolution {
     @Override
     public Term get(@Nonnull String varName, Term fallback) {
         int idx = vars.indexOf(varName);
-        return idx < 0 ? fallback : values[idx];
+        return idx < 0 || values[idx] == null ? fallback : values[idx];
     }
 
     @Override @CanIgnoreReturnValue
@@ -60,8 +60,11 @@ public class ArraySolution extends AbstractSolution implements MutableSolution {
 
     @Override
     public void forEach(@Nonnull BiConsumer<String, Term> consumer) {
-        for (int i = 0; i < vars.size(); i++)
-            consumer.accept(vars.get(i), values[i]);
+        assert vars.stream().noneMatch(Objects::isNull);
+        for (int i = 0; i < vars.size(); i++) {
+            if (values[i] != null)
+                consumer.accept(vars.get(i), values[i]);
+        }
     }
 
     @Override

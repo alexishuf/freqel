@@ -3,6 +3,8 @@ package br.ufsc.lapesd.riefederator.rel.cql;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.query.annotations.OverrideAnnotation;
+import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.common.FilterOperatorRewriter;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalTermWriter;
@@ -46,8 +48,16 @@ public class CqlSelectorFactory implements SelectorFactory {
     public @Nullable Selector create(@Nonnull Context ctx, @Nonnull Triple triple) {
         Term o = triple.getObject();
         Column column = ctx.getDirectMapped(o, triple);
-        if (column != null && o.isGround())
-            return EqualsCqlSelector.create(column, o, termWriter);
+        if (column != null) {
+            assert ctx.getQuery().getTermAnnotations(o).stream()
+                      .filter(OverrideAnnotation.class::isInstance).count() <= 1;
+            for (TermAnnotation ann : ctx.getQuery().getTermAnnotations(o)) {
+                if (ann instanceof OverrideAnnotation)
+                    o = ((OverrideAnnotation) ann).getValue();
+            }
+            if (o.isGround())
+                return EqualsCqlSelector.create(column, o, termWriter);
+        }
         return null;
     }
 }

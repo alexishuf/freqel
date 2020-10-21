@@ -9,8 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 
+import static br.ufsc.lapesd.riefederator.util.CollectionUtils.setMinus;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -20,28 +23,12 @@ import static java.util.stream.Collectors.toSet;
 public class FilterAssigner {
     private static final Logger logger = LoggerFactory.getLogger(FilterAssigner.class);
 
-    private final @Nonnull Collection<SPARQLFilter> filters;
-
-    public FilterAssigner(@Nonnull Collection<SPARQLFilter> filters) {
-        this.filters = filters;
-    }
-
-    public boolean isEmpty() {
-        return filters.isEmpty();
-    }
-
     /**
      * Tries to place as many {@link SPARQLFilter} as possible in each {@link EndpointQueryOp}.
-     *
-     * Insertions will be registered on the placement map.
-     *
-     * @param list list of {@link ProtoQueryOp}s, without nulls
-     * @return List of {@link EndpointQueryOp}s or {@link UnionOp}s, without nulls
      */
-    public @Nonnull List<Op> placeFiltersOnLeaves(@Nonnull List<ProtoQueryOp> list) {
-        List<Op> result = new ArrayList<>(list.size());
-        for (ProtoQueryOp proto : list) {
-            Op leafNode = proto.toOp(); //QueryNode or MultiQueryNode
+    public static void placeFiltersOnLeaves(@Nonnull Collection<? extends Op> nodes,
+                                            @Nonnull Collection<SPARQLFilter> filters) {
+        for (Op leafNode : nodes) {
             Set<String> vars = leafNode.getAllVars();
             for (SPARQLFilter filter : filters) {
                 if (vars.containsAll(filter.getVarNames())) {
@@ -57,22 +44,20 @@ public class FilterAssigner {
                     }
                 }
             }
-            result.add(leafNode);
         }
-        return result;
     }
 
     private static boolean canFilter(@Nonnull Op node, @Nonnull SPARQLFilter filter) {
         return node.getAllVars().containsAll(filter.getVarNames());
     }
 
-    public void placeBottommost(@Nonnull Op plan) {
+    public static void placeInnerBottommost(@Nonnull Op root,
+                                            @Nonnull Collection<SPARQLFilter> filters) {
         for (SPARQLFilter filter : filters) {
-            if (!placeBottommost(plan, filter)) {
-                HashSet<String> missing = new HashSet<>(filter.getVarNames());
-                missing.removeAll(plan.getAllVars());
+            if (!placeInnerBottommost(root, filter)) {
+                Set<String> missing = setMinus(filter.getVarNames(), root.getAllVars());
                 SPARQLFilter clean = filter.withVarsEvaluatedAsUnbound(missing);
-                if (!placeBottommost(plan, clean)) {
+                if (!placeInnerBottommost(root, clean)) {
                     logger.warn("{} mentions variables not found in the plan, and after " +
                                 "statically evaluating bound() calls on those missing variables " +
                                 "the filter {} still could not be placed anywhere on the tree. " +
@@ -80,18 +65,20 @@ public class FilterAssigner {
                 }
             }
         }
-        assert allFiltersPlaced(plan);
+        assert allFiltersPlaced(root, filters);
     }
 
-    private boolean allFiltersPlaced(@Nonnull Op root) {
+    private static boolean allFiltersPlaced(@Nonnull Op root,
+                                            @Nonnull Collection<SPARQLFilter> filters) {
         Set<SPARQLFilter> observed = TreeUtils.streamPreOrder(root)
                 .flatMap(o -> o.modifiers().filters().stream()).collect(toSet());
-        List<SPARQLFilter> missing = filters.stream().filter(f -> !observed.contains(f)).collect(toList());
+        List<SPARQLFilter> missing;
+        missing = filters.stream().filter(f -> !observed.contains(f)).collect(toList());
         return missing.isEmpty();
     }
 
-    public boolean placeBottommost(@Nonnull Op node,
-                                   @Nonnull SPARQLFilter filter) {
+    public static boolean placeInnerBottommost(@Nonnull Op node,
+                                               @Nonnull SPARQLFilter filter) {
         if (!canFilter(node, filter))
             return false; // do not recurse into this subtree
         if (node.modifiers().filters().contains(filter))
@@ -99,7 +86,7 @@ public class FilterAssigner {
         if (node instanceof UnionOp) {
             int count = 0;
             for (Op child : node.getChildren())
-                count += placeBottommost(child, filter) ? 1 : 0;
+                count += placeInnerBottommost(child, filter) ? 1 : 0;
             assert count > 0
                     : "UnionOp as whole accepts "+filter+" but no child accepts!";
             assert count == node.getChildren().size()
@@ -109,7 +96,7 @@ public class FilterAssigner {
         } else {
             boolean done = false;
             for (Op child : node.getChildren())
-                done |= placeBottommost(child, filter);
+                done |= placeInnerBottommost(child, filter);
             if (!done)
                 node.modifiers().add(filter);
         }
