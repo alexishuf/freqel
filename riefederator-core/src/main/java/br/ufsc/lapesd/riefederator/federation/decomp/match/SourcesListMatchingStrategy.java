@@ -73,6 +73,4 @@ public class SourcesListMatchingStrategy implements MatchingStrategy {
     @Override public @Nonnull ImmRefIndexSet<TPEndpoint> getEndpointsSet() {
         return immEndpoints;
     }
-
-    @Override public void close() { /* pass */ }
 }

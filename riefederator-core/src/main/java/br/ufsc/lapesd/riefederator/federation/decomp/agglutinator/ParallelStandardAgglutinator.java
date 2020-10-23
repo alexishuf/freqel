@@ -6,6 +6,8 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.riefederator.federation.PerformanceListener;
+import br.ufsc.lapesd.riefederator.federation.concurrent.CommonPoolPlanningExecutorService;
+import br.ufsc.lapesd.riefederator.federation.concurrent.PlanningExecutorService;
 import br.ufsc.lapesd.riefederator.federation.decomp.match.MatchingStrategy;
 import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
@@ -25,28 +27,31 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.function.Function;
-import java.util.stream.IntStream;
 
-public class StandardAgglutinator implements Agglutinator {
+public class ParallelStandardAgglutinator implements Agglutinator {
     private static final Function<Bitset, List<Op>> opListFac = k -> new ArrayList<>();
 
     private @Nullable MatchingStrategy matchingStrategy;
-    private @Nonnull final AtomicReference<StandardState> lastState = new AtomicReference<>();
+    private @Nonnull final ArrayBlockingQueue<StandardState> statePool
+            = new ArrayBlockingQueue<>(Runtime.getRuntime().availableProcessors()*2);
     private @Nonnull final PerformanceListener perfListener;
+    private @Nonnull final PlanningExecutorService executor;
 
     @Inject
-    public StandardAgglutinator(@Nonnull PerformanceListener perfListener) {
+    public ParallelStandardAgglutinator(@Nonnull PerformanceListener perfListener,
+                                        @Nonnull PlanningExecutorService planningExecutorService) {
         this.perfListener = perfListener;
+        this.executor = planningExecutorService;
     }
 
-    public StandardAgglutinator() {
-        this(NoOpPerformanceListener.INSTANCE);
+    public ParallelStandardAgglutinator() {
+        this(NoOpPerformanceListener.INSTANCE, CommonPoolPlanningExecutorService.INSTANCE);
     }
 
     @Override public @Nonnull StandardState createState(@Nonnull CQuery query) {
-        StandardState state = lastState.getAndSet(null);
+        StandardState state = statePool.poll();
         if (state != null) {
             state.reset(query);
             return state;
@@ -63,57 +68,65 @@ public class StandardAgglutinator implements Agglutinator {
     }
 
     public class StandardState extends AbstractAgglutinatorState {
-
-
         private List<Bitset> ep2net, ep2ext;
         private List<Set<CQuery>> ep2exq;
         private List<Map<CQuery, Set<CQuery>>> ep2exq2alt;
         private Map<Bitset, List<Op>> sig2qn;
         private List<CQueryMatch> ep2match;
         private RefIndexSet<TPEndpoint> epSet;
-        private Bitset tmpTriplesWithAlt;
-        private Bitset tmpTriplesWithoutAlt;
-        private List<Bitset> mergeExclusiveTriples;
-        private List<CQuery> tmpQueries;
+        private List<Bitset> tmpTriplesWithAlt;
+        private List<Bitset> tmpTriplesWithoutAlt;
+        private List<List<Bitset>> mergeExclusiveTriples;
+        private List<List<CQuery>> tmpQueries;
 
         public StandardState(@Nonnull CQuery query) {
             super(query);
             this.epSet = matchingStrategy.getEndpointsSet();
-            int epSetSize = epSet.size();
-            ep2net = new ArrayList<>(epSetSize);
-            ep2ext = new ArrayList<>(epSetSize);
-            ep2exq = new ArrayList<>(epSetSize);
-            ep2match = new ArrayList<>(epSetSize);
-            ep2exq2alt = new ArrayList<>(epSetSize);
-            sig2qn = new HashMap<>();
-            for (int i = 0; i < epSetSize; i++) {
-                ep2net.add(Bitsets.create(epSetSize));
-                ep2ext.add(Bitsets.create(epSetSize));
-                ep2match.add(null);
+            int nEps = epSet.size(), nTriples = triplesUniverse.size();
+            ep2net = new ArrayList<>(nEps);
+            ep2ext = new ArrayList<>(nEps);
+            ep2exq = new ArrayList<>(nEps);
+            ep2match = new ArrayList<>(nEps);
+            ep2exq2alt = new ArrayList<>(nEps);
+            tmpTriplesWithAlt    = new ArrayList<>(nEps);
+            tmpTriplesWithoutAlt = new ArrayList<>(nEps);
+            tmpQueries = new ArrayList<>(nEps);
+            mergeExclusiveTriples = new ArrayList<>(nEps);
+            sig2qn = Collections.synchronizedMap(new HashMap<>());
+            for (int i = 0; i < nEps; i++) {
+                ep2net.add(Bitsets.create(nEps));
+                ep2ext.add(Bitsets.create(nEps));
                 ep2exq.add(new HashSet<>());
+                ep2match.add(null);
                 ep2exq2alt.add(new HashMap<>());
+                tmpTriplesWithAlt   .add(Bitsets.create(nTriples));
+                tmpTriplesWithoutAlt.add(Bitsets.create(nTriples));
+                tmpQueries.add(new ArrayList<>());
+                mergeExclusiveTriples.add(new ArrayList<>());
             }
-            tmpTriplesWithAlt    = Bitsets.createFixed(triplesUniverse.size());
-            tmpTriplesWithoutAlt = Bitsets.createFixed(triplesUniverse.size());
-            tmpQueries = new ArrayList<>();
-            mergeExclusiveTriples = new ArrayList<>();
         }
 
         public void reset(@Nonnull CQuery query) {
             setQuery(query);
             this.epSet = matchingStrategy.getEndpointsSet();
+            int nEps = epSet.size(), nTriples = triplesUniverse.size();
+
             assert ep2net.size() == ep2match.size();
+            assert ep2net.size() == ep2exq.size();
+            assert ep2net.size() == ep2ext.size();
+            assert ep2net.size() == tmpQueries.size();
+            assert ep2net.size() == mergeExclusiveTriples.size();
+
             sig2qn.clear();
-            int nTriples = triplesUniverse.size();
-            for (int i = ep2ext.size(), size = epSet.size(); i < size; i++) {
+            for (int i = ep2ext.size(); i < nEps; i++) { // grow storage if got more eps
                 ep2net.add(Bitsets.create(nTriples));
                 ep2ext.add(Bitsets.create(nTriples));
                 ep2exq.add(new HashSet<>());
                 ep2exq2alt.add(new HashMap<>());
-            }
-            if (tmpTriplesWithAlt.size() < nTriples) {
-                tmpTriplesWithAlt    = Bitsets.createFixed(nTriples);
-                tmpTriplesWithoutAlt = Bitsets.createFixed(nTriples);
+                tmpQueries.add(new ArrayList<>());
+                mergeExclusiveTriples.add(new ArrayList<>());
+                tmpTriplesWithAlt.add(Bitsets.create(nTriples));
+                tmpTriplesWithoutAlt.add(Bitsets.create(nTriples));
             }
         }
 
@@ -138,30 +151,26 @@ public class StandardAgglutinator implements Agglutinator {
          * All identified exclusive groups (including single-triple EGs) will be saved
          * into {@link StandardState#ep2exq}.
          */
-        private void splitNonExclusiveTriples() {
+        private void splitNonExclusiveTriplesPhase1() {
             assert ep2ext.size() >= epSet.size() && ep2ext.stream().noneMatch(Objects::isNull);
-            // phase 1: find exclusive groups
-            for (int i = 0, size = epSet.size(); i < size; i++) {
-                Bitset ex = ep2ext.get(i);
-                ex.assign(ep2net.get(i));
-                for (int j = 0  ; j < i   ; j++) ex.andNot(ep2net.get(j));
-                for (int j = i+1; j < size; j++) ex.andNot(ep2net.get(j));
-            }
-            // phase 2: remove the exclusive groups from ep2ne
-            for (int i = 0, size = epSet.size(); i < size; i++) {
-                ep2exq2alt.get(i).clear();
-                Bitset triples = ep2ext.get(i);
-                ep2net.get(i).andNot(triples);
-                if (!triples.isEmpty())
-                    createEG(i, triples);
-            }
+            executor.parallelFor(0, epSet.size(),
+                                 this::splitNonExclusiveTriplesPhase1Endpoint);
+        }
 
-            // sanity:
-            assert IntStream.range(0, ep2ext.size()).noneMatch(i ->
-                    IntStream.range(0, ep2ext.size())
-                             .anyMatch(j -> i != j && ep2ext.get(i).intersects(ep2ext.get(j))));
-            assert IntStream.range(0, ep2ext.size())
-                    .noneMatch(i -> ep2net.get(i).intersects(ep2ext.get(i)));
+        private void splitNonExclusiveTriplesPhase1Endpoint(int epIdx) {
+            ep2exq2alt.get(epIdx).clear();
+            Bitset ex = ep2ext.get(epIdx);
+            ex.assign(ep2net.get(epIdx));
+            int size = epSet.size();
+            for (int j = 0      ; j < epIdx; j++) ex.andNot(ep2net.get(j));
+            for (int j = epIdx+1; j < size ; j++) ex.andNot(ep2net.get(j));
+        }
+
+        private void splitNonExclusiveTriplesPhase2(int epIdx) {
+            Bitset triples = ep2ext.get(epIdx);
+            ep2net.get(epIdx).andNot(triples);
+            if (!triples.isEmpty())
+                createEG(epIdx, triples);
         }
 
         private void createEG(int epIdx, @Nonnull Bitset triples) {
@@ -174,6 +183,7 @@ public class StandardAgglutinator implements Agglutinator {
                 return;
             }
 
+            Bitset tmpTriplesWithAlt = this.tmpTriplesWithAlt.get(epIdx);
             tmpTriplesWithAlt.clear();
             SemanticCQueryMatch sm = (SemanticCQueryMatch) m;
             for (int i = triples.nextSetBit(0); i >= 0; i = triples.nextSetBit(i+1)) {
@@ -207,6 +217,7 @@ public class StandardAgglutinator implements Agglutinator {
                 // Chaos ensues if we try to to build a single node for the EG
                 // (factorial explosion). Build a node for each member that has
                 // alternatives and a single node for all that have none
+                Bitset tmpTriplesWithoutAlt = this.tmpTriplesWithoutAlt.get(epIdx);
                 tmpTriplesWithoutAlt.assign(triples);
                 tmpTriplesWithoutAlt.andNot(tmpTriplesWithAlt);
                 exclusiveQueries.add(toQuery(tmpTriplesWithoutAlt));
@@ -240,75 +251,77 @@ public class StandardAgglutinator implements Agglutinator {
          *  they can be copied into every other non-mergeable EG if that EG has no alternative
          *  rewritings and the MergePolicy annotations (if any) allow that merge. The merged
          *  query will replace the non-mergeable EG. */
-        private void mergeExclusiveQueries() {
-            Bitset mergeable = tmpTriplesWithAlt;
-            for (int epIdx = 0, nEps = epSet.size(); epIdx < nEps; epIdx++) {
-                TPEndpoint ep = epSet.get(epIdx);
-                Set<CQuery> exqSet = ep2exq.get(epIdx);
-                int nQueries = exqSet.size();
-                if (nQueries <= 1) {
-                    continue;
-                } else if (nQueries == 2) {
-                    Iterator<CQuery> it = exqSet.iterator();
-                    CQuery a = it.next();
-                    CQuery b = it.next();
-                    if (isMergeCandidate(epIdx, a) && isMergeCandidate(epIdx, b)) {
-                        CQuery merged = tryMerge(ep, a, b);
-                        if (merged != null) {
-                            exqSet.clear();
-                            exqSet.add(merged);
-                        }
+        private void mergeExclusiveQueries(int epIdx) {
+            Bitset mergeable = tmpTriplesWithAlt.get(epIdx);
+            TPEndpoint ep = epSet.get(epIdx);
+            Set<CQuery> exqSet = ep2exq.get(epIdx);
+            int nQueries = exqSet.size();
+            if (nQueries <= 1) {
+                return;
+            } else if (nQueries == 2) {
+                Iterator<CQuery> it = exqSet.iterator();
+                CQuery a = it.next();
+                CQuery b = it.next();
+                if (isMergeCandidate(epIdx, a) && isMergeCandidate(epIdx, b)) {
+                    CQuery merged = tryMerge(ep, a, b);
+                    if (merged != null) {
+                        exqSet.clear();
+                        exqSet.add(merged);
                     }
-                    continue;
                 }
-                Map<CQuery, Set<CQuery>> exq2alt = ep2exq2alt.get(epIdx);
-                tmpQueries.clear();
-                tmpQueries.addAll(exqSet);
-                mergeExclusiveTriples.clear();
-                for (CQuery eg : tmpQueries) {
-                    IndexSubset<Triple> triples = (IndexSubset<Triple>) eg.attr().getSet();
-                    mergeExclusiveTriples.add(triples.getBitset().copy());
-                }
-                mergeable.clear();
-                for (int i = 0; i < nQueries; i++) {
-                    if (!isMergeCandidate(epIdx, tmpQueries.get(i)))
+                return;
+            }
+            Map<CQuery, Set<CQuery>> exq2alt = ep2exq2alt.get(epIdx);
+            List<CQuery> tmpQueries = this.tmpQueries.get(epIdx);
+            tmpQueries.clear();
+            tmpQueries.addAll(exqSet);
+            List<Bitset> mergeExclusiveTriples = this.mergeExclusiveTriples.get(epIdx);
+            mergeExclusiveTriples.clear();
+            for (CQuery eg : tmpQueries) {
+                IndexSubset<Triple> triples = (IndexSubset<Triple>) eg.attr().getSet();
+                mergeExclusiveTriples.add(triples.getBitset().copy());
+            }
+            // find queries that always can be merged into others
+            mergeable.clear();
+            for (int i = 0; i < nQueries; i++) {
+                if (!isMergeCandidate(epIdx, tmpQueries.get(i)))
+                    mergeable.set(i);
+                Bitset outer = mergeExclusiveTriples.get(i);
+                for (int j = i+1; j < nQueries; j++) {
+                    if (outer.intersects(mergeExclusiveTriples.get(j))) {
                         mergeable.set(i);
-                    Bitset outer = mergeExclusiveTriples.get(i);
-                    for (int j = i+1; j < nQueries; j++) {
-                        if (outer.intersects(mergeExclusiveTriples.get(j))) {
-                            mergeable.set(i);
-                            mergeable.set(j);
-                        }
+                        mergeable.set(j);
                     }
                 }
-                mergeable.flip(0, nQueries);
-                for (int i = mergeable.nextSetBit(0); i >= 0; i = mergeable.nextSetBit(i+1)) {
-                    CQuery outer = tmpQueries.get(i);
-                    assert isMergeCandidate(epIdx, outer);
-                    for (int j = 0; j < nQueries; j++) {
-                        CQuery inner = tmpQueries.get(j);
-                        if (i != j && !mergeable.get(j) && isMergeCandidate(epIdx, inner)) {
-                            CQuery merged = tryMerge(ep, outer, inner);
-                            if (merged != null) {
-                                exq2alt.remove(inner);
-                                exqSet.remove(inner);
-                                exqSet.add(merged);
-                                tmpQueries.set(j, merged);
-                            }
-                        }
-                    }
-                }
-                // merge the mergeable queries among themselves
-                for (int i = mergeable.nextSetBit(0); i >= 0; i = mergeable.nextSetBit(i+1)) {
-                    CQuery outer = tmpQueries.get(i);
-                    for (int j = mergeable.nextSetBit(i+1); j >= 0; j = mergeable.nextSetBit(j+1)) {
-                        CQuery inner = tmpQueries.get(j);
+            }
+            mergeable.flip(0, nQueries);
+            // merge the mergeable queries into the non-mergeable ones
+            for (int i = mergeable.nextSetBit(0); i >= 0; i = mergeable.nextSetBit(i+1)) {
+                CQuery outer = tmpQueries.get(i);
+                assert isMergeCandidate(epIdx, outer);
+                for (int j = 0; j < nQueries; j++) {
+                    CQuery inner = tmpQueries.get(j);
+                    if (i != j && !mergeable.get(j) && isMergeCandidate(epIdx, inner)) {
                         CQuery merged = tryMerge(ep, outer, inner);
                         if (merged != null) {
-                            tmpQueries.set(j, merged);
+                            exq2alt.remove(inner);
                             exqSet.remove(inner);
                             exqSet.add(merged);
+                            tmpQueries.set(j, merged);
                         }
+                    }
+                }
+            }
+            // merge the mergeable queries among themselves
+            for (int i = mergeable.nextSetBit(0); i >= 0; i = mergeable.nextSetBit(i+1)) {
+                CQuery outer = tmpQueries.get(i);
+                for (int j = mergeable.nextSetBit(i+1); j >= 0; j = mergeable.nextSetBit(j+1)) {
+                    CQuery inner = tmpQueries.get(j);
+                    CQuery merged = tryMerge(ep, outer, inner);
+                    if (merged != null) {
+                        tmpQueries.set(j, merged);
+                        exqSet.remove(inner);
+                        exqSet.add(merged);
                     }
                 }
             }
@@ -324,21 +337,23 @@ public class StandardAgglutinator implements Agglutinator {
 
         @Override public @Nonnull Collection<Op> takeLeaves() {
             try (TimeSampler ignored = Metrics.AGGLUTINATION_MS.createThreadSampler(perfListener)) {
-                splitNonExclusiveTriples();
-                assert checkExclusiveNonExclusiveDisjointness();
-                mergeExclusiveQueries();
+                splitNonExclusiveTriplesPhase1();
+                executor.parallelFor(0, epSet.size(), this::takeLeavesEndpointPreprocess);
                 generateNodes();
                 List<Op> nodes = buildNodes();
-                for (Op node : nodes) {
-                    node.offerVarsUniverse(varsUniverse);
-                    node.offerTriplesUniverse(triplesUniverse);
-                }
-                lastState.set(this);
                 assert checkNodesUniverseSets(nodes);
                 assert checkLostGroups(nodes);
                 assert checkLostTriples(nodes);
+                statePool.offer(this);
                 return nodes;
             }
+        }
+
+        private void takeLeavesEndpointPreprocess(int epIdx) {
+            assert ep2ext.size() >= epSet.size() && ep2ext.stream().noneMatch(Objects::isNull);
+            splitNonExclusiveTriplesPhase2(epIdx);
+            assert checkExclusiveNonExclusiveDisjointness(epIdx);
+            mergeExclusiveQueries(epIdx);
         }
 
         private boolean checkNodesUniverseSets(@Nonnull List<Op> nodes) {
@@ -358,8 +373,12 @@ public class StandardAgglutinator implements Agglutinator {
 
         private List<Op> buildNodes() {
             List<Op> result = new ArrayList<>(sig2qn.size());
-            for (List<Op> nodes : sig2qn.values())
-                result.add(UnionOp.build(nodes));
+            for (List<Op> nodes : sig2qn.values()) {
+                Op node = UnionOp.build(nodes);
+                node.offerTriplesUniverse(triplesUniverse);
+                node.offerVarsUniverse(varsUniverse);
+                result.add(node);
+            }
             return result;
         }
 
@@ -379,12 +398,12 @@ public class StandardAgglutinator implements Agglutinator {
         }
 
         private void generateNodes() {
-            for (int epIdx = 0; epIdx < epSet.size(); epIdx++) {
+            for (int epIdx = 0, size = epSet.size(); epIdx < size; epIdx++) {
                 TPEndpoint ep = epSet.get(epIdx);
                 Map<CQuery, Set<CQuery>> exq2alt = ep2exq2alt.get(epIdx);
                 CQueryMatch m = this.ep2match.get(epIdx);
                 SemanticCQueryMatch sm = (m instanceof SemanticCQueryMatch)
-                                       ? (SemanticCQueryMatch)m : null;
+                                       ? (SemanticCQueryMatch) m : null;
                 for (CQuery eg : ep2exq.get(epIdx)) {
                     List<Op> list = sig2qn.computeIfAbsent(toSignature(eg), opListFac);
                     if (sm == null || !addAlts(ep, list, eg, sm.getAlternatives(eg))) {
@@ -394,7 +413,7 @@ public class StandardAgglutinator implements Agglutinator {
                     assert !list.isEmpty();
                 }
                 Bitset net = ep2net.get(epIdx);
-                for (int i = net.nextSetBit(0); i >= 0; i = net.nextSetBit(i+1)) {
+                for (int i = net.nextSetBit(0); i >= 0; i = net.nextSetBit(i + 1)) {
                     Triple triple = triplesUniverse.get(i);
                     CQuery q = addUniverse(CQuery.from(triple));
                     List<Op> list = sig2qn.computeIfAbsent(toSignature(q), opListFac);
@@ -409,14 +428,12 @@ public class StandardAgglutinator implements Agglutinator {
          * Checks that no non-exclusive triple in {@link StandardState#ep2net}, when converted
          * into a {@link CQuery} will not already exist in ep2exq for that same endpoint
          */
-        private boolean checkExclusiveNonExclusiveDisjointness() {
-            for (int epIdx = 0; epIdx < epSet.size(); epIdx++) {
-                Set<CQuery> exclusiveQueries = ep2exq.get(epIdx);
-                for (Triple triple : triplesUniverse.subset(ep2net.get(epIdx))) {
-                    CQuery neq = addUniverse(CQuery.from(triple));
-                    if (exclusiveQueries.contains(neq))
-                        return false; //violation
-                }
+        private boolean checkExclusiveNonExclusiveDisjointness(int epIdx) {
+            Set<CQuery> exclusiveQueries = ep2exq.get(epIdx);
+            for (Triple triple : triplesUniverse.subset(ep2net.get(epIdx))) {
+                CQuery neq = addUniverse(CQuery.from(triple));
+                if (exclusiveQueries.contains(neq))
+                    return false; //violation
             }
             return true;
         }
@@ -432,7 +449,7 @@ public class StandardAgglutinator implements Agglutinator {
             for (CQueryMatch match : ep2match) {
                 if (match != null) {
                     SemanticCQueryMatch sm = match instanceof SemanticCQueryMatch
-                                           ? (SemanticCQueryMatch)match : null;
+                            ? (SemanticCQueryMatch)match : null;
                     for (CQuery eg : match.getKnownExclusiveGroups()) {
                         if (sm != null && !sm.getAlternatives(eg).isEmpty()) {
                             for (CQuery alt : sm.getAlternatives(eg)) {
@@ -452,7 +469,7 @@ public class StandardAgglutinator implements Agglutinator {
         private boolean checkLostTriples(@Nonnull List<Op> nodes) {
             for (CQueryMatch match : ep2match) {
                 SemanticCQueryMatch sm = match instanceof SemanticCQueryMatch
-                                       ? (SemanticCQueryMatch)match : null;
+                        ? (SemanticCQueryMatch)match : null;
                 if (match != null) {
                     for (Triple triple : match.getNonExclusiveRelevant()) {
                         if (sm != null && !sm.getAlternatives(triple).isEmpty()) {

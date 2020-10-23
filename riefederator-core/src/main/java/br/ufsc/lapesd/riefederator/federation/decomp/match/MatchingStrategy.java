@@ -10,10 +10,9 @@ import br.ufsc.lapesd.riefederator.util.indexed.ref.ImmRefIndexSet;
 import javax.annotation.Nonnull;
 import java.util.Collection;
 
-public interface MatchingStrategy extends AutoCloseable {
+public interface MatchingStrategy {
     void addSource(@Nonnull Source source);
     @Nonnull Collection<Op> match(@Nonnull CQuery query, @Nonnull Agglutinator agglutinator);
     @Nonnull Collection<Source> getSources();
     @Nonnull ImmRefIndexSet<TPEndpoint> getEndpointsSet();
-    @Override void close();
 }

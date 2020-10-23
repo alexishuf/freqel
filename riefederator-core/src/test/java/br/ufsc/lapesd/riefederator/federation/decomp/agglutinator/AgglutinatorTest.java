@@ -14,9 +14,11 @@ import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticSelectDescription;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.Source;
+import br.ufsc.lapesd.riefederator.federation.concurrent.PoolPlanningExecutorService;
 import br.ufsc.lapesd.riefederator.federation.decomp.match.MatchingStrategy;
 import br.ufsc.lapesd.riefederator.federation.decomp.match.SourcesListMatchingStrategy;
 import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListener;
+import br.ufsc.lapesd.riefederator.federation.performance.ThreadedPerformanceListener;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.ConjunctivePlanBenchmarksTestBase;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
@@ -41,6 +43,8 @@ import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.glassfish.jersey.uri.UriTemplate;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -66,10 +70,28 @@ import static java.util.stream.IntStream.range;
 import static org.testng.Assert.*;
 
 public class AgglutinatorTest implements TestContext {
+    private static PoolPlanningExecutorService poolExecutorService
+            = new PoolPlanningExecutorService();
+    private static ThreadedPerformanceListener performanceListener
+            = new ThreadedPerformanceListener();
+
     private static final List<Supplier<Agglutinator>> agglutinatorSuppliers = asList(
             EvenAgglutinator::new,
-            StandardAgglutinator::new
+            StandardAgglutinator::new,
+            ParallelStandardAgglutinator::new,
+            () -> new ParallelStandardAgglutinator(performanceListener, poolExecutorService)
     );
+
+    @BeforeClass(groups = {"fast"})
+    public void beforeClass() {
+        poolExecutorService.bind();
+    }
+
+    @AfterClass(groups = {"fast"})
+    public void afterClass() {
+        poolExecutorService.release();
+        performanceListener.close();
+    }
 
     static class InterceptingAgglutinator implements Agglutinator {
         private @Nonnull Agglutinator delegate;
@@ -180,10 +202,12 @@ public class AgglutinatorTest implements TestContext {
         SourcesListMatchingStrategy matchingStrategy = new SourcesListMatchingStrategy();
         sources.forEach(matchingStrategy::addSource);
         agglutinator.setMatchingStrategy(matchingStrategy);
-        InterceptingAgglutinator intercepting = new InterceptingAgglutinator(agglutinator);
-        Collection<Op> nodes = matchingStrategy.match(query, intercepting);
-        checkValidAgglutination(nodes, query);
-        checkLostComponents(intercepting.matches, nodes, query);
+        for (int i = 0; i < 4; i++) {
+            InterceptingAgglutinator intercepting = new InterceptingAgglutinator(agglutinator);
+            Collection<Op> nodes = matchingStrategy.match(query, intercepting);
+            checkValidAgglutination(nodes, query);
+            checkLostComponents(intercepting.matches, nodes, query);
+        }
     }
 
     @Test(dataProvider = "agglutinateBenchmarksData")

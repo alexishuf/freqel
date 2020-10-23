@@ -8,12 +8,12 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.impl.BindJoinCardinali
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.LimitCardinalityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
+import br.ufsc.lapesd.riefederator.federation.concurrent.PlanningExecutorService;
+import br.ufsc.lapesd.riefederator.federation.concurrent.PoolPlanningExecutorService;
 import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.Agglutinator;
 import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.StandardAgglutinator;
-import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.DecompositionStrategy;
-import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.StandardDecomposer;
 import br.ufsc.lapesd.riefederator.federation.decomp.match.MatchingStrategy;
-import br.ufsc.lapesd.riefederator.federation.decomp.match.ParallelSourcesListMatchingStrategy;
+import br.ufsc.lapesd.riefederator.federation.decomp.match.SourcesListMatchingStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
@@ -63,11 +63,11 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         super.configure();
         configurePrePlanner();
         configurePostPlanner();
-        bind(DecompositionStrategy.class).to(StandardDecomposer.class);
-        bind(MatchingStrategy.class).to(ParallelSourcesListMatchingStrategy.class);
+        bind(MatchingStrategy.class).to(SourcesListMatchingStrategy.class);
         bind(Agglutinator.class).to(StandardAgglutinator.class);
         bind(ConjunctivePlanner.class).to(BitsetConjunctivePlannerDispatcher.class);
         bind(JoinOrderPlanner.class).to(GreedyJoinOrderPlanner.class);
+        bind(PlanningExecutorService.class).toInstance(new PoolPlanningExecutorService());
         configureCardinalityEstimation();
     }
 

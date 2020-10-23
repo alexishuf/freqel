@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.SimpleFederationModule;
 import br.ufsc.lapesd.riefederator.federation.Source;
+import br.ufsc.lapesd.riefederator.federation.concurrent.PlanningExecutorService;
 import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
 import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.Agglutinator;
 import br.ufsc.lapesd.riefederator.federation.decomp.match.MatchingStrategy;
@@ -65,22 +66,29 @@ public abstract class ConjunctivePlanBenchmarksTestBase {
         assert root.assertTreeInvariants();
         SPARQLParserTest.assertUniverses(root);
 
-        PrePlanner prePlanner = defInjector.getInstance(PrePlanner.class);
-        root = prePlanner.plan(root);
-        assert root.assertTreeInvariants();
-        SPARQLParserTest.assertUniverses(root);
+        PlanningExecutorService executor = defInjector.getInstance(PlanningExecutorService.class);
+        executor.bind();
+        try {
 
-        MatchingStrategy matchingStrategy = defInjector.getInstance(MatchingStrategy.class);
-        Agglutinator agglutinator = defInjector.getInstance(Agglutinator.class);
-        agglutinator.setMatchingStrategy(matchingStrategy);
-        sources.forEach(matchingStrategy::addSource);
-        return TreeUtils.streamPreOrder(root).filter(QueryOp.class::isInstance).map(o -> {
-            CQuery cQuery = ((QueryOp) o).getQuery();
-            Collection<Op> leaves = matchingStrategy.match(cQuery, agglutinator);
-            for (Op leaf : leaves)
-                SPARQLParserTest.assertUniverses(leaf);
-            return ImmutablePair.of(cQuery, (List<Op>)leaves);
-        }).collect(Collectors.toList());
+            PrePlanner prePlanner = defInjector.getInstance(PrePlanner.class);
+            root = prePlanner.plan(root);
+            assert root.assertTreeInvariants();
+            SPARQLParserTest.assertUniverses(root);
+
+            MatchingStrategy matchingStrategy = defInjector.getInstance(MatchingStrategy.class);
+            Agglutinator agglutinator = defInjector.getInstance(Agglutinator.class);
+            agglutinator.setMatchingStrategy(matchingStrategy);
+            sources.forEach(matchingStrategy::addSource);
+            return TreeUtils.streamPreOrder(root).filter(QueryOp.class::isInstance).map(o -> {
+                CQuery cQuery = ((QueryOp) o).getQuery();
+                Collection<Op> leaves = matchingStrategy.match(cQuery, agglutinator);
+                for (Op leaf : leaves)
+                    SPARQLParserTest.assertUniverses(leaf);
+                return ImmutablePair.of(cQuery, (List<Op>) leaves);
+            }).collect(Collectors.toList());
+        } finally {
+            executor.release();
+        }
     }
 
     @DataProvider public @Nonnull Object[][] planData() throws IOException, SPARQLParseException {

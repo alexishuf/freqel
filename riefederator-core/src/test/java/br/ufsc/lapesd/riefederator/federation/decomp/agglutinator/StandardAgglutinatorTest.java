@@ -5,10 +5,11 @@ import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.federation.decomp.MergeHelper;
 import br.ufsc.lapesd.riefederator.federation.decomp.match.SourcesListMatchingStrategy;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -23,10 +24,20 @@ import static org.testng.Assert.assertFalse;
 public class StandardAgglutinatorTest {
     @DataProvider public static Object[][] agglutinateBenchmarksData() throws Exception {
         return Arrays.stream(AgglutinatorTest.agglutinateBenchmarksData())
-                .filter(r -> r[2] instanceof StandardAgglutinator)
+                .filter(r -> r[2] instanceof StandardAgglutinator
+                          || r[2] instanceof ParallelStandardAgglutinator)
                 .toArray(Object[][]::new);
     }
 
+    @BeforeClass(groups = {"fast"})
+    public void beforeClass() {
+        new AgglutinatorTest().beforeClass();
+    }
+
+    @AfterClass(groups = {"fast"})
+    public void afterClass() {
+        new AgglutinatorTest().afterClass();
+    }
 
     @Test(dataProvider = "agglutinateBenchmarksData", groups = {"fast"})
     public void testAgglutinateBenchmarks(@Nonnull CQuery query, @Nonnull List<Source> sources,

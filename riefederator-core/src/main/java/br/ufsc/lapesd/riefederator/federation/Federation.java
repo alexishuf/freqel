@@ -8,10 +8,14 @@ import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
-import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.DecompositionStrategy;
+import br.ufsc.lapesd.riefederator.federation.concurrent.PlanningExecutorService;
+import br.ufsc.lapesd.riefederator.federation.decomp.FilterAssigner;
+import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.Agglutinator;
+import br.ufsc.lapesd.riefederator.federation.decomp.match.MatchingStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
+import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -21,6 +25,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
 import com.google.common.annotations.VisibleForTesting;
@@ -35,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics.INIT_SOURCES_MS;
@@ -48,31 +54,42 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(Federation.class);
 
+    private final @Nonnull MatchingStrategy matchingStrategy;
+    private final @Nonnull Agglutinator agglutinator;
     private final @Nonnull PrePlanner prePlanner;
+    private final @Nonnull ConjunctivePlanner conjunctivePlanner;
     private final @Nonnull PostPlanner postPlanner;
-    private final @Nonnull DecompositionStrategy strategy;
     private final @Nonnull PlanExecutor executor;
-    private final @Nonnull PerformanceListener performanceListener;
+    private final @Nonnull PerformanceListener performance;
     private final @Nonnull InnerCardinalityComputer cardinalityComputer;
     private final @Nonnull ResultsExecutor resultsExecutor;
+    private final @Nonnull PlanningExecutorService executorService;
     private @Nonnull TemplateExpander templateExpander;
 
     @Inject
     public Federation(@Nonnull PrePlanner prePlanner,
+                      @Nonnull ConjunctivePlanner conjunctivePlanner,
                       @Nonnull PostPlanner postPlanner,
-                      @Nonnull DecompositionStrategy strategy,
+                      @Nonnull MatchingStrategy matchingStrategy,
+                      @Nonnull Agglutinator agglutinator,
                       @Nonnull PlanExecutor executor,
-                      @Nonnull PerformanceListener performanceListener,
+                      @Nonnull PerformanceListener performance,
                       @Nonnull InnerCardinalityComputer cardinalityComputer,
-                      @Nonnull ResultsExecutor resultsExecutor) {
+                      @Nonnull ResultsExecutor resultsExecutor,
+                      @Nonnull PlanningExecutorService executorService) {
         this.prePlanner = prePlanner;
+        this.conjunctivePlanner = conjunctivePlanner;
         this.postPlanner = postPlanner;
-        this.strategy = strategy;
+        this.matchingStrategy = matchingStrategy;
+        this.agglutinator = agglutinator;
+        agglutinator.setMatchingStrategy(matchingStrategy);
         this.executor = executor;
-        this.performanceListener = performanceListener;
+        this.performance = performance;
         this.cardinalityComputer = cardinalityComputer;
         this.resultsExecutor = resultsExecutor;
         this.templateExpander = new TemplateExpander();
+        this.executorService = executorService;
+        this.executorService.bind();
     }
 
     public static @Nonnull Federation createDefault() {
@@ -80,9 +97,6 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return injector.getInstance(Federation.class);
     }
 
-    public @Nonnull DecompositionStrategy getDecompositionStrategy() {
-        return strategy;
-    }
 
     public @Nonnull Federation setTemplateExpander(@Nonnull TemplateExpander templateExpander) {
         this.templateExpander = templateExpander;
@@ -94,17 +108,17 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public @Nonnull PerformanceListener getPerformanceListener() {
-        return performanceListener;
+        return performance;
     }
 
     @Contract("_ -> this") @CanIgnoreReturnValue
     public @Nonnull Federation addSource(@Nonnull Source source) {
-        strategy.addSource(source);
+        matchingStrategy.addSource(source);
         return this;
     }
 
     public @Nonnull Collection<Source> getSources() {
-        return strategy.getSources();
+        return matchingStrategy.getSources();
     }
 
     /**
@@ -120,7 +134,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
      * @return true iff all sources completed initialization within the timeout
      */
     public boolean initAllSources(int timeout, @Nonnull TimeUnit unit) {
-        try (TimeSampler sampler = INIT_SOURCES_MS.createThreadSampler(performanceListener)) {
+        try (TimeSampler sampler = INIT_SOURCES_MS.createThreadSampler(performance)) {
             int timeoutMs = (int)MILLISECONDS.convert(timeout, unit);
             Stopwatch sw = Stopwatch.createStarted();
 
@@ -177,7 +191,16 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         return TreeUtils.replaceNodes(root, cardinalityComputer, op -> {
             if (op.getClass().equals(QueryOp.class)) {
                 QueryOp component = (QueryOp) op;
-                Op componentPlan = strategy.decompose(component.getQuery());
+                CQuery cQuery = component.getQuery();
+                Collection<Op> nodes = matchingStrategy.match(cQuery, agglutinator);
+                Op componentPlan;
+                try (TimeSampler ignored = Metrics.PLAN_MS.createThreadSampler(performance)) {
+                    Set<SPARQLFilter> filters = cQuery.getModifiers().filters();
+                    FilterAssigner.placeFiltersOnLeaves(nodes, filters);
+                    componentPlan = conjunctivePlanner.plan(cQuery, nodes);
+                    FilterAssigner.placeInnerBottommost(componentPlan, filters);
+                    TreeUtils.copyNonFilter(componentPlan, component.modifiers());
+                }
                 boolean report = componentPlan instanceof EmptyOp
                         && component.modifiers().optional() == null
                         && !component.getParents().stream().allMatch(UnionOp.class::isInstance);
@@ -198,7 +221,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public @Nonnull Op plan(@Nonnull Op query) {
-        try (TimeSampler ignored = Metrics.FULL_PLAN_MS.createThreadSampler(performanceListener)) {
+        try (TimeSampler ignored = Metrics.FULL_PLAN_MS.createThreadSampler(performance)) {
             Stopwatch sw = Stopwatch.createStarted();
             Op root = query instanceof QueryOp ? query : TreeUtils.deepCopy(query);
             assert root.assertTreeInvariants();
@@ -255,6 +278,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
 
     @Override
     public void close() {
+        executorService.release();
         // close endpoints that asked to be closed
         for (Source source : getSources()) {
             if (source.getCloseEndpoint()) {
@@ -266,8 +290,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
                 }
             }
         }
-
         resultsExecutor.close();
-        performanceListener.close();
+        performance.close();
     }
 }

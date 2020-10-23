@@ -18,9 +18,15 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.NoCardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
-import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.DecompositionStrategy;
-import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.EvenDecomposer;
-import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.StandardDecomposer;
+import br.ufsc.lapesd.riefederator.federation.concurrent.PlanningExecutorService;
+import br.ufsc.lapesd.riefederator.federation.concurrent.PoolPlanningExecutorService;
+import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.Agglutinator;
+import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.EvenAgglutinator;
+import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.ParallelStandardAgglutinator;
+import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.StandardAgglutinator;
+import br.ufsc.lapesd.riefederator.federation.decomp.match.MatchingStrategy;
+import br.ufsc.lapesd.riefederator.federation.decomp.match.ParallelSourcesListMatchingStrategy;
+import br.ufsc.lapesd.riefederator.federation.decomp.match.SourcesListMatchingStrategy;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.JoinOpExecutor;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.joins.FixedBindJoinOpExecutor;
@@ -118,6 +124,7 @@ import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static br.ufsc.lapesd.riefederator.webapis.TransparencyService.*;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.apache.jena.rdf.model.ResourceFactory.*;
@@ -549,16 +556,18 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         private Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass;
         private Class<? extends ConjunctivePlanner> ip;
         private Class<? extends JoinOrderPlanner> jo;
-        private Class<? extends DecompositionStrategy> ds;
+        private Class<? extends Agglutinator> ag;
+        private Class<? extends MatchingStrategy> ms;
         private Class<? extends PerformanceListener> pl;
 
         protected TestModule(boolean canBindJoin,
-                          Class<? extends Provider<? extends PrePlanner>> prePlannerSupplierClass,
-                          Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass,
-                          Class<? extends ConjunctivePlanner> ip,
-                          Class<? extends JoinOrderPlanner> jo,
-                          Class<? extends DecompositionStrategy> ds,
-                          Class<? extends PerformanceListener> pl) {
+                             Class<? extends Provider<? extends PrePlanner>> prePlannerSupplierClass,
+                             Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass,
+                             Class<? extends ConjunctivePlanner> ip,
+                             Class<? extends JoinOrderPlanner> jo,
+                             Class<? extends MatchingStrategy> ms,
+                             Class<? extends Agglutinator> ag,
+                             Class<? extends PerformanceListener> pl) {
             this.canBindJoin = canBindJoin;
             this.storingPerformanceListener =
                     PerformanceListenerTest.storingClasses.contains(pl);
@@ -566,13 +575,15 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             this.postPlannerSupplierClass = postPlannerSupplierClass;
             this.ip = ip;
             this.jo = jo;
-            this.ds = ds;
+            this.ag = ag;
+            this.ms = ms;
             this.pl = pl;
         }
         public boolean cannotBindJoin() { return !canBindJoin; }
         public boolean isSlowModule() { return true; }
         protected boolean canBeFast() {
-            return ConjunctivePlannerTest.isFast(ip, jo) && fastDecomposerClasses.contains(ds);
+            return ConjunctivePlannerTest.isFast(ip, jo)
+                    && fastMatchingStrategies.contains(ms) && fastAgglutinatorClasses.contains(ag);
         }
         public boolean hasStoringPerformanceListener() {
             return storingPerformanceListener;
@@ -584,7 +595,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             bind(PostPlanner.class).toProvider(postPlannerSupplierClass);
             bind(ConjunctivePlanner.class).to(ip);
             bind(JoinOrderPlanner.class).to(jo);
-            bind(DecompositionStrategy.class).to(ds);
+            bind(MatchingStrategy.class).to(ms);
+            bind(PlanningExecutorService.class).toInstance(new PoolPlanningExecutorService());
+            bind(Agglutinator.class).to(ag);
             bind(PerformanceListener.class).toInstance(new NamedSupplier<>(pl).get());
         }
 
@@ -595,7 +608,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 b.append('+');
             return b.append(ip.getSimpleName()).append('+')
                     .append(jo.getSimpleName()).append('+')
-                    .append(ds.getSimpleName()).append('+')
+                    .append(ms.getSimpleName()).append('+')
+                    .append(ag.getSimpleName()).append('+')
                     .append(pl.getSimpleName()).append('+')
                     .append(prePlannerSupplierClass.getSimpleName()).append('+')
                     .append(isSlowModule() ? "(fast)" : "(slow)")
@@ -609,12 +623,13 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                          Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass,
                          Class<? extends ConjunctivePlanner> planner,
                          Class<? extends JoinOrderPlanner> joinOrder,
-                         Class<? extends DecompositionStrategy> decompositionStrategy,
+                         Class<? extends MatchingStrategy> matchingStrategy,
+                         Class<? extends Agglutinator> agglutinator,
                          Class<? extends PerformanceListener> performance);
     }
 
     private static final @Nonnull List<ModuleFactory> moduleProtoList = asList(
-            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
+            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -624,7 +639,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(NoCardinalityEnsemble.class); }
             },
-            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
+            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -642,7 +657,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(GeneralSelectivityHeuristic.class, BufferedResultsExecutor.class); }
             },
-            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
+            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -652,7 +667,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(SequentialResultsExecutor.class); }
             },
-            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
+            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -666,7 +681,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(BufferedResultsExecutor.class); }
             },
-            (op, pp, ip, opt, dec, pl) -> new TestModule(false, op, pp, ip, opt, dec, pl) {
+            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(false, op, pp, ip, opt, ms, ag, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -678,7 +693,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(InMemoryHashJoinResults.class); }
             },
-            (op, pp, ip, opt, dec, pl) -> new TestModule(false, op, pp, ip, opt, dec, pl) {
+            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(false, op, pp, ip, opt, ms, ag, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -690,7 +705,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(InMemoryHashJoinResults.class); }
             },
-            (op, pp, ip, opt, dec, pl) -> new TestModule(false, op, pp, ip, opt, dec, pl) {
+            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(false, op, pp, ip, opt, ms, ag, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -702,7 +717,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(ParallelInMemoryHashJoinResults.class); }
             },
-            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
+            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -714,7 +729,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 @Override
                 public String toString() { return asString(SimpleBindJoinResults.class); }
             },
-            (op, pp, ip, opt, dec, pl) -> new TestModule(true, op, pp, ip, opt, dec, pl) {
+            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
                 @Override
                 protected void configure() {
                     super.configure();
@@ -750,20 +765,28 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         assertEquals(fusekiEndpoints.size(), 0); //no concurrency!
     }
 
-    private static final @Nonnull List<Class<? extends DecompositionStrategy>>
-            decomposerClasses = asList(EvenDecomposer.class, StandardDecomposer.class);
-    private static final @Nonnull List<Class<? extends DecompositionStrategy>>
-            fastDecomposerClasses = Collections.singletonList(StandardDecomposer.class);
+    private static final @Nonnull List<Class<? extends MatchingStrategy>> matchingStrategies =
+            asList(SourcesListMatchingStrategy.class, ParallelSourcesListMatchingStrategy.class);
+    private static final @Nonnull List<Class<? extends MatchingStrategy>> fastMatchingStrategies =
+            singletonList(ParallelSourcesListMatchingStrategy.class);
+
+    private static final @Nonnull List<Class<? extends Agglutinator>> agglutinatorClasses = asList(
+            EvenAgglutinator.class,
+                StandardAgglutinator.class,
+            ParallelStandardAgglutinator.class);
+    private static final @Nonnull List<Class<? extends Agglutinator>>
+            fastAgglutinatorClasses = singletonList(ParallelStandardAgglutinator.class);
 
     private static final @Nonnull List<TestModule> moduleList =
             PrePlannerTest.providerClasses.stream()
                 .flatMap(op -> PostPlannerTest.providerClasses.stream()
                     .flatMap(pp -> ConjunctivePlannerTest.plannerClasses.stream()
                         .flatMap(ip -> ConjunctivePlannerTest.joinOrderPlannerClasses.stream()
-                            .flatMap(jo -> decomposerClasses.stream()
-                                .flatMap(ds -> PerformanceListenerTest.classes.stream()
-                                    .flatMap(pl -> moduleProtoList.stream().map(p -> p.apply(op, pp, ip, jo, ds, pl)))
-                                )))))
+                            .flatMap(jo -> matchingStrategies.stream()
+                                .flatMap(ms -> agglutinatorClasses.stream()
+                                    .flatMap(ag -> PerformanceListenerTest.classes.stream()
+                                        .flatMap(pl -> moduleProtoList.stream().map(p -> p.apply(op, pp, ip, jo, ms, ag, pl)))
+                                    ))))))
 
             .collect(toList());
 
@@ -1015,6 +1038,10 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 //            System.out.printf("Slow plan: %f\n", sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
         ConjunctivePlannerTest.assertPlanAnswers(plan, query);
 
+        // plan always works
+        for (int i = 0; i < 4; i++)
+            ConjunctivePlannerTest.assertPlanAnswers(federation.plan(query), query);
+
         // expected may be null telling us that we shouldn't execute, only check the plan
         if (expected != null) {
 //            sw.reset().start();
@@ -1063,6 +1090,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
         federation.initAllSources(5, TimeUnit.MINUTES);
         Op plan = federation.plan(query);
+        ConjunctivePlannerTest.assertPlanAnswers(plan, query);
         PerformanceListener perf = federation.getPerformanceListener();
         perf.sync();
 

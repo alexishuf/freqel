@@ -3,12 +3,8 @@ package br.ufsc.lapesd.riefederator.webapis;
 import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.federation.Federation;
+import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.DecompositionStrategy;
-import br.ufsc.lapesd.riefederator.federation.decomp.deprecated.EvenDecomposer;
-import br.ufsc.lapesd.riefederator.federation.execution.tree.impl.SimpleExecutionModule;
-import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
-import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
@@ -24,7 +20,6 @@ import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
 import br.ufsc.lapesd.riefederator.webapis.requests.MismatchingQueryException;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.APIRequestExecutorException;
-import com.google.inject.Guice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +36,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(WebAPICQEndpoint.class);
     private final @Nonnull APIMolecule molecule;
     private @Nonnull SoftReference<APIMoleculeMatcher> matcher = new SoftReference<>(null);
+    private @Nullable Federation federation;
 
     public WebAPICQEndpoint(@Nonnull APIMolecule molecule) {
         this.molecule = molecule;
@@ -120,9 +116,8 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     }
 
     private @Nonnull Results matchAndQuery(@Nonnull CQuery query, boolean throwOnFailedMatch) {
-        APIMoleculeMatcher matcher = getMatcher();
         Set<String> varNames = query.attr().allVarNames();
-        CQueryMatch match = matcher.match(query);
+        CQueryMatch match = getMatcher().match(query);
         if (match.getKnownExclusiveGroups().isEmpty()) {
             return reportFailure(query, throwOnFailedMatch, varNames);
         } else if (match.getKnownExclusiveGroups().size() == 1) {
@@ -135,19 +130,16 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
                     .flatMap(CQuery::stream).collect(toSet());
             if (!allTriples.equals(query.attr().getSet()))
                 return reportFailure(query, throwOnFailedMatch, varNames);
-
-            // use a federation over myself to plan and execute the joins
-            Federation fed = Guice.createInjector(new SimpleExecutionModule() {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(ConjunctivePlanner.class).to(JoinPathsConjunctivePlanner.class);
-                    bind(DecompositionStrategy.class).to(EvenDecomposer.class);
-                }
-            }).getInstance(Federation.class);
-            fed.addSource(new Source(matcher, this));
-            return fed.query(query);
+            return getFederation().query(query);
         }
+    }
+
+    private @Nonnull Federation getFederation() {
+        if (federation == null) {
+            Source source = new Source(getMatcher(), this);
+            federation = SingletonSourceFederation.createFederation(source);
+        }
+        return federation;
     }
 
     public @Nonnull APIMoleculeMatcher getMatcher() {
@@ -188,6 +180,12 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     @Override
     public boolean hasRemoteCapability(@Nonnull Capability capability) {
         return false;
+    }
+
+    @Override public void close() {
+        if (federation != null)
+            federation.close();
+        super.close();
     }
 
     @Override
