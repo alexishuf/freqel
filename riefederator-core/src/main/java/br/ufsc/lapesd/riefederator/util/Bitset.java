@@ -25,7 +25,15 @@ public interface Bitset {
 
     int length();
     boolean isEmpty();
+
     int cardinality();
+    /** Return the number of bits set before idx (not counting the bit at idx). */
+    int cardinalityBefore(int idx);
+    /** Return the number of bits set after idx (not counting the bit at idx). */
+    default int cardinalityAfter(int idx) { return cardinalityFrom(idx+1); }
+    /** Return the number of bits set at idx or after. */
+    int cardinalityFrom(int idx);
+
     int size();
     int words();
     long word(int index);

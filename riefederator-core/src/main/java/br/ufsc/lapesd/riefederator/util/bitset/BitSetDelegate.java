@@ -93,6 +93,18 @@ public class BitSetDelegate extends AbstractBitset {
         return delegate.cardinality();
     }
 
+    @Override public int cardinalityBefore(int idx) {
+        BitSet copy = (BitSet) delegate.clone();
+        copy.clear(idx, copy.size());
+        return copy.cardinality();
+    }
+
+    @Override public int cardinalityFrom(int idx) {
+        BitSet copy = (BitSet) delegate.clone();
+        copy.clear(0, idx);
+        return copy.cardinality();
+    }
+
     @Override public int size() {
         return delegate.size();
     }
