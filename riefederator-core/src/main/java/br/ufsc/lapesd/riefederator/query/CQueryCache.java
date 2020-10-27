@@ -239,7 +239,7 @@ public class CQueryCache {
 
     public @Nonnull IndexSet<Term> tripleTerms() {
         if (tripleTerms == null)
-            indexTerms();
+            indexTripleTerms();
         return tripleTerms;
     }
 
@@ -260,7 +260,7 @@ public class CQueryCache {
         return tripleVars;
     }
 
-    private void indexTerms() {
+    private void indexTripleTerms() {
         int capacity = d.list.size()*3 + d.modifiers.filters().size()*2;
         FullIndexSet<Term> allTerms = new FullIndexSet<>(capacity);
         for (Triple triple : d.list) {
@@ -268,18 +268,30 @@ public class CQueryCache {
             allTerms.add(triple.getPredicate());
             allTerms.add(triple.getObject());
         }
-        int tripleTermsCount = allTerms.size();
+        this.allTerms = allTerms;
+        tripleTerms = IndexSetPartition.of(this.allTerms, 0, allTerms.size());
+    }
+
+    private void indexTerms() {
+        if (tripleTerms == null) {
+            indexTripleTerms();
+        } else if (allTerms == null) {
+            assert tripleTerms != null;
+            // only the filter terms were invalidated. Erase them and restore allTerms
+            FullIndexSet<Term> parent = (FullIndexSet<Term>)tripleTerms.getParent();
+            parent.removeTail(parent.size()-tripleTerms.size());
+            allTerms = parent;
+        } else if (tripleTerms.size() < allTerms.size()) {
+            return; // already indexed filters
+        }
         for (SPARQLFilter filter : d.modifiers.filters()) {
             for (Term term : filter.getTerms())
                 allTerms.add(term);
         }
-        this.allTerms = allTerms;
-        tripleTerms = IndexSetPartition.of(this.allTerms, 0, tripleTermsCount);
     }
 
     public @Nonnull IndexSet<Term> allTerms() {
-        if (allTerms == null)
-            indexTerms();
+        indexTerms();
         return allTerms;
     }
 

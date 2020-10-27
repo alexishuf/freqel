@@ -94,6 +94,13 @@ public class FullIndexSet<T> extends BaseIndexSet<T> {
         return new ImmFullIndexSet<>(new HashMap<>(indexMap), new ArrayList<>(data));
     }
 
+    public void removeTail(int tailSize) {
+        if (tailSize > size())
+            throw new IllegalArgumentException("tailSize="+tailSize+" > size()="+size());
+        for (int i = size()-1, last = size()-tailSize; i >= last; i--)
+            indexMap.remove(data.remove(i));
+    }
+
     @Override public boolean add(T t) {
         if (t == null) throw new NullPointerException();
         boolean change = indexMap.putIfAbsent(t, data.size()) == null;
