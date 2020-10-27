@@ -69,6 +69,14 @@ public class MappedJsonResponseParser implements ResponseParser {
         return primitiveParsers;
     }
 
+    public @Nonnull ImmutableMap<String, String> getContext() {
+        return context;
+    }
+
+    public @Nullable String getPrefixForNotMapped() {
+        return prefixForNotMapped;
+    }
+
     @Override
     public @Nonnull String[] getAcceptable() {
         return new String[] {APPLICATION_JSON, "application/hal+json"};

@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.ws.rs.core.MediaType;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -395,7 +396,8 @@ public class SwaggerParser implements APIDescriptionParser {
                                                @Nullable APIDescriptionContext context) {
         ResponseParser parser = null;
         List<Object> mediaTypes;
-        mediaTypes = new ArrayList<>(getPathObj(endpoint).getListNN("get/produces"));
+        DictTree pathObj = getPathObj(endpoint);
+        mediaTypes = new ArrayList<>(pathObj.getListNN("get/produces"));
         mediaTypes.addAll(swagger.getListNN("produces"));
         mediaTypes.removeIf(mt ->
                 !(mt instanceof String) || mt.toString().trim().startsWith("*/*"));
@@ -411,11 +413,69 @@ public class SwaggerParser implements APIDescriptionParser {
             if (parser != null)
                 return parser;
         }
-        if (mediaTypes.contains("application/json")) {// fallback to urn:plain
+        parser = tryLoadResponseParser(pathObj.getMap("get"), mediaTypes);
+        if (parser == null)
+            parser = tryLoadResponseParser(swagger, mediaTypes);
+        if (parser == null && mediaTypes.contains("application/json")) {// fallback to urn:plain
             return new MappedJsonResponseParser(Collections.emptyMap(), StdPlain.URI_PREFIX,
                                                 schemaParser.getParsersRegistry());
         }
+        return parser;
+    }
+
+    private @Nullable ResponseParser tryLoadResponseParser(@Nonnull DictTree specsParent,
+                                                           @Nonnull List<?> mediaTypes) {
+        for (ProtoResponseParser proto : getProtoResponseParsers(specsParent)) {
+            for (Object mediaType : mediaTypes) {
+                if (mediaType instanceof String && proto.accepts(mediaType.toString()))
+                    return proto.parse();
+            }
+        }
         return null;
+    }
+
+    private @Nonnull List<ProtoResponseParser> getProtoResponseParsers(@Nonnull DictTree parent) {
+        List<ProtoResponseParser> list = new ArrayList<>();
+        for (Object o : parent.getListNN("x-response-parser")) {
+            if (!(o instanceof DictTree)) {
+                logger.error("Expected a JSON object at {}/x-response-parser, got {}", parent, o);
+                continue;
+            }
+            list.add(new ProtoResponseParser(((DictTree)o)));
+        }
+        return list;
+    }
+
+    private class ProtoResponseParser {
+        private DictTree spec;
+
+        public ProtoResponseParser(@Nonnull DictTree spec) {
+            this.spec = spec;
+        }
+
+        public boolean accepts(@Nonnull String mediaType) {
+            MediaType accept = MediaType.valueOf(spec.getString("media-type", "*/*"));
+            return accept.isCompatible(MediaType.valueOf(mediaType));
+        }
+
+        public @Nonnull ResponseParser parse() {
+            String name = spec.getString("response-parser");
+            if (name.equals("mapped-json")) {
+                Map<String, String> context = new HashMap<>();
+                for (Map.Entry<String, Object> e : spec.getMapNN("context").asMap().entrySet()) {
+                    if ((e.getValue() instanceof String)) {
+                        context.put(e.getKey(), e.getValue().toString());
+                    } else {
+                        logger.error("Ignoring non-string URI {} for property {} at {}",
+                                     e.getValue(), e.getKey(), spec);
+                    }
+                }
+                String prefix = spec.getString("prefix", "urn:plain:");
+                return new MappedJsonResponseParser(context, prefix);
+            } else {
+                throw ex("Unsupported response-parser %s", name);
+            }
+        }
     }
 
     private @Nullable RateLimitsRegistry

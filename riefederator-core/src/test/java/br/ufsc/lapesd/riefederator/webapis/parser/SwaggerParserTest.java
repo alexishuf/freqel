@@ -335,4 +335,29 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         parser.getEndpoint("api-de-dados/licitacoes");
         parser.getEndpoint("api-de-dados/licitacoes/");
     }
+
+    @Test(groups = {"fast"})
+    public void testOverrideDefaultPrefix() throws IOException {
+        // adjust overlay to change default prefix
+        DictTree ext = DictTree.load(ptExtYaml).fromResource(ptExtYaml);
+        Map<String, String> spec = new HashMap<>();
+        spec.put("response-parser", "mapped-json");
+        spec.put("prefix", EX);
+        ext.getMapNN("overlay").put("x-response-parser", asList(spec));
+
+        List<Object> list = ext.getListNN("overlay/x-response-parser");
+        assertEquals(list.size(), 1);
+        assertTrue(list.get(0) instanceof DictTree);
+        assertEquals(((DictTree)list.get(0)).getString("prefix"), EX);
+
+        // Parse ResponseParser
+        SwaggerParser parser = SwaggerParser.FACTORY.fromDict(ext);
+        String endpoint = "/api-de-dados/licitacoes";
+        SwaggerParser.Parameters parameters = parser.getParameters(endpoint, null);
+        ResponseParser responseParser = parser.getResponseParser(endpoint, parameters.parser, null);
+
+        // check prefix
+        assertTrue(responseParser instanceof MappedJsonResponseParser);
+        assertEquals(((MappedJsonResponseParser)responseParser).getPrefixForNotMapped(), EX);
+    }
 }

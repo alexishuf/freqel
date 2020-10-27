@@ -13,7 +13,8 @@ baseSwagger:
 # not cause the removal of keys in the source swagger.
 # To REMOVE a element from the source swagger, set it to null here
 overlay:
-  # Declares parsers (which transform JSON into RDF) that apply globally to all endpoints
+  # Declares parsers (which transform JSON values into RDF values) that apply globally
+  # to all endpoints
   x-parser:
     - parser: "date"
       # This is a parser that applies to any element the JSON schema declares
@@ -21,6 +22,25 @@ overlay:
       # which such elements will be present in the JSON. In RDF all dates
       # are represented as xsd:date, which uses the ISO format
       date-format: "dd/MM/yyyy"
+  # response-parsers parse the whole response. response parsers can be set globally (as done here)
+  # or the HTTP method (get/post/...) of each Swagger endpoint. Each response parser applies to
+  # response media types that are accepted by the given media-type property. The "response-parser"
+  # property is mandatory and defines the implementation of the response parser. All other
+  # properties are specific to the response parser implementation.
+  x-response-parser:
+      # What media types this response parser handles. If ommitted, "*/*" is assumed
+    - media-type: "*/*"
+      # Convert JSON into RDF by mapping JSON properties into predicate URIs
+      response-parser: "mapped-json"
+      # (specific to mapped-json)
+      # Each property is a JSON property found in the response and the value is the URI
+      # of the RDF property to be used in its place
+      context:
+        mbox: "http://xmlns.com/foaf/0.1/mbox"
+      # (specific to mapped-json)
+      # For any JSON property not listed under context, replace property "P" with "prefixP"
+      # If not present, the default is urn:plain:
+      prefix: "urn:plain:"
   # Declares a paging strategy that applies globally. This strategy will start
   # from &page=1 and will increment that number at each requests.
   # the requests will stop when the server replies with an error, or when

@@ -339,3 +339,59 @@ format string.
   }
 }
 ```
+
+Configuring a ResponseParser
+----------------------------
+
+While the previous section discussed controlling parsing of individual 
+JSON values into RDF, it may be necessary to configure the overall parser 
+of the response into RDF. To configure response parsers add an entry under 
+`x-response-parser`either at the swagger root (to apply that response parser 
+definition globally or at a specific method of a swagger path). Response 
+parsers defined at the path level override globally defined response parsers. 
+Within a list of path-specific or global response parsers, the first entry 
+whose media-type matches the response media type will be chosen.
+
+- **Location**: Swagger root or method of swagger path (alongside `produces`)
+- **Property**: `x-response-parser`
+- **Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "media-type": {
+      "type": "string",
+    },
+    "response-parser": {
+      "type": "string"
+    }
+  }
+}
+```
+
+Additional properties are processed according to the response parser.
+
+### mapped-json Response parser
+- Name (with `response-parser`): `mapped-json`
+- Properties:
+  - `context`: a key-value map where keys are JSON properties and the 
+     value is the URIs of the RDF predicate (as a string) that should be 
+     used to represent the JSON property.
+  - `prefix`: Use this a an URI prefix to generate predicate URIs for any 
+    JSON property that is not defined in `context`.
+
+Example: 
+```json
+{
+  "x-response-parser": [
+    {
+      "media-type": "*/*",
+      "response-parser": "mapped-json",
+      "context": {
+        "mbox": "http://xmlns.com/foaf/0.1/mbox"
+      },
+      "prefix": "http://example.org/"
+    }
+  ]
+}
+``` 
