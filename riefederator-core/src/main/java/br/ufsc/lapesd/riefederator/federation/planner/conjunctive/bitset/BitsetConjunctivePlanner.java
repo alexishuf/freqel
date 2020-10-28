@@ -1,9 +1,9 @@
 package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset;
 
-import br.ufsc.lapesd.riefederator.algebra.JoinInterface;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.BitJoinGraph;
@@ -17,10 +17,6 @@ import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
-import com.google.common.collect.ListMultimap;
-import com.google.common.collect.MultimapBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -29,8 +25,6 @@ import java.util.*;
 import static br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.AbstractStateHelper.NODES;
 
 public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  {
-    private static final Logger logger = LoggerFactory.getLogger(BitsetConjunctivePlanner.class);
-
     @Inject
     public BitsetConjunctivePlanner(@Nonnull JoinOrderPlanner joinOrderPlanner,
                                     @Nonnull InnerCardinalityComputer innerCardComputer) {
@@ -41,19 +35,40 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
         return new InputsBitJoinGraph(fragments);
     }
 
+    private @Nonnull Bitset toSignature(@Nonnull Op op) {
+        IndexSubset<Triple> triples = (IndexSubset<Triple>) op.getMatchedTriples();
+        IndexSubset<String> inVars = (IndexSubset<String>) op.getRequiredInputVars();
+        int nTriples = triples.getParent().size();
+        int nVars = inVars.getParent().size();
+
+        Bitset sig = Bitsets.createFixed(nTriples + nVars);
+        sig.assign(triples.getBitset());
+        sig.or(nTriples, inVars.getBitset(), 0, nVars);
+        return sig;
+    }
+
+    private @Nonnull Op cleanEquivalents(@Nonnull List<Op> list) {
+        for (int i = 0, size = list.size(); i < size; i++) {
+            Op earlier = list.get(i);
+            for (int j = i+1; j < size; j++) {
+                if (TreeUtils.areEquivalent(earlier, list.get(j))) {
+                    list.remove(j--);
+                    --size;
+                }
+            }
+        }
+        return UnionOp.build(list);
+    }
+
     @Override @Nonnull RefIndexSet<Op> groupNodes(@Nonnull List<Op> nodes) {
         if (nodes.size() <= 1)
             return RefIndexSet.fromRefDistinct(nodes);
-        ListMultimap<JoinInterface, Op> if2op;
-        if2op = MultimapBuilder.hashKeys(nodes.size()).arrayListValues().build();
-
+        Map<Bitset, List<Op>> sig2op = new HashMap<>();
         for (Op op : nodes)
-            if2op.put(new JoinInterface(op), op);
-        RefIndexSet<Op> set = new RefIndexSet<>(nodes.size());
-        for (Map.Entry<JoinInterface, Collection<Op>> e : if2op.asMap().entrySet()) {
-            Collection<Op> children = e.getValue();
-            set.add(children.size() > 2 ? UnionOp.build(children) : children.iterator().next());
-        }
+            sig2op.computeIfAbsent(toSignature(op), k -> new ArrayList<>()).add(op);
+        RefIndexSet<Op> set = new RefIndexSet<>();
+        for (List<Op> list : sig2op.values())
+            set.add(cleanEquivalents(list));
         return set;
     }
 

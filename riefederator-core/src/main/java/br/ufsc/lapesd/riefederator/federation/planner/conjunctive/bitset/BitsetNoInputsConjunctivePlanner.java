@@ -2,13 +2,12 @@ package br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointOp;
+import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.priv.BitJoinGraph;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.util.Bitset;
 import br.ufsc.lapesd.riefederator.util.RawAlignedBitSet;
 import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
@@ -20,7 +19,8 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.*;
 
-import static br.ufsc.lapesd.riefederator.util.RawAlignedBitSet.*;
+import static br.ufsc.lapesd.riefederator.util.RawAlignedBitSet.andNot;
+import static br.ufsc.lapesd.riefederator.util.RawAlignedBitSet.cardinality;
 
 public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctivePlanner {
     private boolean extractCommonSubsets = true;
@@ -224,15 +224,6 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
         return result;
     }
 
-    private static @Nonnull TPEndpoint getEp(@Nonnull Op op) {
-        assert op instanceof EndpointOp || op instanceof UnionOp;
-        if (op instanceof EndpointOp) return ((EndpointOp)op).getEndpoint();
-        assert op.getChildren().size() > 0;
-        assert op.getChildren().stream().map(o -> ((EndpointOp)o).getEndpoint())
-                 .distinct().count() == 1;
-        return ((EndpointOp) op.getChildren().iterator().next()).getEndpoint();
-    }
-
     private static void merge(@Nonnull List<Op> nodes, long[] sorted, RefIndexSet<Op> result,
                               int begin, int end) {
         assert begin < end;
@@ -242,10 +233,9 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
             for (int i = begin; i < end; i++) {
                 if (ignore.get(i-begin)) continue;
                 Op earlier = nodes.get((int) sorted[i]);
-                TPEndpoint ep = getEp(earlier);
                 for (int j = i + 1; j < end; j++) {
                     Op later = nodes.get((int) sorted[j]);
-                    if (!ignore.get(j-begin) && ep.isAlternative(getEp(later)))
+                    if (!ignore.get(j-begin) &&  TreeUtils.areEquivalent(earlier, later))
                         ignore.set(j - begin);
                 }
                 list.add(earlier);

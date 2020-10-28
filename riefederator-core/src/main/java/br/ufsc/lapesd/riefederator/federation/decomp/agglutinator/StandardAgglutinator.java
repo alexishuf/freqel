@@ -384,10 +384,8 @@ public class StandardAgglutinator implements Agglutinator {
                 dest.add(new EndpointQueryOp(ep, matched));
                 return true;
             } else if (size > 0)  {
-                List<Op> list = new ArrayList<>(size);
                 for (CQuery alt : alts)
-                    list.add(new EndpointQueryOp(ep, alt));
-                dest.add(UnionOp.build(list));
+                    dest.add(new EndpointQueryOp(ep, alt));
                 return true;
             } else {
                 return false;

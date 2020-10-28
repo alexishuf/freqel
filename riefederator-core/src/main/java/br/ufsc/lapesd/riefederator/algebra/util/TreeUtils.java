@@ -7,10 +7,7 @@ import br.ufsc.lapesd.riefederator.algebra.TakenChildren;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
 import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.riefederator.algebra.leaf.SPARQLValuesTemplateOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.*;
 import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
@@ -393,11 +390,32 @@ public class TreeUtils {
 
     public static @Nullable TPEndpoint getEndpoint(@Nonnull Op op) {
         TPEndpoint ep = null;
-        if (op instanceof SPARQLValuesTemplateOp)
+        if (op instanceof SPARQLValuesTemplateOp) {
             ep = ((SPARQLValuesTemplateOp) op).getEndpoint();
-        else if (op instanceof EndpointQueryOp)
-            ep = ((EndpointQueryOp) op).getEndpoint();
+        } else if (op instanceof EndpointOp) {
+            ep = ((EndpointOp) op).getEndpoint();
+        } else if (op instanceof UnionOp) {
+            ep = getEndpoint(op.getChildren().iterator().next());
+            assert op.getChildren().stream().map(o -> getEndpoint(o)).distinct().count() == 1;
+        }
         return ep;
+    }
+
+    /**
+     * Tells whether the two given nodes are equivalent and only one should remain. {@link Op}s
+     * left and right must share the same set of matched triples and required input variables.
+     */
+    public static boolean areEquivalent(@Nonnull Op left, @Nonnull Op right) {
+        if (!getEndpoint(left).isAlternative(getEndpoint(right)))
+            return false;
+        assert left.getMatchedTriples().equals(right.getMatchedTriples());
+        assert left.getRequiredInputVars().equals(right.getRequiredInputVars());
+        if (left instanceof QueryOp && right instanceof QueryOp) {
+            return ((QueryOp)left).getQuery().equals(((QueryOp)right).getQuery());
+        } else if (left instanceof DQueryOp && right instanceof DQueryOp) {
+            return ((DQueryOp)left).getQuery().equals(((DQueryOp)right).getQuery());
+        }
+        return false;
     }
 
     public static void copyNonFilter(@Nonnull Op destOp, @Nonnull Collection<Modifier> modifiers) {
