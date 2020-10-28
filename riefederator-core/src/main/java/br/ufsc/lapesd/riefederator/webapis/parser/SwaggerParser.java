@@ -19,9 +19,13 @@ import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.*;
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimitsRegistry;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.FormatMethod;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.glassfish.jersey.uri.UriTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,6 +95,23 @@ public class SwaggerParser implements APIDescriptionParser {
     @Override
     public @Nonnull ImmutableSet<String> getEndpoints() {
         return endpoints;
+    }
+
+    public @Nonnull ImmutableSet<ImmutablePair<String, String>> getEquivalences() {
+        Set<ImmutablePair<String, String>> equivalences = new HashSet<>();
+        for (String ep : getEndpoints()) {
+            for (Object obj : getPathObj(ep).getListNN("get/x-equiv-paths")) {
+                if (obj instanceof String) {
+                    String o = obj.toString();
+                    int d = ep.compareTo(o);
+                    if (d == 0) continue;
+                    equivalences.add(ImmutablePair.of(d < 0 ? ep : o, d < 0 ? o : ep));
+                } else {
+                    logger.warn("Ignoring non-string swagger path: {}", obj);
+                }
+            }
+        }
+        return ImmutableSet.copyOf(equivalences);
     }
 
     @Override

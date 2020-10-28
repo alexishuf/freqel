@@ -19,6 +19,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
+
+import static org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory.createHttpServer;
 
 public class ServerMain {
     @Option(name = "--help", aliases = {"-h"}, usage = "Shows help", help = true)
@@ -68,13 +71,9 @@ public class ServerMain {
     }
 
     public void run() throws Exception {
-        InetSocketAddress address = new InetSocketAddress(listenAddress, port);
-        HttpServer server = HttpServer.create(address, 0);
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> server.stop(4)));
+        URI serverURI = new URI("http://"+listenAddress+":"+port);
         ResourceConfig app = getApplication();
-        HttpHandler handler = RuntimeDelegate.getInstance().createEndpoint(app, HttpHandler.class);
-        server.createContext("/", handler);
-
+        org.glassfish.grizzly.http.server.HttpServer server = createHttpServer(serverURI, app, true);
         server.start();
 
         System.out.printf("SPARQL endpoint listening on http://%s:%d/sparql/query " +
