@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.webapis.requests.rate;
 
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.impl.NoRateLimit;
+import br.ufsc.lapesd.riefederator.webapis.requests.rate.impl.SimpleRateLimit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,9 +44,11 @@ public class RateLimitsRegistry {
         RateLimit limit = prefix2Limit.getOrDefault(host, null);
         if (limit == null && this != INSTANCE)
             return INSTANCE.getForHost(host); //fallback to global registry
-        if (limit == null)
-            logger.debug("No RateLimit for host {}. Will return NoRateLimit", host);
-        return limit == null ? NoRateLimit.INSTANCE : limit;
+        if (limit == null) {
+            // default: disallow parallel requests, but do not enforce sleep
+            INSTANCE.register(host, limit = new SimpleRateLimit(0));
+        }
+        return limit;
     }
 
     public synchronized  @Nonnull RateLimit get(@Nonnull String uri) {

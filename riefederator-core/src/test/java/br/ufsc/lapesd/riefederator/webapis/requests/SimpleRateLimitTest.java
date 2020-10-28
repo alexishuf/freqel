@@ -6,7 +6,12 @@ import com.google.common.base.Stopwatch;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -14,6 +19,7 @@ import java.util.stream.Stream;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.*;
 import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 
 public class SimpleRateLimitTest {
 
@@ -41,5 +47,25 @@ public class SimpleRateLimitTest {
             limit.request(calls::incrementAndGet);
         assertFalse(calls.get() < min, "Sleeping too much! calls="+calls);
         assertFalse(calls.get() > max, "Not sleeping enough! calls="+calls);
+    }
+
+    @Test
+    public void testSlowCallable() throws ExecutionException, InterruptedException {
+        int sleepMs = 100, taskMs = 500;
+        SimpleRateLimit limit = new SimpleRateLimit(sleepMs);
+        ExecutorService executor = Executors.newCachedThreadPool();
+        List<Future<?>> futures = new ArrayList<>();
+        Stopwatch sw = Stopwatch.createStarted();
+        for (int i = 0; i < 8; i++) {
+            futures.add(executor.submit(() -> limit.request(() -> {
+                Thread.sleep(taskMs);
+                return taskMs;
+            })));
+        }
+        for (Future<?> future : futures)
+            future.get(); //rethrows callable exceptions
+        long elapsed = sw.elapsed(MILLISECONDS);
+        int expected = 8 * (taskMs + sleepMs) - 200;
+        assertTrue(elapsed > expected, "elapsed="+elapsed+", expected="+expected);
     }
 }

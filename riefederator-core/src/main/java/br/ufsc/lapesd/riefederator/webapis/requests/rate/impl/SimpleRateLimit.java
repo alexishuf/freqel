@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.concurrent.TimeUnit.*;
@@ -14,8 +15,13 @@ import static java.util.concurrent.TimeUnit.*;
 public class SimpleRateLimit implements RateLimit {
     private static final Logger logger = LoggerFactory.getLogger(SimpleRateLimit.class);
     public double sleepMinMs, sleepMaxMs;
-    private @Nonnull Stopwatch idle;
+    private @Nonnull Semaphore semaphore = new Semaphore(1);
+    private @Nonnull final Stopwatch idle;
 
+    public SimpleRateLimit(double sleepMs) {
+        this(sleepMs, sleepMs);
+
+    }
     public SimpleRateLimit(double sleepMinMs, double sleepMaxMs) {
         this.sleepMinMs = sleepMinMs;
         this.sleepMaxMs = sleepMaxMs;
@@ -63,10 +69,15 @@ public class SimpleRateLimit implements RateLimit {
     }
     @Override
     public <V> V request(@Nonnull Callable<V> callable) throws Exception {
-        sleepAsRequired();
-        V result = callable.call();
-        idle.reset().start();
-        return result;
+        semaphore.acquire();
+        try {
+            sleepAsRequired();
+            V result = callable.call();
+            idle.reset().start();
+            return result;
+        } finally {
+            semaphore.release();
+        }
     }
 
     public void sleepAsRequired() {
