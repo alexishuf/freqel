@@ -20,8 +20,7 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.*;
 
-import static br.ufsc.lapesd.riefederator.util.RawAlignedBitSet.andNot;
-import static br.ufsc.lapesd.riefederator.util.RawAlignedBitSet.cardinality;
+import static br.ufsc.lapesd.riefederator.util.RawAlignedBitSet.*;
 
 public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctivePlanner {
     private boolean extractCommonSubsets = true;
@@ -225,6 +224,15 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
         return result;
     }
 
+    private static @Nonnull TPEndpoint getEp(@Nonnull Op op) {
+        assert op instanceof EndpointOp || op instanceof UnionOp;
+        if (op instanceof EndpointOp) return ((EndpointOp)op).getEndpoint();
+        assert op.getChildren().size() > 0;
+        assert op.getChildren().stream().map(o -> ((EndpointOp)o).getEndpoint())
+                 .distinct().count() == 1;
+        return ((EndpointOp) op.getChildren().iterator().next()).getEndpoint();
+    }
+
     private static void merge(@Nonnull List<Op> nodes, long[] sorted, RefIndexSet<Op> result,
                               int begin, int end) {
         assert begin < end;
@@ -233,25 +241,18 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
             Bitset ignore = Bitsets.createFixed(end-begin);
             for (int i = begin; i < end; i++) {
                 if (ignore.get(i-begin)) continue;
-                Op op = nodes.get((int)sorted[i]);
-                if (op instanceof EndpointOp) {
-                    TPEndpoint ep = ((EndpointOp) op).getEndpoint();
-                    for (int j = i + 1; j < end; j++) {
-                        if (!ignore.get(j-begin) && isAlternative(ep, nodes.get((int)sorted[j])))
-                            ignore.set(j-begin);
-                    }
+                Op earlier = nodes.get((int) sorted[i]);
+                TPEndpoint ep = getEp(earlier);
+                for (int j = i + 1; j < end; j++) {
+                    Op later = nodes.get((int) sorted[j]);
+                    if (!ignore.get(j-begin) && ep.isAlternative(getEp(later)))
+                        ignore.set(j - begin);
                 }
-                list.add(nodes.get((int) sorted[i]));
+                list.add(earlier);
             }
             result.add(UnionOp.build(list));
         } else { // failed to start a sequence, save last Op
             result.add(nodes.get((int) sorted[end-1]));
         }
-    }
-
-    private static boolean isAlternative(@Nonnull TPEndpoint ref, @Nonnull Op otherOp) {
-        if (otherOp instanceof EndpointOp)
-            return ref.isAlternative(((EndpointOp) otherOp).getEndpoint());
-        return false;
     }
 }
