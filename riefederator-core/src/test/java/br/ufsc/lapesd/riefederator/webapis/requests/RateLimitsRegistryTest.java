@@ -2,13 +2,16 @@ package br.ufsc.lapesd.riefederator.webapis.requests;
 
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimit;
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimitsRegistry;
-import br.ufsc.lapesd.riefederator.webapis.requests.rate.impl.NoRateLimit;
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.impl.SimpleRateLimit;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.assertSame;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+
+import static org.testng.Assert.*;
 
 public class RateLimitsRegistryTest {
     private RateLimitsRegistry registry;
@@ -79,9 +82,10 @@ public class RateLimitsRegistryTest {
         assertSame(r.get(B_HOST), b);
 
         assertSame(r.unregister(B_HOST), b);
-        assertSame(r.get(B_HOST), NoRateLimit.INSTANCE);
-        assertSame(r.get("https://"+B_HOST), NoRateLimit.INSTANCE);
-        assertSame(r.get("https://"+B_HOST+"/path"), NoRateLimit.INSTANCE);
+        RateLimit limitB = r.get(B_HOST);
+        assertTrue(limitB instanceof SimpleRateLimit);
+        assertSame(r.get("https://"+B_HOST), limitB);
+        assertSame(r.get("https://"+B_HOST+"/path"), limitB);
 
         assertSame(r.unregister(B_HOST), null);
 
@@ -103,11 +107,13 @@ public class RateLimitsRegistryTest {
 
     @Test
     public void testGetUnregistered() {
-        assertSame(registry.get("https://unregistered.example.org/"), NoRateLimit.INSTANCE);
-        assertSame(registry.get("http://unregistered.example.org/"), NoRateLimit.INSTANCE);
-        assertSame(registry.get("https://user:pwd@unregistered.example.org/"), NoRateLimit.INSTANCE);
-        assertSame(registry.get("https://unregistered.example.org/asd"), NoRateLimit.INSTANCE);
-        assertSame(registry.get("https://unregistered.example.org/asd?x=1"), NoRateLimit.INSTANCE);
+        List<RateLimit> list = new ArrayList<>();
+        list.add(registry.get("https://unregistered.example.org/"));
+        list.add(registry.get("http://unregistered.example.org/"));
+        list.add(registry.get("https://user:pwd@unregistered.example.org/"));
+        list.add(registry.get("https://unregistered.example.org/asd"));
+        list.add(registry.get("https://unregistered.example.org/asd?x=1"));
+        assertEquals(new HashSet<>(list).size(), 1);
     }
 
     @Test
@@ -135,9 +141,13 @@ public class RateLimitsRegistryTest {
     public void testDoesNotIgnorePort() {
         assertSame(registry.get("https://port.example.org/"), portOld);
         assertSame(registry.get("https://port.example.org:8080/"), port);
-        assertSame(registry.get("https://port.example.org:8090/"), NoRateLimit.INSTANCE);
         assertSame(registry.get("http://port.example.org/asd/?x=1#f"), portOld);
         assertSame(registry.get("http://port.example.org:8080/asd/?x=1#f"), port);
+
+        RateLimit other = registry.get("https://port.example.org:8090/");
+        assertTrue(other instanceof SimpleRateLimit);
+        assertNotSame(other, portOld);
+        assertNotSame(other, port);
     }
 
     @Test
