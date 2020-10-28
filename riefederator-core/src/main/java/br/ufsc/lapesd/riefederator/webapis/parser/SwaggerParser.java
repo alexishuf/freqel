@@ -4,7 +4,9 @@ import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.description.molecules.AtomFilter;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
 import br.ufsc.lapesd.riefederator.description.molecules.MoleculeBuilder;
+import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
+import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.util.DictTree;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.description.APIMolecule;
@@ -19,14 +21,12 @@ import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.*;
 import br.ufsc.lapesd.riefederator.webapis.requests.rate.RateLimitsRegistry;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.FormatMethod;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.glassfish.jersey.uri.UriTemplate;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -411,21 +411,26 @@ public class SwaggerParser implements APIDescriptionParser {
         return strategy;
     }
 
-    @VisibleForTesting
-    @Nullable ResponseParser getResponseParser(@Nonnull String endpoint,
-                                               @Nonnull JsonSchemaMoleculeParser schemaParser,
-                                               @Nullable APIDescriptionContext context) {
-        ResponseParser parser = null;
-        List<Object> mediaTypes;
+    private @Nonnull List<String> getEndpointProducedMediaTypes(@Nonnull String endpoint) {
         DictTree pathObj = getPathObj(endpoint);
-        mediaTypes = new ArrayList<>(pathObj.getListNN("get/produces"));
+        List<Object> mediaTypes = new ArrayList<>(pathObj.getListNN("get/produces"));
         mediaTypes.addAll(swagger.getListNN("produces"));
         mediaTypes.removeIf(mt ->
                 !(mt instanceof String) || mt.toString().trim().startsWith("*/*"));
         if (mediaTypes.isEmpty())
             mediaTypes.add("application/json"); //fallback media type
+        //noinspection unchecked
+        return (List<String>)((List<?>)mediaTypes);
+    }
+
+    @VisibleForTesting
+    @Nullable ResponseParser getResponseParser(@Nonnull String endpoint,
+                                               @Nonnull JsonSchemaMoleculeParser schemaParser,
+                                               @Nullable APIDescriptionContext context) {
+        ResponseParser parser = null;
+        List<String> mediaTypes = getEndpointProducedMediaTypes(endpoint);
+        DictTree pathObj = getPathObj(endpoint);
         for (Object o : mediaTypes) {
-            if (!(o instanceof String)) continue;
             String mediaType = o.toString();
             if (context != null)
                 parser = context.getResponseParser(endpoint, mediaType);
@@ -434,22 +439,22 @@ public class SwaggerParser implements APIDescriptionParser {
             if (parser != null)
                 return parser;
         }
-        parser = tryLoadResponseParser(pathObj.getMap("get"), mediaTypes);
-        if (parser == null)
-            parser = tryLoadResponseParser(swagger, mediaTypes);
-        if (parser == null && mediaTypes.contains("application/json")) {// fallback to urn:plain
+        ProtoResponseParser proto = findResponseParser(pathObj.getMap("get"), mediaTypes);
+        if (proto == null)
+            proto = findResponseParser(swagger, mediaTypes);
+        if (proto == null && mediaTypes.contains("application/json")) {// fallback to urn:plain
             return new MappedJsonResponseParser(Collections.emptyMap(), StdPlain.URI_PREFIX,
                                                 schemaParser.getParsersRegistry());
         }
-        return parser;
+        return proto.parse();
     }
 
-    private @Nullable ResponseParser tryLoadResponseParser(@Nonnull DictTree specsParent,
-                                                           @Nonnull List<?> mediaTypes) {
+    private @Nullable ProtoResponseParser findResponseParser(@Nonnull DictTree specsParent,
+                                                             @Nonnull List<?> mediaTypes) {
         for (ProtoResponseParser proto : getProtoResponseParsers(specsParent)) {
             for (Object mediaType : mediaTypes) {
                 if (mediaType instanceof String && proto.accepts(mediaType.toString()))
-                    return proto.parse();
+                    return proto;
             }
         }
         return null;
@@ -479,23 +484,36 @@ public class SwaggerParser implements APIDescriptionParser {
             return accept.isCompatible(MediaType.valueOf(mediaType));
         }
 
+        public @Nonnull String getName() {
+            String name = spec.getString("response-parser");
+            if (name == null)
+                throw ex("Missing property response-parser for x-response-parser at %s", spec);
+            return name;
+        }
+
         public @Nonnull ResponseParser parse() {
             String name = spec.getString("response-parser");
-            if (name.equals("mapped-json")) {
-                Map<String, String> context = new HashMap<>();
-                for (Map.Entry<String, Object> e : spec.getMapNN("context").asMap().entrySet()) {
-                    if ((e.getValue() instanceof String)) {
-                        context.put(e.getKey(), e.getValue().toString());
-                    } else {
-                        logger.error("Ignoring non-string URI {} for property {} at {}",
-                                     e.getValue(), e.getKey(), spec);
-                    }
-                }
+            if (getName().equals("mapped-json")) {
+                Map<String, String> context = getContext();
                 String prefix = spec.getString("prefix", "urn:plain:");
                 return new MappedJsonResponseParser(context, prefix);
             } else {
                 throw ex("Unsupported response-parser %s", name);
             }
+        }
+
+        private @Nonnull Map<String, String> getContext() {
+            assert getName().equals("mapped-json");
+            Map<String, String> context = new HashMap<>();
+            for (Map.Entry<String, Object> e : spec.getMapNN("context").asMap().entrySet()) {
+                if ((e.getValue() instanceof String)) {
+                    context.put(e.getKey(), e.getValue().toString());
+                } else {
+                    logger.error("Ignoring non-string URI {} for property {} at {}",
+                                 e.getValue(), e.getKey(), spec);
+                }
+            }
+            return context;
         }
     }
 
@@ -685,10 +703,23 @@ public class SwaggerParser implements APIDescriptionParser {
 
     @VisibleForTesting
     @Nonnull JsonSchemaMoleculeParser parseSchema(@Nonnull String endpoint) {
-        DictTree schema = getPathObj(endpoint).getMapNN("get/responses/200/schema");
+        DictTree method = getPathObj(endpoint).getMapNN("get");
+        DictTree schema = method.getMapNN("responses/200/schema");
         if (schema.isEmpty())
             throw ex("API path %s has no schema on operation", endpoint);
         JsonSchemaMoleculeParser parser = new JsonSchemaMoleculeParser();
+        List<String> mediaTypes = getEndpointProducedMediaTypes(endpoint);
+        ProtoResponseParser proto = findResponseParser(method, mediaTypes);
+        if (proto == null)
+            proto = findResponseParser(swagger, mediaTypes);
+        if (proto != null && proto.getName().equals("mapped-json")) {
+            Map<String, String> ctx = proto.getContext();
+            Map<String, Term> liftedCtx = new HashMap<>();
+            for (Map.Entry<String, String> e : ctx.entrySet())
+                liftedCtx.put(e.getKey(), new StdURI(e.getValue()));
+            parser.setProp2Term(liftedCtx);
+            parser.setDefaultPrefix(proto.spec.getString("prefix", "urn:plain:"));
+        }
         for (PrimitiveParser pp : getGlobalParsers()) {
             if (pp instanceof DatePrimitiveParser)
                 parser.setGlobalDateParser(pp);
