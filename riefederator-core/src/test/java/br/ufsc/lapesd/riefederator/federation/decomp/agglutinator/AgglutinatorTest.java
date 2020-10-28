@@ -364,11 +364,7 @@ public class AgglutinatorTest implements TestContext {
         assertTrue(nodes.size() <= size*sources);
         if (agglutinator instanceof EvenAgglutinator)
             assertEquals(nodes.size(), size*sources);
-        else if (agglutinator instanceof StandardAgglutinator)
-            assertEquals(nodes.size(), size);
         for (Op node : nodes) {
-            if (agglutinator instanceof StandardAgglutinator)
-                assertEquals(node instanceof UnionOp, sources > 1);
             if (node instanceof EndpointQueryOp) {
                 MutableCQuery q = ((EndpointQueryOp) node).getQuery();
                 assertTrue(query.containsAll(q));

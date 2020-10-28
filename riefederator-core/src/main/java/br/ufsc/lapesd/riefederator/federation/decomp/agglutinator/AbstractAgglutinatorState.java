@@ -4,7 +4,6 @@ import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.util.Bitset;
-import br.ufsc.lapesd.riefederator.util.bitset.Bitsets;
 import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
@@ -57,15 +56,5 @@ public abstract class AbstractAgglutinatorState implements Agglutinator.State {
         for (int i = triples.nextSetBit(0); i >= 0; i = triples.nextSetBit(i+1))
             list.add(triplesUniverse.get(i));
         return addUniverse(MutableCQuery.from(list));
-    }
-
-    protected @Nonnull Bitset toSignature(@Nonnull CQuery query) {
-        IndexSet<Triple> triples = query.attr().getSet();
-        assert triples instanceof IndexSubset;
-
-        Bitset sig = Bitsets.createFixed(nTriples + nVars);
-        sig.or(((IndexSubset<Triple>) triples).getBitset());
-        sig.or(nTriples, query.attr().inputVarNames().getBitset(), 0, nVars);
-        return sig;
     }
 }

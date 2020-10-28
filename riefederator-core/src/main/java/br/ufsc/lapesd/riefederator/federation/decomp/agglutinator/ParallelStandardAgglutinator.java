@@ -71,7 +71,6 @@ public class ParallelStandardAgglutinator implements Agglutinator {
         private List<Bitset> ep2net, ep2ext;
         private List<Set<CQuery>> ep2exq;
         private List<Map<CQuery, Set<CQuery>>> ep2exq2alt;
-        private Map<Bitset, List<Op>> sig2qn;
         private List<CQueryMatch> ep2match;
         private RefIndexSet<TPEndpoint> epSet;
         private List<Bitset> tmpTriplesWithAlt;
@@ -92,7 +91,6 @@ public class ParallelStandardAgglutinator implements Agglutinator {
             tmpTriplesWithoutAlt = new ArrayList<>(nEps);
             tmpQueries = new ArrayList<>(nEps);
             mergeExclusiveTriples = new ArrayList<>(nEps);
-            sig2qn = Collections.synchronizedMap(new HashMap<>());
             for (int i = 0; i < nEps; i++) {
                 ep2net.add(Bitsets.create(nEps));
                 ep2ext.add(Bitsets.create(nEps));
@@ -117,7 +115,6 @@ public class ParallelStandardAgglutinator implements Agglutinator {
             assert ep2net.size() == tmpQueries.size();
             assert ep2net.size() == mergeExclusiveTriples.size();
 
-            sig2qn.clear();
             for (int i = ep2ext.size(); i < nEps; i++) { // grow storage if got more eps
                 ep2net.add(Bitsets.create(nTriples));
                 ep2ext.add(Bitsets.create(nTriples));
@@ -339,7 +336,6 @@ public class ParallelStandardAgglutinator implements Agglutinator {
             try (TimeSampler ignored = Metrics.AGGLUTINATION_MS.createThreadSampler(perfListener)) {
                 splitNonExclusiveTriplesPhase1();
                 executor.parallelFor(0, epSet.size(), this::takeLeavesEndpointPreprocess);
-                generateNodes();
                 List<Op> nodes = buildNodes();
                 assert checkNodesUniverseSets(nodes);
                 assert checkLostGroups(nodes);
@@ -372,12 +368,26 @@ public class ParallelStandardAgglutinator implements Agglutinator {
         }
 
         private List<Op> buildNodes() {
-            List<Op> result = new ArrayList<>(sig2qn.size());
-            for (List<Op> nodes : sig2qn.values()) {
-                Op node = UnionOp.build(nodes);
-                node.offerTriplesUniverse(triplesUniverse);
-                node.offerVarsUniverse(varsUniverse);
-                result.add(node);
+            List<Op> result = new ArrayList<>();
+            for (int epIdx = 0, nEps = epSet.size(); epIdx < nEps; epIdx++) {
+                TPEndpoint ep = epSet.get(epIdx);
+                Map<CQuery, Set<CQuery>> exq2alt = ep2exq2alt.get(epIdx);
+                CQueryMatch m = ep2match.get(epIdx);
+                SemanticCQueryMatch sm = (m instanceof SemanticCQueryMatch)
+                        ? (SemanticCQueryMatch)m : null;
+                for (CQuery eg : ep2exq.get(epIdx)) {
+                    if (sm == null || !addAlts(ep, result, eg, sm.getAlternatives(eg))) {
+                        if (!addAlts(ep, result, eg, exq2alt.get(eg)))
+                            result.add(new EndpointQueryOp(ep, eg));
+                    }
+                }
+                Bitset net = ep2net.get(epIdx);
+                for (int i = net.nextSetBit(0); i >= 0; i = net.nextSetBit(i+1)) {
+                    Triple triple = triplesUniverse.get(i);
+                    CQuery q = addUniverse(CQuery.from(triple));
+                    if (sm == null || !addAlts(ep, result, q, sm.getAlternatives(triple)))
+                        result.add(new EndpointQueryOp(ep, q));
+                }
             }
             return result;
         }
@@ -394,33 +404,6 @@ public class ParallelStandardAgglutinator implements Agglutinator {
                 return true;
             } else {
                 return false;
-            }
-        }
-
-        private void generateNodes() {
-            for (int epIdx = 0, size = epSet.size(); epIdx < size; epIdx++) {
-                TPEndpoint ep = epSet.get(epIdx);
-                Map<CQuery, Set<CQuery>> exq2alt = ep2exq2alt.get(epIdx);
-                CQueryMatch m = this.ep2match.get(epIdx);
-                SemanticCQueryMatch sm = (m instanceof SemanticCQueryMatch)
-                                       ? (SemanticCQueryMatch) m : null;
-                for (CQuery eg : ep2exq.get(epIdx)) {
-                    List<Op> list = sig2qn.computeIfAbsent(toSignature(eg), opListFac);
-                    if (sm == null || !addAlts(ep, list, eg, sm.getAlternatives(eg))) {
-                        if (!addAlts(ep, list, eg, exq2alt.get(eg)))
-                            list.add(new EndpointQueryOp(ep, eg));
-                    }
-                    assert !list.isEmpty();
-                }
-                Bitset net = ep2net.get(epIdx);
-                for (int i = net.nextSetBit(0); i >= 0; i = net.nextSetBit(i + 1)) {
-                    Triple triple = triplesUniverse.get(i);
-                    CQuery q = addUniverse(CQuery.from(triple));
-                    List<Op> list = sig2qn.computeIfAbsent(toSignature(q), opListFac);
-                    if (sm == null || !addAlts(ep, list, q, sm.getAlternatives(triple)))
-                        list.add(new EndpointQueryOp(ep, q));
-                    assert !list.isEmpty();
-                }
             }
         }
 
