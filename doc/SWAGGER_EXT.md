@@ -395,3 +395,33 @@ Example:
   ]
 }
 ``` 
+
+Defining Equivalent Endpoints
+-----------------------------
+
+Sometimes, two or more Swagger path objects (that each yield an 
+`WebAPICQEndpoint`) return the same results but from different inputs. If the
+mediator has the possibility of invoking both resulting endpoints, it should 
+only invoke one as the other would return the same results. To achieve this, 
+add one of the swagger paths as an element of the list `x-equiv-path` list 
+of the other. The equivalence relationship is symmetric, thus adding this to 
+any of the endpoints is sufficient.
+
+Example:
+```json
+{
+  "swagger": "2.0",
+  "paths": {
+    "/a/{x}": {
+      "get": {
+        "x-equiv-paths": ["/b/{y}"]
+      } 
+    },
+    "/b/{y}": {
+      "get": {
+        "x-equiv-paths": []
+      }    
+    } 
+  } 
+}
+``` 

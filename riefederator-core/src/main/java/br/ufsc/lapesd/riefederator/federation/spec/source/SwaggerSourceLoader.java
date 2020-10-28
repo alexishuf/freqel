@@ -6,6 +6,7 @@ import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.parser.APIDescriptionParseException;
 import br.ufsc.lapesd.riefederator.webapis.parser.SwaggerParser;
 import com.google.common.collect.Sets;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,9 +14,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class SwaggerSourceLoader implements SourceLoader {
     private static final Logger logger = LoggerFactory.getLogger(SwaggerSourceLoader.class);
@@ -37,7 +36,8 @@ public class SwaggerSourceLoader implements SourceLoader {
         Set<String> white = getStringSet(spec, "whitelist");
         Set<String> black = getStringSet(spec, "blacklist");
         int discarded = 0, failed = 0;
-        Set<Source> sources = new HashSet<>();
+        Map<String, Source> sources = new HashMap<>();
+
         for (String endpoint : parser.getEndpoints()) {
             if ((!white.isEmpty() && !white.contains(endpoint)) || black.contains(endpoint)) {
                 ++discarded;
@@ -45,7 +45,7 @@ public class SwaggerSourceLoader implements SourceLoader {
             }
             try {
                 WebAPICQEndpoint ep = parser.getEndpoint(endpoint);
-                sources.add(ep.asSource());
+                sources.put(endpoint, ep.asSource());
             } catch (APIDescriptionParseException e) {
                 if (spec.getBoolean("stop-on-error", false))
                     throw e;
@@ -54,11 +54,18 @@ public class SwaggerSourceLoader implements SourceLoader {
                             endpoint, e.getMessage());
             }
         }
+        for (ImmutablePair<String, String> pair : parser.getEquivalences()) {
+            Source l = sources.get(pair.left), r = sources.get(pair.right);
+            if (l != null && r != null) {
+                l.getEndpoint().addAlternative(r.getEndpoint());
+                r.getEndpoint().addAlternative(l.getEndpoint());
+            }
+        }
 
         logger.info("Loaded {} endpoints (discarded {} and {} failed parsing) from {}",
                     sources.size(), discarded, failed,
                     spec.getString("file", spec.getString("url", null)));
-        return sources;
+        return new HashSet<>(sources.values());
     }
 
     private @Nonnull Set<String> getStringSet(DictTree spec, String name) {
