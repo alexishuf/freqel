@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.webapis.requests.paging.PagingStrategy;
 import com.google.errorprone.annotations.Immutable;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -13,8 +14,18 @@ import java.util.List;
 
 @Immutable
 public class NoPagingStrategy implements PagingStrategy {
-    static class NoPagingPager implements PagingStrategy.Pager {
+    static class NoPagingPager implements PagingStrategy.Pager, PagingStrategy.Pager.State  {
         private boolean end = false;
+
+        @Override public @Nonnull State getPagerState() {
+            return this;
+        }
+
+        @Override public void setPagerState(@NotNull PagingStrategy.Pager.State state) {
+            if (!(state instanceof NoPagingPager))
+                throw new IllegalArgumentException();
+            end = ((NoPagingPager) state).end;
+        }
 
         @Override
         public boolean atEnd() {

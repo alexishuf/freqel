@@ -30,7 +30,7 @@ import static javax.ws.rs.core.Response.Status.Family.SUCCESSFUL;
 public class ParamPagingStrategy implements PagingStrategy {
     private static final StdURI XSD_INT = new StdURI("http://www.w3.org/2001/XMLSchema#int");
 
-    public static class ParamPager implements PagingStrategy.Pager {
+    public static class ParamPager implements PagingStrategy.Pager, PagingStrategy.Pager.State {
         private @Nonnull String param;
         private int page;
         private final int increment;
@@ -51,6 +51,29 @@ public class ParamPagingStrategy implements PagingStrategy {
             this.endOnEmptyResponse = endOnEmptyResponse;
             this.endOnEmptyJson = endOnEmptyJson;
             this.jsonEndValues = jsonEndValues;
+        }
+
+        @Override public @Nonnull State getPagerState() {
+            return this;
+        }
+
+        @Override public void setPagerState(@Nonnull PagingStrategy.Pager.State state) {
+            if (!(state instanceof ParamPager))
+                throw new IllegalArgumentException();
+            this.param = ((ParamPager)state).param;
+            this.page = ((ParamPager)state).page;
+            this.end = ((ParamPager)state).end;
+            assert checkFinalFields((ParamPager) state);
+        }
+
+        private boolean checkFinalFields(@Nonnull ParamPager state) {
+            assert this.increment == state.increment;
+            assert this.endOnError == state.endOnError;
+            assert this.endOnNull == state.endOnNull;
+            assert this.endOnEmptyResponse == state.endOnEmptyResponse;
+            assert this.endOnEmptyJson == state.endOnEmptyJson;
+            assert this.jsonEndValues == state.jsonEndValues;
+            return true;
         }
 
         @Override

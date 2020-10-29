@@ -20,7 +20,7 @@ import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
 import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
 import br.ufsc.lapesd.riefederator.webapis.requests.MismatchingQueryException;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.APIRequestExecutorException;
-import br.ufsc.lapesd.riefederator.webapis.requests.impl.QueryGlobalContextCache;
+import br.ufsc.lapesd.riefederator.webapis.requests.impl.QueryRequestCache;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +123,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
         }
         // from here onwards, this class is responsible for modifiers
         ModifierUtils.check(this, query.getModifiers());
-        QueryGlobalContextCache cache = QueryGlobalContextCache.get(query);
+        QueryRequestCache cache = QueryRequestCache.getCache(query, this);
         Iterator<? extends CQEndpoint> it;
         try {
             it = exec.execute(bound, cache);

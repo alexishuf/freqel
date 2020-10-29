@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.webapis.requests.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.riefederator.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.webapis.description.IndexedParam;
 import br.ufsc.lapesd.riefederator.webapis.requests.APIRequestExecutor;
@@ -250,7 +251,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
 
     @Override
     public @Nonnull Iterator<? extends CQEndpoint> execute(@Nonnull Solution input,
-                                                           @Nullable QueryGlobalContextCache cache)
+                                                           @Nullable QueryRequestCache cache)
             throws APIRequestExecutorException {
         PagingStrategy.Pager pager = pagingStrategy.createPager();
         return new Iterator<CQEndpoint>() {
@@ -259,31 +260,18 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                 return !pager.atEnd();
             }
 
-            @Override
-            public @Nullable CQEndpoint next() {
-                if (!hasNext()) throw new NoSuchElementException();
-
-                Stopwatch sw = Stopwatch.createStarted();
-                String uri = getUri(pager.apply(input));
+            private @Nonnull QueryRequestCache.Entry fetch(@Nonnull String uri, @Nonnull Stopwatch sw) {
                 HTTPRequestInfo info = new HTTPRequestInfo("GET", uri)
                         .setCreateUriMs(sw);
 
                 sw.reset().start();
-
-                info.setSetupMs(sw);
-
                 Response[] response = {null};
                 Object[] obj = {null};
                 rateLimitsRegistry.get(uri).request(() -> {
                     try {
                         info.setRequestDate(new Date());
                         sw.reset().start();
-                        if (cache != null) {
-                            response[0] = cache.get(uri,
-                                    () -> client.target(uri).request(parser.getAcceptable()).get());
-                        } else {
-                            response[0] = client.target(uri).request(parser.getAcceptable()).get();
-                        }
+                        response[0] = client.target(uri).request(parser.getAcceptable()).get();
                         info.setStatus(response[0].getStatus());
                         pager.notifyResponse(response[0]);
                         obj[0] = response[0].readEntity(parser.getDesiredClass());
@@ -309,7 +297,25 @@ public class UriTemplateExecutor implements APIRequestExecutor {
 
                 logger.info(info.toString());
                 requestObserver.accept(info);
-                return endpoint;
+                endpoint = endpoint == null ? EmptyEndpoint.INSTANCE : endpoint;
+                return new QueryRequestCache.Entry(endpoint, pager.getPagerState());
+            }
+
+            @Override
+            public @Nullable CQEndpoint next() {
+                if (!hasNext())
+                    throw new NoSuchElementException();
+                Stopwatch sw = Stopwatch.createStarted();
+                String u = getUri(pager.apply(input));
+
+                QueryRequestCache.Entry entry;
+                if (cache == null) {
+                    entry = fetch(u, sw);
+                } else {
+                    entry = cache.get(u, () -> fetch(u, sw));
+                    pager.setPagerState(entry.pagerState);
+                }
+                return entry.ep == EmptyEndpoint.INSTANCE ? null : entry.ep;
             }
         };
     }

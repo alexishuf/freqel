@@ -12,6 +12,10 @@ import java.util.List;
 @Immutable
 public interface PagingStrategy {
     interface Pager {
+        interface State { }
+
+        @Nonnull State getPagerState();
+        void setPagerState(@Nonnull State state);
         boolean atEnd();
         @Nonnull Solution apply(@Nonnull Solution solution);
         void notifyResponse(@Nonnull Response response);

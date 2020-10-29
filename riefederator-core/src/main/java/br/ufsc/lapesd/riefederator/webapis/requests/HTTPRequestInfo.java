@@ -22,7 +22,7 @@ public class HTTPRequestInfo {
     private @Nullable Date requestDate;
     private int status = 0, responseBytes = 0;
     private @Nonnull String contentType = "";
-    private double createUriMs = -1, setupMs = -1, requestMs = -1, parseMs = -1;
+    private double createUriMs = -1, requestMs = -1, parseMs = -1;
     private int jsonRootArrayMembers = -1;
     private int jsonRootObjectMembers = -1;
     private int parsedTriples = -1;
@@ -83,12 +83,6 @@ public class HTTPRequestInfo {
     }
 
     @CanIgnoreReturnValue
-    public @Nonnull HTTPRequestInfo setSetupMs(double setupMs) {
-        this.setupMs = setupMs;
-        return this;
-    }
-
-    @CanIgnoreReturnValue
     public @Nonnull HTTPRequestInfo setRequestMs(double requestMs) {
         this.requestMs = requestMs;
         return this;
@@ -103,11 +97,6 @@ public class HTTPRequestInfo {
     @CanIgnoreReturnValue
     public @Nonnull HTTPRequestInfo setCreateUriMs(@Nonnull Stopwatch sw) {
         return setCreateUriMs(sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
-    }
-
-    @CanIgnoreReturnValue
-    public @Nonnull HTTPRequestInfo setSetupMs(@Nonnull Stopwatch sw) {
-        return setSetupMs(sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
     }
 
     @CanIgnoreReturnValue
@@ -186,10 +175,6 @@ public class HTTPRequestInfo {
         return createUriMs;
     }
 
-    public double getSetupMs() {
-        return setupMs;
-    }
-
     public double getRequestMs() {
         return requestMs;
     }
@@ -222,7 +207,6 @@ public class HTTPRequestInfo {
         return getStatus() == that.getStatus() &&
                 getResponseBytes() == that.getResponseBytes() &&
                 Double.compare(that.getCreateUriMs(), getCreateUriMs()) == 0 &&
-                Double.compare(that.getSetupMs(), getSetupMs()) == 0 &&
                 Double.compare(that.getRequestMs(), getRequestMs()) == 0 &&
                 Double.compare(that.getParseMs(), getParseMs()) == 0 &&
                 getJsonRootArrayMembers() == that.getJsonRootArrayMembers() &&
@@ -240,7 +224,7 @@ public class HTTPRequestInfo {
     public int hashCode() {
         return Objects.hash(getMethod(), getUri(), getHeaders(), getRequestDate(),
                 getStatus(), getResponseBytes(), getContentType(), getCreateUriMs(),
-                getSetupMs(), getRequestMs(), getParseMs(), getJsonRootArrayMembers(),
+                getRequestMs(), getParseMs(), getJsonRootArrayMembers(),
                 getJsonRootObjectMembers(), getParsedTriples(), getException());
     }
 
@@ -251,8 +235,6 @@ public class HTTPRequestInfo {
                                method, uri, status, responseBytes, contentType));
         if (createUriMs >= 0)
             b.append(String.format(" createUriMs=%.3f", createUriMs));
-        if (setupMs >= 0)
-            b.append(String.format(" setupMs=%.3f", setupMs));
         if (requestMs >= 0)
             b.append(String.format(" requestMs=%.3f", requestMs));
         if (requestDate != null)

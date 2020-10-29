@@ -13,6 +13,8 @@ import javax.annotation.Nullable;
 import java.util.Collections;
 
 public class EmptyEndpoint extends AbstractTPEndpoint implements CQEndpoint {
+    public static final @Nonnull EmptyEndpoint INSTANCE = new EmptyEndpoint();
+
     private @Nullable String name;
 
     public EmptyEndpoint() {

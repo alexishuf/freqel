@@ -2,7 +2,7 @@ package br.ufsc.lapesd.riefederator.webapis.requests;
 
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
-import br.ufsc.lapesd.riefederator.webapis.requests.impl.QueryGlobalContextCache;
+import br.ufsc.lapesd.riefederator.webapis.requests.impl.QueryRequestCache;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.NoTermSerializationException;
 import com.google.errorprone.annotations.Immutable;
 import org.glassfish.jersey.uri.UriTemplate;
@@ -15,14 +15,14 @@ import java.util.Set;
 @Immutable
 public interface APIRequestExecutor extends AutoCloseable {
     /**
-     * Get the set required bindings to call {@link #execute(Solution, QueryGlobalContextCache)}
+     * Get the set required bindings to call {@link #execute(Solution, QueryRequestCache)}
      *
      * @return An unmodifiable {@link Set} of the binding names (not necessarily Atom names).
      */
     @Nonnull Set<String> getRequiredInputs();
 
     /**
-     * Get the set of optional inputs that can be given to {@link #execute(Solution, QueryGlobalContextCache)}
+     * Get the set of optional inputs that can be given to {@link #execute(Solution, QueryRequestCache)}
      *
      * @return An unmodifiable {@link Set} of the binding names (not necessarily Atom names)
      */
@@ -58,7 +58,7 @@ public interface APIRequestExecutor extends AutoCloseable {
      */
     @Nonnull Iterator<? extends CQEndpoint>
     execute(@Nonnull Solution input,
-            @Nullable QueryGlobalContextCache cache) throws MissingAPIInputsException,
+            @Nullable QueryRequestCache cache) throws MissingAPIInputsException,
                                                             NoTermSerializationException;
 
     @Nullable HTTPRequestObserver setObserver(@Nonnull HTTPRequestObserver observer);
