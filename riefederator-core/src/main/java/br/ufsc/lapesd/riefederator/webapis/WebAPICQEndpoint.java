@@ -21,12 +21,14 @@ import br.ufsc.lapesd.riefederator.webapis.requests.HTTPRequestObserver;
 import br.ufsc.lapesd.riefederator.webapis.requests.MismatchingQueryException;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.APIRequestExecutorException;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.QueryGlobalContextCache;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.lang.ref.SoftReference;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
@@ -56,6 +58,27 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
                           name != null ? name : getMolecule().getExecutor().toString());
     }
 
+    @Override public double alternativePenalty(@NotNull CQuery query) {
+        APIRequestExecutor executor = molecule.getExecutor();
+        Set<String> reqUnbound = new HashSet<>(executor.getRequiredInputs()),
+                    optUnbound = new HashSet<>(executor.getOptionalInputs());
+        int nReq = reqUnbound.size(), nOpt = optUnbound.size();
+        query.forEachTermAnnotation(AtomInputAnnotation.class, (t, a) -> {
+            String input = a.getInputName();
+            if (t.isGround() || a.isOverride()) {
+                reqUnbound.remove(input);
+                optUnbound.remove(input);
+            }
+        });
+        if (!reqUnbound.isEmpty()) return Double.MAX_VALUE;
+        // if there are no required inputs, start the penalty from 2, else from 1
+        double base = nReq == 0 ? 2 : 1;
+        // add up to 1 in penalty relative to proportion of unbound optionals
+        if (nOpt > 0)
+            base += optUnbound.size() / (double)nOpt;
+        return base;
+    }
+
     @Override
     public @Nonnull Cardinality estimate(@Nonnull CQuery query, int policy) {
         if (query.isEmpty()) return Cardinality.EMPTY;
@@ -63,8 +86,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     }
 
     @Override
-    public @Nonnull
-    Results query(@Nonnull CQuery query) {
+    public @Nonnull Results query(@Nonnull CQuery query) {
         MapSolution.Builder b = MapSolution.builder();
         APIRequestExecutor exec = molecule.getExecutor();
         boolean hasAtomAnnotations =

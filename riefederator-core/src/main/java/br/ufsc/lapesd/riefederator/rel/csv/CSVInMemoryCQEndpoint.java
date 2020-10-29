@@ -49,6 +49,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.vocabulary.XSD;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -437,6 +438,10 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
             }
             return null;
         }
+    }
+
+    @Override public double alternativePenalty(@NotNull CQuery query) {
+        return 0.76;
     }
 
     @Override

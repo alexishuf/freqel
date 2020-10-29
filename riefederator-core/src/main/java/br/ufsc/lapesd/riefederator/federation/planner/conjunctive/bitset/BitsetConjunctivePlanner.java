@@ -51,8 +51,13 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
         for (int i = 0, size = list.size(); i < size; i++) {
             Op earlier = list.get(i);
             for (int j = i+1; j < size; j++) {
-                if (TreeUtils.areEquivalent(earlier, list.get(j))) {
+                int keep = TreeUtils.keepEquivalent(earlier, list.get(j));
+                if (keep == 0x2) {
                     list.remove(j--);
+                    --size;
+                } else if (keep == 0x1) {
+                    list.remove(i--);
+                    --j;
                     --size;
                 }
             }

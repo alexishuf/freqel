@@ -42,6 +42,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
 import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -278,6 +279,10 @@ public class SPARQLClient extends AbstractTPEndpoint implements DQEndpoint {
         return execute(query, TSV_ACCEPT, vars, TSVResults::new);
     }
 
+    @Override public double alternativePenalty(@NotNull CQuery query) {
+        return 0.25;
+    }
+
     @Override
     public @Nonnull Cardinality estimate(@Nonnull CQuery query, int policy) {
         if (query.isEmpty()) return EMPTY;
@@ -368,6 +373,10 @@ public class SPARQLClient extends AbstractTPEndpoint implements DQEndpoint {
             activeResults.put(results, true);
         }
         return results;
+    }
+
+    @Override public boolean ignoresAtoms() {
+        return true;
     }
 
     protected @Nonnull BaseResults execute(@Nonnull CQuery query, @Nonnull String accept,

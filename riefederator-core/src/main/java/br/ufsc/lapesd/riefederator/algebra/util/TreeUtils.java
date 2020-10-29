@@ -13,6 +13,7 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.InnerCardinalityComput
 import br.ufsc.lapesd.riefederator.model.prefix.PrefixDict;
 import br.ufsc.lapesd.riefederator.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -396,7 +397,7 @@ public class TreeUtils {
             ep = ((EndpointOp) op).getEndpoint();
         } else if (op instanceof UnionOp) {
             ep = getEndpoint(op.getChildren().iterator().next());
-            assert op.getChildren().stream().map(o -> getEndpoint(o)).distinct().count() == 1;
+            assert op.getChildren().stream().map(TreeUtils::getEndpoint).distinct().count() == 1;
         }
         return ep;
     }
@@ -405,18 +406,29 @@ public class TreeUtils {
      * Tells whether the two given nodes are equivalent and only one should remain. {@link Op}s
      * left and right must share the same set of matched triples and required input variables.
      */
-    public static boolean areEquivalent(@Nonnull Op left, @Nonnull Op right) {
-        if (!getEndpoint(left).isAlternative(getEndpoint(right)))
-            return false;
+    public static int keepEquivalent(@Nonnull Op left, @Nonnull Op right) {
+        TPEndpoint le = getEndpoint(left), re = getEndpoint(right);
+        assert le != null && re != null;
+        if (!le.isAlternative(re))
+            return 0x3;
         assert left.getMatchedTriples().equals(right.getMatchedTriples());
         assert left.getRequiredInputVars().equals(right.getRequiredInputVars());
         if (left instanceof QueryOp && right instanceof QueryOp) {
-            return ((QueryOp)left).getQuery().equals(((QueryOp)right).getQuery());
-        } else if (left instanceof DQueryOp && right instanceof DQueryOp) {
-            return ((DQueryOp)left).getQuery().equals(((DQueryOp)right).getQuery());
+            MutableCQuery lq = ((QueryOp) left).getQuery(), rq = ((QueryOp) right).getQuery();
+            if (!lq.attr().getSet().equals(rq.attr().getSet()))
+                return 0x3;
+            if (!lq.getModifiers().equals(rq.getModifiers()))
+                return 0x3;
+            if (le.ignoresAtoms() || re.ignoresAtoms()
+                    || lq.attr().termAtoms().equals(rq.attr().termAtoms())) {
+                return le.alternativePenalty(lq) <= re.alternativePenalty(rq) ? 0x2 : 0x1;
+            }
+            return 0x3;
         }
-        return false;
+        assert !(left instanceof DQueryOp && right instanceof DQueryOp);
+        return 0x3;
     }
+
 
     public static void copyNonFilter(@Nonnull Op destOp, @Nonnull Collection<Modifier> modifiers) {
         ModifiersSet set = destOp.modifiers();

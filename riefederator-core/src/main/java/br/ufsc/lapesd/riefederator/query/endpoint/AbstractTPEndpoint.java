@@ -1,5 +1,8 @@
 package br.ufsc.lapesd.riefederator.query.endpoint;
 
+import br.ufsc.lapesd.riefederator.query.CQuery;
+import org.jetbrains.annotations.NotNull;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.lang.ref.SoftReference;
@@ -58,5 +61,13 @@ public abstract class AbstractTPEndpoint implements TPEndpoint {
 
     @Override public boolean requiresBindWithOverride() {
         return false;
+    }
+
+    @Override public boolean ignoresAtoms() {
+        return false;
+    }
+
+    @Override public double alternativePenalty(@NotNull CQuery query) {
+        return 0;
     }
 }

@@ -126,6 +126,15 @@ public interface TPEndpoint extends AutoCloseable {
      */
     boolean requiresBindWithOverride();
 
+    boolean ignoresAtoms();
+
+    /**
+     * Return a penalty level for submitting the given query to this endpoint. This method is
+     * used to choose the best alternative {@link TPEndpoint} for a single query. The
+     * least-penalty endpoint will be chosen.
+     */
+    double alternativePenalty(@Nonnull CQuery query);
+
     /**
      * Some endpoint implementations may hold resources that should be released once the
      * endpoint is not needed anymore.
