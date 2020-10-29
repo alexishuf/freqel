@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.webapis.requests;
 
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
+import br.ufsc.lapesd.riefederator.webapis.requests.impl.QueryGlobalContextCache;
 import br.ufsc.lapesd.riefederator.webapis.requests.parsers.impl.NoTermSerializationException;
 import com.google.errorprone.annotations.Immutable;
 import org.glassfish.jersey.uri.UriTemplate;
@@ -14,14 +15,14 @@ import java.util.Set;
 @Immutable
 public interface APIRequestExecutor extends AutoCloseable {
     /**
-     * Get the set required bindings to call {@link #execute(Solution)}
+     * Get the set required bindings to call {@link #execute(Solution, QueryGlobalContextCache)}
      *
      * @return An unmodifiable {@link Set} of the binding names (not necessarily Atom names).
      */
     @Nonnull Set<String> getRequiredInputs();
 
     /**
-     * Get the set of optional inputs that can be given to {@link #execute(Solution)}
+     * Get the set of optional inputs that can be given to {@link #execute(Solution, QueryGlobalContextCache)}
      *
      * @return An unmodifiable {@link Set} of the binding names (not necessarily Atom names)
      */
@@ -50,12 +51,15 @@ public interface APIRequestExecutor extends AutoCloseable {
      * returned {@link Iterator} MUST be finite.
      *
      * @param input binds to use in the request
+     * @param cache stores request results
      * @return An iterator over {@link CQEndpoint} endpoints relevant to the given bindings
      * @throws MissingAPIInputsException if some required input is missing from given input bindings
      * @throws NoTermSerializationException if some terms cannot be serialized for use as inputs
      */
     @Nonnull Iterator<? extends CQEndpoint>
-    execute(@Nonnull Solution input) throws MissingAPIInputsException, NoTermSerializationException;
+    execute(@Nonnull Solution input,
+            @Nullable QueryGlobalContextCache cache) throws MissingAPIInputsException,
+                                                            NoTermSerializationException;
 
     @Nullable HTTPRequestObserver setObserver(@Nonnull HTTPRequestObserver observer);
 

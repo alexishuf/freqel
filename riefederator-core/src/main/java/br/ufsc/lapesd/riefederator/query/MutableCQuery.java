@@ -241,6 +241,19 @@ public class MutableCQuery extends CQuery {
     }
 
     /**
+     * Remove all query annotations that match the given predicate
+     *
+     * @return true iff some annotation was removed.
+     */
+    public @CanIgnoreReturnValue boolean deannotateIf(@Nonnull Predicate<QueryAnnotation> pred) {
+        makeExclusive();
+        boolean change = d.queryAnns.removeIf(pred);
+        if (change)
+            d.cache.invalidateQueryAnnotations();
+        return change;
+    }
+
+    /**
      * Remove the given annotation from triple, if the triple is part of this query and is
      * annotated with it.
      * @return true if removed, false otherwise

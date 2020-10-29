@@ -8,6 +8,7 @@ import br.ufsc.lapesd.riefederator.federation.decomp.agglutinator.Agglutinator;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.GlobalContextAnnotation;
 
 import javax.annotation.Nonnull;
 import javax.inject.Inject;
@@ -42,7 +43,8 @@ public class ParallelSourcesListMatchingStrategy extends SourcesListMatchingStra
                     nMatches.incrementAndGet();
             });
             perfListener.sample(Metrics.SOURCES_COUNT, nMatches.get());
-            return state.takeLeaves();
+            GlobalContextAnnotation gCtx = q.getQueryAnnotation(GlobalContextAnnotation.class);
+            return stampGlobalContext(state.takeLeaves(), gCtx);
         }
     }
 }

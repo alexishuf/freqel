@@ -107,7 +107,7 @@ public class UriTemplateExecutorTest extends JerseyTestNg.ContainerPerClassTest 
         String template = target().getUri().toString() + "rdf/{file}";
         UriTemplateExecutor exec = new UriTemplateExecutor(new UriTemplate(template));
         StdLit literal = StdLit.fromEscaped("rdf-1.nt", "en");
-        Iterator<? extends CQEndpoint> it = exec.execute(MapSolution.build("file", literal));
+        Iterator<? extends CQEndpoint> it = exec.execute(MapSolution.build("file", literal), null);
         assertTrue(it.hasNext());
 
         Set<Solution> all = new HashSet<>();
@@ -130,7 +130,7 @@ public class UriTemplateExecutorTest extends JerseyTestNg.ContainerPerClassTest 
                 .withResponseParser(jsonParser).build();
 
         Iterator<? extends CQEndpoint> it;
-        it = exec.execute(MapSolution.builder().put(x, i2).put(y, i3).build());
+        it = exec.execute(MapSolution.builder().put(x, i2).put(y, i3).build(), null);
         assertTrue(it.hasNext());
 
         Set<Solution> all = new HashSet<>();

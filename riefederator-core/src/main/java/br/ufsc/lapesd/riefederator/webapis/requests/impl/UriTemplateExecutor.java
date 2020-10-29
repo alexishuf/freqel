@@ -30,7 +30,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
@@ -250,7 +249,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
     }
 
     @Override
-    public @Nonnull Iterator<? extends CQEndpoint> execute(@Nonnull Solution input)
+    public @Nonnull Iterator<? extends CQEndpoint> execute(@Nonnull Solution input,
+                                                           @Nullable QueryGlobalContextCache cache)
             throws APIRequestExecutorException {
         PagingStrategy.Pager pager = pagingStrategy.createPager();
         return new Iterator<CQEndpoint>() {
@@ -269,7 +269,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                         .setCreateUriMs(sw);
 
                 sw.reset().start();
-                WebTarget target = client.target(uri);
+
                 info.setSetupMs(sw);
 
                 Response[] response = {null};
@@ -278,7 +278,12 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                     try {
                         info.setRequestDate(new Date());
                         sw.reset().start();
-                        response[0] = target.request(parser.getAcceptable()).get();
+                        if (cache != null) {
+                            response[0] = cache.get(uri,
+                                    () -> client.target(uri).request(parser.getAcceptable()).get());
+                        } else {
+                            response[0] = client.target(uri).request(parser.getAcceptable()).get();
+                        }
                         info.setStatus(response[0].getStatus());
                         pager.notifyResponse(response[0]);
                         obj[0] = response[0].readEntity(parser.getDesiredClass());

@@ -148,6 +148,18 @@ public class CQuery implements  List<Triple> {
         return d.cache.unmodifiableQueryAnnotations();
     }
 
+    public @Nullable <T extends QueryAnnotation> T getQueryAnnotation(@Nonnull Class<T> theClass) {
+        assert d.queryAnns.stream().filter(theClass::isInstance).count() <= 1;
+        if (d.queryAnns != null) {
+            for (QueryAnnotation ann : d.queryAnns) {
+                if (theClass.isInstance(ann))
+                    //noinspection unchecked
+                    return (T) ann;
+            }
+        }
+        return null;
+    }
+
     /**
      * Gets the term annotations for the given term
      * @param term Term to look for, need not occur in this query

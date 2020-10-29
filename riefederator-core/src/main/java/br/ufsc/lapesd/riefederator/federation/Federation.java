@@ -21,6 +21,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
 import br.ufsc.lapesd.riefederator.query.TemplateExpander;
+import br.ufsc.lapesd.riefederator.query.annotations.GlobalContextAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
@@ -187,11 +188,13 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     private @Nonnull Op planComponents(@Nonnull Op root, @Nonnull Op query,
-                                        @Nonnull InnerCardinalityComputer cardinalityComputer) {
+                                       @Nonnull InnerCardinalityComputer cardinalityComputer,
+                                       @Nonnull GlobalContextAnnotation gCtx) {
         return TreeUtils.replaceNodes(root, cardinalityComputer, op -> {
             if (op.getClass().equals(QueryOp.class)) {
                 QueryOp component = (QueryOp) op;
-                CQuery cQuery = component.getQuery();
+                MutableCQuery cQuery = component.getQuery();
+                cQuery.annotate(gCtx);
                 Collection<Op> nodes = matchingStrategy.match(cQuery, agglutinator);
                 Op componentPlan;
                 try (TimeSampler ignored = Metrics.PLAN_MS.createThreadSampler(performance)) {
@@ -221,18 +224,23 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     public @Nonnull Op plan(@Nonnull Op query) {
+        GlobalContextAnnotation gCtx = new GlobalContextAnnotation();
+        gCtx.put(GlobalContextAnnotation.USER_QUERY, query);
         try (TimeSampler ignored = Metrics.FULL_PLAN_MS.createThreadSampler(performance)) {
             Stopwatch sw = Stopwatch.createStarted();
-            Op root = query instanceof QueryOp ? query : TreeUtils.deepCopy(query);
+            Op root = TreeUtils.deepCopy(query);
             assert root.assertTreeInvariants();
-            root = prePlanner.plan(root);
+            Op root2 = prePlanner.plan(root);
+            if (root2 != root) gCtx.put(GlobalContextAnnotation.USER_QUERY, root = root2);
             assert root.assertTreeInvariants();
 
-            root = planComponents(root, query, cardinalityComputer);
+            root2 = planComponents(root, query, cardinalityComputer, gCtx);
+            if (root2 != root) gCtx.put(GlobalContextAnnotation.USER_QUERY, root = root2);
             assert root.assertTreeInvariants();
             assert keptRootModifiers(root, query);
 
-            root = postPlanner.plan(root);
+            root2 = postPlanner.plan(root);
+            if (root2 != root) gCtx.put(GlobalContextAnnotation.USER_QUERY, root = root2);
             assert keptRootModifiers(root, query);
             assert root.assertTreeInvariants();
 

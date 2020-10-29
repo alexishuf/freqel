@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.riefederator.federation.decomp.match;
 
 import br.ufsc.lapesd.riefederator.algebra.Op;
+import br.ufsc.lapesd.riefederator.algebra.inner.UnionOp;
+import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.riefederator.description.CQueryMatch;
 import br.ufsc.lapesd.riefederator.description.Description;
 import br.ufsc.lapesd.riefederator.description.semantic.SemanticDescription;
@@ -11,11 +13,14 @@ import br.ufsc.lapesd.riefederator.federation.performance.NoOpPerformanceListene
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.riefederator.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.riefederator.query.CQuery;
+import br.ufsc.lapesd.riefederator.query.MutableCQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.GlobalContextAnnotation;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.ImmRefIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.ref.RefIndexSet;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -53,7 +58,24 @@ public class SourcesListMatchingStrategy implements MatchingStrategy {
         return !match.isEmpty();
     }
 
-    @Override public @Nonnull Collection<Op> match(@Nonnull CQuery query, @Nonnull Agglutinator agglutinator) {
+    protected @Nonnull Collection<Op> stampGlobalContext(@Nonnull Collection<Op> collection,
+                                                         @Nullable GlobalContextAnnotation gCtx) {
+        if (gCtx == null)
+            return collection;
+        for (Op op : collection) {
+            if (op instanceof EndpointQueryOp) {
+                MutableCQuery q = ((EndpointQueryOp) op).getQuery();
+                assert !q.hasQueryAnnotations(GlobalContextAnnotation.class);
+                q.annotate(gCtx);
+            } else if (op instanceof UnionOp) {
+                stampGlobalContext(op.getChildren(), gCtx);
+            }
+        }
+        return collection;
+    }
+
+    @Override public @Nonnull Collection<Op> match(@Nonnull CQuery query,
+                                                   @Nonnull Agglutinator agglutinator) {
         int nMatches = 0;
         try (TimeSampler ignored = Metrics.SELECTION_MS.createThreadSampler(perfListener)) {
             Agglutinator.State state = agglutinator.createState(query);
@@ -62,7 +84,8 @@ public class SourcesListMatchingStrategy implements MatchingStrategy {
                     nMatches++;
             }
             perfListener.sample(Metrics.SOURCES_COUNT, nMatches);
-            return state.takeLeaves();
+            GlobalContextAnnotation gCtx = query.getQueryAnnotation(GlobalContextAnnotation.class);
+            return stampGlobalContext(state.takeLeaves(), gCtx);
         }
     }
 
