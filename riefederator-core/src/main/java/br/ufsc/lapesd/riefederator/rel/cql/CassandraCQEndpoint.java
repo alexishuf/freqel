@@ -40,6 +40,7 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.common.collect.Sets;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -286,6 +287,10 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
         // LIMIT must always be re-enforced since the mapping may "unfold" the SQL results
         results = LimitResults.applyIf(results, query);
         return results;
+    }
+
+    @Override public double alternativePenalty(@NotNull CQuery query) {
+        return 0.80;
     }
 
     @Override

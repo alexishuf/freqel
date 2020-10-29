@@ -1,12 +1,12 @@
 package br.ufsc.lapesd.riefederator.rel.common;
 
+import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.tags.AtomTag;
 import br.ufsc.lapesd.riefederator.description.molecules.tags.MoleculeLinkTag;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
@@ -123,17 +123,15 @@ public class StarVarIndex {
                     if (hadTag)
                         return encounters == 1 ? direct : null;
                 }
-                for (TermAnnotation a : query.getTermAnnotations(term)) {
-                    if (a instanceof AtomAnnotation) {
-                        for (AtomTag tag : ((AtomAnnotation) a).getAtom().getTags()) {
-                            if (tag instanceof ColumnsTag) {
-                                ColumnsTag cTag = (ColumnsTag) tag;
-                                if (!cTag.getTable().equals(table))
-                                    continue; //unrelated to this star
-                                if (cTag.isDirect()) {
-                                    ++encounters;
-                                    direct = cTag.getColumns().get(0);
-                                }
+                for (Atom atom : query.attr().termAtoms(term)) {
+                    for (AtomTag tag : atom.getTags()) {
+                        if (tag instanceof ColumnsTag) {
+                            ColumnsTag cTag = (ColumnsTag) tag;
+                            if (!cTag.getTable().equals(table))
+                                continue; //unrelated to this star
+                            if (cTag.isDirect()) {
+                                ++encounters;
+                                direct = cTag.getColumns().get(0);
                             }
                         }
                     }

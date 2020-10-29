@@ -235,10 +235,17 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
                 Op earlier = nodes.get((int) sorted[i]);
                 for (int j = i + 1; j < end; j++) {
                     Op later = nodes.get((int) sorted[j]);
-                    if (!ignore.get(j-begin) &&  TreeUtils.areEquivalent(earlier, later))
-                        ignore.set(j - begin);
+                    if (ignore.get(j-begin)) continue;
+                    int keep = TreeUtils.keepEquivalent(earlier, later);
+                    if (keep == 0x2) {
+                        ignore.set(j-begin);
+                    } else if (keep == 0x1) {
+                        earlier = null;
+                        break; //stop evaluating alternatives to earlier
+                    }
                 }
-                list.add(earlier);
+                if (earlier != null)
+                    list.add(earlier);
             }
             result.add(UnionOp.build(list));
         } else { // failed to start a sequence, save last Op

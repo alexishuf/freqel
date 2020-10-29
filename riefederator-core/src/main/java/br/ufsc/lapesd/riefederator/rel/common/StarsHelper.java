@@ -1,11 +1,11 @@
 package br.ufsc.lapesd.riefederator.rel.common;
 
+import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.tags.AtomTag;
 import br.ufsc.lapesd.riefederator.description.molecules.tags.MoleculeLinkTag;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
-import br.ufsc.lapesd.riefederator.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.riefederator.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.rel.mappings.Column;
@@ -15,7 +15,6 @@ import br.ufsc.lapesd.riefederator.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
-import br.ufsc.lapesd.riefederator.webapis.description.AtomAnnotation;
 import br.ufsc.lapesd.riefederator.webapis.description.MoleculeLinkAnnotation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,12 +71,10 @@ public class StarsHelper {
 
     public static @Nullable String findTable(@Nonnull CQuery query, @Nonnull Term core) {
         Set<String> tables = new HashSet<>();
-        for (TermAnnotation a : query.getTermAnnotations(core)) {
-            if (a instanceof AtomAnnotation) {
-                for (AtomTag tag : ((AtomAnnotation) a).getAtom().getTags()) {
-                    if (tag instanceof TableTag)
-                        tables.add(((TableTag) tag).getTable());
-                }
+        for (Atom atom : query.attr().termAtoms(core)) {
+            for (AtomTag tag : atom.getTags()) {
+                if (tag instanceof TableTag)
+                    tables.add(((TableTag) tag).getTable());
             }
         }
         if (tables.size() > 1) {
@@ -88,18 +85,16 @@ public class StarsHelper {
     }
 
     public static boolean isPostRelational(@Nonnull CQuery query, @Nonnull Term term) {
-        return query.getTermAnnotations(term).stream()
-                .filter(AtomAnnotation.class::isInstance)
-                .flatMap(a -> ((AtomAnnotation)a).getAtom().getTags().stream())
-                .anyMatch(PostRelationalTag.class::isInstance);
+        return query.attr().termAtoms(term)
+                    .stream().flatMap(a -> a.getTags().stream())
+                    .anyMatch(PostRelationalTag.class::isInstance);
     }
 
     public static @Nonnull Set<Column> getColumns(@Nonnull CQuery query, @Nullable String table,
                                                   @Nonnull Term term) {
         Set<Column> set = new HashSet<>();
-        for (TermAnnotation a : query.getTermAnnotations(term)) {
-            if (!(a instanceof AtomAnnotation)) continue;
-            for (AtomTag tag : ((AtomAnnotation) a).getAtom().getTags()) {
+        for (Atom atom : query.attr().termAtoms(term)) {
+            for (AtomTag tag : atom.getTags()) {
                 if (tag instanceof ColumnsTag) {
                     ColumnsTag columnsTag = (ColumnsTag) tag;
                     if (table == null || columnsTag.getTable().equals(table))
@@ -114,15 +109,12 @@ public class StarsHelper {
     getColumnsTag(@Nonnull CQuery query, @Nonnull String table,
                       @Nonnull Term term, @Nonnull Collection<Triple> triples) {
         List<ColumnsTag> candidates = new ArrayList<>();
-        for (TermAnnotation a : query.getTermAnnotations(term)) {
-            if (!(a instanceof AtomAnnotation)) continue;
-            AtomAnnotation aa = (AtomAnnotation) a;
-            for (AtomTag tag : aa.getAtom().getTags()) {
+        for (Atom atom : query.attr().termAtoms(term)) {
+            for (AtomTag tag : atom.getTags()) {
                 if (tag instanceof ColumnsTag) {
                     ColumnsTag cTag = (ColumnsTag) tag;
                     if (cTag.getTable().equals(table))
                         candidates.add(cTag);
-
                 }
             }
         }

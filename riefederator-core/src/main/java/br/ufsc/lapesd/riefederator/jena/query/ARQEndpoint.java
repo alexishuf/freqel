@@ -26,6 +26,7 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.system.Txn;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -200,6 +201,10 @@ public class ARQEndpoint extends AbstractTPEndpoint implements DQEndpoint {
         return r;
     }
 
+    @Override public boolean ignoresAtoms() {
+        return true;
+    }
+
     private @Nonnull Query parseSparql(@Nonnull String sparql) {
         try {
             return QueryFactory.create(sparql);
@@ -270,6 +275,10 @@ public class ARQEndpoint extends AbstractTPEndpoint implements DQEndpoint {
     private @Nonnull QueryExecution createExecution(@Nonnull String string) {
         Query query = QueryFactory.create(string);
         return executionFactory.apply(query);
+    }
+
+    @Override public double alternativePenalty(@NotNull CQuery query) {
+        return isLocal() ? 0 : 0.5;
     }
 
     @Override

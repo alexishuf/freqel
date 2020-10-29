@@ -21,6 +21,7 @@ import br.ufsc.lapesd.riefederator.rel.common.AnnotationStatus;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalMoleculeMatcher;
 import br.ufsc.lapesd.riefederator.rel.common.RelationalResults;
 import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -190,6 +191,10 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         } catch (SQLException e) {
             throw new QueryExecutionException("Problem executing rewritten SQL query", e);
         }
+    }
+
+    @Override public double alternativePenalty(@NotNull CQuery query) {
+        return 0.75;
     }
 
     @Override
