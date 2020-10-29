@@ -185,6 +185,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     @Override public void close() {
         if (federation != null)
             federation.close();
+        molecule.getExecutor().close();
         super.close();
     }
 

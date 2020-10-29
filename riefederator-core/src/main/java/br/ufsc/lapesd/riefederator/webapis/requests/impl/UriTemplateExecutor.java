@@ -53,6 +53,7 @@ public class UriTemplateExecutor implements APIRequestExecutor {
     private final @Nonnull ImmutableMap<String, String> indexedNAValues;
     private final @Nonnull ImmutableMap<String, String> listSeparator;
     private @SuppressWarnings("Immutable") @Nonnull HTTPRequestObserver requestObserver;
+    private final @Nonnull Client client;
 
     public UriTemplateExecutor(@Nonnull UriTemplate template, @Nonnull ImmutableSet<String> required,
                                @Nonnull ImmutableSet<String> optional,
@@ -71,7 +72,9 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         this.missing = missing;
         this.input2serializer = ImmutableMap.copyOf(input2serializer);
         this.clientConfig = clientConfig;
+        this.client = ClientBuilder.newClient(clientConfig);
         this.parser = parser;
+        this.parser.setupClient(client);
         this.pagingStrategy = pagingStrategy;
         this.rateLimitsRegistry = rateLimitsRegistry;
         this.indexedNAValues = indexedNAValues;
@@ -266,8 +269,6 @@ public class UriTemplateExecutor implements APIRequestExecutor {
                         .setCreateUriMs(sw);
 
                 sw.reset().start();
-                Client client = createClient();
-                parser.setupClient(client);
                 WebTarget target = client.target(uri);
                 info.setSetupMs(sw);
 
@@ -320,8 +321,8 @@ public class UriTemplateExecutor implements APIRequestExecutor {
         return template.getTemplate();
     }
 
-    protected @Nonnull Client createClient() {
-        return ClientBuilder.newClient(clientConfig);
+    @Override public void close() {
+        client.close();
     }
 
     private class Bindings {

@@ -12,7 +12,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 @Immutable
-public interface APIRequestExecutor {
+public interface APIRequestExecutor extends AutoCloseable {
     /**
      * Get the set required bindings to call {@link #execute(Solution)}
      *
@@ -58,4 +58,6 @@ public interface APIRequestExecutor {
     execute(@Nonnull Solution input) throws MissingAPIInputsException, NoTermSerializationException;
 
     @Nullable HTTPRequestObserver setObserver(@Nonnull HTTPRequestObserver observer);
+
+    @Override void close();
 }
