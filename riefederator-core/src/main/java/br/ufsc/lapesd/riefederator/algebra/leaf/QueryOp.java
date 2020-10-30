@@ -9,6 +9,7 @@ import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.query.CQuery;
 import br.ufsc.lapesd.riefederator.query.CQueryCache;
 import br.ufsc.lapesd.riefederator.query.MutableCQuery;
+import br.ufsc.lapesd.riefederator.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
@@ -165,14 +166,12 @@ public class QueryOp extends AbstractOp {
             q.getTripleAnnotations(triple).forEach(a -> b.annotate(bound, a));
         }
         TreeUtils.addBoundModifiers(b.mutateModifiers(), q.getModifiers(), s);
-        IndexSet<Term> tripleTerms = q.attr().tripleTerms();
         q.forEachTermAnnotation((t, a) -> {
             assert t != null && a != null;
-            Term boundTerm = bind(t, s, t);
-            assert boundTerm != null;
-            if (tripleTerms.contains(t)) b.annotate(boundTerm, a);
-            else                         b.annotate(boundTerm, a);
+            b.annotate(bind(t, s, t), a);
         });
+        for (QueryAnnotation ann : q.getQueryAnnotations())
+            b.annotate(ann);
         return b;
     }
 
