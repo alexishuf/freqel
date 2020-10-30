@@ -4,6 +4,7 @@ import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.riefederator.federation.execution.tree.EmptyOpExecutor;
 import br.ufsc.lapesd.riefederator.query.results.Results;
+import br.ufsc.lapesd.riefederator.query.results.ResultsUtils;
 import br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults;
 import com.google.errorprone.annotations.Immutable;
 import org.slf4j.Logger;
@@ -33,7 +34,6 @@ public class SimpleEmptyOpExecutor implements EmptyOpExecutor {
     @Override
     public @Nonnull Results execute(@Nonnull EmptyOp node) {
         Results r = new CollectionResults(Collections.emptyList(), node.getResultVars());
-        r.setOptional(node.modifiers().optional() != null);
-        return r;
+        return ResultsUtils.applyModifiers(r, node.modifiers());
     }
 }
