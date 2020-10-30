@@ -33,6 +33,7 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 
+import static br.ufsc.lapesd.riefederator.query.results.ResultsUtils.applyNonFilterModifiers;
 import static java.util.stream.Collectors.toSet;
 
 public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoint {
@@ -115,7 +116,8 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
         if (!missing.isEmpty()) {
             logger.error("The required inputs {} are missing when invoking {}. " +
                          "Will return no results", missing, this);
-            return CollectionResults.empty(resultVars);
+            CollectionResults empty = CollectionResults.empty(resultVars);
+            return applyNonFilterModifiers(empty, query.getModifiers());
         }
         if (bound.getVarNames().isEmpty()) {
             logger.warn("Calling WebAPI {} without arguments. This may be slow...",
@@ -130,9 +132,11 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
         } catch (APIRequestExecutorException e) {
             logger.error("Exception on execution of query {} against {}. Will return empty results",
                          query, molecule.getName(), e);
-            return CollectionResults.empty(resultVars);
+            CollectionResults empty = CollectionResults.empty(resultVars);
+            return applyNonFilterModifiers(empty, query.getModifiers());
         }
-        return new EndpointIteratorResults(it, query);
+        EndpointIteratorResults epItResults = new EndpointIteratorResults(it, query);
+        return applyNonFilterModifiers(epItResults, query.getModifiers());
     }
 
     public @Nonnull Results matchAndQuery(@Nonnull CQuery query) {
