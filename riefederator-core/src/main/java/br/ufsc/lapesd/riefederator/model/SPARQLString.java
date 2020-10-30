@@ -40,7 +40,6 @@ public class SPARQLString {
 
     public SPARQLString(boolean distinct, boolean ask, int limit, @Nonnull Set<String> varNames,
                         @Nonnull String sparql) {
-        assert !distinct || !ask : "If DISTINCT, cannot be ASK";
         assert !ask || varNames.isEmpty() : "If ASK, cannot have vars";
         assert !varNames.isEmpty() || ask : "If no vars, should be ASK";
         this.distinct = distinct;
@@ -140,9 +139,8 @@ public class SPARQLString {
                                    @Nonnull Collection<String> varNames) {
         assert !ask || varNames.isEmpty() : "If ASK, cannot have vars";
         assert !varNames.isEmpty() || ask : "If has no vars, should be ASK";
-        assert !distinct || !ask : "If DISTINCT, cannot be ASk";
         b.append(ask ? "ASK " : "SELECT ");
-        if (distinct) b.append("DISTINCT ");
+        if (!ask && distinct) b.append("DISTINCT ");
         for (String n : varNames)
             b.append('?').append(n).append(' ');
         b.append(ask ? "{" : "WHERE {");
