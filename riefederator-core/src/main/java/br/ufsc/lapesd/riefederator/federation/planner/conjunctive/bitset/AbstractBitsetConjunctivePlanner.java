@@ -54,6 +54,7 @@ public abstract class AbstractBitsetConjunctivePlanner implements ConjunctivePla
         }
 
         List<Bitset> shared = findCommonSubsets(components, joinGraph);
+        assert validCommonSubsets(shared);
         ArrayList<Op> plans = new ArrayList<>(components.size());
         for (IndexSubset<Op> subset : replaceShared(components, shared, joinGraph))
             plans.add(joinOrderPlanner.plan(joinGraph, subset));

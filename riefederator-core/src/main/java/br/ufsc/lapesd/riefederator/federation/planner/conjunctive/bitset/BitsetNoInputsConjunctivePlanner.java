@@ -123,7 +123,6 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
                 bsList.add(Bitsets.wrap(tmp));
             }
         }
-        assert validCommonSubsets(bsList);
         return bsList;
     }
 
@@ -157,7 +156,6 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
             if (!RawAlignedBitSet.isEmpty(result))
                 bitSets.add(Bitsets.wrap(result));
         }
-        assert validCommonSubsets(bitSets);
         return bitSets;
     }
 

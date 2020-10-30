@@ -164,6 +164,8 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
                         reduced.andNot(notNovel);
                         if (isConnected(reduced, graph)) {
                             oldResult.andNot(notNovel);
+                            if (oldResult.cardinality() == 1)
+                                oldResult.clear(); //avoid calling cardinality() for whole list
                             handled = true;
                         }
                     }
@@ -180,7 +182,7 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
                         }// else: keep one and reduced version  of other
                     }
                 }
-                if (!shared.isEmpty())
+                if (shared.cardinality() > 1)
                     results.add(shared.take());
             }
         }
