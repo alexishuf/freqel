@@ -93,10 +93,6 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
         objectPenalty = ImmutableMap.copyOf(map);
     }
 
-    public @Nonnull Cardinality estimate(@Nonnull CQuery query) {
-        return estimate(query, null);
-    }
-
     @Override
     public @Nonnull Cardinality estimate(@Nonnull CQuery query, @Nullable TPEndpoint ignored) {
         int value;

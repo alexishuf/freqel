@@ -222,6 +222,23 @@ public abstract class BaseIndexSet<T> extends AbstractCollection<T> implements I
         throw new UnsupportedOperationException();
     }
 
+    @Override public int indexOfAdd(T value) {
+        int i = indexOf(value);
+        if (i < 0) {
+            i = size();
+            boolean added = add(value);
+            assert indexOfAddPostconditions(added, value, i);
+        }
+        return i;
+    }
+
+    private boolean indexOfAddPostconditions(boolean added, T value, int i) {
+        assert added;
+        assert indexOf(value) == i;
+        assert size() == i+1;
+        return true;
+    }
+
     @Override
     public boolean addAll(int index, @NotNull Collection<? extends T> c) {
         throw new UnsupportedOperationException();

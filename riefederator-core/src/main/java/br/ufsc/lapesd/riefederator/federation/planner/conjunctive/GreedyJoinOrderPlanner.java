@@ -156,6 +156,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
 
         Op l = d.take(bestOuter), r = d.take(bestInner);
         JoinOp joinOp = JoinOp.create(l, r);
+        joinOp.setCardinality(best.cardinality);
         if (l.modifiers().optional() != null && r.modifiers().optional() != null)
             joinOp.modifiers().add(Optional.IMPLICIT);
         return joinOp;

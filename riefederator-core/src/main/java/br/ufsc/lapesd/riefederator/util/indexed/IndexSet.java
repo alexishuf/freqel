@@ -65,6 +65,11 @@ public interface IndexSet<T> extends List<T>, Set<T> {
      */
     int safeAdd(T value);
 
+    /**
+     * Similar to {@link IndexSet#safeAdd(Object)}, but does not guarantee thread safety.
+     */
+    int indexOfAdd(T value);
+
     int hash(@Nonnull T elem);
 
     @Override default Spliterator<T> spliterator() {

@@ -14,6 +14,10 @@ import javax.annotation.Nullable;
  * and also <strong>may</strong> involve querying some index.
  */
 public interface CardinalityHeuristic {
+    default @Nonnull Cardinality estimate(@Nonnull CQuery query) {
+        return estimate(query, null);
+    }
+
     @Nonnull Cardinality estimate(@Nonnull CQuery query,
                                   @Nullable TPEndpoint endpoint);
 }

@@ -349,6 +349,13 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
         return i;
     }
 
+    @Override public int indexOfAdd(T value) {
+        int i = parent.indexOf(value);
+        if (i < 0) throw new NotInParentException(value, parent);
+        bs.set(i);
+        return i;
+    }
+
     @Override public boolean parentAdd(@Nonnull T value) {
         int idx = parent.safeAdd(value);
         boolean missing = !bs.get(idx);

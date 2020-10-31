@@ -1,3 +1,4 @@
+
 Previous issue: when evaluating a join the cardinality estimated was the average of both
 operands. This caused overestimations, since the effect of binding variables was ignored
 

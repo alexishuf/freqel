@@ -5,8 +5,8 @@ import br.ufsc.lapesd.riefederator.federation.cardinality.CardinalityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.riefederator.federation.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.BindJoinCardinalityEstimator;
-import br.ufsc.lapesd.riefederator.federation.cardinality.impl.GeneralSelectivityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.LimitCardinalityHeuristic;
+import br.ufsc.lapesd.riefederator.federation.cardinality.impl.QuickSelectivityHeuristic;
 import br.ufsc.lapesd.riefederator.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
 import br.ufsc.lapesd.riefederator.federation.concurrent.PlanningExecutorService;
 import br.ufsc.lapesd.riefederator.federation.concurrent.PoolPlanningExecutorService;
@@ -77,7 +77,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
 
         Multibinder<CardinalityHeuristic> mBinder
                 = Multibinder.newSetBinder(binder, CardinalityHeuristic.class);
-        mBinder.addBinding().toInstance(new GeneralSelectivityHeuristic());
+        mBinder.addBinding().toInstance(new QuickSelectivityHeuristic());
         if (estimatePolicy != 0) {
             mBinder.addBinding()
                     .toInstance(new LimitCardinalityHeuristic(EstimatePolicy.local(100)));

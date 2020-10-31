@@ -49,6 +49,10 @@ public class CoWIndexSet<T> extends DelegatingIndexSet<T> {
         return exclusive().safeAdd(value);
     }
 
+    @Override public int indexOfAdd(T value) {
+        return exclusive().indexOfAdd(value);
+    }
+
     @Override public boolean addAll(@Nonnull Collection<? extends T> c) {
         return exclusive().addAll(c);
     }

@@ -7,6 +7,11 @@ public interface Bitset {
     void flip(int index);
     void flip(int from, int to);
 
+    /**
+     * Set bit at given index only if not already set.
+     *
+     * @return true if bit was set, false if it was already set
+     */
     boolean compareAndSet(int index);
     void set(int index);
     void set(int index, boolean value);

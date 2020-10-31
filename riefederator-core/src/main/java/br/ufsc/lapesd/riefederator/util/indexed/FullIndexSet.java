@@ -94,6 +94,11 @@ public class FullIndexSet<T> extends BaseIndexSet<T> {
         return new ImmFullIndexSet<>(new HashMap<>(indexMap), new ArrayList<>(data));
     }
 
+    @Override public void clear() {
+        indexMap.clear();
+        data.clear();
+    }
+
     @Override public boolean add(T t) {
         if (t == null) throw new NullPointerException();
         boolean change = indexMap.putIfAbsent(t, data.size()) == null;
