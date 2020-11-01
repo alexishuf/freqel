@@ -317,7 +317,7 @@ public class TreeUtils {
                 child.setCardinality(estimate(child, ensemble, adder));
             Cardinality sum = Cardinality.UNSUPPORTED;
             for (Op child : node.getChildren())
-                adder.apply(sum, child.getCardinality());
+                sum = adder.apply(sum, child.getCardinality());
             return sum;
         } else if (node instanceof EndpointQueryOp) {
             EndpointQueryOp qn = (EndpointQueryOp) node;
