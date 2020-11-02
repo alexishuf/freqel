@@ -62,7 +62,8 @@ public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
         GreedyJoinOrderPlanner planner = new GreedyJoinOrderPlanner(
                 NoOpPerformanceListener.INSTANCE, NoCardinalityEnsemble.INSTANCE,
                 RelativeCardinalityAdder.DEFAULT,
-                new AverageJoinCardinalityEstimator(ThresholdCardinalityComparator.DEFAULT));
+                new AverageJoinCardinalityEstimator(ThresholdCardinalityComparator.DEFAULT),
+                GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
         return planner.createData(graph);
     }
 
@@ -329,7 +330,8 @@ public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
         GreedyJoinOrderPlanner planner
                 = new GreedyJoinOrderPlanner(NoOpPerformanceListener.INSTANCE,
                                              NoCardinalityEnsemble.INSTANCE,
-                                             RelativeCardinalityAdder.DEFAULT, joinCardinalityEstimator);
+                                             RelativeCardinalityAdder.DEFAULT, joinCardinalityEstimator,
+                                             GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
         JoinGraph graph = new ArrayJoinGraph(RefIndexSet.fromRefDistinct(Scenario1.nodes));
         Op root = planner.plan(graph, Scenario1.nodes);
 

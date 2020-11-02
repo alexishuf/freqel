@@ -102,6 +102,8 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
                             @Override
                             protected void configure() {
                                 bind(ConjunctivePlanner.class).to(p);
+                                if (p.equals(JoinPathsConjunctivePlanner.class) && op.equals(GreedyJoinOrderPlanner.class))
+                                    bind(GreedyJoinOrderPlanner.EquivCleaner.class).toInstance(GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
                                 bind(JoinOrderPlanner.class).to(op);
                             }
                         }).getInstance(ConjunctivePlanner.class);
@@ -567,10 +569,17 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
     @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testSameQueryEquivalentEp(@Nonnull Supplier<ConjunctivePlanner> supplier) {
         ConjunctivePlanner planner = supplier.get();
-        CQuery query = CQuery.from(new Triple(x, knows, y), new Triple(y, knows, z));
+        CQuery query = createQuery(x, knows, y, y, knows, z);
         EndpointQueryOp q1 = new EndpointQueryOp(empty3a, CQuery.from(query.get(0)));
         EndpointQueryOp q2 = new EndpointQueryOp(empty3b, CQuery.from(query.get(0)));
         EndpointQueryOp q3 = new EndpointQueryOp(empty1 , CQuery.from(query.get(1)));
+
+        IndexSet<String> vars = FullIndexSet.newIndexSet("x", "y", "z");
+        IndexSet<Triple> triples = FullIndexSet.fromDistinct(query);
+        Stream.concat(Stream.of(query), Stream.of(q1, q2, q3).map(QueryOp::getQuery)).forEach(q -> {
+            q.attr().offerVarNamesUniverse(vars);
+            q.attr().offerTriplesUniverse(triples);
+        });
 
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(asList((Op)q1, q2, q3))) {

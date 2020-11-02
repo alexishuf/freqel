@@ -19,6 +19,7 @@ import br.ufsc.lapesd.riefederator.util.indexed.subset.IndexSubset;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
+import com.google.inject.ImplementedBy;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,7 +28,6 @@ import javax.inject.Inject;
 import java.util.*;
 
 import static br.ufsc.lapesd.riefederator.algebra.Cardinality.Reliability.*;
-import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.cleanEquivalents;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.Long.MAX_VALUE;
@@ -37,16 +37,40 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
     private final @Nonnull CardinalityEnsemble cardEnsemble;
     private final @Nonnull CardinalityAdder cardAdder;
     private final @Nonnull JoinCardinalityEstimator joinCardinalityEstimator;
+    private final @Nonnull EquivCleaner equivCleaner;
+
+    @ImplementedBy(NoEquivCleaner.class)
+    public interface EquivCleaner {
+        @Nonnull Op cleanEquivalents(@Nonnull Op node, @Nonnull Comparator<Op> comparator);
+    }
+
+    public static class NoEquivCleaner implements EquivCleaner {
+        public static final NoEquivCleaner INSTANCE = new NoEquivCleaner();
+        @Override
+        public @Nonnull Op cleanEquivalents(@Nonnull Op node, @Nonnull Comparator<Op> comparator) {
+            return node;
+        }
+    }
+
+    public static class DefaultEquivCleaner implements EquivCleaner {
+        public static final @Nonnull DefaultEquivCleaner INSTANCE = new DefaultEquivCleaner();
+        @Override
+        public @Nonnull Op cleanEquivalents(@Nonnull Op node, @Nonnull Comparator<Op> comparator) {
+            return TreeUtils.cleanEquivalents(node, comparator);
+        }
+    }
 
     @Inject
     public GreedyJoinOrderPlanner(@Nonnull PerformanceListener performance,
                                   @Nonnull CardinalityEnsemble cardEnsemble,
                                   @Nonnull CardinalityAdder cardinalityAdder,
-                                  @Nonnull JoinCardinalityEstimator joinCardinalityEstimator) {
+                                  @Nonnull JoinCardinalityEstimator joinCardinalityEstimator,
+                                  @Nonnull EquivCleaner equivCleaner) {
         this.performance = performance;
         this.cardEnsemble = cardEnsemble;
         this.cardAdder = cardinalityAdder;
         this.joinCardinalityEstimator = joinCardinalityEstimator;
+        this.equivCleaner = equivCleaner;
     }
 
     @VisibleForTesting
@@ -60,7 +84,7 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
             this.graph = graph;
             List<Op> cleanList = new ArrayList<>();
             for (Op node : nodesCollection) {
-                Op c = cleanEquivalents(node, OrderTuple.NODE_COMPARATOR);
+                Op c = equivCleaner.cleanEquivalents(node, OrderTuple.NODE_COMPARATOR);
                 c.setCardinality(TreeUtils.estimate(c, cardEnsemble, cardAdder));
                 cleanList.add(c);
             }

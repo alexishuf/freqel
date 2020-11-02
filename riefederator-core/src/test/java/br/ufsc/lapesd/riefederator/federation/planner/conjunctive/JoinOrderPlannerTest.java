@@ -80,14 +80,16 @@ public class JoinOrderPlannerTest implements TestContext {
                     new NamedSupplier<>("GreedyJoinOrderPlanner, without estimation",
                         () -> Guice.createInjector(new AbstractModule() {
                             @Override
-                            protected void configure() {}
+                            protected void configure() {
+                                bind(GreedyJoinOrderPlanner.EquivCleaner.class).toInstance(GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
+                            }
                         }).getInstance(GreedyJoinOrderPlanner.class)),
                     new NamedSupplier<>("GreedyJoinOrderPlanner+GeneralSelectivityHeuristic",
                             () -> Guice.createInjector(new AbstractModule() {
                                 @Override
                                 protected void configure() {
                                     bind(CardinalityEnsemble.class).to(WorstCaseCardinalityEnsemble.class);
-
+                                    bind(GreedyJoinOrderPlanner.EquivCleaner.class).toInstance(GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
                                     Multibinder<CardinalityHeuristic> mb
                                             = Multibinder.newSetBinder(binder(), CardinalityHeuristic.class);
                                     mb.addBinding().to(GeneralSelectivityHeuristic.class);
@@ -97,6 +99,7 @@ public class JoinOrderPlannerTest implements TestContext {
                         () -> Guice.createInjector(new AbstractModule() {
                             @Override
                             protected void configure() {
+                                bind(GreedyJoinOrderPlanner.EquivCleaner.class).toInstance(GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
                                 SimpleFederationModule.configureCardinalityEstimation(binder(),
                                         EstimatePolicy.local(50));
                             }

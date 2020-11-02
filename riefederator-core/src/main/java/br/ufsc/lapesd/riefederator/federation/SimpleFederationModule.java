@@ -20,6 +20,7 @@ import br.ufsc.lapesd.riefederator.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.PrePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner.NoEquivCleaner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerDispatcher;
 import br.ufsc.lapesd.riefederator.federation.planner.post.PhasedPostPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.post.steps.*;
@@ -67,6 +68,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
         bind(Agglutinator.class).to(StandardAgglutinator.class);
         bind(ConjunctivePlanner.class).to(BitsetConjunctivePlannerDispatcher.class);
         bind(JoinOrderPlanner.class).to(GreedyJoinOrderPlanner.class);
+        bind(GreedyJoinOrderPlanner.EquivCleaner.class).toInstance(NoEquivCleaner.INSTANCE);
         bind(PlanningExecutorService.class).toInstance(new PoolPlanningExecutorService());
         configureCardinalityEstimation();
     }
