@@ -279,6 +279,26 @@ public class ArrayBitset extends AbstractBitset {
         return sum;
     }
 
+    @Override public int cardinalityBefore(int idx) {
+        int last = wordIndex(idx-1);
+        if      ( idx == 0    ) return 0;
+        else if (last >= inUse) return cardinality();
+
+        int sum = 0;
+        for (int i = 0; i < last; i++)
+            sum += Long.bitCount(words[i]);
+        return sum + Long.bitCount(words[last] & (ALL_BITS >>> -idx));
+    }
+
+    @Override public int cardinalityFrom(int idx) {
+        int wIdx = idx >> 6;
+        if (wIdx >= inUse) return 0;
+        int sum = Long.bitCount(words[wIdx] & (ALL_BITS << idx));
+        for (int i = wIdx+1; i < inUse; i++)
+            sum += Long.bitCount(words[i]);
+        return sum;
+    }
+
     @Override public int size() {
         return words.length*WORD_BITS;
     }

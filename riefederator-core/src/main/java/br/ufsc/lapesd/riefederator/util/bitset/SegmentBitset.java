@@ -114,7 +114,7 @@ public class SegmentBitset extends AbstractBitset {
     }
 
     @Override public int nextSetBit(int from) {
-        if (from > size)
+        if (from >= size)
             return -1;
         int i = wordIndex(from);
         long w = data[i] & (ALL_BITS << from);
@@ -188,6 +188,25 @@ public class SegmentBitset extends AbstractBitset {
     @Override public int cardinality() {
         int sum = 0;
         for (int i = begin; i < end; i++)
+            sum += Long.bitCount(data[i]);
+        return sum;
+    }
+
+    @Override public int cardinalityBefore(int idx) {
+        if      (idx == 0   ) return 0;
+        else if (idx >= size) return cardinality();
+        int last = begin + ((idx-1) >> 6);
+        int sum = 0;
+        for (int i = begin; i < last; i++)
+            sum += Long.bitCount(data[i]);
+        return sum + Long.bitCount(data[last] & (ALL_BITS >>> -idx));
+    }
+
+    @Override public int cardinalityFrom(int idx) {
+        int first = begin + (idx >> 6);
+        if (first > end) return 0;
+        int sum = Long.bitCount(data[first] & (ALL_BITS << idx));
+        for (int i = first+1; i < end; i++)
             sum += Long.bitCount(data[i]);
         return sum;
     }

@@ -129,6 +129,14 @@ public class LongBitset extends AbstractBitset {
         return Long.bitCount(value);
     }
 
+    @Override public int cardinalityBefore(int idx) {
+        return idx == 0 ? 0 : Long.bitCount(idx >= 64 ? value : value & (ALL_BITS >>> -idx));
+    }
+
+    @Override public int cardinalityFrom(int idx) {
+        return idx >= 64 ? 0 : Long.bitCount(value & (ALL_BITS << idx));
+    }
+
     @Override public int size() {
         return SIZE;
     }

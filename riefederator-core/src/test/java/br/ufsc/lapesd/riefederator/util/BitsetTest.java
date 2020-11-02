@@ -51,7 +51,7 @@ public class BitsetTest {
                 @Override public String toString() { return "SegmentBitset"; }
                 @Override public int sizeLimit() { return Integer.MAX_VALUE; }
                 @Override public @Nonnull Bitset fromJava(@Nonnull BitSet java, int bitsSize) {
-                    long[] data = new long[bitsSize + 3];
+                    long[] data = new long[(bitsSize >> 6) + 4];
                     long[] src = java.toLongArray();
                     System.arraycopy(src, 0, data, 2, src.length);
                     return new SegmentBitset(data, 2, data.length - 1);
@@ -332,6 +332,23 @@ public class BitsetTest {
         checkEquals(actual, expected);
         checkEquals(aLeft, jLeft); // no change
         checkEquals(aRight, jRight); // no change
+    }
+
+    @Test(dataProvider = "factoriesAndSizeData")
+    public void testSegmentCardinalities(Factory f, int size) {
+        BitSet java = new BitSet();
+        java.set(0, size);
+
+        Bitset bitset = f.fromJava(java, size);
+        assertEquals(bitset.cardinality(), size);
+        for (int i = 0; i < size; i++) {
+            assertEquals(bitset.cardinalityBefore(i), i);
+            assertEquals(bitset.cardinalityFrom(i), size-i);
+            bitset.clear(i);
+            assertEquals(bitset.cardinalityFrom(i), size-i-1);
+            bitset.set(i);
+            assertEquals(bitset.cardinalityAfter(i), size-i-1);
+        }
     }
 
     @Test(dataProvider = "factoriesAndSizeData")

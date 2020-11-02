@@ -449,14 +449,8 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
     }
 
     @Override public int indexOf(Object o) {
-        if (o == null) return -1;
-        int index = 0;
-        for (Iterator<T> it = iterator(); it.hasNext(); ) {
-            if (it.next().equals(o))
-                return index;
-            ++index;
-        }
-        return -1; // not found
+        int idx = parent.indexOf(o);
+        return idx < 0 ? -1 : (bs.get(idx) ? bs.cardinalityBefore(idx) : -1);
     }
 
     @Override public int lastIndexOf(Object o) {

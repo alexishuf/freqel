@@ -449,11 +449,13 @@ public class MutableCQuery extends CQuery {
         }
         if (triplesChange)
             d.cache.invalidateTriples();
-        for (Term term : other.attr().tripleTerms()) {
-            for (TermAnnotation a : other.getTermAnnotations(term)) {
-                if (d.termAnns().put(term, a)) {
-                    d.cache.notifyTermAnnotationChange(a.getClass());
-                    change = true;
+        if (other.hasTermAnnotations()) {
+            for (Term term : other.attr().tripleTerms()) {
+                for (TermAnnotation a : other.getTermAnnotations(term)) {
+                    if (d.termAnns().put(term, a)) {
+                        d.cache.notifyTermAnnotationChange(a.getClass());
+                        change = true;
+                    }
                 }
             }
         }

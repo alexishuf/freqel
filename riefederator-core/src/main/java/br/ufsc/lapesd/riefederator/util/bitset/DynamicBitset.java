@@ -264,6 +264,27 @@ public class DynamicBitset extends AbstractBitset {
         return sum;
     }
 
+    @Override public int cardinalityBefore(int idx) {
+        int last = (idx-1) >> 6;
+        if      (last >= inUse) return cardinality();
+        else if ( idx == 0    ) return 0;
+        else if (last == 0    ) return Long.bitCount(value & (ALL_BITS >>> -idx));
+        int sum = Long.bitCount(value);
+        --last;
+        for (int i = 0; i < last; i++)
+            sum += Long.bitCount(rem[i]);
+        return sum + Long.bitCount(rem[last] & (ALL_BITS >>> -idx));
+    }
+
+    @Override public int cardinalityFrom(int idx) {
+        int first = idx >> 6;
+        if (first >= inUse) return 0;
+        int sum = Long.bitCount(word(first) & (ALL_BITS << idx));
+        for (int i = first, e = inUse-1; i < e; i++)
+            sum += Long.bitCount(rem[i]);
+        return sum;
+    }
+
     @Override public int size() {
         return WORD_BITS + (rem == null ? 0 : rem.length*WORD_BITS);
     }
