@@ -45,20 +45,22 @@ public abstract class AbstractBitsetConjunctivePlanner implements ConjunctivePla
         RefIndexSet<Op> fragments = groupNodes(fragmentsList);
         BitJoinGraph joinGraph = createJoinGraph(fragments);
         Collection<?> components = findComponents(query, joinGraph);
-        assert !components.isEmpty() : "Should've detected this in checkEmptyPlan";
 
-        if (components.size() == 1) {
+        int nComponents = components.size();
+        if (nComponents == 0) {
+            return new EmptyOp(new QueryOp(query));
+        } else if (nComponents == 1) {
             IndexSubset<Op> component = componentToSubset(joinGraph.getNodes(),
                                                           components.iterator().next());
             return joinOrderPlanner.plan(joinGraph, component);
+        } else {
+            List<Bitset> shared = findCommonSubsets(components, joinGraph);
+            assert validCommonSubsets(shared);
+            ArrayList<Op> plans = new ArrayList<>(nComponents);
+            for (IndexSubset<Op> subset : replaceShared(components, shared, joinGraph))
+                plans.add(joinOrderPlanner.plan(joinGraph, subset));
+            return UnionOp.build(plans);
         }
-
-        List<Bitset> shared = findCommonSubsets(components, joinGraph);
-        assert validCommonSubsets(shared);
-        ArrayList<Op> plans = new ArrayList<>(components.size());
-        for (IndexSubset<Op> subset : replaceShared(components, shared, joinGraph))
-            plans.add(joinOrderPlanner.plan(joinGraph, subset));
-        return UnionOp.build(plans);
     }
 
     protected abstract @Nonnull BitJoinGraph createJoinGraph(RefIndexSet<Op> fragments);

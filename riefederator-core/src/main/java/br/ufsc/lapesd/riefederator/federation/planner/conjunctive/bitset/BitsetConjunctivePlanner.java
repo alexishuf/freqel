@@ -83,10 +83,10 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
         return nodes.subset((Bitset)component);
     }
 
-    @Override @Nonnull Set<Bitset> findComponents(@Nonnull CQuery query,
-                                                  @Nonnull BitJoinGraph graph) {
+    @Override @Nonnull List<Bitset> findComponents(@Nonnull CQuery query,
+                                                   @Nonnull BitJoinGraph graph) {
         int nNodes = graph.size();
-        HashSet<Bitset> results = new HashSet<>(nNodes);
+        HashSet<Bitset> componentsSet = new HashSet<>(nNodes);
         InputStateHelper helper;
         helper = new InputStateHelper(graph, query.attr().varNamesUniverseOffer(),
                                       (IndexSubset<Triple>) query.attr().getSet());
@@ -98,7 +98,7 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
                 long[] state = stack.pop();
                 if (helper.isFinal(state)) {
                     assert validComponent(helper.bs, state, graph);
-                    results.add(Bitsets.copyFixed(state, helper.bs.componentBegin(0),
+                    componentsSet.add(Bitsets.copyFixed(state, helper.bs.componentBegin(0),
                                                          helper.bs.componentEnd(0)));
                 } else {
                     helper.forEachNeighbor(state, stack);
@@ -106,9 +106,11 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
                 }
             }
         }
-        for (Bitset component : results)
+        for (Bitset component : componentsSet)
             assert validComponent(component, graph);
-        return results;
+        ArrayList<Bitset> componentsList = new ArrayList<>(componentsSet);
+        removeAlternativeComponents(componentsList, graph.getNodes());
+        return componentsList;
     }
 
     private boolean validComponent(@Nonnull Bitset subset, @Nonnull BitJoinGraph graph) {
@@ -146,43 +148,48 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
                                 : new ArrayList<Bitset>((Collection<Bitset>) componentsColl);
         List<Bitset> results = new ArrayList<>(comps.size());
         Intersection shared = new Intersection(), notNovel = new Intersection();
+        int nNodes = graph.size();
+        Bitset sharedRem = Bitsets.createFixed(nNodes), oldRem = Bitsets.createFixed(nNodes);
         for (int i = 0, nComponents = comps.size(); i < nComponents; i++) {
             for (int j = i+1; j < nComponents; j++) {
                 if (!shared.intersect(comps.get(i), comps.get(j)) || !isConnected(shared, graph))
                     continue;
+                int sharedCard = shared.cardinality();
+                if ( sharedCard <= 1) continue;
+                if (!isConnected(shared, graph)) continue;
                 for (Bitset oldResult : results) {
-                    if (oldResult.equals(shared)) {
-                        shared.clear();
+                    if (sharedCard <= 1 || oldResult.equals(shared)) {
+                        shared.clear(); // avoid further call to cardinality()
                         break;
                     }
                     if (!notNovel.intersect(shared, oldResult))
                         continue;
-                    int sharedCard = shared.cardinality(), oldCard = oldResult.cardinality();
-                    boolean handled = false;
-                    if (sharedCard > oldCard) {
-                        Bitset reduced = oldResult.copy();
-                        reduced.andNot(notNovel);
-                        if (isConnected(reduced, graph)) {
-                            oldResult.andNot(notNovel);
-                            if (oldResult.cardinality() == 1)
-                                oldResult.clear(); //avoid calling cardinality() for whole list
-                            handled = true;
-                        }
-                    }
-                    if (!handled) {
-                        Bitset reduced = shared.copy();
-                        reduced.andNot(notNovel);
-                        if (!isConnected(reduced, graph)) {
-                            if (sharedCard > oldCard) { //keep only shared
-                                oldResult.clear();
-                            } else { //keep only old
-                                shared.clear();
-                                break;
-                            }
-                        }// else: keep one and reduced version  of other
+
+                    // shared & oldResult != 0. Must remove notNovel from one of them
+                    oldRem.assign(oldResult);
+                    oldRem.andNot(notNovel);
+                    sharedRem.assign(shared);
+                    sharedRem.andNot(notNovel);
+                    boolean canReduceOld = isConnected(oldRem, graph);
+                    boolean canReduceShared = isConnected(sharedRem, graph);
+                    int oldCard = oldResult.cardinality(), notNovelCard = notNovel.cardinality();
+                    if (canReduceShared && (oldCard >= sharedCard || !canReduceOld)) {
+                        shared.assign(sharedRem); // reduce shared, keep old
+                        assert sharedCard-notNovelCard == shared.cardinality();
+                        if ((sharedCard -= notNovelCard) == 1)
+                            shared.clear(); // drop faster if singleton
+                    } else if (canReduceOld && (sharedCard >= oldCard || !canReduceShared)) {
+                        oldResult.assign(oldRem); //reduce old, keep shared
+                        assert oldCard - notNovelCard == oldResult.cardinality();
+                        if (oldCard - notNovelCard == 1)
+                            oldResult.clear(); //drop faster if singleton
+                    } else if (!canReduceShared && !canReduceOld) { //cannot reduce, keep largest
+                        if (sharedCard <= oldCard) shared.clear();
+                        else                       oldResult.clear();
                     }
                 }
-                if (shared.cardinality() > 1)
+                assert sharedCard == shared.cardinality();
+                if (sharedCard > 1)
                     results.add(shared.take());
             }
         }
@@ -267,5 +274,61 @@ public class BitsetConjunctivePlanner extends AbstractBitsetConjunctivePlanner  
         }
         joinGraph.notifyAddedNodes(); //compute new JoinInfos
         return components; //now with shared subsets replaced
+    }
+
+    private void removeAlternativeComponents(@Nonnull List<Bitset> components,
+                                             @Nonnull List<Op> nodes) {
+        assert components.stream().noneMatch(Objects::isNull)
+                && components.stream().noneMatch(Bitset::isEmpty);
+        int nComponents = components.size(), firstElimination = Integer.MAX_VALUE;
+        outer_loop:
+        for (int i = 0; i < nComponents; i++) {
+            Bitset outer = components.get(i);
+            if (outer != null) {
+                for (int j = i + 1; j < nComponents; j++) {
+                    Bitset inner = components.get(j);
+                    if (inner != null) {
+                        int best = chooseComponent(outer, inner, nodes);
+                        if (best == 0) {
+                            firstElimination = Math.min(firstElimination, j);
+                            components.set(j, null);
+                        } else if (best == 1) {
+                            firstElimination = Math.min(firstElimination, i);
+                            components.set(i, null);
+                            continue outer_loop;
+                        }
+                    }
+                }
+            }
+        }
+        if (firstElimination != Integer.MAX_VALUE) {
+            for (int i = nComponents-1; i >= firstElimination; i--) {
+                if (components.get(i) == null) components.remove(i);
+            }
+        }
+        assert components.stream().noneMatch(Objects::isNull);
+    }
+
+    private int chooseComponent(@Nonnull Bitset a, @Nonnull Bitset b, @Nonnull List<Op> nodes) {
+        int aScore = 0, bScore = 0;
+        if (a.cardinality() != b.cardinality())
+            return -1;
+        for (int i = a.nextSetBit(0); i >= 0; i = a.nextSetBit(i+1)) {
+            boolean hasMatch = b.get(i); // if same node is already in b, do not iterate
+            for (int j = b.nextSetBit(0); !hasMatch && j >= 0; j = b.nextSetBit(j+1)) {
+                Op aNode = nodes.get(i), bNode = nodes.get(j);
+                if (aNode.getMatchedTriples().equals(bNode.getMatchedTriples())) {
+                    hasMatch = true;
+                    int bits = TreeUtils.keepEquivalent(aNode, bNode);
+                    if (bits == 0x3)
+                        return -1; //distinct nodes, components are not equivalent
+                    aScore += (bits & 0x2) >> 1;
+                    bScore +=  bits & 0x1      ;
+                }
+            }
+            if (!hasMatch)
+                return -1; // node has no equivalent, thus both components must remain
+        }
+        return aScore >= bScore ? 0 : 1;
     }
 }

@@ -412,7 +412,6 @@ public class TreeUtils {
         if (!le.isAlternative(re))
             return 0x3;
         assert left.getMatchedTriples().equals(right.getMatchedTriples());
-        assert left.getRequiredInputVars().equals(right.getRequiredInputVars());
         if (left instanceof QueryOp && right instanceof QueryOp) {
             MutableCQuery lq = ((QueryOp) left).getQuery(), rq = ((QueryOp) right).getQuery();
             if (!lq.attr().getSet().equals(rq.attr().getSet()))

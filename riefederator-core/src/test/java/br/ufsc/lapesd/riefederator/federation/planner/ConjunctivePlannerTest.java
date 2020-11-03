@@ -16,6 +16,7 @@ import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.ArbitraryJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.GreedyJoinOrderPlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.BitsetConjunctivePlanner;
 import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerDispatcher;
 import br.ufsc.lapesd.riefederator.jena.ExprUtils;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
@@ -82,8 +83,13 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
     private static final Var s = new StdVar("s");
     private static final Var t = new StdVar("t");
 
-    public static @Nonnull List<Class<? extends ConjunctivePlanner>> plannerClasses
-            = asList(JoinPathsConjunctivePlanner.class, BitsetConjunctivePlannerDispatcher.class);
+    public static @Nonnull List<Class<? extends ConjunctivePlanner>> plannerClasses = asList(
+                    JoinPathsConjunctivePlanner.class,
+                    // diverts to BitsetConjunctivePlanner and BitsetNoInputsConjunctivePlanner
+                    BitsetConjunctivePlannerDispatcher.class,
+                    // handles inputs but should also work without inputs fails if missing universes
+                    BitsetConjunctivePlanner.class
+    );
     public static @Nonnull List<Class<? extends JoinOrderPlanner>> joinOrderPlannerClasses
             = asList(ArbitraryJoinOrderPlanner.class, GreedyJoinOrderPlanner.class);
 
@@ -126,6 +132,33 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
     static {
         empty3a.addAlternative(empty3b);
         empty3b.addAlternative(empty3a);
+    }
+
+    private static @Nonnull Op plan(@Nonnull ConjunctivePlanner p,
+                                    @Nonnull CQuery q, @Nonnull Collection<Op> nodes) {
+        if (p instanceof BitsetConjunctivePlannerDispatcher
+                || p instanceof BitsetConjunctivePlanner) {
+            IndexSet<Triple> triples = FullIndexSet.fromDistinct(Stream.concat(
+                    Stream.of(q),
+                    nodes.stream().flatMap(n -> streamPreOrder(n).filter(QueryOp.class::isInstance)
+                                  .map(o4 -> ((QueryOp) o4).getQuery()))
+            ).flatMap(sq -> sq.stream()).collect(toSet()));
+            IndexSet<String> vars = FullIndexSet.fromDistinct(Stream.concat(
+                    q.attr().allVarNames().stream(),
+                    nodes.stream().flatMap(
+                            r -> streamPreOrder(r).flatMap(n -> n.getAllVars().stream()))
+            ).collect(toSet()));
+            for (Op root : nodes) {
+                streamPreOrder(root).forEach(n -> {
+                    n.offerTriplesUniverse(triples);
+                    n.offerVarsUniverse(vars);
+                    n.purgeCaches();
+                });
+            }
+            q.attr().offerTriplesUniverse(triples);
+            q.attr().offerVarNamesUniverse(vars);
+        }
+        return p.plan(q, nodes);
     }
 
     public static void assertPlanAnswers(@Nonnull Op root, @Nonnull CQuery query) {
@@ -399,7 +432,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         ConjunctivePlanner planner = supplier.get();
         CQuery query = createQuery(Alice, knows, x);
         EndpointQueryOp queryOp = new EndpointQueryOp(empty1, query);
-        Op node = planner.plan(query, singleton(queryOp));
+        Op node = plan(planner, query, singleton(queryOp));
         assertSame(node, queryOp);
         assertPlanAnswers(node, query);
     }
@@ -410,7 +443,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         CQuery query = createQuery(Alice, knows, x);
         EndpointQueryOp node1 = new EndpointQueryOp(empty1, query);
         EndpointQueryOp node2 = new EndpointQueryOp(empty2, query);
-        Op root = planner.plan(query, asList(node1, node2));
+        Op root = plan(planner, query, asList(node1, node2));
         assertEquals(root.getResultVars(), singleton("x"));
         assertFalse(root.isProjected());
 
@@ -428,7 +461,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         CQuery q2 = CQuery.from(query.get(1));
         EndpointQueryOp node1 = new EndpointQueryOp(empty1, q1);
         EndpointQueryOp node2 = new EndpointQueryOp(empty1, q2);
-        Op root = planner.plan(query, asList(node1, node2));
+        Op root = plan(planner, query, asList(node1, node2));
         assertEquals(root.getResultVars(), asList("x", "y"));
 
         // a reasonable plan would just add a join node over the query nodes
@@ -449,7 +482,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         );
         CQuery q1 = CQuery.from(query.get(0), query.get(1));
         CQuery q2 = CQuery.from(query.get(2));
-        Op root = planner.plan(query, asList(new EndpointQueryOp(empty1, q1),
+        Op root = plan(planner, query, asList(new EndpointQueryOp(empty1, q1),
                                                    new EndpointQueryOp(empty2, q2)));
 
         assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinOp).count(), 1);
@@ -463,11 +496,13 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
     @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testCartesianProduct(@Nonnull Supplier<ConjunctivePlanner> supplier) {
         ConjunctivePlanner planner = supplier.get();
+        if (!(planner instanceof JoinPathsConjunctivePlanner))
+            return; //splitting cartesians is not mandatory for implementations
         CQuery query = CQuery.from(new Triple(Alice, knows, x), new Triple(y, knows, Bob));
         CQuery q1 = CQuery.from(query.get(0));
         CQuery q2 = CQuery.from(query.get(1));
         EndpointQueryOp node1 = new EndpointQueryOp(empty1, q1), node2 = new EndpointQueryOp(empty1, q2);
-        Op root = planner.plan(query, asList(node1, node2));
+        Op root = plan(planner, query, asList(node1, node2));
         assertEquals(root.getResultVars(), Sets.newHashSet("x", "y"));
 
         assertTrue(streamPreOrder(root).count() <= 5);
@@ -484,6 +519,8 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
     @Test(dataProvider = "suppliersData", groups={"fast"})
     public void testLargeTree(@Nonnull Supplier<ConjunctivePlanner> supplier) {
         ConjunctivePlanner planner = supplier.get();
+        if (!(supplier.get() instanceof JoinPathsConjunctivePlanner))
+            return; //siletly skip, since allowing disconnected queries is not mandatory
         CQuery query = CQuery.from(
                 new Triple(Alice, knows, x),
                 new Triple(x, knows, y),
@@ -503,7 +540,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         for (int i = 0; i < 16; i++) {
             ArrayList<Op> shuffled = new ArrayList<>(leaves);
             Collections.shuffle(shuffled, random);
-            Op root = planner.plan(query, shuffled);
+            Op root = plan(planner, query, shuffled);
 
             Set<EndpointQueryOp> observed = streamPreOrder(root)
                                                .filter(n -> n instanceof EndpointQueryOp)
@@ -550,7 +587,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         EndpointQueryOp q1 = new EndpointQueryOp(empty1, CQuery.from(query.get(0)));
         EndpointQueryOp q2 = new EndpointQueryOp(empty1, CQuery.from(query.get(1)));
         EndpointQueryOp q3 = new EndpointQueryOp(empty2, CQuery.from(query.get(2)));
-        Op root = planner.plan(query, asList(q1, q2, q3));
+        Op root = plan(planner, query, asList(q1, q2, q3));
 
         assertEquals(streamPreOrder(root).filter(n -> n instanceof CartesianOp).count(), 0);
         assertEquals(streamPreOrder(root).filter(n -> n instanceof JoinOp).count(), 2);
@@ -583,7 +620,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
 
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(asList((Op)q1, q2, q3))) {
-            Op plan = planner.plan(query, permutation);
+            Op plan = plan(planner, query, permutation);
             Set<Op> qns = streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance).collect(toSet());
             assertTrue(qns.contains(q3));
             assertEquals(qns.size(), 2);
@@ -600,7 +637,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         CQuery query = CQuery.from(new Triple(y, name, author1), new Triple(x, author, y));
 
         for (List<Op> nodes : asList(asList((Op)q1, q2), asList((Op)q2, q1))) {
-            Op plan = planner.plan(query, nodes);
+            Op plan = plan(planner, query, nodes);
             assertTrue(plan instanceof EmptyOp);
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
             assertEquals(plan.getRequiredInputVars(), emptySet());
@@ -627,7 +664,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
 
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(nodes)) {
-            Op root = planner.plan(query, permutation);
+            Op root = plan(planner, query, permutation);
             Set<Op> leaves = streamPreOrder(root)
                     .filter(n -> n instanceof EndpointQueryOp).collect(toSet());
             assertEquals(leaves, Sets.newHashSet(q1, q3));
@@ -699,7 +736,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
 
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(f.all)) {
-            Op plan = planner.plan(f.query, permutation);
+            Op plan = plan(planner, f.query, permutation);
             Set<EndpointQueryOp> qns = streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance)
                     .map(n -> (EndpointQueryOp)n).collect(toSet());
             assertTrue(f.allowedAnswers.contains(qns), "qns="+qns);
@@ -724,7 +761,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         TwoServicePathsNodes f = new TwoServicePathsNodes(empty1, empty2);
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(f.all)) {
-            Op plan = planner.plan(f.query, permutation);
+            Op plan = plan(planner, f.query, permutation);
             assertEquals(streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance).collect(toSet()),
                          new HashSet<>(f.all));
             assertTrue(streamPreOrder(plan).filter(n -> n == f.q1).count() <= 3);
@@ -742,7 +779,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         List<Op> nodes = asList(f.q1, f.q2, f.q3, f.p2);
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(nodes)) {
-            Op plan = planner.plan(f.query, permutation);
+            Op plan = plan(planner, f.query, permutation);
             assertEquals(streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance).collect(toSet()),
                          Sets.newHashSet(f.fromAlice));
             assertEquals(streamPreOrder(plan).filter(EndpointQueryOp.class::isInstance).count(), 3);
@@ -757,7 +794,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         List<Op> nodes = asList(f.q1, f.p2, f.q3);
         //noinspection UnstableApiUsage
         for (List<Op> permutation : permutations(nodes)) {
-            Op plan = planner.plan(f.query, permutation);
+            Op plan = plan(planner, f.query, permutation);
             assertTrue(plan instanceof EmptyOp);
             assertEquals(plan.getRequiredInputVars(), emptySet());
             assertEquals(plan.getResultVars(), Sets.newHashSet("x", "y"));
@@ -801,7 +838,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
                 contractById, modalities, procurementById, orgByDesc, contract);
         assertTrue(nodes.stream().allMatch(n -> query.attr().getSet().containsAll(n.getMatchedTriples())));
 
-        Op plan = planner.plan(query, nodes);
+        Op plan = plan(planner, query, nodes);
         assertPlanAnswers(plan, query);
     }
 
@@ -848,7 +885,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
 
         ConjunctivePlanner planner = supplier.get();
         CQuery wholeQuery = CQuery.merge(arqQuery, webQuery);
-        Op plan = planner.plan(wholeQuery, asList(n1, n2));
+        Op plan = plan(planner, wholeQuery, asList(n1, n2));
         assertPlanAnswers(plan, wholeQuery, false, true);
     }
 }

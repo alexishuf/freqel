@@ -184,6 +184,7 @@ public class BitsetNoInputsConjunctivePlanner extends AbstractBitsetConjunctiveP
                 }
             }
         }
+        assert !result.isEmpty() : "Should've detected this in checkEmptyPlan";
         return result;
     }
 
