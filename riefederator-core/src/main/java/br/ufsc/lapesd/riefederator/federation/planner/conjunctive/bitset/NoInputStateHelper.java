@@ -47,7 +47,7 @@ class NoInputStateHelper extends AbstractStateHelper {
         Bitset nodeVars = ((IndexSubset<String>) n.getResultVars()).getBitset();
         assert nodeVars.intersects(bs.asBitset(state, VARS)) : "New node shares no variable";
 
-        Bitset nodeTriples = ((IndexSubset<Triple>) n.getMatchedTriples()).getBitset();
+        Bitset nodeTriples = matchedTriples[nodeIdx];
         if (bs.containsAll(nodeTriples, state, TRIPLES)
                 || bs.containsAll(state, TRIPLES, nodeTriples)) {
             return null; //one triple set subsumes the other
@@ -58,18 +58,27 @@ class NoInputStateHelper extends AbstractStateHelper {
         contribParts[1].assign(nodeTriples);
         int nNodes = 0;
         for (int i = bs.nextSet(state, NODES, 0); i >= 0; i = bs.nextSet(state, NODES, i+1)) {
-            Bitset bs = ((IndexSubset<Triple>) graph.get(i).getMatchedTriples()).getBitset();
+            Bitset bs = matchedTriples[i];
             contribParts[nNodes & 0x1].or(bs);
             triplesTmp[nNodes++] = bs;
         }
-        for (int i = 0; i < nNodes; i++) {
-            contribTmp.assign(triplesTmp[i]);
-            int part = i & 0x1;
-            contribTmp.andNot(contribParts[part ^ 0x1]);
-            for (int j = part; j < i     ; j += 2) contribTmp.andNot(triplesTmp[j]);
-            for (int j = i+2 ; j < nNodes; j += 2) contribTmp.andNot(triplesTmp[j]);
-            if (contribTmp.isEmpty())
-                return null; // adding the new node causes an old node to contribute nothing
+        switch (nNodes) {
+            case 0: break;
+            case 1:
+            case 2:
+                if (contribParts[1].containsAll(triplesTmp[0])) return null;
+                if (nNodes == 2 && contribParts[0].containsAll(triplesTmp[1])) return null;
+                break;
+            default:
+                for (int i = 0; i < nNodes; i++) {
+                    contribTmp.assign(triplesTmp[i]);
+                    int part = i & 0x1;
+                    contribTmp.andNot(contribParts[part ^ 0x1]);
+                    for (int j = part; j < i     ; j += 2) contribTmp.andNot(triplesTmp[j]);
+                    for (int j = i+2 ; j < nNodes; j += 2) contribTmp.andNot(triplesTmp[j]);
+                    if (contribTmp.isEmpty())
+                        return null; // adding the new node causes an old node to contribute nothing
+                }
         }
 
         // build next state

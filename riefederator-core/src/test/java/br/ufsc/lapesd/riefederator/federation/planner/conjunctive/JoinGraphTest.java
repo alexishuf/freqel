@@ -35,6 +35,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.IntStream.range;
 import static org.testng.Assert.*;
 
+@Test(groups = {"fast"})
 public class JoinGraphTest implements TestContext {
     private @Nonnull QueryOp q(Object... args) {
         return new QueryOp(createQuery(args));

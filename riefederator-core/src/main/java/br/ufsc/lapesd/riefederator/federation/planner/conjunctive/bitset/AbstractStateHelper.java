@@ -23,6 +23,7 @@ public abstract class AbstractStateHelper {
     final @Nonnull BitJoinGraph graph;
     final @Nonnull RawAlignedBitSet bs;
     final @Nonnull Bitset forEachNeighborVisited;
+    final @Nonnull Bitset[] matchedTriples;
 
     public static final int NODES   = 0;
     public static final int VARS    = 1;
@@ -37,7 +38,11 @@ public abstract class AbstractStateHelper {
         this.queryTriples = queryTriples.getBitset();
         this.graph = graph;
         this.bs = bs;
-        this.forEachNeighborVisited = Bitsets.createFixed(graph.size());
+        int nNodes = graph.size();
+        this.forEachNeighborVisited = Bitsets.createFixed(nNodes);
+        this.matchedTriples = new Bitset[nNodes];
+        for (int i = 0; i < nNodes; i++)
+            matchedTriples[i] = ((IndexSubset<Triple>) graph.get(i).getMatchedTriples()).getBitset();
     }
 
 
