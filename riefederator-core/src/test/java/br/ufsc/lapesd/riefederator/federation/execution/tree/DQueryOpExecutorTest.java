@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.federation.execution.tree;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.ResultsAssert;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.leaf.DQueryOp;
@@ -31,7 +32,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
@@ -185,12 +189,9 @@ public class DQueryOpExecutorTest implements TestContext {
         DQueryOp op = new DQueryOp(ep, query);
         if (optional)
             op.modifiers().add(Optional.EXPLICIT);
-        Set<Solution> actual = new HashSet<>();
         Results results = exec.execute(op);
         assertEquals(results.isOptional(), optional);
-
-        results.forEachRemainingThenClose(actual::add);
-        assertEquals(actual, expected);
+        ResultsAssert.assertExpectedResults(results, expected);
     }
 
 }

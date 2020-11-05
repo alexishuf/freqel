@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.query.impl;
 
 import br.ufsc.lapesd.riefederator.NamedFunction;
+import br.ufsc.lapesd.riefederator.ResultsAssert;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
@@ -11,7 +12,6 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.function.Function;
 
@@ -93,18 +93,14 @@ public class DistinctResultsTest {
     @Test(dataProvider = "factoriesData")
     public void testLargeSequentialDuplicates(Function<Results, Results> factory) {
         ArraySolution.ValueFactory solFac = ArraySolution.forVars(singletonList("x"));
-        List<Solution> list = new ArrayList<>();
+        List<Solution> list = new ArrayList<>(), expected = new ArrayList<>();
         for (int i = 0; i < 500000; i++) {
             ArraySolution solution = solFac.fromValues(ex(i));
+            expected.add(solution);
             list.add(solution);
             list.add(solution);
         }
         CollectionResults in = new CollectionResults(list, singleton("x"));
-        Results d = factory.apply(in);
-
-        List<Solution> actual = new ArrayList<>(250000);
-        d.forEachRemainingThenClose(actual::add);
-
-        assertEquals(new HashSet<>(actual), new HashSet<>(list));
+        ResultsAssert.assertExpectedResults(factory.apply(in), expected);
     }
 }

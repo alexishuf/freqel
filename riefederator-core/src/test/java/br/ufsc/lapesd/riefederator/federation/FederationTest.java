@@ -1,9 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation;
 
-import br.ufsc.lapesd.riefederator.BSBMSelfTest;
-import br.ufsc.lapesd.riefederator.LargeRDFBenchSelfTest;
-import br.ufsc.lapesd.riefederator.NamedSupplier;
-import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.*;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.riefederator.algebra.util.TreeUtils;
@@ -1043,15 +1040,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             ConjunctivePlannerTest.assertPlanAnswers(federation.plan(query), query);
 
         // expected may be null telling us that we shouldn't execute, only check the plan
-        if (expected != null) {
-//            sw.reset().start();
-            try (Results results = federation.query(query)) {
-                results.forEachRemaining(actual::add);
-            }
-//            if (sw.elapsed(TimeUnit.MILLISECONDS) > 100)
-//                System.out.printf("Slow execution: %f\n", sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
-            assertEquals(actual, expected);
-        }
+        if (expected != null)
+            ResultsAssert.assertExpectedResults(federation.query(query), expected);
     }
 
     @DataProvider
@@ -1112,10 +1102,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
         if (expected != null) {
             // consume just to make the machinery run
-            Set<Solution> actual = new HashSet<>();
-            try (Results results = federation.execute(plan)) {
-                results.forEachRemaining(actual::add);
-            }
+            ResultsAssert.assertExpectedResults(federation.execute(plan), expected);
             perf.sync();
 
             // values should not have changed
@@ -1126,8 +1113,6 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             assertEquals(perf.getValue(Metrics.PRE_PLAN_MS), outPlanMs);
             assertEquals(perf.getValue(Metrics.PLAN_MS), planMs);
             assertEquals(perf.getValue(Metrics.OPT_MS), optMs);
-
-            assertEquals(actual.size(), expected.size()); //give an use to actual and expected
         }
     }
 
@@ -1258,9 +1243,6 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         Op plan = federation.plan(query);
         ConjunctivePlannerTest.assertPlanAnswers(plan, query);
 
-        Set<Solution> actual = new HashSet<>();
-        Results results = federation.execute(plan);
-        results.forEachRemainingThenClose(actual::add);
-        assertEquals(actual, expected);
+        ResultsAssert.assertExpectedResults(federation.execute(plan), expected);
     }
 }

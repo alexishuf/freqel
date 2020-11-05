@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.planner.post.steps;
 
+import br.ufsc.lapesd.riefederator.ResultsAssert;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
@@ -34,7 +35,6 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -151,10 +151,7 @@ public class FilterToBindJoinStepTest implements TestContext {
         try (Federation federation = Federation.createDefault()) {
             sources.forEach(federation::addSource);
             Op query = SPARQLParser.strict().parse(sparql);
-            List<Solution> actual = new ArrayList<>();
-            federation.query(query).forEachRemainingThenClose(actual::add);
-            assertEquals(new HashSet<Solution>(actual), new HashSet<Solution>(expected));
-            assertEquals(actual.size(), expected.size());
+            ResultsAssert.assertExpectedResults(federation.query(query), expected);
         }
     }
 

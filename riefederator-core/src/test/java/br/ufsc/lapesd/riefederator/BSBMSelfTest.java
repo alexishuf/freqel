@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static br.ufsc.lapesd.riefederator.ResultsAssert.assertExpectedResults;
 import static br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlannerTest.assertPlanAnswers;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
@@ -202,10 +203,7 @@ public class BSBMSelfTest {
         CQuery query = loadConjunctiveQuery(queryName);
         if (query == null)
             return; //silently skip
-        Set<Solution> actual = new HashSet<>(), expected = new HashSet<>();
-        ARQEndpoint.forModel(allData()).query(query).forEachRemainingThenClose(actual::add);
-        loadResults(queryName).forEachRemainingThenClose(expected::add);
-        assertEquals(actual, expected);
+        assertExpectedResults(ARQEndpoint.forModel(allData()).query(query), loadResults(queryName));
     }
 
     @Test(dataProvider = "queryData")
@@ -213,10 +211,7 @@ public class BSBMSelfTest {
         CQuery query = loadConjunctiveQuery(queryName);
         if (query == null)
             return; //silently skip
-        Set<Solution> actual = new HashSet<>(), expected = new HashSet<>();
-        getSPARQLClient().query(query).forEachRemainingThenClose(actual::add);
-        loadResults(queryName).forEachRemainingThenClose(expected::add);
-        assertEquals(actual, expected);
+        assertExpectedResults(getSPARQLClient().query(query), loadResults(queryName));
     }
 
     @Test(dataProvider = "queryData")

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.execution;
 
+import br.ufsc.lapesd.riefederator.ResultsAssert;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.CartesianOp;
@@ -300,12 +301,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
                       @Nonnull Set<Solution> expected) {
         Set<Solution> all = new HashSet<>();
         PlanExecutor executor = Guice.createInjector(module).getInstance(PlanExecutor.class);
-        executor.executeNode(root).forEachRemainingThenClose(all::add);
-        assertEquals(all, expected);
-
-        all.clear();
-        executor.executePlan(root).forEachRemainingThenClose(all::add);
-        assertEquals(all, expected);
+        ResultsAssert.assertExpectedResults(executor.executeNode(root), expected);
     }
 
     @Test(dataProvider = "modulesData")

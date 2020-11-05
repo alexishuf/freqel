@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.query.results;
 
+import br.ufsc.lapesd.riefederator.ResultsAssert;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.leaf.EndpointQueryOp;
@@ -252,11 +253,7 @@ public class JoinResultsTest implements TestContext {
         for (int i = 0; i < threads; i++) {
             futures.add(executor.submit(() -> {
                 try {
-                    Results join = f.apply(l, r);
-                    List<Solution> actual = new ArrayList<>();
-                    join.forEachRemainingThenClose(actual::add);
-                    assertEquals(new HashSet<>(actual), new HashSet<>(expected));
-                    assertEquals(actual.size(), expected.size());
+                    ResultsAssert.assertExpectedResults(f.apply(l, r), expected);
                 } finally {
                     latch.countDown();
                 }

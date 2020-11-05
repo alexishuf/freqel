@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation.planner.pre.steps;
 
+import br.ufsc.lapesd.riefederator.ResultsAssert;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.algebra.inner.JoinOp;
@@ -19,7 +20,6 @@ import br.ufsc.lapesd.riefederator.query.modifiers.Distinct;
 import br.ufsc.lapesd.riefederator.query.parse.CQueryContext;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
-import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
@@ -35,8 +35,6 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -184,11 +182,7 @@ public class PushDistinctStepTest implements TestContext {
                     .collect(toList());
             assertEquals(bad, emptyList());
 
-            Results results = federation.execute(plan);
-            List<Solution> list = new ArrayList<>();
-            results.forEachRemainingThenClose(list::add);
-            assertEquals(new HashSet<>(list), expected);
-            assertEquals(list.size(), expected.size());
+            ResultsAssert.assertExpectedResults(federation.execute(plan), expected);
         }
     }
 }

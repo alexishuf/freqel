@@ -39,10 +39,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static br.ufsc.lapesd.riefederator.ResultsAssert.assertExpectedResults;
 import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation.createFederation;
 import static br.ufsc.lapesd.riefederator.testgen.LargeRDFBenchTestResourcesGenerator.parseResults;
@@ -356,10 +360,7 @@ public class LargeRDFBenchSelfTest {
             assertTrue(inLeft > 0);
             assertTrue(inRight > 0);
 
-            Set<Solution> actual = new HashSet<>(), expected = new HashSet<>();
-            federation.execute(plan).forEachRemainingThenClose(actual::add);
-            loadResults("B4").forEachRemaining(expected::add);
-            assertEquals(actual, expected);
+            assertExpectedResults(federation.execute(plan), loadResults("B4"));
         }
     }
 

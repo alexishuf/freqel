@@ -11,7 +11,6 @@ import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.Projection;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
-import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import com.google.common.collect.Sets;
 import com.google.inject.AbstractModule;
@@ -27,14 +26,14 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Supplier;
 
+import static br.ufsc.lapesd.riefederator.ResultsAssert.assertExpectedResults;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Collections.singletonList;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.fail;
 
 @Test(groups = {"fast"})
 public class UnionOpExecutorTest implements TestContext {
@@ -84,9 +83,7 @@ public class UnionOpExecutorTest implements TestContext {
         EndpointQueryOp qn2 = new EndpointQueryOp(rdf2, createQuery(x, knows, Bob));
 
         Results results = executor.execute(UnionOp.builder().add(qn1).add(qn2).build());
-        Set<Solution> actual = new HashSet<>();
-        results.forEachRemainingThenClose(actual::add);
-        assertEquals(actual, Sets.newHashSet(
+        assertExpectedResults(results, Sets.newHashSet(
                 MapSolution.build(x, Alice),
                 MapSolution.build(x, Dave)
         ));
@@ -101,10 +98,7 @@ public class UnionOpExecutorTest implements TestContext {
         node.modifiers().add(Projection.of("x"));
         node.modifiers().add(SPARQLFilter.build("?y > 23"));
 
-        Results results = executor.execute(node);
-        Set<Solution> actual = new HashSet<>();
-        results.forEachRemainingThenClose(actual::add);
-        assertEquals(actual, Sets.newHashSet(
+        assertExpectedResults(executor.execute(node), Sets.newHashSet(
                 MapSolution.build(x, Dave)
         ));
     }

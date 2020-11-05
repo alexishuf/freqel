@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.server;
 
+import br.ufsc.lapesd.riefederator.TempDir;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.spec.FederationSpecLoader;
@@ -12,7 +13,6 @@ import br.ufsc.lapesd.riefederator.util.DictTree;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyServiceTestContext;
 import com.google.common.collect.Sets;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
@@ -20,7 +20,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.ClientBuilder;
@@ -29,7 +28,6 @@ import javax.ws.rs.core.MediaType;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.URI;
-import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -47,24 +45,13 @@ import static org.testng.Assert.*;
  */
 public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
         implements TransparencyServiceTestContext {
-    private File tempDir;
     private @Nullable ChildJVM server;
+    private TempDir tempDir;
     private final String RES_ROOT = "br/ufsc/lapesd/riefederator/";
 
     @Override
     protected Application configure() {
         return new ResourceConfig().register(TransparencyService.class);
-    }
-
-    private @Nonnull File extractResource(@Nonnull String resourcePath) throws IOException {
-        File file = new File(tempDir, resourcePath.replaceAll("^.*/([^/]+)$", "$1"));
-        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-        try (FileOutputStream out = new FileOutputStream(file);
-             InputStream in = cl.getResourceAsStream(resourcePath)) {
-            assertNotNull(in, "resource "+resourcePath+" not found");
-            IOUtils.copy(in, out);
-        }
-        return file;
     }
 
     @Override
@@ -73,11 +60,11 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
         super.setUp();
         URI uri = target().getUri();
         String testHost = uri.getHost() + ":" + uri.getPort();
-        tempDir = Files.createTempDirectory("riefederator").toFile();
         String webapis = RES_ROOT + "webapis/";
-        extractResource(webapis + "portal_transparencia.json");
+        tempDir = new TempDir();
+        tempDir.extractResource(webapis + "portal_transparencia.json");
 
-        File yaml = extractResource(webapis + "portal_transparencia-ext.yaml");
+        File yaml = tempDir.extractResource(webapis + "portal_transparencia-ext.yaml");
         String yamlString = IOUtils.toString(new FileInputStream(yaml), UTF_8);
         yamlString = yamlString.replaceAll("overlay: *", "overlay:\n  host: \""+testHost+"\"");
         try (FileOutputStream out = new FileOutputStream(yaml);
@@ -85,7 +72,7 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
             writer.write(yamlString);
         }
 
-        extractResource(RES_ROOT + "modalidades.ttl");
+        tempDir.extractResource(RES_ROOT + "modalidades.ttl");
     }
 
     @AfterMethod
@@ -93,7 +80,7 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
     public void tearDown() throws Exception {
         super.tearDown();
         if (tempDir != null) {
-            FileUtils.deleteDirectory(tempDir);
+            tempDir.close();
             tempDir = null;
         }
         if (server != null) {
@@ -149,7 +136,7 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
 
     @Test
     public void testProcurementOfContractsNoServer() throws Exception {
-        File config = extractResource(RES_ROOT + "server/budget-scenario-test.yaml");
+        File config = tempDir.extractResource(RES_ROOT + "server/budget-scenario-test.yaml");
         Federation federation = new FederationSpecLoader().load(config);
 
         ClassLoader cl = Thread.currentThread().getContextClassLoader();
@@ -183,7 +170,7 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
 
     @Test
     public void testProcurementOfContracts() throws Exception {
-        File config = extractResource(RES_ROOT + "server/budget-scenario-test.yaml");
+        File config = tempDir.extractResource(RES_ROOT + "server/budget-scenario-test.yaml");
         int port = getAvailablePort();
         server = ChildJVM.builder(ServerMain.class)
                 .addArguments("--address", "localhost")

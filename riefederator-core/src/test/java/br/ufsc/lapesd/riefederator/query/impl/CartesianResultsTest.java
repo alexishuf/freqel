@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.ResultsAssert.assertExpectedResults;
 import static br.ufsc.lapesd.riefederator.query.results.impl.CollectionResults.wrapSameVars;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -64,11 +65,7 @@ public class CartesianResultsTest implements TestContext {
     public void testNoProduct(BiFunction<Collection<Results>, Set<String>, Results> f) {
         CollectionResults in = createResults(2, "x");
         Results r = f.apply(singletonList(in), Sets.newHashSet("x"));
-        assertTrue(r.hasNext());
-
-        List<Solution> actual = new ArrayList<>();
-        r.forEachRemainingThenClose(actual::add);
-        assertEquals(actual, in.getCollection());
+        assertExpectedResults(r, in.getCollection());
     }
 
     @Test(dataProvider = "factoriesData")
@@ -192,8 +189,6 @@ public class CartesianResultsTest implements TestContext {
         assertEquals(right.isOptional(), rSize == 0 && markOptional);
 
         Results results = f.apply(asList(left, right), Sets.newHashSet("x", "y"));
-        List<Solution> actual = new ArrayList<>();
-        results.forEachRemainingThenClose(actual::add);
 
         List<Solution> expected = new ArrayList<>();
         if (markOptional) {
@@ -201,7 +196,7 @@ public class CartesianResultsTest implements TestContext {
                     .map(s -> MapSolution.builder(s).put(lSize == 0 ? x : y, null).build())
                     .forEach(expected::add);
         }// else: eliminates all solutions
-        assertEquals(actual, expected);
+        assertExpectedResults(results, expected);
     }
 
     @Test(dataProvider = "factoriesData")
@@ -210,11 +205,7 @@ public class CartesianResultsTest implements TestContext {
         CollectionResults right = createResults(0, "y");
         right.setOptional(true);
         Results results = f.apply(asList(left, right), Sets.newHashSet("x", "y"));
-
-        List<Solution> list = new ArrayList<>();
-        results.forEachRemainingThenClose(list::add);
-
-        assertEquals(list, singletonList(
+        assertExpectedResults(results, singletonList(
                 MapSolution.builder().put(x, uri("x", 0)).put(y, null).build())
         );
     }
@@ -225,11 +216,7 @@ public class CartesianResultsTest implements TestContext {
         left.setOptional(true);
         CollectionResults right = createResults(1, "y");
         Results results = f.apply(asList(left, right), Sets.newHashSet("x", "y"));
-
-        List<Solution> list = new ArrayList<>();
-        results.forEachRemainingThenClose(list::add);
-
-        assertEquals(list, singletonList(
+        assertExpectedResults(results, singletonList(
                 MapSolution.builder().put(x, null).put(y, uri("y", 0)).build())
         );
     }
@@ -240,18 +227,12 @@ public class CartesianResultsTest implements TestContext {
         left.setOptional(true);
         CollectionResults right = createResults(2, "y");
         Results results = f.apply(asList(left, right), Sets.newHashSet("x", "y"));
-
-        List<Solution> list = new ArrayList<>();
-        results.forEachRemainingThenClose(list::add);
-        HashSet<Solution> set = new HashSet<>(list);
-
-        assertEquals(set, Sets.newHashSet(
+        assertExpectedResults(results, asList(
                 MapSolution.builder().put(x, uri("x", 0)).put(y, uri("y", 0)).build(),
                 MapSolution.builder().put(x, uri("x", 0)).put(y, uri("y", 1)).build(),
                 MapSolution.builder().put(x, uri("x", 1)).put(y, uri("y", 0)).build(),
                 MapSolution.builder().put(x, uri("x", 1)).put(y, uri("y", 1)).build()
         ));
-        assertEquals(list.size(), 4);
     }
 
     @Test(dataProvider = "factoriesData")

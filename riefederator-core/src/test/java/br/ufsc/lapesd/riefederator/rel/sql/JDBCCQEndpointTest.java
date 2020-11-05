@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.rel.sql;
 
+import br.ufsc.lapesd.riefederator.ResultsAssert;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
@@ -31,7 +32,9 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.riefederator.model.term.std.StdLit.fromUnescaped;
@@ -40,7 +43,8 @@ import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
 
 public class JDBCCQEndpointTest implements TestContext {
     private static final Column University_id = new Column("University", "id");
@@ -420,9 +424,7 @@ public class JDBCCQEndpointTest implements TestContext {
                 }
             };
 
-            Set<Solution> actual = new HashSet<>();
-            ep.query(query).forEachRemainingThenClose(actual::add);
-            assertEquals(actual, new HashSet<>(expected));
+            ResultsAssert.assertExpectedResults(ep.query(query), expected);
             if (!allowDecomposition)
                 assertFalse(decomposed[0]);
         }

@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.ResultsAssert.assertExpectedResults;
 import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.jena.JenaWrappers.toJena;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
@@ -234,9 +235,7 @@ public class SPARQLStringTest implements TestContext {
 
         // should also work through ARQEndpoint
         actual.clear();
-        ARQEndpoint ep = ARQEndpoint.forModel(rdf2);
-        ep.query(query).forEachRemainingThenClose(actual::add);
-        assertEquals(actual, expected);
+        assertExpectedResults(ARQEndpoint.forModel(rdf2).query(query), expected);
     }
 
     @DataProvider

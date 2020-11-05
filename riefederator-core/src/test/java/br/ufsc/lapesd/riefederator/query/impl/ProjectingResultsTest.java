@@ -10,8 +10,8 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
-import java.util.List;
 
+import static br.ufsc.lapesd.riefederator.ResultsAssert.assertExpectedResults;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;
@@ -39,10 +39,7 @@ public class ProjectingResultsTest implements TestContext {
         CollectionResults results = new CollectionResults(list, newHashSet("x", "y", "z"));
         ProjectingResults project = new ProjectingResults(results, singleton("w"));
         assertEquals(project.getVarNames(), singleton("w"));
-
-        List<Solution> actual = new ArrayList<>();
-        project.forEachRemainingThenClose(actual::add);
-        assertEquals(actual, singletonList(MapSolution.build("w", null)));
+        assertExpectedResults(project, singletonList(MapSolution.build("w", null)));
     }
 
     @Test
@@ -55,9 +52,7 @@ public class ProjectingResultsTest implements TestContext {
         ProjectingResults project = new ProjectingResults(results, newHashSet("x", "w"));
         assertEquals(project.getVarNames(), newHashSet("x", "w"));
 
-        List<Solution> actual = new ArrayList<>();
-        project.forEachRemainingThenClose(actual::add);
-        assertEquals(actual,
+        assertExpectedResults(project,
                 singletonList(MapSolution.builder().put("x", Alice)
                                                    .put("w", null).build()));
     }

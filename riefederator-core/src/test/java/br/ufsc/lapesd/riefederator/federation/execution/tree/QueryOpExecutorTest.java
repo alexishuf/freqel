@@ -13,7 +13,6 @@ import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsExecutor;
-import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.query.results.impl.SequentialResultsExecutor;
@@ -26,19 +25,17 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
-import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.riefederator.ResultsAssert.assertExpectedResults;
 import static br.ufsc.lapesd.riefederator.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
-import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.fail;
 
 @Test(groups = {"fast"})
@@ -125,10 +122,7 @@ public class QueryOpExecutorTest implements TestContext {
     public void testExecuteQuery(Supplier<QueryOpExecutor> supplier, TPEndpoint ep) {
         QueryOpExecutor executor = supplier.get();
         Results results = executor.execute(new EndpointQueryOp(ep, createQuery(x, knows, Bob)));
-        Set<Solution> actual = new HashSet<>();
-        results.forEachRemainingThenClose(actual::add);
-
-        assertEquals(actual, singleton(MapSolution.build(x, Alice)));
+        assertExpectedResults(results, singleton(MapSolution.build(x, Alice)));
     }
 
     @Test(dataProvider = "testData")
@@ -137,9 +131,7 @@ public class QueryOpExecutorTest implements TestContext {
         CQuery qry = createQuery(x, name, y, SPARQLFilter.build("REGEX(?y, \"^b.*\")"));
 
         Results results = executor.execute(new EndpointQueryOp(ep, qry));
-        Set<Solution> actual = new HashSet<>();
-        results.forEachRemainingThenClose(actual::add);
-        assertEquals(actual, Sets.newHashSet(
+        assertExpectedResults(results, Sets.newHashSet(
                 MapSolution.builder().put(x, Bob).put(y, lit("bob", "en")).build(),
                 MapSolution.builder().put(x, Bob).put(y, lit("beto", "pt")).build()
         ));
@@ -151,10 +143,7 @@ public class QueryOpExecutorTest implements TestContext {
         EndpointQueryOp node = new EndpointQueryOp(ep, createQuery(x, name, y));
         node.modifiers().add(SPARQLFilter.build("REGEX(?y, \"^b.*\")"));
 
-        Results results = executor.execute(node);
-        Set<Solution> actual = new HashSet<>();
-        results.forEachRemainingThenClose(actual::add);
-        assertEquals(actual, Sets.newHashSet(
+        assertExpectedResults(executor.execute(node), Sets.newHashSet(
                 MapSolution.builder().put(x, Bob).put(y, lit("bob", "en")).build(),
                 MapSolution.builder().put(x, Bob).put(y, lit("beto", "pt")).build()
         ));
@@ -167,10 +156,7 @@ public class QueryOpExecutorTest implements TestContext {
         EndpointQueryOp node = new EndpointQueryOp(ep, qry);
         node.modifiers().add(SPARQLFilter.build("REGEX(?y, \".*o$\")"));
 
-        Results results = executor.execute(node);
-        Set<Solution> actual = new HashSet<>();
-        results.forEachRemainingThenClose(actual::add);
-        assertEquals(actual, singleton(
+        assertExpectedResults(executor.execute(node), singleton(
                 MapSolution.builder().put(x, Bob).put(y, lit("beto", "pt")).build()
         ));
     }

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.federation;
 
+import br.ufsc.lapesd.riefederator.ResultsAssert;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.algebra.Op;
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
@@ -8,7 +9,6 @@ import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdLit;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
-import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
@@ -20,14 +20,11 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static org.testng.Assert.assertEquals;
 
 /**
  * Extremely simple end-to-end test for optional queries.
@@ -83,14 +80,7 @@ public class OptionalTest implements TestContext {
             ARQEndpoint ep = ARQEndpoint.forModel(new TBoxSpec()
                     .addResource(getClass(), "rdf-optional-1.ttl").loadModel());
             federation.addSource(new Source(new SelectDescription(ep), ep));
-
-            Results results = federation.query(query);
-            List<Solution> list = new ArrayList<>();
-            results.forEachRemainingThenClose(list::add);
-
-            HashSet<Solution> expectedSet = new HashSet<>(expectedList);
-            assertEquals(new HashSet<Solution>(list), expectedSet);
-            assertEquals(list.size(), expectedList.size());
+            ResultsAssert.assertExpectedResults(federation.query(query), expectedList);
         }
     }
 }
