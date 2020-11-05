@@ -10,6 +10,7 @@ import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.Source;
 import br.ufsc.lapesd.riefederator.federation.planner.ConjunctivePlanner;
+import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.std.StdPlain;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -34,6 +35,7 @@ import br.ufsc.lapesd.riefederator.rel.mappings.RelationalMapping;
 import br.ufsc.lapesd.riefederator.rel.mappings.context.ContextMapping;
 import br.ufsc.lapesd.riefederator.rel.sql.RelationalRewriting;
 import br.ufsc.lapesd.riefederator.rel.sql.impl.DefaultSqlTermWriter;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
@@ -469,10 +471,14 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
         assert index.getStarCount() > 1;
         CQuery query = index.getQuery();
         boolean distinct = query.getModifiers().distinct() != null;
+        IndexSet<String> varsUniverse = query.attr().varNamesUniverseOffer();
+        IndexSet<Triple> triplesUniverse = query.attr().triplesUniverseOffer();
         List<Op> leaves = new ArrayList<>();
         for (int i = 0, size = index.getStarCount(); i < size; i++) {
             StarSubQuery star = index.getStar(i);
             MutableCQuery cQuery = MutableCQuery.from(star.getTriples());
+            if (varsUniverse != null) cQuery.attr().offerVarNamesUniverse(varsUniverse);
+            if (triplesUniverse != null) cQuery.attr().offerTriplesUniverse(triplesUniverse);
             cQuery.mutateModifiers().addAll(star.getFilters());
             if (distinct)
                 cQuery.mutateModifiers().add(Distinct.INSTANCE);

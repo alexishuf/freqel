@@ -3,6 +3,7 @@ package br.ufsc.lapesd.riefederator.rel.cql;
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.molecules.Atom;
 import br.ufsc.lapesd.riefederator.description.molecules.Molecule;
+import br.ufsc.lapesd.riefederator.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerTest;
 import br.ufsc.lapesd.riefederator.model.term.Blank;
 import br.ufsc.lapesd.riefederator.model.term.Lit;
 import br.ufsc.lapesd.riefederator.model.term.std.StdBlank;
@@ -379,6 +380,7 @@ public class CassandraCQEndpointTest implements TestContext {
         ep = CassandraCQEndpoint.builder().sharing(cassandra.getSession()).setPrefix(EX)
                                 .build(keyspace);
         Set<Solution> actual = new HashSet<>();
+        BitsetConjunctivePlannerTest.addUniverseSets(query);
         ep.query(query).forEachRemainingThenClose(actual::add);
         assertEquals(ignoreBlanks(actual), ignoreBlanks(expected));
     }

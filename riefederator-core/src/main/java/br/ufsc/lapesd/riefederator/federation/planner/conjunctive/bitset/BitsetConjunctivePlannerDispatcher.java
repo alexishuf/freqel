@@ -32,6 +32,7 @@ public class BitsetConjunctivePlannerDispatcher implements ConjunctivePlanner {
         boolean bad = query.attr().triplesUniverseOffer() == null
                    || query.attr().varNamesUniverseOffer() == null;
         if (bad) {
+            assert false : "Bad test: query misses universe sets";
             logger.warn("{} will fallback to {} due to lacking universes in query", this, fallback);
             return fallback.plan(query, fragments);
         }
