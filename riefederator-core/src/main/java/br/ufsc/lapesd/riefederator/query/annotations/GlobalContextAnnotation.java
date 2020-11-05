@@ -19,13 +19,13 @@ public class GlobalContextAnnotation implements QueryAnnotation {
         return (T)map.get(k);
     }
 
-    public @Nonnull <K, V> V computeIfAbsent(@Nonnull Object k,
-                                             @Nonnull Function<? super K, ? extends V> function) {
+    public synchronized @Nonnull <K, V>
+    V computeIfAbsent(@Nonnull Object k, @Nonnull Function<? super K, ? extends V> function) {
         //noinspection unchecked
         return (V)map.computeIfAbsent(k, (Function<Object, Object>) function);
     }
 
-    public @Nullable Object put(@Nonnull Object k, @Nullable Object value) {
+    public synchronized @Nullable Object put(@Nonnull Object k, @Nullable Object value) {
         return map.put(k, value);
     }
 
