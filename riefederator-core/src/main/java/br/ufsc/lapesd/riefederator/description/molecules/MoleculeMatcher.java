@@ -663,18 +663,31 @@ public class MoleculeMatcher implements SemanticDescription {
             return new EGQueryBuilder(matched, matchedBuilder);
         }
 
+        boolean hasAlternatives(@Nonnull Triple queryTriple, @Nonnull List<LinkMatch> linkMatches) {
+            int size = linkMatches.size();
+            assert size > 0;
+            Term p = queryTriple.getPredicate();
+            return p.isGround() && ( size > 1 || !p.equals(linkMatches.get(0).l.p) );
+        }
+
         void saveExclusiveGroup(@Nonnull CQuery query, @Nonnull List<List<LinkMatch>> linkLists) {
             ArrayList<List<Term>> predicatesList = new ArrayList<>();
             EGQueryBuilder subQuery = createEGQueryBuilder(query.size());
             HashSet<Term> temp = new HashSet<>();
             Iterator<Triple> queryIt = query.iterator();
+            boolean hasAlternatives = false;
             for (List<LinkMatch> list : linkLists) {
                 Triple triple = queryIt.next();
                 if (list.isEmpty())
                     continue;
-                temp.clear();
-                for (LinkMatch linkMatch : list) temp.add(linkMatch.l.p);
-                predicatesList.add(new ArrayList<>(temp));
+                if (hasAlternatives(triple, list)) {
+                    hasAlternatives = true;
+                    temp.clear();
+                    for (LinkMatch linkMatch : list) temp.add(linkMatch.l.p);
+                    predicatesList.add(new ArrayList<>(temp));
+                } else {
+                    predicatesList.add(Collections.singletonList(triple.getPredicate()));
+                }
                 subQuery.add(triple, list);
             }
             if (subQuery.isEmpty())
@@ -685,6 +698,8 @@ public class MoleculeMatcher implements SemanticDescription {
             if (query.isEmpty())
                 return; // builder rejected the exclusive group during build
             SemanticCQueryMatch.Builder matchBuilder = matchBuilder().addExclusiveGroup(query);
+            if (!hasAlternatives)
+                return; // done
             for (List<Term> ps : Lists.cartesianProduct(predicatesList)) {
                 EGQueryBuilder b = createEGQueryBuilder(query, subQuery);
                 assert ps.size() == query.size();

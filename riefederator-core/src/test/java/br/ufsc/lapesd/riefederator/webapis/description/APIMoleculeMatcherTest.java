@@ -19,6 +19,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.query.parse.SPARQLParser;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
 import br.ufsc.lapesd.riefederator.webapis.TransparencyService;
 import br.ufsc.lapesd.riefederator.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.riefederator.webapis.requests.impl.UriTemplateExecutor;
@@ -424,6 +425,13 @@ public class APIMoleculeMatcherTest implements TestContext {
             if (expectedAlternatives == null)
                 expectedAlternatives = singleton(exclusiveGroup);
             Set<CQuery> actualAlternatives = match.getAlternatives(exclusiveGroup);
+            if (expectedAlternatives.size() == 1) {
+                IndexSet<Triple> altTriples = expectedAlternatives.iterator().next().attr().getSet();
+                if (altTriples.equals(exclusiveGroup.attr().getSet())) {
+                    assertTrue(actualAlternatives.isEmpty());
+                    continue;
+                }
+            }
             assertCompatible(actualAlternatives, expectedAlternatives);
         }
     }
