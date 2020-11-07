@@ -1,0 +1,14 @@
+{
+ "productType" : {
+   "productName": "CNC-1000",
+   "productModel": "C1000",
+   "productCategory": "CNC",
+   "productDescription": "CNC Mill - Model C1000",
+   "technicalSpecs": "http://frank.prof.ufsc.br/industry4.0/cnc-specs/",
+   "physicalModel": "http://frank.prof.ufsc.br/industry4.0/cnc-model/",
+   "type": "DigitalTwinType"
+ },
+ "serialNumber": "X78Y32989934",
+ "state" : "Idle",
+ "type": "DigitalTwinInstance"
+}

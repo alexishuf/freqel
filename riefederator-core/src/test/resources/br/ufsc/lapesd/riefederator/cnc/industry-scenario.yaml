@@ -1,0 +1,6 @@
+sources:
+  - loader: swagger
+    stop-on-error: false,
+    file: "industry4.0/cnc.yaml"
+  - loader: rdf-file
+    file: "industry4.0/cnc.ttl"

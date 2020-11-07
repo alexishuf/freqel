@@ -2,6 +2,7 @@ package br.ufsc.lapesd.riefederator.query.results.impl;
 
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.Var;
+import br.ufsc.lapesd.riefederator.model.term.std.StdVar;
 import br.ufsc.lapesd.riefederator.query.results.MutableSolution;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import org.jetbrains.annotations.Contract;
@@ -96,6 +97,15 @@ public class MapSolution extends AbstractSolution implements MutableSolution {
     @Contract("_, _ -> new")
     public static @Nonnull MapSolution build(@Nonnull Var var, @Nonnull Term term) {
         return builder().put(var, term).build();
+    }
+
+    public static @Nonnull MapSolution build(@Nonnull Object... args) {
+        Builder b = builder();
+        for (int i = 0, size = args.length; i < size; i += 2) {
+            Var var = args[i] instanceof Var ? (Var)args[i] : new StdVar((String)args[i]);
+            b.put(var, (Term)args[i+1]);
+        }
+        return b.build();
     }
 
 

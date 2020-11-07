@@ -1,0 +1,191 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "CNC-1000 REST API",
+        "version": "1.0",
+        "title": "CNC-1000 REST API",
+        "contact": {
+            "name": "Prof. Frank Siqueira",
+            "url": "http://frank.prof.ufsc.br",
+            "email": "frank.siqueira@ufsc.br"
+        },
+        "license": {
+            "name": "Creative Commons 3.0",
+            "url": "https://creativecommons.org/licenses/by/3.0/"
+        }
+    },
+    "host": "localhost:4040",
+    "basePath": "/",
+    "tags": [
+        {
+            "name": "cnc-api",
+            "description": "CNC API"
+        }
+    ],
+    "paths": {
+        "/cnc-api/samples": {
+            "get": {
+                "tags": [
+                    "Get samples"
+                ],
+                "summary": "Gets a list of samples with values of monitored parameters",
+                "description": "Gets a list of samples with values of monitored parameters",
+                "operationId": "getSamples",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "Expected id value or range. A pipe can be used to represent a range of values (e.g., 10|20 corresponds to all values from 10 to 20, including them).",
+                        "required": false,
+                        "type": "array",
+                        "items": { "collectionFormat": "pipes" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SamplesDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
+        "/cnc-api/samples/{id}": {
+            "get": {
+                "tags": [
+                    "Get sample"
+                ],
+                "summary": "Gets a sample with values of monitored parameters",
+                "description": "Gets a sample with values of monitored parameters",
+                "operationId": "getSample",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "unique identifier of the sample",
+                        "required": true,
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SampleDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "DTwinDTO": {
+            "type": "object",
+            "properties": {
+                "productType": {
+                    "type": "object",
+                    "properties": {
+                        "productName": {
+                            "type": "string"
+                        },
+                        "productModel": {
+                            "type": "string"
+                        },
+                        "productCategory": {
+                            "type": "string"
+                        },
+                        "productDescription": {
+                            "type": "string"
+                        },
+                        "technicalSpecs": {
+                            "type": "string"
+                        },
+                        "physicalModel": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "serialNumber": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "ParameterDTO" : {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "number",
+                    "format": "double"
+                }
+            }
+        },
+        "SampleDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "parameter":{
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ParameterDTO"
+                    }
+                },
+                "productModel": {
+                    "type": "string"
+                },
+                "serialNumber": {
+                    "type": "string"
+                },
+                "machiningProcess": {
+                    "type": "string"
+                }
+            }
+        },
+        "SamplesDTO": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/SampleDTO"
+            }
+        }
+    }
+}
