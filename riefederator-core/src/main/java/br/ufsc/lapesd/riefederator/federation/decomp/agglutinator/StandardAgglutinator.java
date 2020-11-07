@@ -63,8 +63,6 @@ public class StandardAgglutinator implements Agglutinator {
     }
 
     public class StandardState extends AbstractAgglutinatorState {
-
-
         private List<Bitset> ep2net, ep2ext;
         private List<Set<CQuery>> ep2exq;
         private List<Map<CQuery, Set<CQuery>>> ep2exq2alt;
@@ -136,16 +134,25 @@ public class StandardAgglutinator implements Agglutinator {
          * into {@link StandardState#ep2exq}.
          */
         private void splitNonExclusiveTriples() {
-            assert ep2ext.size() >= epSet.size() && ep2ext.stream().noneMatch(Objects::isNull);
-            // phase 1: find exclusive groups
-            for (int i = 0, size = epSet.size(); i < size; i++) {
+            int nEps = epSet.size();
+            assert ep2ext.size() >= nEps && ep2ext.stream().noneMatch(Objects::isNull);
+            Bitset inEG = this.tmpTriplesWithoutAlt;
+            inEG.clear();
+            // phase 1: build a bitset with all triple in some exclusive group
+            for (int i = 0; i < nEps; i++) {
+                for (CQuery eg : ep2exq.get(i))
+                    inEG.or(((IndexSubset<Triple>)eg.attr().getSet()).getBitset());
+            }
+            // phase 2: find exclusive groups
+            for (int i = 0; i < nEps; i++) {
                 Bitset ex = ep2ext.get(i);
                 ex.assign(ep2net.get(i));
+                ex.andNot(inEG);
                 for (int j = 0  ; j < i   ; j++) ex.andNot(ep2net.get(j));
-                for (int j = i+1; j < size; j++) ex.andNot(ep2net.get(j));
+                for (int j = i+1; j < nEps; j++) ex.andNot(ep2net.get(j));
             }
-            // phase 2: remove the exclusive groups from ep2ne
-            for (int i = 0, size = epSet.size(); i < size; i++) {
+            // phase 3: remove the exclusive groups from ep2ne
+            for (int i = 0; i < nEps; i++) {
                 ep2exq2alt.get(i).clear();
                 Bitset triples = ep2ext.get(i);
                 ep2net.get(i).andNot(triples);

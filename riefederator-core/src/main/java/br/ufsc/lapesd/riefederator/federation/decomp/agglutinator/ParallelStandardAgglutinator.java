@@ -77,11 +77,13 @@ public class ParallelStandardAgglutinator implements Agglutinator {
         private List<Bitset> tmpTriplesWithoutAlt;
         private List<List<Bitset>> mergeExclusiveTriples;
         private List<List<CQuery>> tmpQueries;
+        private Bitset inEG;
 
         public StandardState(@Nonnull CQuery query) {
             super(query);
             this.epSet = matchingStrategy.getEndpointsSet();
             int nEps = epSet.size(), nTriples = triplesUniverse.size();
+            inEG = Bitsets.create(query.size());
             ep2net = new ArrayList<>(nEps);
             ep2ext = new ArrayList<>(nEps);
             ep2exq = new ArrayList<>(nEps);
@@ -150,6 +152,12 @@ public class ParallelStandardAgglutinator implements Agglutinator {
          */
         private void splitNonExclusiveTriplesPhase1() {
             assert ep2ext.size() >= epSet.size() && ep2ext.stream().noneMatch(Objects::isNull);
+            inEG.clear();
+            // phase 0: build a bitset with all triple in some exclusive group
+            for (int i = 0, nEps = epSet.size(); i < nEps; i++) {
+                for (CQuery eg : ep2exq.get(i))
+                    inEG.or(((IndexSubset<Triple>)eg.attr().getSet()).getBitset());
+            }
             executor.parallelFor(0, epSet.size(),
                                  this::splitNonExclusiveTriplesPhase1Endpoint);
         }
@@ -158,6 +166,7 @@ public class ParallelStandardAgglutinator implements Agglutinator {
             ep2exq2alt.get(epIdx).clear();
             Bitset ex = ep2ext.get(epIdx);
             ex.assign(ep2net.get(epIdx));
+            ex.andNot(inEG);
             int size = epSet.size();
             for (int j = 0      ; j < epIdx; j++) ex.andNot(ep2net.get(j));
             for (int j = epIdx+1; j < size ; j++) ex.andNot(ep2net.get(j));
