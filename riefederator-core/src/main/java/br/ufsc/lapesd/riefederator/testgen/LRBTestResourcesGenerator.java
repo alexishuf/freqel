@@ -78,9 +78,9 @@ import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
  * [2]: http://goo.gl/8tX1Pa
  */
 @SuppressWarnings("FieldMayBeFinal")
-public class LargeRDFBenchTestResourcesGenerator {
+public class LRBTestResourcesGenerator {
     private static final Logger logger =
-            LoggerFactory.getLogger(LargeRDFBenchTestResourcesGenerator.class);
+            LoggerFactory.getLogger(LRBTestResourcesGenerator.class);
     private static final String ZIP_URL =
             "https://drive.google.com/uc?export=download&id=0BzemFAUFXpqOU1R3XzQ0SzVUcFE";
     private static final Pattern URI_RX = Pattern.compile("^https?://|^urn:");
@@ -133,63 +133,8 @@ public class LargeRDFBenchTestResourcesGenerator {
             usage = "Directory with dumps (one compressed archive per dataset)")
     private File dumpsDir;
 
-    private enum Dataset {
-        LINKED_TCGAM,
-        LINKED_TCGAE,
-        LINKED_TCGAA,
-        CHEBI,
-        DBPEDIA,
-        DRUGBANK,
-        GEONAMES,
-        JAMENDO,
-        KEGG,
-        LINKEDMDB,
-        NYT,
-        SWDF,
-        AFFYMETRIX;
-
-        public @Nonnull String baseName() {
-            switch (this) {
-                case LINKED_TCGAM: return "LinkedTCGA-M";
-                case LINKED_TCGAE: return "LinkedTCGA-E";
-                case LINKED_TCGAA: return "LinkedTCGA-A";
-                case CHEBI: return "ChEBI";
-                case DBPEDIA: return "DBPedia-Subset";
-                case DRUGBANK: return "DrugBank";
-                case GEONAMES: return "GeoNames";
-                case JAMENDO: return "Jamendo";
-                case KEGG: return "KEGG";
-                case LINKEDMDB: return "LMDB";
-                case NYT: return "NYT";
-                case SWDF: return "SWDFood";
-                case AFFYMETRIX: return "Affymetrix";
-                default: break;
-            }
-            throw new IllegalArgumentException();
-        }
-
-        public @Nullable File getDumpFile(@Nonnull File dir) {
-            for (String ext : asList("7z", "zip", "rar")) {
-                File file = new File(dir, baseName() + "." + ext);
-                if (file.exists()) return file;
-                file = new File(dir, baseName() + ext.toUpperCase());
-                if (file.exists()) return file;
-            }
-            return null;
-        }
-
-        public @Nonnull File getNTFile(@Nonnull File outDir) {
-            return new File(outDir, "data/" + baseName() + ".nt");
-        }
-
-        public @Nonnull Writer openNTFileWriter(@Nonnull File outDir) throws FileNotFoundException {
-            File file = getNTFile(outDir);
-            return new OutputStreamWriter(new FileOutputStream(file, true), UTF_8);
-        }
-    }
-
     public static void main(String[] args) throws Exception {
-        LargeRDFBenchTestResourcesGenerator app = new LargeRDFBenchTestResourcesGenerator();
+        LRBTestResourcesGenerator app = new LRBTestResourcesGenerator();
         CmdLineParser parser = new CmdLineParser(app);
         try {
             parser.parseArgument(args);
@@ -351,14 +296,14 @@ public class LargeRDFBenchTestResourcesGenerator {
     }
 
     private static final class DistributionObservations {
-        private final SetMultimap<String, Dataset> subHost2ds = HashMultimap.create();
-        private final SetMultimap<String, Dataset> pred2ds = HashMultimap.create();
-        private final SetMultimap<String, Dataset> class2ds = HashMultimap.create();
-        private final SetMultimap<String, Dataset> objHost2ds = HashMultimap.create();
-        private final SetMultimap<String, Dataset> prefix2ds = HashMultimap.create();
+        private final SetMultimap<String, LRBDataset> subHost2ds = HashMultimap.create();
+        private final SetMultimap<String, LRBDataset> pred2ds = HashMultimap.create();
+        private final SetMultimap<String, LRBDataset> class2ds = HashMultimap.create();
+        private final SetMultimap<String, LRBDataset> objHost2ds = HashMultimap.create();
+        private final SetMultimap<String, LRBDataset> prefix2ds = HashMultimap.create();
 
-        private static void put(@Nonnull Multimap<String, Dataset> map, @Nullable String key,
-                                @Nonnull Dataset value) {
+        private static void put(@Nonnull Multimap<String, LRBDataset> map, @Nullable String key,
+                                @Nonnull LRBDataset value) {
             if (key == null) return;
             //noinspection SynchronizationOnLocalVariableOrMethodParameter
             synchronized (map) {
@@ -366,29 +311,29 @@ public class LargeRDFBenchTestResourcesGenerator {
             }
         }
 
-        public void putSubHost2ds(@Nullable String host, @Nonnull Dataset ds) {
+        public void putSubHost2ds(@Nullable String host, @Nonnull LRBDataset ds) {
             put(subHost2ds, host, ds);
         }
-        public void putPred2ds(@Nullable String predicate, @Nonnull Dataset ds) {
+        public void putPred2ds(@Nullable String predicate, @Nonnull LRBDataset ds) {
             put(pred2ds, predicate, ds);
         }
-        public void putObjHost2ds(@Nullable String host, @Nonnull Dataset ds) {
+        public void putObjHost2ds(@Nullable String host, @Nonnull LRBDataset ds) {
             put(objHost2ds, host, ds);
         }
-        public void putClass2ds(@Nullable String classURI, @Nonnull Dataset ds) {
+        public void putClass2ds(@Nullable String classURI, @Nonnull LRBDataset ds) {
             put(class2ds, classURI, ds);
         }
-        public void putPrefixHost2ds(@Nullable String host, @Nonnull Dataset ds) {
+        public void putPrefixHost2ds(@Nullable String host, @Nonnull LRBDataset ds) {
             put(prefix2ds, host, ds);
         }
     }
 
     private static final class DistributionRules {
-        private final Map<String, Dataset> subHost2ds;
-        private final Map<String, Dataset> pred2ds;
-        private final Map<String, Dataset> objHost2ds;
-        private final Map<String, Dataset> class2ds;
-        private final Map<String, Dataset> prefix2ds;
+        private final Map<String, LRBDataset> subHost2ds;
+        private final Map<String, LRBDataset> pred2ds;
+        private final Map<String, LRBDataset> objHost2ds;
+        private final Map<String, LRBDataset> class2ds;
+        private final Map<String, LRBDataset> prefix2ds;
 
         public DistributionRules() {
             subHost2ds = new HashMap<>();
@@ -414,18 +359,18 @@ public class LargeRDFBenchTestResourcesGenerator {
             fromMultimap(prefix2ds, observations.prefix2ds);
         }
 
-        private void fromMultimap(Map<String, Dataset> dest, Multimap<String, Dataset> src) {
+        private void fromMultimap(Map<String, LRBDataset> dest, Multimap<String, LRBDataset> src) {
             for (String key : src.keys()) {
                 if (src.get(key).size() == 1)
                     dest.put(key, src.get(key).iterator().next());
             }
         }
 
-        private Map<String, Dataset> toDatasetMap(DictTree dict) {
-            Map<String, Dataset> map = new HashMap<>();
+        private Map<String, LRBDataset> toDatasetMap(DictTree dict) {
+            Map<String, LRBDataset> map = new HashMap<>();
             for (String key : dict.keySet()) {
                 String escaped = key.replaceAll("/", "%2F");
-                map.put(key, Dataset.valueOf(dict.getString(escaped)));
+                map.put(key, LRBDataset.valueOf(dict.getString(escaped)));
             }
             return map;
         }
@@ -468,15 +413,15 @@ public class LargeRDFBenchTestResourcesGenerator {
 
         private void writeDatasetMap(@Nonnull PrintWriter out, @Nonnull String indent,
                                      @Nonnull String key,
-                                     @Nonnull Map<String, Dataset> map) {
+                                     @Nonnull Map<String, LRBDataset> map) {
             out.printf("%s%s:\n", indent, key);
             indent += "  ";
-            for (Map.Entry<String, Dataset> e : map.entrySet())
+            for (Map.Entry<String, LRBDataset> e : map.entrySet())
                 out.printf("%s%s: %s\n", indent, e.getKey(), e.getValue().name());
         }
 
-        public @Nullable Dataset getDatasetFor(Triple triple) {
-            Dataset dataset = getHostUnique(triple.getSubject(), subHost2ds);
+        public @Nullable LRBDataset getDatasetFor(Triple triple) {
+            LRBDataset dataset = getHostUnique(triple.getSubject(), subHost2ds);
             if (dataset != null) return dataset;
             dataset = pred2ds.get(triple.getPredicate().asURI().getURI());
             if (dataset != null) return dataset;
@@ -491,18 +436,18 @@ public class LargeRDFBenchTestResourcesGenerator {
             return dataset;
         }
 
-        private @Nullable Dataset getPrefixUnique(Term term) {
+        private @Nullable LRBDataset getPrefixUnique(Term term) {
             if (!term.isVar()) return null;
 
             String uri = term.asURI().getURI();
-            for (Map.Entry<String, Dataset> e : prefix2ds.entrySet()) {
+            for (Map.Entry<String, LRBDataset> e : prefix2ds.entrySet()) {
                 if (uri.startsWith(e.getKey()))
                     return e.getValue();
             }
             return null;
         }
 
-        private @Nullable Dataset getHostUnique(Term term, Map<String, Dataset> host2ds) {
+        private @Nullable LRBDataset getHostUnique(Term term, Map<String, LRBDataset> host2ds) {
             try {
                 if (term.isURI()) {
                     String host = new URI(term.asURI().getURI()).getHost();
@@ -527,18 +472,18 @@ public class LargeRDFBenchTestResourcesGenerator {
 
         DistributionObservations observations = new DistributionObservations();
         List<String> missing = new ArrayList<>();
-        for (Dataset ds : Dataset.values()) {
+        for (LRBDataset ds : LRBDataset.values()) {
             if (ds.getDumpFile(dumpsDir) == null)
                 missing.add(ds.baseName());
         }
         if (!missing.isEmpty())
             throw new RuntimeException("Missing dataset dumps on "+dumpsDir+": "+missing);
-        stream(Dataset.values()).parallel().forEach(ds -> inspectDataset(ds, observations));
+        stream(LRBDataset.values()).parallel().forEach(ds -> inspectDataset(ds, observations));
         distributionRules = new DistributionRules(observations);
         distributionRules.saveToYaml(distYaml);
     }
 
-    private void inspectDataset(@Nonnull Dataset ds,
+    private void inspectDataset(@Nonnull LRBDataset ds,
                                 @Nonnull DistributionObservations observations) {
         File dumpFile = ds.getDumpFile(dumpsDir);
         assert dumpFile != null;
@@ -637,7 +582,7 @@ public class LargeRDFBenchTestResourcesGenerator {
         Map<Triple, File> triple2file = new HashMap<>();
         File dataDir = new File(outDir, "data");
         for (Triple t : triples) {
-            Dataset ds = distributionRules.getDatasetFor(t);
+            LRBDataset ds = distributionRules.getDatasetFor(t);
             String baseName = ds == null ? null : ds.baseName();
             if (ds == null) {
                 String tcgaPrefix = "http://tcga.deri.ie";
@@ -652,13 +597,13 @@ public class LargeRDFBenchTestResourcesGenerator {
                 if (isTCGA)
                     baseName = "tcga-orphan";
                 else if (predURI.startsWith("http://dbpedia.org/ontology"))
-                    baseName = Dataset.DBPEDIA.baseName();
+                    baseName = LRBDataset.DBPEDIA.baseName();
                 else if (isGeoNames)
-                    baseName = Dataset.GEONAMES.baseName();
+                    baseName = LRBDataset.GEONAMES.baseName();
                 else if (predURI.equals(RDF.type.getURI()) && objURI.startsWith("http://bio2rdf.org/ns/kegg"))
-                    baseName = Dataset.KEGG.baseName();
+                    baseName = LRBDataset.KEGG.baseName();
                 else if (predURI.startsWith("http://www4.wiwiss.fu-berlin.de/drugbank/"))
-                    baseName = Dataset.DRUGBANK.baseName();
+                    baseName = LRBDataset.DRUGBANK.baseName();
             }
             if (baseName != null)
                 triple2file.put(t, new File(dataDir, baseName + ".nt"));
@@ -782,7 +727,7 @@ public class LargeRDFBenchTestResourcesGenerator {
         }
 
         public @Nonnull CollectionResults parseResults() throws IOException {
-            return LargeRDFBenchTestResourcesGenerator
+            return LRBTestResourcesGenerator
                     .parseResults(queryName, getResultsReader(), maxResultsPerQuery);
         }
     }

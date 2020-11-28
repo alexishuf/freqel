@@ -49,7 +49,7 @@ import java.util.zip.ZipInputStream;
 import static br.ufsc.lapesd.riefederator.ResultsAssert.assertExpectedResults;
 import static br.ufsc.lapesd.riefederator.algebra.util.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation.createFederation;
-import static br.ufsc.lapesd.riefederator.testgen.LargeRDFBenchTestResourcesGenerator.parseResults;
+import static br.ufsc.lapesd.riefederator.testgen.LRBTestResourcesGenerator.parseResults;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
