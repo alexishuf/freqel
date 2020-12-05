@@ -6,9 +6,10 @@ import br.ufsc.lapesd.riefederator.model.RDFUtils;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.util.ExtractedResource;
 import br.ufsc.lapesd.riefederator.util.ExtractedResources;
+import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
+import br.ufsc.lapesd.riefederator.util.parse.RDFSyntax;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFLanguages;
@@ -19,6 +20,7 @@ import org.semanticweb.owlapi.util.SimpleIRIMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.io.*;
 import java.util.*;
@@ -31,13 +33,18 @@ public class TBoxSpec implements AutoCloseable {
     private List<String> uris = new ArrayList<>();
     private List<File> files = new ArrayList<>();
     private List<Model> models = new ArrayList<>();
-    private List<ImmutablePair<InputStream, Lang>> streams = new ArrayList<>();
+    private List<RDFInputStream> streams = new ArrayList<>();
     boolean fetchOwlImports = true;
 
     @CanIgnoreReturnValue
     public @Nonnull TBoxSpec fetchOwlImports(boolean value) {
         fetchOwlImports = value;
         return this;
+    }
+
+    @CheckReturnValue
+    public boolean getFetchOwlImports() {
+        return fetchOwlImports;
     }
 
     @CanIgnoreReturnValue
@@ -98,24 +105,19 @@ public class TBoxSpec implements AutoCloseable {
 
     @CanIgnoreReturnValue
     public @Nonnull TBoxSpec addStream(@Nonnull InputStream stream, @Nonnull Lang lang) {
-        streams.add(ImmutablePair.of(stream, lang));
+        streams.add(new RDFInputStream(stream).setSyntax(RDFSyntax.fromJenaLang(lang)));
         return this;
     }
     @CanIgnoreReturnValue
     public @Nonnull TBoxSpec addStream(@Nonnull InputStream stream) {
-        streams.add(ImmutablePair.of(stream, null));
+        streams.add(new RDFInputStream(stream));
         return this;
     }
 
     @Override
     public void close() {
-        for (ImmutablePair<InputStream, Lang> p : streams) {
-            try {
-                p.left.close();
-            } catch (IOException e) {
-                logger.error("Exception when closing InputStream in TBoxSpec", e);
-            }
-        }
+        for (RDFInputStream p : streams)
+            p.close();
     }
 
     public @Nonnull Model loadModel() throws TBoxLoadException {
@@ -139,13 +141,20 @@ public class TBoxSpec implements AutoCloseable {
         } catch (RuntimeException e) {
             throw new TBoxLoadException("Problem while loading from Model instances", e);
         }
-        for (ImmutablePair<InputStream, Lang> pair : streams) {
-            if (pair.right == null)
-                throw new TBoxLoadException("No Lang for stream "+ pair.left);
-            loader.addInputStream(pair.left, pair.right);
+        for (RDFInputStream ris : streams) {
+            loader.addInputStream(ris);
         }
 
         return loader.getModel();
+    }
+
+    public @Nonnull List<Object> getAllSources() {
+        ArrayList<Object> list = new ArrayList<>();
+        list.addAll(files);
+        list.addAll(uris);
+        list.addAll(models);
+        list.addAll(streams);
+        return list;
     }
 
     private static final class FileHandle implements AutoCloseable {
@@ -189,23 +198,22 @@ public class TBoxSpec implements AutoCloseable {
         for (Model model : models) list.add(toTemp(model));
         for (File file : files) list.add(handleFromFile(file));
 
-        for (ImmutablePair<InputStream, Lang> p : streams) {
-            String suffix = "." + p.right.getFileExtensions().get(0);
+        for (RDFInputStream ris : streams) {
+            String suffix = "." + ris.getSyntaxOrGuess().getSuffix();
             File temp = null;
             try {
                 temp = File.createTempFile("stream", suffix);
                 temp.deleteOnExit();
                 try (FileOutputStream out = new FileOutputStream(temp)) {
-                    IOUtils.copy(p.left, out);
+                    IOUtils.copy(ris.getInputStream(), out);
                 }
             } catch (IOException e) {
                 if (temp == null)
-                    throw new TBoxLoadException("Failed to create tem file for stream"+p.left);
-                throw new TBoxLoadException("Failed to copy stream "+p.left+" to file "+temp);
+                    throw new TBoxLoadException("Failed to create tem file for stream "+ris);
+                throw new TBoxLoadException("Failed to copy stream "+ris+" to file "+temp);
             }
             list.add(handleFromTemp(temp));
         }
-
         return list;
     }
 

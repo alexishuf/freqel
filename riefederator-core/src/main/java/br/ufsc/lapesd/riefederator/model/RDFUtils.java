@@ -146,8 +146,53 @@ public class RDFUtils {
     public static @Nonnull String toNT(@Nonnull Term term) {
         if (term.isURI()) return toNT(term.asURI());
         else if (term.isLiteral()) return toNT(term.asLiteral());
-        else if (term.isBlank()) return "[]";
+        else if (term.isBlank()) return blankIdToNT(term.asBlank().getId().toString());
         throw new IllegalArgumentException("Only URI, Lit and Blank are representable in NTriples");
+    }
+
+    private static boolean isNTNonFirstAllowed(int codePoint) {
+        return codePoint == '-' || (codePoint >= 0x00B7 && codePoint <= 0x0300)
+                                || (codePoint >= 0x203F && codePoint <= 0x2040);
+    }
+
+    private static final int[][] PN_CHARS_BASE = {
+            new int[]{'A'   , 'Z'   },
+            new int[]{'a'   , 'z'   },
+            new int[]{0x00c0, 0x00d6},
+            new int[]{0x00d8, 0x00f6},
+            new int[]{0x00f8, 0x02ff},
+            new int[]{0x0370, 0x037d},
+            new int[]{0x037f, 0x1fff},
+            new int[]{0x200c, 0x200d},
+            new int[]{0x2070, 0x218f},
+            new int[]{0x2c00, 0x2fef},
+            new int[]{0x2001, 0xd7ff},
+            new int[]{0xf900, 0xfdcf},
+            new int[]{0xfdf0, 0xfffd},
+            new int[]{0x1000, 0xefff}};
+    private static boolean isNTPnCharsBase(int codePoint) {
+        for (int[] range : PN_CHARS_BASE) {
+            if (codePoint >= range[0] && codePoint <= range[1]) return true;
+        }
+        return false;
+    }
+
+    public static @Nonnull String blankIdToNT(@Nonnull String id) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0, len = id.length(); i < len; i++) {
+            int c = id.codePointAt(i);
+            if (c == '.')
+                builder.append(Character.toChars((i == 0 || i == len-1) ? '_' : c));
+            else if (c == '_' || Character.isDigit(c))
+                builder.append(Character.toChars(c));
+            else if (isNTNonFirstAllowed(c))
+                builder.append(Character.toChars(i == 0 ? '_' : c));
+            else if (isNTPnCharsBase(c))
+                builder.append(Character.toChars(c));
+            else
+                builder.append('_');
+        }
+        return "_:"+builder.toString();
     }
 
     public static @Nullable Term fromNT(@Nullable String string,

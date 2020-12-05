@@ -1,14 +1,17 @@
 package br.ufsc.lapesd.riefederator.jena;
 
+import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
+import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
+import br.ufsc.lapesd.riefederator.util.parse.RDFSyntax;
+import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
-import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.graph.Triple;
+import org.apache.jena.rdf.model.*;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
+import org.apache.jena.riot.RiotException;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.jetbrains.annotations.Contract;
@@ -17,7 +20,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -143,21 +149,41 @@ public class TBoxLoader {
     }
 
     @Contract("_ -> this") @CanIgnoreReturnValue
-    public @Nonnull TBoxLoader addFile(@Nonnull File file) throws IOException {
-        String base = "file://" + file.getAbsolutePath();
-        Model model = ModelFactory.createDefaultModel();
-        try (FileInputStream in = new FileInputStream(file)) {
-            RDFDataMgr.read(model, in, base, filenameToLang(file.getName(), Lang.TTL));
+    public @Nonnull TBoxLoader addTriples(@Nonnull JenaTripleIterator it) {
+        try {
+            Model model = getModel();
+            while (it.hasNext()) {
+                Triple t = it.next();
+                Resource s = model.wrapAsResource(t.getSubject());
+                Property p = ResourceFactory.createProperty(t.getPredicate().getURI());
+                if (p.equals(RDF.type) && t.getObject().equals(OWL2.Ontology.asNode()))
+                    fetched.add(s);
+                if (fetchImports && p.equals(OWL2.imports)) {
+                    Resource imported = model.wrapAsResource(t.getObject());
+                    if (!fetched.contains(imported))
+                        fetchOntology(imported);
+                }
+                model.getGraph().add(t);
+            }
+        } finally {
+            it.close();
         }
-        return addModel(model);
+        return this;
+    }
+
+    @Contract("_ -> this") @CanIgnoreReturnValue
+    public @Nonnull TBoxLoader addFile(@Nonnull File file) throws IOException {
+        return addTriples(RDFIterationDispatcher.get().parse(file));
     }
 
     @Contract("_, _ -> this") @CanIgnoreReturnValue
     public @Nonnull TBoxLoader addInputStream(@Nonnull InputStream in, @Nonnull Lang lang) {
-        String base = "inputstream://" + System.identityHashCode(in);
-        Model model = ModelFactory.createDefaultModel();
-        RDFDataMgr.read(model, in, base, lang);
-        return addModel(model);
+        return addInputStream(new RDFInputStream(in).setSyntax(RDFSyntax.fromJenaLang(lang)));
+    }
+
+    @Contract("_ -> this") @CanIgnoreReturnValue
+    public @Nonnull TBoxLoader addInputStream(@Nonnull RDFInputStream ris) {
+        return addTriples(RDFIterationDispatcher.get().parse(ris));
     }
 
     @Contract("_, _ -> this") @CanIgnoreReturnValue
@@ -244,26 +270,44 @@ public class TBoxLoader {
         return  fetchOntology(ontology.getURI());
     }
 
-    @Contract("_ -> this") @CanIgnoreReturnValue
-    public @Nonnull TBoxLoader fetchOntology(@Nonnull String uri) {
+    @CheckReturnValue
+    public @Nullable RDFInputStream fetchResourceCachedOntology(@Nonnull String uri) {
         uri = END_URI_RX.matcher(uri).replaceAll("");
-        Model model = ModelFactory.createDefaultModel();
+
         String path = uri2resource.get(uri);
         if (path == null)
             path = globalUri2Resource.get(uri);
         if (path != null) {
             ClassLoader loader = ClassLoader.getSystemClassLoader();
-            try (InputStream in = loader.getResourceAsStream(path)) {
-                if (in != null) {
-                    RDFDataMgr.read(model, in, RDFLanguages.filenameToLang(path));
-                    addModel(model);
-                    return this; //done
+            InputStream in = loader.getResourceAsStream(path);
+            if (in != null) {
+                RDFInputStream ris = new RDFInputStream(in);
+                Lang lang = filenameToLang(path);
+                if (lang != null) {
+                    ris.setSyntax(RDFSyntax.fromJenaLang(lang));
                 } else {
-                    logger.warn("Resource {}, registered for URI {}, not found", path, uri);
+                    assert false : "Bad resource suffix";
+                    logger.warn("Can't guess RDF syntax from suffix of resource {}", path);
                 }
-            } catch (IOException e) {
-                logger.error("Problem while loading RDF from {} in place of URI {}", path, uri, e);
+                return ris;
+            } else {
+                logger.warn("Resource {}, registered for URI {}, not found", path, uri);
             }
+        }
+        return null;
+    }
+
+    @Contract("_ -> this") @CanIgnoreReturnValue
+    public @Nonnull TBoxLoader fetchOntology(@Nonnull String uri) {
+        Model model = ModelFactory.createDefaultModel();
+        try (RDFInputStream ris = fetchResourceCachedOntology(uri)) {
+            if (ris != null) {
+                RDFDataMgr.read(model, ris.getInputStream(), ris.getSyntaxOrGuess().asJenaLang());
+                addModel(model);
+                return this; //done
+            }
+        } catch (RiotException e) {
+            logger.error("Problem while parsing RDF from resource in place of URI {}", uri, e);
         }
         // if we got here get from the URI
         RDFDataMgr.read(model, uri);
