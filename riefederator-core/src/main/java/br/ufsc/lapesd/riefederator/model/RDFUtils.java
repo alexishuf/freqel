@@ -50,8 +50,6 @@ public class RDFUtils {
     private static final @Nonnull String ESCAPES = "tbnrf\"'\\";
     private static final @Nonnull String ESCAPEE = "\t\b\n\r\f\"'\\";
     private static final @Nonnull Pattern LIT_DT_RX = Pattern.compile("\\^\\^<([^>]+)>$");
-    private static final @Nonnull Pattern LANG_RX =
-            Pattern.compile("(?:\"|\"\"\")(.*)(?:\"|\"\"\")@(\\w+)");
 
     private static final @Nonnull Set<URI> INTEGER_DTS;
 
@@ -227,17 +225,55 @@ public class RDFUtils {
                 throw new NTParseException("Literal has ^^<URI> but no closing \":" + string);
             return termFactory.createLit(lexical, matcher.group(1), true);
         } else {
-            matcher = LANG_RX.matcher(string);
-            if (!matcher.matches()) {
-                try {
-                    return fromTurtleShortForm(string, termFactory);
-                } catch (NTParseException e) {
-                    throw new NTParseException("Bad literal (treated as such since did not " +
-                                               "look like _:blank nor <uri>): " + string);
-                }
+            Term term = tryParseLangLit(string, termFactory);
+            if (term != null)
+                return term;
+            try {
+                return fromTurtleShortForm(string, termFactory);
+            } catch (NTParseException e) {
+                throw new NTParseException("Bad literal (treated as such since did not " +
+                                           "look like _:blank nor <uri>): " + string);
             }
-            return termFactory.createLangLit(matcher.group(1), matcher.group(2), true);
         }
+    }
+
+    private static @Nullable Term tryParseLangLit(@Nonnull String string,
+                                                  @Nonnull TermFactory termFactory) {
+        if (string.charAt(0) != '"')
+            return null;
+        int tagStart = -1, closeStart = -1, closeEnd = -1, openLen = 0;
+        for (int i = string.length()-1; i >= 0; --i) {
+            char c = string.charAt(i);
+            if (c != '"' && closeEnd > -1)
+                break;
+            if (c == '@') {
+                if (closeEnd > -1) return null; // more than one @
+                closeEnd = i;
+            } else if (c == '-' || c == '_' || Character.isLetterOrDigit(c)) {
+                if (closeEnd > -1) return null; // not allowed before @
+                tagStart = i;
+            } else if (c == '"') {
+                if (closeEnd == -1) return null; // not allowed after @
+                closeStart = i;
+            } else {
+                return null; //unexpected char
+            }
+        }
+        if (closeStart == -1)
+            return null; // did not reach a " char
+        assert closeStart < closeEnd;
+        for (int i = 0; i < closeStart && string.charAt(i) == '"'; i++)
+            ++openLen;
+        if (openLen == 0) { //special case for ""@en: first " counted as closing "
+            if (closeEnd-closeStart != 2)
+                return null; // not special case: malformed
+            openLen = 1;
+            ++closeStart;
+        }
+        closeStart = closeEnd - (openLen = Math.min(openLen, closeEnd-closeStart));
+        String lexicalForm = string.substring(openLen, closeStart);
+        String tag = string.substring(tagStart);
+        return termFactory.createLangLit(lexicalForm, tag, true);
     }
 
     public static @Nullable Term

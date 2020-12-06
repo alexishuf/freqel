@@ -70,6 +70,12 @@ public class RDFUtilsTest implements TestContext {
                 asList("rdf:type", null), //bad syntax: no prefixes in NT
                 asList("\"plain literal\"", StdLit.fromUnescaped("plain literal", xsdString)),
                 asList("\"name\"@en", StdLit.fromUnescaped("name", "en")),
+                asList("\"name\"@en-US", StdLit.fromUnescaped("name", "en-US")),
+                asList("\"\"\"triplequotes\"\"\"@en", StdLit.fromUnescaped("triplequotes", "en")),
+                asList("\"\"\"triplequotes\"\"\"@en_US", StdLit.fromUnescaped("triplequotes", "en_US")),
+                asList("\"l1\nl2\"@en", StdLit.fromUnescaped("l1\nl2", "en")),
+                asList("\"escaped\\\"\"@en", StdLit.fromEscaped("escaped\\\"", "en")),
+                asList("\"\\\"escaped\\\"\"@en", StdLit.fromEscaped("\\\"escaped\\\"", "en")),
                 asList("\"line1\\nline2\"^^<"+xsdString.getURI()+">",
                        StdLit.fromEscaped("line1\\nline2", xsdString)),
                 asList("\"value\"^^<"+xsdString.getURI()+">@en", null), //extra @en
