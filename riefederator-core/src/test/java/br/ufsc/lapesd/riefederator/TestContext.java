@@ -21,6 +21,8 @@ import static org.apache.jena.rdf.model.ResourceFactory.createTypedLiteral;
 
 public interface TestContext {
     @Nonnull String EX = "http://example.org/";
+    @Nonnull String DBO = "http://dbpedia.org/ontology/";
+    @Nonnull String DUL = "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#";
 
     @Nonnull URI Alice   = new StdURI(EX+"Alice");
     @Nonnull URI Alice2  = new StdURI(EX+"Alice-2");

@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.riefederator.util.parse.iterators;
 
 import br.ufsc.lapesd.riefederator.util.parse.InterruptStreamException;
+import br.ufsc.lapesd.riefederator.util.parse.SourceIterationException;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
@@ -41,17 +42,22 @@ public class StreamConsumerJenaTripleIterator implements JenaTripleIterator {
     }
     private final Producer producer = new Producer();
     private final BlockingQueue<Triple> queue = new ArrayBlockingQueue<>(2048);
+    private @Nullable SourceIterationException exception;
     private @Nullable Triple next;
 
     public @Nonnull StreamRDF getStreamRDF() {
         return producer;
     }
 
+    public void setException(@Nonnull SourceIterationException exception) {
+        this.exception = exception;
+    }
+
     @Override public void close() {
         producer.abort = true;
     }
 
-    @Override public boolean hasNext() {
+    @Override public boolean hasNext() throws SourceIterationException {
         if (next == null) {
             try {
                 next = queue.take();
@@ -60,10 +66,12 @@ public class StreamConsumerJenaTripleIterator implements JenaTripleIterator {
             }
         }
         assert next != null;
+        if (exception != null)
+            throw exception;
         return next != END_MARKER;
     }
 
-    @Override public Triple next() {
+    @Override public Triple next() throws SourceIterationException {
         if (!hasNext()) throw new NoSuchElementException();
         Triple result = this.next;
         this.next = null;

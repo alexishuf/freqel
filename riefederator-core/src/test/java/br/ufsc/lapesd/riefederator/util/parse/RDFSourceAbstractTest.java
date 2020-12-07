@@ -31,7 +31,7 @@ public class RDFSourceAbstractTest {
     private @Nonnull List<File> tempFiles = new ArrayList<>();
     private @Nonnull List<HDT> hdtObjects = new ArrayList<>();
 
-    @AfterClass
+    @AfterClass(groups = {"fast"})
     public void afterClass() throws IOException {
         for (HDT hdt : hdtObjects)
             hdt.close();
@@ -88,7 +88,6 @@ public class RDFSourceAbstractTest {
     protected @Nonnull HDT saveIndexedHDT(@Nonnull File dst,
                                           @Nonnull HDT inMemory) throws IOException {
         inMemory.saveToHDT(dst.getAbsolutePath(), HDTUtils.NULL_LISTENER);
-        inMemory.close();
         HDT hdt = HDTManager.mapIndexedHDT(dst.getAbsolutePath(), HDTUtils.NULL_LISTENER);
         hdtObjects.add(hdt);
         return hdt;

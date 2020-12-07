@@ -133,7 +133,15 @@ public class RDFIterationDispatcher implements AutoCloseable {
             RDFStreamer streamer = streamers.get(cls);
             if (streamer != null && streamer.canStream(source)) {
                 StreamConsumerJenaTripleIterator it = new StreamConsumerJenaTripleIterator();
-                executor.execute(() -> streamer.stream(source, it.getStreamRDF()));
+                executor.execute(() -> {
+                    try {
+                        streamer.stream(source, it.getStreamRDF());
+                    } catch (SourceIterationException e) {
+                        it.setException(e);
+                    } catch (RuntimeException e) {
+                        it.setException(new SourceIterationException(source, e));
+                    }
+                });
                 return it;
             }
         }

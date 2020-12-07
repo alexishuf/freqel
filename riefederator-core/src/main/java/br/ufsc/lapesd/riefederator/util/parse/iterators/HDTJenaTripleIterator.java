@@ -1,11 +1,7 @@
 package br.ufsc.lapesd.riefederator.util.parse.iterators;
 
-import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
-import br.ufsc.lapesd.riefederator.jena.model.term.node.JenaNodeTermFactory;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
-import br.ufsc.lapesd.riefederator.model.RDFUtils;
-import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
+import br.ufsc.lapesd.riefederator.util.HDTUtils;
 import org.apache.jena.graph.Triple;
 import org.rdfhdt.hdt.triples.IteratorTripleString;
 import org.rdfhdt.hdt.triples.TripleString;
@@ -34,23 +30,15 @@ public class HDTJenaTripleIterator implements JenaTripleIterator {
         while (next == null && it.hasNext()) {
             TripleString ts = it.next();
             try {
-                next = new Triple(parse(ts.getSubject()), parse(ts.getPredicate()),
-                        parse(ts.getObject()));
+                next = new Triple(HDTUtils.toNode(ts.getSubject()),
+                                  HDTUtils.toNode(ts.getPredicate()),
+                                  HDTUtils.toNode(ts.getObject()));
             } catch (NTParseException e) {
                 logger.warn("Ignoring unparseable HDT triple {} from source {}",
                         ts, source);
             }
         }
         return next != null;
-    }
-
-    private @Nonnull Node parse(@Nonnull CharSequence seq) throws NTParseException {
-        if (Character.isLetter(seq.charAt(0))) {
-            return NodeFactory.createURI(seq.toString());
-        } else {
-            JenaNodeTermFactory fac = JenaNodeTermFactory.INSTANCE;
-            return JenaWrappers.toJenaNode(RDFUtils.fromNT(seq.toString(), fac));
-        }
     }
 
     @Override public @Nonnull Triple next() {

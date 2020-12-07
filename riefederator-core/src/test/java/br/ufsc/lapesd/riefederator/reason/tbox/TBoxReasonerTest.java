@@ -1,30 +1,84 @@
 package br.ufsc.lapesd.riefederator.reason.tbox;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
+import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
+import br.ufsc.lapesd.riefederator.reason.tbox.vlog.SystemVLogReasoner;
+import br.ufsc.lapesd.riefederator.util.HDTUtils;
+import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
+import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
+import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
+import org.apache.commons.io.FileUtils;
+import org.apache.jena.graph.Triple;
+import org.apache.jena.vocabulary.OWL2;
+import org.rdfhdt.hdt.hdt.HDTManager;
+import org.rdfhdt.hdt.options.HDTSpecification;
+import org.rdfhdt.hdt.rdf.TripleWriter;
+import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
-@Test(groups = {"fast"})
-public class TBoxReasonerTest {
+public class TBoxReasonerTest implements TestContext {
+    private static Queue<File> tempFiles = new LinkedBlockingQueue<>();
+    private static Boolean hasVLog = null;
+    private static void checkHasVLog() {
+        if (hasVLog != null) {
+            if (!hasVLog)
+                throw new SkipException("VLog not available");
+            return;
+        }
+        try {
+            Process process = new ProcessBuilder("vlog", "help")
+                    .redirectOutput(ProcessBuilder.Redirect.PIPE)
+                    .redirectOutput(ProcessBuilder.Redirect.PIPE)
+                    .start();
+            if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                hasVLog = false;
+                throw new SkipException("Slow vlog help, will skip tests");
+            }
+        } catch (InterruptedException|IOException e) {
+            hasVLog = false;
+            throw new SkipException("Could not run VLog", e);
+        }
+    }
+
     public static final List<NamedSupplier<TBoxReasoner>> suppliers = Arrays.asList(
             new NamedSupplier<>("HermiT", OWLAPITBoxReasoner::hermit),
             new NamedSupplier<>("StructuralReasoner", OWLAPITBoxReasoner::structural),
             new NamedSupplier<>("JFact", OWLAPITBoxReasoner::jFact),
-            new NamedSupplier<>(TransitiveClosureTBoxReasoner.class)
+            new NamedSupplier<>(TransitiveClosureTBoxReasoner.class),
+            new NamedSupplier<>("SystemVLogReasoner", () -> {
+                checkHasVLog();
+                SystemVLogReasoner reasoner = new SystemVLogReasoner();
+                try {
+                    File parent = Files.createTempDirectory("riefederator").toFile();
+                    tempFiles.add(parent);
+                    reasoner.setVlogTempDirParent(parent);
+                } catch (IOException e) {
+                    throw new AssertionError("Failed to create temp dir", e);
+                }
+                return reasoner;
+            })
     );
 
     private static final StdURI c = new StdURI("http://example.org/onto-4.ttl#C");
@@ -50,17 +104,19 @@ public class TBoxReasonerTest {
     private TBoxSpec onto4, onto5;
     private TBoxReasoner tBoxReasoner;
 
-    @BeforeMethod
+    @BeforeMethod(groups = {"fast"})
     public void setUp() {
         onto4 = new TBoxSpec().addResource(getClass(), "../../onto-4.ttl");
         onto5 = new TBoxSpec().addResource(getClass(), "../../onto-5.ttl");
     }
 
-    @AfterMethod
+    @AfterMethod(groups = {"fast"})
     public void tearDown() throws Exception {
         TBoxReasoner local = this.tBoxReasoner;
         tBoxReasoner = null;
         if (local != null) local.close();
+        for (File dir = tempFiles.poll(); dir != null; dir = tempFiles.poll())
+            FileUtils.forceDelete(dir);
     }
 
     @DataProvider
@@ -68,12 +124,12 @@ public class TBoxReasonerTest {
         return suppliers.stream().map(s -> new Object[]{s}).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "supplierData")
+    @Test(dataProvider = "supplierData", groups = {"fast"})
     public void testLoadDoesNotBlowUp(@Nonnull Supplier<TBoxReasoner> supplier) {
         supplier.get().load(onto5);
     }
 
-    @Test(dataProvider = "supplierData")
+    @Test(dataProvider = "supplierData", groups = {"fast"})
     public void testDirectSubclass(Supplier<TBoxReasoner> supplier) {
         tBoxReasoner = supplier.get();
         tBoxReasoner.load(onto5);
@@ -87,7 +143,7 @@ public class TBoxReasonerTest {
         assertFalse(set.contains(d2));
     }
 
-    @Test(dataProvider = "supplierData")
+    @Test(dataProvider = "supplierData", groups = {"fast"})
     public void testLoadOverwrites(Supplier<TBoxReasoner> supplier) {
         tBoxReasoner = supplier.get();
         tBoxReasoner.load(onto5);
@@ -100,7 +156,7 @@ public class TBoxReasonerTest {
         assertTrue(tBoxReasoner.subClasses(c).collect(toSet()).contains(c2));
     }
 
-    @Test(dataProvider = "supplierData")
+    @Test(dataProvider = "supplierData", groups = {"fast"})
     public void testIndirectSubclass(NamedSupplier<TBoxReasoner> supplier) {
         if (supplier.getName().equals("StructuralReasoner"))
             return; // mock reasoner, no transitivity
@@ -125,7 +181,7 @@ public class TBoxReasonerTest {
     }
 
 
-    @Test(dataProvider = "supplierData")
+    @Test(dataProvider = "supplierData", groups = {"fast"})
     public void testDirectSubProperty(Supplier<TBoxReasoner> supplier) {
         tBoxReasoner = supplier.get();
         tBoxReasoner.load(onto5);
@@ -142,7 +198,7 @@ public class TBoxReasonerTest {
         assertTrue(set.contains(p12));
     }
 
-    @Test(dataProvider = "supplierData")
+    @Test(dataProvider = "supplierData", groups = {"fast"})
     public void testIndirectSubProperty(NamedSupplier<TBoxReasoner> supplier) {
         if (supplier.getName().equals("StructuralReasoner"))
             return; // mock reasoner, no transitivity
@@ -166,5 +222,61 @@ public class TBoxReasonerTest {
         assertTrue(set.contains(p1111));
         assertTrue(set.contains(p12));
         assertFalse(set.contains(p2));
+    }
+
+
+    @Test(dataProvider = "supplierData")
+    public void testLargeRDFBenchTBox(NamedSupplier<TBoxReasoner> supplier) throws Exception {
+        if (supplier.getName().equals("HermiT"))
+            return; // HermiT will refuse some axioms
+        tBoxReasoner = supplier.get();
+
+        File tboxFile = hdtFileWithoutImports("../../LargeRDFBench-tbox.hdt");
+        TBoxSpec spec = new TBoxSpec().addFile(tboxFile);
+        tBoxReasoner.load(spec);
+
+        StdURI scientist    = new StdURI(DBO + "Scientist");
+        StdURI person       = new StdURI(DBO + "Person");
+        StdURI entomologist = new StdURI(DBO + "Entomologist");
+        Set<Term> set = tBoxReasoner.subClasses(scientist).collect(toSet());
+        assertTrue(set.contains(entomologist));
+        assertFalse(set.contains(person));
+        assertFalse(set.contains(scientist));
+
+        set = tBoxReasoner.subClasses(person).collect(toSet());
+        assertTrue(set.contains(scientist));
+        assertTrue(set.contains(entomologist));
+        assertFalse(set.contains(person));
+
+        StdURI isClassifiedBy = new StdURI(DUL + "isClassifiedBy");
+        StdURI genre          = new StdURI(DBO + "genre");
+        StdURI literaryGenre  = new StdURI(DBO + "literaryGenre");
+        set = tBoxReasoner.subProperties(genre).collect(toSet());
+        assertTrue(set.contains(literaryGenre));
+        assertFalse(set.contains(genre));
+        assertFalse(set.contains(isClassifiedBy));
+
+        set = tBoxReasoner.subProperties(isClassifiedBy).collect(toSet());
+        assertTrue(set.contains(genre));
+        assertTrue(set.contains(literaryGenre));
+        assertFalse(set.contains(isClassifiedBy));
+    }
+
+    private @Nonnull File hdtFileWithoutImports(String rdfResourcePath) throws Exception {
+        File hdtFile = Files.createTempFile("riefederator", ".hdt").toFile();
+        hdtFile.deleteOnExit();
+        tempFiles.add(hdtFile);
+        try (RDFInputStream hdtRIS = new RDFInputStream(getClass(), rdfResourcePath);
+             JenaTripleIterator it = RDFIterationDispatcher.get().parse(hdtRIS);
+             FileOutputStream out = new FileOutputStream(hdtFile);
+             TripleWriter writer = HDTManager.getHDTWriter(out, hdtFile.toURI().toString(),
+                                                           new HDTSpecification())) {
+            while (it.hasNext()) {
+                Triple t = it.next();
+                if (!t.getPredicate().equals(OWL2.imports.asNode()))
+                    writer.addTriple(HDTUtils.toTripleString(t));
+            }
+        }
+        return hdtFile;
     }
 }

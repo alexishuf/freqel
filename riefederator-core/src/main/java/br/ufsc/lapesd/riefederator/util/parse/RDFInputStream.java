@@ -23,6 +23,24 @@ public class RDFInputStream implements Closeable {
                            .replaceFirst("^file:", "file://");
     }
 
+    public RDFInputStream(@Nonnull Class<?> ref, @Nonnull String resourcePath) {
+        InputStream is = ref.getResourceAsStream(resourcePath);
+        if (is == null) {
+            throw new IllegalArgumentException("Could not load resource "+resourcePath+
+                                               " relative to "+ref.getName());
+        }
+        this.inputStream = is;
+        this.baseUri = "urn:resource:"+ref.getName().replace('.', '/')
+                                      +"/"+resourcePath.replace(" ", "%20");
+        RDFSyntax syntax = RDFSyntax.guess(resourcePath);
+        if (syntax == null) {
+            guessSyntax();
+        } else {
+            assert getSyntaxOrGuess() == syntax;
+            this.syntax = syntax;
+        }
+    }
+
     public RDFInputStream(@Nonnull InputStream inputStream) {
         this.inputStream = inputStream;
         this.baseUri = "urn:inputstream:" + System.identityHashCode(inputStream);

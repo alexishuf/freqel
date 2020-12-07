@@ -7,12 +7,14 @@ import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.util.ExtractedResource;
 import br.ufsc.lapesd.riefederator.util.ExtractedResources;
 import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
+import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
 import br.ufsc.lapesd.riefederator.util.parse.RDFSyntax;
+import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFLanguages;
+import org.apache.jena.riot.writer.NTriplesWriter;
 import org.jetbrains.annotations.NotNull;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.*;
@@ -23,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
 
 import static org.apache.jena.riot.RDFLanguages.filenameToLang;
@@ -79,7 +82,11 @@ public class TBoxSpec implements AutoCloseable {
         InputStream stream = cls.getResourceAsStream(path);
         if (stream == null)
             throw new TBoxLoadException("Could not open resource "+path+" from class "+cls);
-        return addStream(stream, RDFLanguages.filenameToLang(path));
+        Lang lang = filenameToLang(path);
+        if (lang != null)
+            return addStream(stream, lang);
+        else
+            return addStream(stream); // guess syntax peeking
     }
 
     /**
@@ -110,7 +117,10 @@ public class TBoxSpec implements AutoCloseable {
     }
     @CanIgnoreReturnValue
     public @Nonnull TBoxSpec addStream(@Nonnull InputStream stream) {
-        streams.add(new RDFInputStream(stream));
+        RDFInputStream ris = new RDFInputStream(stream);
+        if (ris.getSyntaxOrGuess() == RDFSyntax.UNKNOWN)
+            throw new IllegalArgumentException("Cannot determine syntax of input stream");
+        streams.add(ris);
         return this;
     }
 
@@ -176,9 +186,28 @@ public class TBoxSpec implements AutoCloseable {
         }
     }
 
-    public @Nonnull FileHandle handleFromFile(@Nonnull File file) {
-        return new FileHandle(file, false);
+    public @Nonnull FileHandle handleFromFile(@Nonnull File file, boolean convertHDT) {
+        if (!convertHDT)
+            return new FileHandle(file, false);
+        try (RDFInputStream ris = new RDFInputStream(file)) {
+            if (ris.getSyntaxOrGuess().hasJenaLang())
+                return new FileHandle(file, false);
+            File ntFile = Files.createTempFile("riefederator", ".nt").toFile();
+            ntFile.deleteOnExit();
+            try (FileOutputStream ntOut = new FileOutputStream(ntFile);
+                 JenaTripleIterator it = RDFIterationDispatcher.get().parse(ris)) {
+                NTriplesWriter.write(ntOut, it);
+            } catch (IOException e) {
+                if (!ntFile.delete())
+                    logger.error("Failed to delete temp file {}. Ignoring", ntFile);
+                throw e;
+            }
+            return new FileHandle(ntFile, true);
+        } catch (IOException e) {
+            throw new TBoxLoadException("Cannot check (and convert) file "+file, e);
+        }
     }
+
     public @Nonnull FileHandle handleFromTemp(@Nonnull File file) {
         return new FileHandle(file, true);
     }
@@ -193,23 +222,31 @@ public class TBoxSpec implements AutoCloseable {
     }
 
 
-    private @Nonnull List<FileHandle> toFileHandles() {
+    private @Nonnull List<FileHandle> toFileHandles(boolean convertHDT) {
         List<FileHandle> list = new ArrayList<>();
         for (Model model : models) list.add(toTemp(model));
-        for (File file : files) list.add(handleFromFile(file));
+        for (File file : files) list.add(handleFromFile(file, convertHDT));
 
         for (RDFInputStream ris : streams) {
-            String suffix = "." + ris.getSyntaxOrGuess().getSuffix();
-            File temp = null;
+            File temp;
             try {
+                String suffix = convertHDT && ris.getSyntaxOrGuess() == RDFSyntax.HDT ? ".ttl"
+                              : ris.getSyntaxOrGuess().getSuffix();
+                assert !suffix.isEmpty();
                 temp = File.createTempFile("stream", suffix);
                 temp.deleteOnExit();
-                try (FileOutputStream out = new FileOutputStream(temp)) {
+            } catch (IOException e) {
+                throw new TBoxLoadException("Failed to create temp file for stream "+ris);
+            }
+            try (FileOutputStream out = new FileOutputStream(temp)) {
+                if (convertHDT && ris.getSyntax() == RDFSyntax.HDT) { // OWLAPI can't read HDT
+                    try (JenaTripleIterator it = RDFIterationDispatcher.get().parse(ris)) {
+                        NTriplesWriter.write(out, it);
+                    }
+                } else { // if non-HDT, just copy to the file
                     IOUtils.copy(ris.getInputStream(), out);
                 }
             } catch (IOException e) {
-                if (temp == null)
-                    throw new TBoxLoadException("Failed to create tem file for stream "+ris);
                 throw new TBoxLoadException("Failed to copy stream "+ris+" to file "+temp);
             }
             list.add(handleFromTemp(temp));
@@ -298,7 +335,7 @@ public class TBoxSpec implements AutoCloseable {
     public @Nonnull OWLOntology loadOWLOntology(@Nonnull OWLOntologyManager mgr) {
         List<FileHandle> handles = Collections.emptyList();
         try (ResourceExtractedOntologies extracted = new ResourceExtractedOntologies(mgr)) {
-            handles = toFileHandles();
+            handles = toFileHandles(true);
             File main = File.createTempFile("onto_imports", ".nt");
             main.deleteOnExit();
             try (PrintStream out = new PrintStream(new FileOutputStream(main))) {
