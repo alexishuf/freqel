@@ -1,5 +1,6 @@
-package br.ufsc.lapesd.riefederator.util;
+package br.ufsc.lapesd.riefederator.hdt;
 
+import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.util.parse.RDFSourceAbstractTest;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -20,8 +21,8 @@ import static org.testng.Assert.assertTrue;
 @Test(groups = {"fast"})
 public class HDTUtilsTest extends RDFSourceAbstractTest {
     @DataProvider public  Object[][] saveData() {
-        Model expected = loadModel("parse/iterable.ttl");
-        Model expectedNoBlank = loadModel("parse/iterable-nb.ttl");
+        Model expected = loadModel("../util/parse/iterable.ttl");
+        Model expectedNoBlank = loadModel("../util/parse/iterable-nb.ttl");
         Model expectedBoth = ModelFactory.createDefaultModel();
         expectedBoth.add(expected);
         expectedBoth.add(expectedNoBlank);

@@ -1,7 +1,8 @@
-package br.ufsc.lapesd.riefederator.util.parse.iterators;
+package br.ufsc.lapesd.riefederator.hdt.util.parse;
 
+import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
-import br.ufsc.lapesd.riefederator.util.HDTUtils;
+import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
 import org.apache.jena.graph.Triple;
 import org.rdfhdt.hdt.triples.IteratorTripleString;
 import org.rdfhdt.hdt.triples.TripleString;

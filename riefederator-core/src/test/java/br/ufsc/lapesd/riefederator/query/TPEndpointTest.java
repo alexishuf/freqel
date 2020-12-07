@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.NamedFunction;
+import br.ufsc.lapesd.riefederator.hdt.query.HDTEndpoint;
+import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -10,6 +12,7 @@ import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
+import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
 import com.google.common.collect.Sets;
 import org.apache.jena.fuseki.main.FusekiServer;
 import org.apache.jena.query.Dataset;
@@ -18,13 +21,17 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
+import org.rdfhdt.hdt.hdt.HDT;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
@@ -112,6 +119,40 @@ public class TPEndpointTest extends EndpointTestBase {
                 }
             };
         }));
+        endpoints.add(new NamedFunction<>("HDTEndpoint[in-memory]", stream -> {
+            HDT hdt;
+            try {
+                hdt = HDTUtils.generateHDT(new RDFInputStream(stream));
+            } catch (IOException e) {
+                throw new AssertionError("Unexpected IOException", e);
+            }
+            HDTEndpoint ep = new HDTEndpoint(hdt, stream.toString());
+            return new Fixture<TPEndpoint>(ep) {
+                @Override public void close() {
+                    ep.close();
+                }
+            };
+        }));
+        for (Boolean index : Arrays.asList(true, false)) {
+            endpoints.add(new NamedFunction<>(
+                    "HDTEndpoint["+(index ? "indexed,":"")+", mapped]", stream -> {
+                File file;
+                HDT hdt;
+                try {
+                    file = Files.createTempFile("riefederator", ".hdt").toFile();
+                    hdt = HDTUtils.saveHDT(file, index, new RDFInputStream(stream));
+                } catch (IOException e) {
+                    throw new AssertionError("Unexpected IOException", e);
+                }
+                HDTEndpoint ep = new HDTEndpoint(hdt, stream.toString());
+                return new Fixture<TPEndpoint>(ep) {
+                    @Override public void close() {
+                        ep.close();
+                        Assert.assertTrue(HDTUtils.deleteWithIndex(file));
+                    }
+                };
+            }));
+        }
     }
 
     @DataProvider
@@ -425,7 +466,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
             for (Future<?> future : list) future.get();
             service.shutdown();
-            service.awaitTermination(1, TimeUnit.SECONDS);
+            assertTrue(service.awaitTermination(2, TimeUnit.SECONDS));
 
             assertTrue(fix.endpoint.getAlternatives().stream()
                     .allMatch(fix.endpoint::isAlternative));

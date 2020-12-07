@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.riefederator.util.parse.iterators;
 
+import br.ufsc.lapesd.riefederator.hdt.util.parse.HDTJenaTripleIterator;
 import org.rdfhdt.hdt.hdt.HDT;
 import org.rdfhdt.hdt.triples.IteratorTripleString;
 import org.slf4j.Logger;

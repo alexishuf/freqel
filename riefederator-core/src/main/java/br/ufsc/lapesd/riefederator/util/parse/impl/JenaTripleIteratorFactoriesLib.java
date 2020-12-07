@@ -1,12 +1,12 @@
 package br.ufsc.lapesd.riefederator.util.parse.impl;
 
+import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
+import br.ufsc.lapesd.riefederator.hdt.util.parse.HDTJenaTripleIterator;
 import br.ufsc.lapesd.riefederator.jena.TBoxLoader;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
-import br.ufsc.lapesd.riefederator.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.util.parse.*;
 import br.ufsc.lapesd.riefederator.util.parse.iterators.ClosingHDTJenaTripleIterator;
 import br.ufsc.lapesd.riefederator.util.parse.iterators.DelegatingJenaTripleIterator;
-import br.ufsc.lapesd.riefederator.util.parse.iterators.HDTJenaTripleIterator;
 import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;

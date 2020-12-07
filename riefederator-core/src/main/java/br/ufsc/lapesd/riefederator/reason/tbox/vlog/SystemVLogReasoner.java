@@ -1,11 +1,11 @@
 package br.ufsc.lapesd.riefederator.reason.tbox.vlog;
 
+import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.model.Triple.Position;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.util.ExtractedResource;
-import br.ufsc.lapesd.riefederator.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.util.PropertyReader;
 import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
 import br.ufsc.lapesd.riefederator.util.parse.SourceIterationException;
@@ -33,7 +33,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.util.HDTUtils.streamTerm;
+import static br.ufsc.lapesd.riefederator.hdt.util.HDTUtils.streamTerm;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class SystemVLogReasoner implements TBoxReasoner {

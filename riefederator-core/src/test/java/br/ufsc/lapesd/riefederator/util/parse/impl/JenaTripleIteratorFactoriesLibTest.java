@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.util.parse.impl;
 
-import br.ufsc.lapesd.riefederator.util.HDTUtils;
+import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.util.parse.JenaTripleIteratorFactory;
 import br.ufsc.lapesd.riefederator.util.parse.RDFSourceAbstractTest;
 import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;

@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.util.parse.impl;
 
-import br.ufsc.lapesd.riefederator.util.HDTUtils;
+import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
 import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
 import br.ufsc.lapesd.riefederator.util.parse.RDFSyntax;

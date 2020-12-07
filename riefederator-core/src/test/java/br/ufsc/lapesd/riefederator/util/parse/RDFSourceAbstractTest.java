@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.util.parse;
 
-import br.ufsc.lapesd.riefederator.util.HDTUtils;
+import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.StmtIterator;
@@ -37,7 +37,7 @@ public class RDFSourceAbstractTest {
             hdt.close();
         hdtObjects.clear();
         for (File file : tempFiles) {
-            if (!file.delete())
+            if (!HDTUtils.deleteWithIndex(file))
                 fail("Failed to delete "+file.getAbsolutePath());
         }
         tempFiles.clear();

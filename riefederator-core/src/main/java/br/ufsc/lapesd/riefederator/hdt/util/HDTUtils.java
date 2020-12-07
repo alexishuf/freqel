@@ -1,5 +1,6 @@
-package br.ufsc.lapesd.riefederator.util;
+package br.ufsc.lapesd.riefederator.hdt.util;
 
+import br.ufsc.lapesd.riefederator.algebra.Cardinality;
 import br.ufsc.lapesd.riefederator.jena.JenaWrappers;
 import br.ufsc.lapesd.riefederator.jena.model.term.JenaTermFactory;
 import br.ufsc.lapesd.riefederator.jena.model.term.node.JenaNodeTermFactory;
@@ -12,7 +13,6 @@ import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
 import br.ufsc.lapesd.riefederator.util.parse.TriplesEstimate;
 import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Stopwatch;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Property;
@@ -37,7 +37,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -48,6 +48,26 @@ import static org.rdfhdt.hdt.enums.ResultEstimationType.MORE_THAN;
 public class HDTUtils {
     private static final Logger logger = LoggerFactory.getLogger(HDTUtils.class);
     private static final @Nonnull String BASE_URI = "urn:relative:";
+    private static final Pattern INDEX_SUFFIX = Pattern.compile("\\.index(\\.v\\d+-\\d+)?$");
+
+    public static @Nonnull Cardinality.Reliability
+    toReliability(@Nonnull ResultEstimationType type) {
+        switch (type) {
+            case UNKNOWN: return Cardinality.Reliability.UNSUPPORTED;
+            case APPROXIMATE: return Cardinality.Reliability.GUESS;
+            case UP_TO: return Cardinality.Reliability.UPPER_BOUND;
+            case MORE_THAN: return Cardinality.Reliability.LOWER_BOUND;
+            case EXACT: return Cardinality.Reliability.EXACT;
+            default:
+                throw new UnsupportedOperationException("Unexpected ResultEstimationType "+type);
+        }
+    }
+
+    public static @Nonnull String toHDTQueryTerm(@Nonnull Term term) {
+        if (term.isURI()) return term.asURI().getURI();
+        else if (term.isBlank() || term.isVar()) return "";
+        else return RDFUtils.toNT(term);
+    }
 
     public static @Nonnull String toHDTTerm(@Nonnull Node node) {
         return node.isURI() ? node.getURI() : RDFUtils.toNT(JenaWrappers.fromJena(node));
@@ -158,7 +178,7 @@ public class HDTUtils {
                                              @Nullable File dst, boolean index,
                                              @Nonnull HDTOptions format) throws IOException {
         Preconditions.checkArgument(sources.size() > 0, "At least one source required");
-        String dstPath = dst.getAbsolutePath();
+        String path = dst == null ? null : dst.getAbsolutePath();
         if (dst != null) {
             File parent = dst.getParentFile();
             if (!parent.exists() && !parent.mkdirs())
@@ -166,18 +186,16 @@ public class HDTUtils {
             if (parent.exists() && !parent.isDirectory())
                 throw new IOException(parent.getAbsolutePath()+" exsists but is not a dir");
             if (dst.exists() && !dst.isFile())
-                throw new IOException("Cannot overwrite non-file "+dstPath+" with an HDT file");
+                throw new IOException("Cannot overwrite non-file "+path+" with an HDT file");
             else if (dst.exists())
-                logger.info("Overwriting {} with new HDT file", dstPath);
+                logger.info("Overwriting {} with new HDT file", path);
         }
 
-        String compressPrefix = String.format("Generating HDT in-memory from %s", sources);
-        DefaultProgressListener compressListener = new DefaultProgressListener(compressPrefix);
         RDFIterationDispatcher dispatcher = RDFIterationDispatcher.get();
         try (JenaTripleStringIterator it = new JenaTripleStringIterator(sources, dispatcher)) {
             HDT hdt;
             if (dst != null) {
-                try (TripleWriter writer = HDTManager.getHDTWriter(dstPath, BASE_URI, format)) {
+                try (TripleWriter writer = HDTManager.getHDTWriter(path, BASE_URI, format)) {
                     while (it.hasNext())
                         writer.addTriple(it.next());
                 } catch (IOException|RuntimeException e) {
@@ -185,20 +203,23 @@ public class HDTUtils {
                 } catch (Exception e) {
                     throw new RuntimeException("Unexpected "+e.getClass().getSimpleName(), e);
                 }
-                if (index) {
-                    String prefix = "Indexing "+dstPath;
-                    hdt = HDTManager.mapIndexedHDT(dstPath, new DefaultProgressListener(prefix));
-                } else {
-                    String prefix = "Memory-mapping"+dstPath;
-                    hdt = HDTManager.mapHDT(dstPath, new DefaultProgressListener(prefix));
-                }
+                if (index)
+                    hdt = HDTManager.mapIndexedHDT(path, createProgress("Indexing", path));
+                else
+                    hdt = HDTManager.mapHDT(path, createProgress("Memory-mapping", path));
             } else {
-                 hdt = HDTManager.generateHDT(it, BASE_URI, format, compressListener);
+                 hdt = HDTManager.generateHDT(it, BASE_URI, format,
+                         createProgress("Generating HDT in-memory from", sources));
             }
             return hdt;
         } catch (ParserException e) {
             throw new IOException("Badly formatted triple", e);
         }
+    }
+
+    private static @Nonnull ProgressListener
+    createProgress(@Nonnull String action, @Nonnull Object subject) {
+        return new LoggerHDTProgressListener(logger, action+" "+subject.toString());
     }
 
     public static @Nonnull HDT generateHDT(Object... sources) throws IOException {
@@ -261,32 +282,34 @@ public class HDTUtils {
         return StreamSupport.stream(sit, false);
     }
 
+    public static boolean deleteWithIndex(@Nonnull File hdtFile) {
+        try {
+            forceDeleteWithIndex(hdtFile);
+            return true;
+        } catch (IOException e) { return false; }
+    }
+
+    public static void forceDeleteWithIndex(@Nonnull File hdtFile) throws IOException {
+        List<File> failed = null;
+        if (!hdtFile.delete())
+            (failed == null ? failed = new ArrayList<>() : failed).add(hdtFile);
+        for (File index : getIndexFiles(hdtFile)) {
+            if (!index.delete())
+                (failed == null ? failed = new ArrayList<>() : failed).add(index);
+        }
+        if (failed != null)
+            throw new IOException("Failed to remove these files "+failed);
+    }
+
+    private static @Nonnull File[] getIndexFiles(@Nonnull File hdtFile) {
+        File[] files = hdtFile.getParentFile().listFiles((d, n) -> n.startsWith(hdtFile.getName())
+                && INDEX_SUFFIX.matcher(n).find());
+        return files == null ? new File[0] : files;
+    }
+
     public static class NullProgressListener implements ProgressListener  {
         @Override public void notifyProgress(float level, String message) { }
     }
     public static ProgressListener NULL_LISTENER = new NullProgressListener();
 
-    private static class DefaultProgressListener implements ProgressListener  {
-        private int debugWindow = 0, infoWindow = 5;
-        private Stopwatch debugSW = Stopwatch.createStarted();
-        private Stopwatch infoSW = Stopwatch.createStarted();
-        private @Nonnull String logTemplate;
-
-        public DefaultProgressListener(@Nonnull String logPrefix) {
-            this.logTemplate = logPrefix + ": {}% {}";
-        }
-
-        @Override public void notifyProgress(float level, String message) {
-            if (debugSW.elapsed(TimeUnit.SECONDS) >= debugWindow) {
-                logger.debug(logTemplate, level, message);
-                debugSW.reset().start();
-                debugWindow = 2;
-            }
-            if (infoSW.elapsed(TimeUnit.SECONDS) >= infoWindow) {
-                logger.debug(logTemplate, level, message);
-                infoSW.reset().start();
-                infoWindow = 20;
-            }
-        }
-    }
 }

@@ -2,10 +2,10 @@ package br.ufsc.lapesd.riefederator.reason.tbox;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
+import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.reason.tbox.vlog.SystemVLogReasoner;
-import br.ufsc.lapesd.riefederator.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
 import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
 import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
