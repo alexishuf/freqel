@@ -91,7 +91,7 @@ public class SwaggerSourceLoader implements SourceLoader {
                 File resolved = child.isAbsolute() ? child : new File(reference, child.getPath());
                 return factory.fromFile(resolved);
             } catch (IOException e) {
-                String message = "Could not load from file" + file + ": " + e.getMessage();
+                String message = "Could not load from file " + file + ": " + e.getMessage();
                 throw new SourceLoadException(message, e, spec);
             }
         } else if (url != null) {

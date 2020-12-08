@@ -1,1 +1,1 @@
-../../../src/test/resources/br/ufsc/lapesd/riefederator/modalidades.ttl
+../../../riefederator-core/src/test/resources/br/ufsc/lapesd/riefederator/modalidades.ttl

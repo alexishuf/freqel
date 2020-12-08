@@ -2,24 +2,21 @@ package br.ufsc.lapesd.riefederator.federation.spec.source;
 
 import br.ufsc.lapesd.riefederator.description.SelectDescription;
 import br.ufsc.lapesd.riefederator.federation.Source;
+import br.ufsc.lapesd.riefederator.jena.ModelUtils;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.util.DictTree;
+import br.ufsc.lapesd.riefederator.util.parse.SourceIterationException;
 import com.google.common.collect.Sets;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.riot.RDFLanguages;
-import org.apache.jena.riot.RiotException;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
-import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 
 public class RDFFileSourceLoader implements SourceLoader {
@@ -31,73 +28,57 @@ public class RDFFileSourceLoader implements SourceLoader {
     }
 
     @Override
-    public @Nonnull Set<Source> load(@Nonnull DictTree sourceSpec, @Nullable SourceCache ignored,
+    public @Nonnull Set<Source> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
                                      @Nonnull File reference) throws SourceLoadException {
-        String syntax = sourceSpec.getString("syntax", "").trim().toLowerCase();
-        if (syntax.trim().isEmpty())
-            syntax = null;
-        Lang lang = RDFLanguages.fileExtToLang(syntax);
-        if (lang == null)
-            lang = RDFLanguages.nameToLang(syntax);
-        if (lang == null)
-            lang = RDFLanguages.shortnameToLang(syntax);
-        if (lang == null)
-            lang = RDFLanguages.contentTypeToLang(syntax);
-
         Model model = ModelFactory.createDefaultModel();
-        String name;
-        String loader = sourceSpec.getString("loader", "");
+        List<String> nameParts = new ArrayList<>();
+        String loader = spec.getString("loader", "");
         if (!loader.equals("rdf-file")) {
             throw new IllegalArgumentException("Loader "+loader+" not supported by "+this);
-        } else if (sourceSpec.containsKey("file")) {
-            name = loadFile(sourceSpec, lang, model, reference);
-        } else if (sourceSpec.containsKey("url")) {
-            name = loadUrl(sourceSpec, lang, model);
-        } else {
-            throw new SourceLoadException("Neither file nor url properties present " +
-                                          "in this source spec!", sourceSpec);
+        } else if (!spec.containsKey("file") && !spec.containsKey("files")
+                && !spec.containsKey("url" ) && !spec.containsKey("urls" )) {
+            throw new SourceLoadException("No file/files/url/urls property present " +
+                                          "in this source spec!", spec);
         }
+
+        for (Object file : spec.getListNN("file"))
+            nameParts.add(loadFile(spec, file.toString(), model, reference));
+        for (Object file : spec.getListNN("files"))
+            nameParts.add(loadFile(spec, file.toString(), model, reference));
+        for (Object url : spec.getListNN("url"))
+            nameParts.add(loadUrl(spec, url.toString(), model));
+        for (Object url : spec.getListNN("urls"))
+            nameParts.add(loadUrl(spec, url.toString(), model));
+        String name = spec.getString("name", nameParts.toString());
 
         ARQEndpoint ep = ARQEndpoint.forModel(model, name);
         return singleton(new Source(new SelectDescription(ep, true), ep, name));
     }
 
-    private @Nonnull String loadFile(@Nonnull DictTree spec, @Nullable Lang lang,
+    private @Nonnull String loadFile(@Nonnull DictTree spec, @Nonnull String path,
                                      @Nonnull Model model,
                                      @Nonnull File reference) throws SourceLoadException {
-        File child = new File(spec.getString("file", ""));
+        File child = new File(path);
         File file = child.isAbsolute() ? child : new File(reference, child.getPath());
-        RiotException firstException = null;
-        Lang firstLang = null;
-        for (Lang l : asList(lang, RDFLanguages.filenameToLang(file.getName()))) {
-            if (l == null) continue;
-            try (FileInputStream in = new FileInputStream(file)) {
-                RDFDataMgr.read(model, in, l);
-                return file.getAbsolutePath();
-            } catch (RiotException e) {
-                firstException = e;
-                firstLang = l;
-            } catch (IOException e) {
-                String m = "Failed to parse file" + file + " due to IOException: " + e.getMessage();
-                throw new SourceLoadException(m, e, spec);
-            }
+        try {
+            ModelUtils.parseInto(model, file);
+        } catch (SourceIterationException e) {
+            throw new SourceLoadException("Problem parsing file "+file, e, spec);
+        } catch (RuntimeException e) {
+            throw new SourceLoadException("Unexpected exception parsing file "+file, e, spec);
         }
-        assert firstException != null;
-        throw new SourceLoadException(firstLang+"Syntax error on file "+file+": "+
-                                      firstException.getMessage(), firstException, spec);
+        return file.getAbsolutePath();
     }
 
-    private @Nonnull String loadUrl(@Nonnull DictTree spec, @Nullable Lang lang,
-                                   @Nonnull Model model) throws SourceLoadException {
-        String url = spec.getString("url", "");
+    private @Nonnull String loadUrl(@Nonnull DictTree spec, @Nonnull String url,
+                                    @Nonnull Model model) throws SourceLoadException {
         try {
-            RDFDataMgr.read(model, url, lang);
+            ModelUtils.parseInto(model, url);
             return url;
-        } catch (RiotException e) {
-            throw new SourceLoadException("Syntax error on URL "+url+": "+ e.getMessage(), e, spec);
+        } catch (SourceIterationException e) {
+            throw new SourceLoadException("Problem loading URL "+url, e, spec);
         } catch (RuntimeException e) {
-            String m = "Failed to parse URL" + url + " due to Exception: " + e.getMessage();
-            throw new SourceLoadException(m, e, spec);
+            throw new SourceLoadException("Unexpected exception loading URL "+url, e, spec);
         }
     }
 }
