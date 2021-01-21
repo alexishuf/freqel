@@ -1,21 +1,18 @@
 package br.ufsc.lapesd.riefederator.reason.tbox;
 
-import br.ufsc.lapesd.riefederator.jena.ModelUtils;
-import br.ufsc.lapesd.riefederator.jena.TBoxLoader;
-import br.ufsc.lapesd.riefederator.model.RDFUtils;
-import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
-import br.ufsc.lapesd.riefederator.util.ExtractedResource;
-import br.ufsc.lapesd.riefederator.util.ExtractedResources;
-import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
-import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
-import br.ufsc.lapesd.riefederator.util.parse.RDFSyntax;
-import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
+import com.github.lapesd.rdfit.RIt;
+import com.github.lapesd.rdfit.components.jena.JenaHelpers;
+import com.github.lapesd.rdfit.source.RDFFile;
+import com.github.lapesd.rdfit.source.RDFResource;
+import com.github.lapesd.rdfit.util.impl.EternalCache;
+import com.github.lapesd.rdfit.util.impl.RDFBlob;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import org.apache.commons.io.IOUtils;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.writer.NTriplesWriter;
-import org.jetbrains.annotations.NotNull;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.writer.NQuadsWriter;
+import org.apache.jena.sparql.core.Quad;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.*;
 import org.semanticweb.owlapi.util.SimpleIRIMapper;
@@ -25,19 +22,19 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.io.*;
-import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
-import static org.apache.jena.riot.RDFLanguages.filenameToLang;
+import static com.github.lapesd.rdfit.util.Utils.toASCIIString;
+import static java.util.stream.Collectors.toList;
 
 public class TBoxSpec implements AutoCloseable {
     private static Logger logger = LoggerFactory.getLogger(TBoxSpec.class);
 
-    private List<String> uris = new ArrayList<>();
-    private List<File> files = new ArrayList<>();
-    private List<Model> models = new ArrayList<>();
-    private List<RDFInputStream> streams = new ArrayList<>();
-    boolean fetchOwlImports = true;
+    private List<Object> sources = new ArrayList<>();
+    private boolean fetchOwlImports = true;
 
     @CanIgnoreReturnValue
     public @Nonnull TBoxSpec fetchOwlImports(boolean value) {
@@ -51,20 +48,8 @@ public class TBoxSpec implements AutoCloseable {
     }
 
     @CanIgnoreReturnValue
-    public @Nonnull TBoxSpec addURI(@Nonnull String uri) {
-        uris.add(uri);
-        return this;
-    }
-
-    @CanIgnoreReturnValue
-    public @Nonnull TBoxSpec addFile(@Nonnull File file) {
-        files.add(file);
-        return this;
-    }
-
-    @CanIgnoreReturnValue
-    public @Nonnull TBoxSpec addModel(@Nonnull Model model) {
-        models.add(model);
+    public @Nonnull TBoxSpec add(@Nonnull Object source) {
+        sources.add(source);
         return this;
     }
 
@@ -79,14 +64,12 @@ public class TBoxSpec implements AutoCloseable {
     @CanIgnoreReturnValue
     public @Nonnull TBoxSpec addResource(@Nonnull Class<?> cls,
                                          @Nonnull String path) throws TBoxLoadException {
-        InputStream stream = cls.getResourceAsStream(path);
-        if (stream == null)
+        try {
+            sources.add(new RDFResource(cls, path));
+        } catch (RuntimeException e) {
             throw new TBoxLoadException("Could not open resource "+path+" from class "+cls);
-        Lang lang = filenameToLang(path);
-        if (lang != null)
-            return addStream(stream, lang);
-        else
-            return addStream(stream); // guess syntax peeking
+        }
+        return this;
     }
 
     /**
@@ -102,156 +85,36 @@ public class TBoxSpec implements AutoCloseable {
         String inPath = path;
         if (path.startsWith("/"))
             path = path.substring(1);
-        else if (path.indexOf('/') == -1)
-            path = "br/ufsc/lapesd/riefederator" + path;
-        InputStream stream = ClassLoader.getSystemClassLoader().getResourceAsStream(path);
-        if (stream == null)
+        else if (!path.startsWith("/"))
+            path = "br/ufsc/lapesd/riefederator/" + path;
+        try {
+            sources.add(new RDFResource(path));
+        } catch (RuntimeException e) {
             throw new TBoxLoadException("Could not find resource "+inPath);
-        return addStream(stream, filenameToLang(inPath));
-    }
-
-    @CanIgnoreReturnValue
-    public @Nonnull TBoxSpec addStream(@Nonnull InputStream stream, @Nonnull Lang lang) {
-        streams.add(new RDFInputStream(stream).setSyntax(RDFSyntax.fromJenaLang(lang)));
-        return this;
-    }
-    @CanIgnoreReturnValue
-    public @Nonnull TBoxSpec addStream(@Nonnull InputStream stream) {
-        RDFInputStream ris = new RDFInputStream(stream);
-        if (ris.getSyntaxOrGuess() == RDFSyntax.UNKNOWN)
-            throw new IllegalArgumentException("Cannot determine syntax of input stream");
-        streams.add(ris);
+        }
         return this;
     }
 
     @Override
     public void close() {
-        for (RDFInputStream p : streams)
-            p.close();
+        for (Object src : sources) {
+            if (src instanceof AutoCloseable) {
+                try {
+                    ((AutoCloseable) src).close();
+                } catch (Exception e) {
+                    logger.warn("Ignoring {}.close() exception", src, e);
+                }
+            }
+        }
     }
 
     public @Nonnull Model loadModel() throws TBoxLoadException {
-        TBoxLoader loader = new TBoxLoader().fetchingImports(fetchOwlImports);
-        for (File file : files) {
-            try {
-                loader.addFile(file);
-            } catch (Exception e) {
-                throw new TBoxLoadException("Failed to load file "+file, e);
-            }
-        }
-        for (String uri : uris) {
-            try {
-                loader.fetchOntology(uri);
-            } catch (RuntimeException e) {
-                throw new TBoxLoadException("Failed to load URI "+uri, e);
-            }
-        }
-        try {
-            for (Model model : models) loader.addModel(model);
-        } catch (RuntimeException e) {
-            throw new TBoxLoadException("Problem while loading from Model instances", e);
-        }
-        for (RDFInputStream ris : streams) {
-            loader.addInputStream(ris);
-        }
-
-        return loader.getModel();
+        Graph graph = JenaHelpers.toGraphImporting(RIt.iterateTriples(Triple.class, sources));
+        return ModelFactory.createModelForGraph(graph);
     }
 
-    public @Nonnull List<Object> getAllSources() {
-        ArrayList<Object> list = new ArrayList<>();
-        list.addAll(files);
-        list.addAll(uris);
-        list.addAll(models);
-        list.addAll(streams);
-        return list;
-    }
-
-    private static final class FileHandle implements AutoCloseable {
-        File file;
-        boolean delete;
-
-        private FileHandle(File file, boolean delete) {
-            this.file = file;
-            this.delete = delete;
-        }
-
-        @Override
-        public void close() {
-            if (delete) {
-                if (!file.delete())
-                    logger.error("Failed to delete temporary file " + file.getAbsolutePath());
-
-            }
-        }
-    }
-
-    public @Nonnull FileHandle handleFromFile(@Nonnull File file, boolean convertHDT) {
-        if (!convertHDT)
-            return new FileHandle(file, false);
-        try (RDFInputStream ris = new RDFInputStream(file)) {
-            if (ris.getSyntaxOrGuess().hasJenaLang())
-                return new FileHandle(file, false);
-            File ntFile = Files.createTempFile("riefederator", ".nt").toFile();
-            ntFile.deleteOnExit();
-            try (FileOutputStream ntOut = new FileOutputStream(ntFile);
-                 JenaTripleIterator it = RDFIterationDispatcher.get().parse(ris)) {
-                NTriplesWriter.write(ntOut, it);
-            } catch (IOException e) {
-                if (!ntFile.delete())
-                    logger.error("Failed to delete temp file {}. Ignoring", ntFile);
-                throw e;
-            }
-            return new FileHandle(ntFile, true);
-        } catch (IOException e) {
-            throw new TBoxLoadException("Cannot check (and convert) file "+file, e);
-        }
-    }
-
-    public @Nonnull FileHandle handleFromTemp(@Nonnull File file) {
-        return new FileHandle(file, true);
-    }
-
-    private FileHandle toTemp(@Nonnull Model model) throws TBoxLoadException {
-        String s = "Model@"+System.identityHashCode(model);
-        try {
-            return handleFromTemp(ModelUtils.toTemp(model, false));
-        } catch (IOException e) {
-            throw new TBoxLoadException("Failed to generate temp file for "+s);
-        }
-    }
-
-
-    private @Nonnull List<FileHandle> toFileHandles(boolean convertHDT) {
-        List<FileHandle> list = new ArrayList<>();
-        for (Model model : models) list.add(toTemp(model));
-        for (File file : files) list.add(handleFromFile(file, convertHDT));
-
-        for (RDFInputStream ris : streams) {
-            File temp;
-            try {
-                String suffix = convertHDT && ris.getSyntaxOrGuess() == RDFSyntax.HDT ? ".ttl"
-                              : ris.getSyntaxOrGuess().getSuffix();
-                assert !suffix.isEmpty();
-                temp = File.createTempFile("stream", suffix);
-                temp.deleteOnExit();
-            } catch (IOException e) {
-                throw new TBoxLoadException("Failed to create temp file for stream "+ris);
-            }
-            try (FileOutputStream out = new FileOutputStream(temp)) {
-                if (convertHDT && ris.getSyntax() == RDFSyntax.HDT) { // OWLAPI can't read HDT
-                    try (JenaTripleIterator it = RDFIterationDispatcher.get().parse(ris)) {
-                        NTriplesWriter.write(out, it);
-                    }
-                } else { // if non-HDT, just copy to the file
-                    IOUtils.copy(ris.getInputStream(), out);
-                }
-            } catch (IOException e) {
-                throw new TBoxLoadException("Failed to copy stream "+ris+" to file "+temp);
-            }
-            list.add(handleFromTemp(temp));
-        }
-        return list;
+    public @Nonnull List<Object> getSources() {
+        return sources;
     }
 
     public @Nonnull OWLOntology loadOWLOntology() {
@@ -275,76 +138,56 @@ public class TBoxSpec implements AutoCloseable {
         return mgr;
     }
 
-    private static class ResourceExtractedOntologies extends ExtractedResources {
-        private static final @Nonnull Map<String, String> uri2resource;
-        private final @Nonnull List<SimpleIRIMapper> mappers;
-        private final @Nonnull OWLOntologyManager manager;
+    private static class OWLAPIFiles implements AutoCloseable {
+        private final List<RDFFile> extracted = new ArrayList<>();
+        private final List<SimpleIRIMapper> mappers = new ArrayList<>();
+        private final List<RDFFile> sources = new ArrayList<>();
+        private final OWLOntologyManager mgr;
 
-        static {
-            Map<String, String> map = new LinkedHashMap<>();
-            String dir = "br/ufsc/lapesd/riefederator";
-            map.put("http://www.w3.org/1999/02/22-rdf-syntax-ns", dir+"/rdf.ttl");
-            map.put("http://www.w3.org/2000/01/rdf-schema", dir+"/rdf-schema.ttl");
-            map.put("http://www.w3.org/2002/07/owl", dir+"/owl.ttl");
-            map.put("http://xmlns.com/foaf/0.1/", dir+"/foaf.rdf");
-            map.put("http://www.w3.org/2006/time", dir+"/time.ttl");
-            map.put("http://www.w3.org/ns/prov", dir+"/prov-o.ttl");
-            map.put("http://www.w3.org/ns/prov-o", dir+"/prov-o.ttl");
-            map.put("http://www.w3.org/2004/02/skos/core", dir+"/skos.rdf");
-            map.put("http://purl.org/dc/elements/1.1/", dir+"/dcelements.ttl");
-            map.put("http://purl.org/dc/dcam/", dir+"/dcam.ttl");
-            map.put("http://purl.org/dc/dcmitype/", dir+"/dctype.ttl");
-            map.put("http://purl.org/dc/terms/", dir+"/dcterms.ttl");
-            uri2resource = map;
-        }
-
-        public ResourceExtractedOntologies(@NotNull OWLOntologyManager mgr) throws IOException {
-            super(createExtractedResources());
-            manager = mgr;
-            mappers = new ArrayList<>(list.size());
-            int i = 0;
-            for (Map.Entry<String, String> e : uri2resource.entrySet()) {
-                ExtractedResource ex = list.get(i++);
-                assert ex.getResourcePath().equals(e.getValue());
-                mappers.add(new SimpleIRIMapper(IRI.create(e.getKey()), IRI.create(ex.getFile())));
-            }
-            mappers.forEach(mgr.getIRIMappers()::add);
-        }
-
-        private static @Nonnull List<ExtractedResource>
-        createExtractedResources() throws IOException {
-            List<ExtractedResource> list = new ArrayList<>();
+        public OWLAPIFiles(@Nonnull OWLOntologyManager mgr,
+                           @Nonnull List<?> sources) throws IOException {
+            this.mgr = mgr;
             try {
-                for (String resource : uri2resource.values()) {
-                    list.add(new ExtractedResource(resource));
+                for (Map.Entry<String, RDFBlob> e : EternalCache.getDefault().dump().entrySet()) {
+                    RDFFile f = RDFFile.createTemp(e.getValue());
+                    extracted.add(f);
+                    mappers.add(new SimpleIRIMapper(IRI.create(e.getKey()),
+                                                    IRI.create(f.getFile())));
                 }
-                return list;
-            } catch (IOException e) {
-                list.forEach(ExtractedResource::close);
-                throw e;
+                mappers.forEach(mgr.getIRIMappers()::add);
+                for (Object source : sources) {
+                    RDFFile file = RDFFile.createTemp();
+                    this.sources.add(file);
+                    try (FileOutputStream out = new FileOutputStream(file.getFile())) {
+                        NQuadsWriter.write(out, RIt.iterateQuads(Quad.class, source));
+                    }
+                }
+            } catch (IOException|RuntimeException|Error t) {
+                close();
+                throw t;
             }
         }
 
-        @Override
-        public void close() {
-            mappers.forEach(manager.getIRIMappers()::remove);
-            super.close();
+        public @Nonnull List<String> getSourceFilesURIs() {
+            return sources.stream().map(f -> toASCIIString(f.getFile().toURI())).collect(toList());
+        }
+
+        @Override public void close() {
+            mappers.forEach(mgr.getIRIMappers()::remove);
+            Stream.concat(extracted.stream(), sources.stream()).forEach(RDFFile::close);
         }
     }
 
     public @Nonnull OWLOntology loadOWLOntology(@Nonnull OWLOntologyManager mgr) {
-        List<FileHandle> handles = Collections.emptyList();
-        try (ResourceExtractedOntologies extracted = new ResourceExtractedOntologies(mgr)) {
-            handles = toFileHandles(true);
-            File main = File.createTempFile("onto_imports", ".nt");
+        File main = null;
+        try (OWLAPIFiles extracted = new OWLAPIFiles(mgr, sources)) {
+            main = File.createTempFile("onto_imports", ".nt");
             main.deleteOnExit();
             try (PrintStream out = new PrintStream(new FileOutputStream(main))) {
                 out.println("@prefix owl: <http://www.w3.org/2002/07/owl#> .");
                 out.printf("<file://%s> a owl:Ontology", main.getAbsolutePath());
-                for (FileHandle handle : handles)
-                    out.printf(";\n  owl:imports <file://%s> ", handle.file.getAbsolutePath());
-                for (String uri : uris)
-                    out.printf(";\n  owl:imports %s ", RDFUtils.toNT(new StdURI(uri)));
+                for (String uri : extracted.getSourceFilesURIs())
+                    out.printf(";\n  owl:imports <%s> ", uri);
                 out.println(".");
             }
             return mgr.loadOntologyFromOntologyDocument(main);
@@ -353,7 +196,8 @@ public class TBoxSpec implements AutoCloseable {
         } catch (OWLOntologyCreationException e) {
             throw new TBoxLoadException("Failed to load importer ontology.", e);
         } finally {
-            handles.forEach(FileHandle::close);
+            if (main != null && main.exists() && !main.delete())
+                logger.warn("Ignoring failure to delete main temp file {}", main);
         }
     }
 }

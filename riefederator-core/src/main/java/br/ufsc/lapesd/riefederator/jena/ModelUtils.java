@@ -1,9 +1,6 @@
 package br.ufsc.lapesd.riefederator.jena;
 
-import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
-import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
 import com.google.common.base.Preconditions;
-import org.apache.jena.graph.Graph;
 import org.apache.jena.rdf.model.*;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
@@ -20,7 +17,6 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import java.util.zip.GZIPOutputStream;
 
-import static java.util.Arrays.asList;
 import static java.util.Spliterator.*;
 import static java.util.Spliterators.spliteratorUnknownSize;
 
@@ -125,19 +121,5 @@ public class ModelUtils {
             out.close();
         }
         return file;
-    }
-
-    public static @Nonnull Model parseAsModel(Object... sources) {
-        Model model = ModelFactory.createDefaultModel();
-        return parseInto(model, sources);
-    }
-
-    public static @Nonnull Model parseInto(@Nonnull Model model, @Nonnull Object... sources) {
-        Graph g = model.getGraph();
-        try (JenaTripleIterator it = RDFIterationDispatcher.get().parseAll(asList(sources))) {
-            while (it.hasNext())
-                g.add(it.next());
-        }
-        return model;
     }
 }

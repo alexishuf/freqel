@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.riefederator.hdt.query;
 
-import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
+import br.ufsc.lapesd.riefederator.hdt.HDTUtils;
 import br.ufsc.lapesd.riefederator.model.NTParseException;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.Term;
@@ -11,22 +11,19 @@ import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.riefederator.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.riefederator.util.indexed.IndexSet;
-import org.rdfhdt.hdt.enums.ResultEstimationType;
-import org.rdfhdt.hdt.triples.IteratorTripleString;
 import org.rdfhdt.hdt.triples.TripleString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
+
+import static br.ufsc.lapesd.riefederator.hdt.HDTUtils.toCardinality;
 
 public class HDTResults extends AbstractResults implements Results {
     private static final Logger logger = LoggerFactory.getLogger(HDTResults.class);
-    private final @Nonnull IteratorTripleString hdtIt;
+    private final @Nonnull Iterator<TripleString> hdtIt;
     private final @Nonnull ArraySolution.ValueFactory factory;
     private final @Nonnull String[] names;
     private Solution next;
@@ -47,16 +44,15 @@ public class HDTResults extends AbstractResults implements Results {
         return set;
     }
 
-    public HDTResults(@Nonnull IteratorTripleString it, @Nonnull Triple query) {
+    public HDTResults(@Nonnull Iterator<TripleString> it, @Nonnull Triple query) {
         this(getVars(query), it, query);
     }
 
-    public HDTResults(@Nonnull Collection<String> varNames, @Nonnull IteratorTripleString it,
+    public HDTResults(@Nonnull Collection<String> varNames, @Nonnull Iterator<TripleString> it,
                       @Nonnull Triple query) {
         super(varNames);
         this.hdtIt = it;
-        this.pendingEstimate = it.numResultEstimation() == ResultEstimationType.UNKNOWN ? 0
-                      : (int)Math.min(Math.max(it.estimatedNumResults(), 0), Integer.MAX_VALUE);
+        this.pendingEstimate = (int)Math.min(toCardinality(it).getValue(0), Integer.MAX_VALUE);
         this.factory = ArraySolution.forVars(varNames);
         this.names = new String[] {getName(query.getSubject()), getName(query.getPredicate()),
                                    getName(query.getObject())};

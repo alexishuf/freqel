@@ -2,7 +2,6 @@ package br.ufsc.lapesd.riefederator.description.semantic;
 
 import br.ufsc.lapesd.riefederator.TestContext;
 import br.ufsc.lapesd.riefederator.description.MatchAnnotation;
-import br.ufsc.lapesd.riefederator.jena.TBoxLoader;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.model.term.URI;
@@ -12,8 +11,12 @@ import br.ufsc.lapesd.riefederator.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasonerTest;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
+import com.github.lapesd.rdfit.RIt;
+import com.github.lapesd.rdfit.components.jena.JenaHelpers;
+import com.github.lapesd.rdfit.source.RDFResource;
 import com.google.common.collect.Sets;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Statement;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -46,8 +49,8 @@ public class SemanticSelectDescriptionTest implements TestContext {
 
     @BeforeMethod
     public void setUp() {
-        Model model = new TBoxLoader().fetchingImports(false)
-                                      .addFromResource("source-1.ttl").getModel();
+        Model model = JenaHelpers.toModelImporting(RIt.iterateTriples(Statement.class,
+                new RDFResource(getClass(), "../../source-1.ttl")));
         ep = ARQEndpoint.forModel(model);
         tBoxSpec = new TBoxSpec().addResource(getClass(), "../../source-onto-1.ttl");
     }

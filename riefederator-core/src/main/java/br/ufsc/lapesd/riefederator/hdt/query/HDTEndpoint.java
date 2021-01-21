@@ -5,8 +5,7 @@ import br.ufsc.lapesd.riefederator.description.AskDescription;
 import br.ufsc.lapesd.riefederator.federation.Federation;
 import br.ufsc.lapesd.riefederator.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.riefederator.federation.Source;
-import br.ufsc.lapesd.riefederator.hdt.util.EmptyIteratorTripleString;
-import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
+import br.ufsc.lapesd.riefederator.hdt.HDTUtils;
 import br.ufsc.lapesd.riefederator.hdt.util.LoggerHDTProgressListener;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.CQuery;
@@ -15,12 +14,12 @@ import br.ufsc.lapesd.riefederator.query.endpoint.Capability;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.ResultsUtils;
-import org.rdfhdt.hdt.enums.ResultEstimationType;
 import org.rdfhdt.hdt.exceptions.NotFoundException;
 import org.rdfhdt.hdt.hdt.HDT;
 import org.rdfhdt.hdt.hdt.HDTManager;
 import org.rdfhdt.hdt.listener.ProgressListener;
 import org.rdfhdt.hdt.triples.IteratorTripleString;
+import org.rdfhdt.hdt.triples.TripleString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +28,8 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.Iterator;
 
 import static br.ufsc.lapesd.riefederator.federation.cardinality.EstimatePolicy.canLocal;
 
@@ -116,19 +117,21 @@ public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
     }
 
     public @Override @Nonnull Results query(@Nonnull Triple query) {
-        IteratorTripleString hdtIt = createIterator(query);
+        Iterator<TripleString> hdtIt = createIterator(query);
         return new HDTResults(hdtIt, query);
     }
 
-    private @Nonnull IteratorTripleString createIterator(@Nonnull Triple query) {
+
+
+    private @Nonnull Iterator<TripleString> createIterator(@Nonnull Triple query) {
         String s = HDTUtils.toHDTQueryTerm(query.getSubject());
         String p = HDTUtils.toHDTQueryTerm(query.getPredicate());
         String o = HDTUtils.toHDTQueryTerm(query.getObject());
-        IteratorTripleString hdtIt;
+        Iterator<TripleString> hdtIt;
         try {
             hdtIt = hdt.search(s, p, o);
         } catch (NotFoundException e) {
-            hdtIt = new EmptyIteratorTripleString();
+            hdtIt = Collections.emptyIterator();
         }
         return hdtIt;
     }
@@ -148,12 +151,7 @@ public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
         if (canLocal(estimatePolicy)) {
             if (isEmpty()) return Cardinality.EMPTY;
             if (query.size() > 1) return Cardinality.UNSUPPORTED;
-            IteratorTripleString it = createIterator(query.get(0));
-            ResultEstimationType type = it.numResultEstimation();
-            if (type == null || type == ResultEstimationType.UNKNOWN)
-                return it.hasNext() ? Cardinality.NON_EMPTY : Cardinality.EMPTY;
-            long value = Math.max(it.estimatedNumResults(), 0);
-            return new Cardinality(HDTUtils.toReliability(type), value);
+            return HDTUtils.toCardinality(createIterator(query.get(0)));
         }
         return Cardinality.UNSUPPORTED;
     }

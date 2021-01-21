@@ -1,25 +1,28 @@
 package br.ufsc.lapesd.riefederator.reason.tbox.vlog;
 
-import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
+import br.ufsc.lapesd.riefederator.hdt.HDTUtils;
 import br.ufsc.lapesd.riefederator.model.Triple.Position;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxReasoner;
 import br.ufsc.lapesd.riefederator.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.riefederator.util.ExtractedResource;
 import br.ufsc.lapesd.riefederator.util.PropertyReader;
-import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
-import br.ufsc.lapesd.riefederator.util.parse.SourceIterationException;
-import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
+import com.github.lapesd.rdfit.RIt;
+import com.github.lapesd.rdfit.components.hdt.HDTHelpers;
+import com.github.lapesd.rdfit.errors.RDFItException;
+import com.github.lapesd.rdfit.iterator.RDFIt;
 import com.google.common.base.Stopwatch;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
+import org.apache.jena.graph.Triple;
 import org.apache.jena.riot.writer.NTriplesWriter;
 import org.apache.jena.vocabulary.RDFS;
 import org.rdfhdt.hdt.exceptions.NotFoundException;
 import org.rdfhdt.hdt.hdt.HDT;
+import org.rdfhdt.hdt.hdt.HDTManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +36,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.riefederator.hdt.util.HDTUtils.streamTerm;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class SystemVLogReasoner implements TBoxReasoner {
@@ -142,12 +144,13 @@ public class SystemVLogReasoner implements TBoxReasoner {
             }
 
             hdtFile = new File(root, "tbox.hdt");
-            hdt = HDTUtils.saveHDT(hdtFile, true, in);
+            HDTHelpers.toHDTFile(hdtFile, in);
+            hdt = HDTManager.mapIndexedHDT(hdtFile.getAbsolutePath());
             if (!in.delete()) {
                 logger.error("Failed to delete unneeded ntriples file {}", in);
                 assert false;
             }
-        } catch (IOException|SourceIterationException e) {
+        } catch (IOException|RDFItException e) {
             logger.error("Problem building TBox materialization HDT file at {}", root, e);
             try {
                 FileUtils.forceDelete(root);
@@ -163,7 +166,7 @@ public class SystemVLogReasoner implements TBoxReasoner {
         File in = new File(root, "in.nt");
         in.deleteOnExit();
         try (FileOutputStream out = new FileOutputStream(in);
-             JenaTripleIterator it = RDFIterationDispatcher.get().parse(spec)) {
+             RDFIt<Triple> it = RIt.iterateTriples(Triple.class, spec.getSources())) {
             NTriplesWriter.write(out, it);
         }
         return in;
@@ -188,7 +191,7 @@ public class SystemVLogReasoner implements TBoxReasoner {
         }
         try (ExtractedResource rules = new ExtractedResource(getClass(), RULES_SAMEAS)) {
             runVLog("mat", "--edb", edb.getAbsolutePath(),
-                    "--rules", rules.getFile().getAbsolutePath(),
+                    "--rules", rules.getAbsolutePath(),
                     "--storemat_path", matDir.getAbsolutePath(), "--storemat_format", "csv");
         }
         try {
@@ -236,10 +239,17 @@ public class SystemVLogReasoner implements TBoxReasoner {
             return value;
         builder.setLength(0);
         builder.append('"');
-        boolean quoted = true, innerQuote = false;
+        boolean quoted = true, innerQuote = false, backslash = false;
         for (int i = 1; i < value.length(); i++) {
             char c = value.charAt(i);
-            if (quoted && c == '"') {
+            if (c == '\\') {
+                builder.append(c);
+                backslash = true;
+            } else if (backslash) {
+                builder.append(c);
+                if (c != '\\')
+                    backslash = false;
+            } else if (quoted && c == '"') {
                 if (innerQuote) {
                     innerQuote = false;
                     builder.append(c); // second quote in "", write a single "
@@ -310,7 +320,7 @@ public class SystemVLogReasoner implements TBoxReasoner {
             return Stream.empty();
         try {
             String uri = term.asURI().getURI();
-            return streamTerm(hdt.search(null, predicate, uri), Position.SUBJ)
+            return HDTUtils.streamTerm(hdt.search(null, predicate, uri), Position.SUBJ)
                    .filter(t -> !t.equals(term));
         } catch (NotFoundException e) {
             return Stream.empty(); //term or predicate not in HDT (i.e., no results)

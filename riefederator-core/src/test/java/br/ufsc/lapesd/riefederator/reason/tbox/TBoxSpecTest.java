@@ -1,11 +1,11 @@
 package br.ufsc.lapesd.riefederator.reason.tbox;
 
 import br.ufsc.lapesd.riefederator.jena.ModelUtils;
-import br.ufsc.lapesd.riefederator.jena.TBoxLoader;
 import br.ufsc.lapesd.riefederator.util.ExtractedResource;
+import com.github.lapesd.rdfit.source.RDFInputStream;
+import com.github.lapesd.rdfit.source.syntax.RDFLangs;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.riot.Lang;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
@@ -35,19 +35,18 @@ public class TBoxSpecTest {
     public void setUp() throws Exception {
         emptySpec = new TBoxSpec();
         Model onto1, onto2;
-        onto1 = new TBoxLoader().fetchingImports(false).addFromResource("onto-1.ttl").getModel();
-        onto2 = new TBoxLoader().fetchingImports(false).addFromResource("onto-2.ttl").getModel();
+        onto1 = new TBoxSpec().fetchOwlImports(false).addResource("onto-1.ttl").loadModel();
+        onto2 = new TBoxSpec().fetchOwlImports(false).addResource("onto-2.ttl").loadModel();
         InputStream onto3 = getClass().getResourceAsStream("../../onto-3.ttl");
         assertNotNull(onto3);
         fullSpec = new TBoxSpec()
-                .addModel(onto1)
-                .addFile(ModelUtils.toTemp(onto2, false))
-                .addStream(onto3, Lang.TTL)
+                .add(onto1)
+                .add(ModelUtils.toTemp(onto2, false))
+                .add(new RDFInputStream(onto3, RDFLangs.TTL))
                 .addResource(TBoxSpecTest.class, "../../onto-4.ttl")
-                .addURI(TIME_URI);
+                .add(TIME_URI);
 
         provo = new ExtractedResource(getClass(), "../../prov-o.ttl");
-//        foaf = new ExtractedResource(getClass(), "../../foaf.rdf");
         time = new ExtractedResource(getClass(), "../../time.ttl");
     }
 
@@ -93,9 +92,9 @@ public class TBoxSpecTest {
         Set<OWLOntologyIRIMapper> mappers = new HashSet<>();
         mgr.getIRIMappers().forEach(mappers::add);
         mappers.add(new SimpleIRIMapper(IRI.create("http://www.w3.org/ns/prov-o"),
-                                        IRI.create(provo.getFile())));
+                                        IRI.create(provo)));
         mappers.add(new SimpleIRIMapper(IRI.create(TIME_URI),
-                                        IRI.create(time.getFile())));
+                                        IRI.create(time)));
         mgr.setIRIMappers(mappers);
 
         //now for the real deal...

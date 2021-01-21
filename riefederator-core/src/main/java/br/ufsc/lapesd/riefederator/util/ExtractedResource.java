@@ -1,61 +1,62 @@
 package br.ufsc.lapesd.riefederator.util;
 
+import com.github.lapesd.rdfit.util.Utils;
 import org.apache.commons.io.IOUtils;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 
-public class ExtractedResource implements AutoCloseable {
+public class ExtractedResource extends File implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(ExtractedResource.class);
-    private final @Nonnull File file;
-    private final @Nonnull String resourcePath;
-    private boolean created = false;
 
-    public ExtractedResource(@NotNull String systemPath) throws IOException {
-        this.resourcePath = systemPath;
-        file = extract(ClassLoader.getSystemClassLoader().getResourceAsStream(systemPath));
-    }
-
-    public ExtractedResource(@Nonnull Class<?> cls, @Nonnull String relativePath) throws IOException {
-        this.resourcePath = cls.getName() + "::" + relativePath;
-        file = extract(cls.getResourceAsStream(relativePath));
-    }
-
-    private File extract(@Nullable InputStream stream) throws IOException {
-        if (stream == null)
-            throw new FileNotFoundException("Could not find resource "+resourcePath);
-        String suffix = "-" + resourcePath.substring(resourcePath.lastIndexOf('/') + 1);
-        File file = File.createTempFile("riefederator", suffix);
-        file.deleteOnExit();
-        try (FileOutputStream out = new FileOutputStream(file)) {
-            IOUtils.copy(stream, out);
-        } catch (IOException e) {
-            if (file.exists() && !file.delete()) {
-                logger.error("Failed to delete {} created for resource {} after exception",
-                             file, resourcePath, e);
+    private static @Nonnull String extract(@Nonnull String resourcePath) throws IOException {
+        InputStream is;
+        try {
+            is = Utils.openResource(resourcePath);
+        } catch (IllegalArgumentException e) {
+            String altPath = "br/ufsc/lapesd/riefederator"
+                           + (resourcePath.startsWith("/") ? "" : "/") + resourcePath;
+            try {
+                is = Utils.openResource(altPath);
+            } catch (IllegalArgumentException e2) {
+                throw e;
             }
-
         }
-        created = true;
-        return file;
+        return extract(is);
+    }
+    private static @Nonnull String extract(@Nonnull Class<?> refClass,
+                                    @Nonnull String relativeResourcePath) throws IOException {
+        return extract(Utils.openResource(refClass, relativeResourcePath));
+    }
+    private static @Nonnull String extract(@Nonnull InputStream inputStream) throws IOException {
+        try {
+            File file = Files.createTempFile("refederator", "").toFile();
+            file.deleteOnExit();
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                IOUtils.copy(inputStream, out);
+            }
+            return file.getAbsolutePath();
+        } finally {
+            inputStream.close();
+        }
     }
 
-    public @Nonnull File getFile() {
-        return file;
+    public ExtractedResource(@Nonnull String resourcePath) throws IOException {
+        super(extract(resourcePath));
+    }
+    public ExtractedResource(@Nonnull Class<?> refClass,
+                             @Nonnull String relativeResourcePath) throws IOException {
+        super(extract(refClass, relativeResourcePath));
     }
 
-    public @Nonnull String getResourcePath() {
-        return resourcePath;
-    }
-
-    @Override
-    public void close() {
-        if (created && !file.delete())
-            logger.error("Failed to delete ExtractedResource " + resourcePath + " at" + file);
-        created = false;
+    @Override public void close() {
+        if (exists() && !delete())
+            logger.error("Failed to delete temporary file {}. Will continue normally", this);
     }
 }

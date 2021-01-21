@@ -2,7 +2,6 @@ package br.ufsc.lapesd.riefederator.query;
 
 import br.ufsc.lapesd.riefederator.NamedFunction;
 import br.ufsc.lapesd.riefederator.hdt.query.HDTEndpoint;
-import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.riefederator.model.Triple;
 import br.ufsc.lapesd.riefederator.query.endpoint.TPEndpoint;
@@ -12,7 +11,8 @@ import br.ufsc.lapesd.riefederator.query.modifiers.*;
 import br.ufsc.lapesd.riefederator.query.results.Results;
 import br.ufsc.lapesd.riefederator.query.results.Solution;
 import br.ufsc.lapesd.riefederator.query.results.impl.MapSolution;
-import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
+import com.github.lapesd.rdfit.RIt;
+import com.github.lapesd.rdfit.components.hdt.HDTHelpers;
 import com.google.common.collect.Sets;
 import org.apache.jena.fuseki.main.FusekiServer;
 import org.apache.jena.query.Dataset;
@@ -22,7 +22,8 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.rdfhdt.hdt.hdt.HDT;
-import org.testng.Assert;
+import org.rdfhdt.hdt.hdt.HDTManager;
+import org.rdfhdt.hdt.triples.TripleString;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -121,11 +122,7 @@ public class TPEndpointTest extends EndpointTestBase {
         }));
         endpoints.add(new NamedFunction<>("HDTEndpoint[in-memory]", stream -> {
             HDT hdt;
-            try {
-                hdt = HDTUtils.generateHDT(new RDFInputStream(stream));
-            } catch (IOException e) {
-                throw new AssertionError("Unexpected IOException", e);
-            }
+            hdt = HDTHelpers.toHDT(RIt.iterateTriples(TripleString.class, stream));
             HDTEndpoint ep = new HDTEndpoint(hdt, stream.toString());
             return new Fixture<TPEndpoint>(ep) {
                 @Override public void close() {
@@ -140,7 +137,11 @@ public class TPEndpointTest extends EndpointTestBase {
                 HDT hdt;
                 try {
                     file = Files.createTempFile("riefederator", ".hdt").toFile();
-                    hdt = HDTUtils.saveHDT(file, index, new RDFInputStream(stream));
+                    HDTHelpers.toHDTFile(file, stream);
+                    if (index)
+                        hdt = HDTManager.mapIndexedHDT(file.getAbsolutePath());
+                    else
+                        hdt = HDTManager.mapHDT(file.getAbsolutePath());
                 } catch (IOException e) {
                     throw new AssertionError("Unexpected IOException", e);
                 }
@@ -148,7 +149,7 @@ public class TPEndpointTest extends EndpointTestBase {
                 return new Fixture<TPEndpoint>(ep) {
                     @Override public void close() {
                         ep.close();
-                        Assert.assertTrue(HDTUtils.deleteWithIndex(file));
+                        assertTrue(HDTHelpers.deleteWithIndex(file));
                     }
                 };
             }));

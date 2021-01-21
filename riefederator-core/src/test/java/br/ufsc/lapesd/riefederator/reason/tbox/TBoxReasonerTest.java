@@ -2,19 +2,18 @@ package br.ufsc.lapesd.riefederator.reason.tbox;
 
 import br.ufsc.lapesd.riefederator.NamedSupplier;
 import br.ufsc.lapesd.riefederator.TestContext;
-import br.ufsc.lapesd.riefederator.hdt.util.HDTUtils;
 import br.ufsc.lapesd.riefederator.model.term.Term;
 import br.ufsc.lapesd.riefederator.model.term.std.StdURI;
 import br.ufsc.lapesd.riefederator.reason.tbox.vlog.SystemVLogReasoner;
-import br.ufsc.lapesd.riefederator.util.parse.RDFInputStream;
-import br.ufsc.lapesd.riefederator.util.parse.RDFIterationDispatcher;
-import br.ufsc.lapesd.riefederator.util.parse.iterators.JenaTripleIterator;
+import com.github.lapesd.rdfit.RIt;
+import com.github.lapesd.rdfit.iterator.RDFIt;
+import com.github.lapesd.rdfit.source.RDFResource;
 import org.apache.commons.io.FileUtils;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.vocabulary.OWL2;
 import org.rdfhdt.hdt.hdt.HDTManager;
 import org.rdfhdt.hdt.options.HDTSpecification;
 import org.rdfhdt.hdt.rdf.TripleWriter;
+import org.rdfhdt.hdt.triples.TripleString;
 import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -232,7 +231,7 @@ public class TBoxReasonerTest implements TestContext {
         tBoxReasoner = supplier.get();
 
         File tboxFile = hdtFileWithoutImports("../../LargeRDFBench-tbox.hdt");
-        TBoxSpec spec = new TBoxSpec().addFile(tboxFile);
+        TBoxSpec spec = new TBoxSpec().add(tboxFile);
         tBoxReasoner.load(spec);
 
         StdURI scientist    = new StdURI(DBO + "Scientist");
@@ -262,19 +261,20 @@ public class TBoxReasonerTest implements TestContext {
         assertFalse(set.contains(isClassifiedBy));
     }
 
-    private @Nonnull File hdtFileWithoutImports(String rdfResourcePath) throws Exception {
+    private @Nonnull File hdtFileWithoutImports(String resourcePath) throws Exception {
         File hdtFile = Files.createTempFile("riefederator", ".hdt").toFile();
         hdtFile.deleteOnExit();
         tempFiles.add(hdtFile);
-        try (RDFInputStream hdtRIS = new RDFInputStream(getClass(), rdfResourcePath);
-             JenaTripleIterator it = RDFIterationDispatcher.get().parse(hdtRIS);
-             FileOutputStream out = new FileOutputStream(hdtFile);
+
+        try (FileOutputStream out = new FileOutputStream(hdtFile);
+             RDFResource resource = new RDFResource(getClass(), resourcePath);
+             RDFIt<TripleString> it = RIt.iterateTriples(TripleString.class, resource);
              TripleWriter writer = HDTManager.getHDTWriter(out, hdtFile.toURI().toString(),
                                                            new HDTSpecification())) {
             while (it.hasNext()) {
-                Triple t = it.next();
-                if (!t.getPredicate().equals(OWL2.imports.asNode()))
-                    writer.addTriple(HDTUtils.toTripleString(t));
+                TripleString t = it.next();
+                if (!t.getPredicate().toString().equals(OWL2.imports.getURI()))
+                    writer.addTriple(t);
             }
         }
         return hdtFile;
