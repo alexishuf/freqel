@@ -32,6 +32,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -128,6 +129,7 @@ public class SystemVLogReasoner implements TBoxReasoner {
         File root = null;
         File hdtFile;
         try {
+            close();
             String prefix = "riefederator-vlog";
             root = Files.createTempDirectory(vlogTempDir.get().toPath(), prefix).toFile();
             root.deleteOnExit();
@@ -175,6 +177,18 @@ public class SystemVLogReasoner implements TBoxReasoner {
     private @Nonnull File writeKB(@Nonnull File root, @Nonnull File input) throws IOException {
         File kb = new File(root, "kb");
         String kbPath = kb.getAbsolutePath(), inPath = input.getAbsolutePath();
+        int timeoutSecs = 15 + (int)Math.ceil((double)input.length()/(1024*1024) * 2);
+        for (int i = 0; i < 3; i++) {
+            try {
+                runVLog(timeoutSecs, "load", "-i", inPath, "-o", kbPath);
+                return kb;
+            } catch (TimeoutException e) {
+                logger.warn("VLog load attempt {}/{} timed out", i+1, 3);
+                if (kb.exists())
+                    FileUtils.deleteDirectory(kb);
+            }
+
+        }
         runVLog("load", "-i", inPath, "-o", kbPath);
         return kb;
     }
@@ -277,12 +291,33 @@ public class SystemVLogReasoner implements TBoxReasoner {
     }
 
     private void runVLog(@Nonnull String... args) throws IOException {
+        try {
+            runVLog(Integer.MAX_VALUE, args);
+        } catch (TimeoutException e) {
+            logger.error("Ignoring VLog timeout after Integer.MAX_VALUE seconds");
+        }
+
+    }
+    private void runVLog(int timeoutSecs,
+                         @Nonnull String... args) throws IOException, TimeoutException {
         Process proc = createVLogProcessBuilder(args).start();
         String cmd = "VLog " + args[0];
         Stopwatch sw = Stopwatch.createStarted();
         int code = -1;
         try {
-            code = proc.waitFor();
+            if (!proc.waitFor(timeoutSecs, TimeUnit.SECONDS)) {
+                logger.warn(cmd+"timeod out after {}s", timeoutSecs);
+                proc.destroy();
+                if (!waitForUninterruptbly(proc, 2, TimeUnit.SECONDS)) {
+                    logger.warn(cmd+"survived destroy() after timeout, sending destroyForcibly()");
+                    proc.destroyForcibly();
+                    if (!waitForUninterruptbly(proc, 2, TimeUnit.SECONDS)) {
+                        logger.warn(cmd+"survived destroyForcibly() after timeout");
+                    }
+                }
+                throw new TimeoutException();
+            }
+            code = proc.exitValue();
             if (code != 0)
                 throw new VLogException(cmd + " bad exit status: " + code);
         } catch (InterruptedException e) {

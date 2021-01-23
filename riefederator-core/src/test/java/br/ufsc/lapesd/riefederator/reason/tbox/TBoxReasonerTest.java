@@ -155,6 +155,19 @@ public class TBoxReasonerTest implements TestContext {
         assertTrue(tBoxReasoner.subClasses(c).collect(toSet()).contains(c2));
     }
 
+    @Test(dataProvider = "supplierData", invocationCount = 64, threadPoolSize = 1)
+    public void testLoadOverwritesRepeat(Supplier<TBoxReasoner> supplier) {
+        tBoxReasoner = supplier.get();
+        tBoxReasoner.load(onto5);
+        assertTrue(tBoxReasoner.subClasses(d).collect(toSet()).contains(d1));
+        assertFalse(tBoxReasoner.subClasses(c).collect(toSet()).contains(c1));
+
+        tBoxReasoner.load(onto4);
+        assertFalse(tBoxReasoner.subClasses(d).collect(toSet()).contains(d1));
+        assertTrue(tBoxReasoner.subClasses(c).collect(toSet()).contains(c1));
+        assertTrue(tBoxReasoner.subClasses(c).collect(toSet()).contains(c2));
+    }
+
     @Test(dataProvider = "supplierData", groups = {"fast"})
     public void testIndirectSubclass(NamedSupplier<TBoxReasoner> supplier) {
         if (supplier.getName().equals("StructuralReasoner"))
