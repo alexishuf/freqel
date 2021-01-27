@@ -3,7 +3,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 MVN=${MVN:-./mvnw}
 JAVA=${JAVA:-java}
 JAVA_MEM=${JAVA_MEM:--Xmx1G -Xms1G}
-JAR_PATH=target/riefederator-1.0-SNAPSHOT.jar
+JAR_PATH=target/freqel-1.0-SNAPSHOT.jar
 
 if [ ! -e "$JAR_PATH" ]; then
   "$MVN" package -DskipTests=false

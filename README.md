@@ -1,4 +1,4 @@
-riefederator 
+freqel 
 ============
 
 This is a federated query mediator highly inspired by mediator systems that 
@@ -28,8 +28,8 @@ cases, dependency information is the following:
 
 ```xml
 <dependency>
-  <groupId>br.ufsc.lapesd.riefederator</groupId>
-  <artifactId>riefederator</artifactId>
+  <groupId>br.ufsc.lapesd.freqel</groupId>
+  <artifactId>freqel</artifactId>
   <version>1.0-SNAPSHOT</version>
 </dependency>
 ```

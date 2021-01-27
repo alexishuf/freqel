@@ -5,8 +5,8 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>br.ufsc.lapesd.riefederator</groupId>
-    <artifactId>riefederator-parent</artifactId>
+    <groupId>br.ufsc.lapesd.freqel</groupId>
+    <artifactId>freqel-parent</artifactId>
     <version>1.0-SNAPSHOT</version>
   </parent>
   <artifactId>cassandra-test-container</artifactId>
@@ -52,7 +52,7 @@
                 </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
-                    <Main-Class>br.ufsc.lapesd.riefederator.cassandra.Main</Main-Class>
+                    <Main-Class>br.ufsc.lapesd.freqel.cassandra.Main</Main-Class>
                     <Multi-Release>true</Multi-Release>
                   </manifestEntries>
                 </transformer>

@@ -113,18 +113,18 @@ Equivalent plans: S2, S3, S4, S6, S7, S11, S12 (ran 4.77% faster)
 ### Different plans
 
 ### S5
-riefederator's plan wrongly penalized this subquery: 
+freqel's plan wrongly penalized this subquery: 
 ```
 ?film dbo:director ?director . 
 ?director dbo:nationality dbr:Italy .
 ```
 
 With the introduction of `GeneralSelectivityHeuristic` and 
-`BindJoinCardinalityEstimator`, riefederator outputs the same plan as FedX.
+`BindJoinCardinalityEstimator`, freqel outputs the same plan as FedX.
 
 #### S10
-riefederator's plan is 4.98% faster (3355.417ms vs. 3531.400ms). 
-FedX plan is the reverse of the riefederator plan:
+freqel's plan is 4.98% faster (3355.417ms vs. 3531.400ms). 
+FedX plan is the reverse of the freqel plan:
 ```
                                        ⋈
                      +-----------------+-----------------+
@@ -146,7 +146,7 @@ FedX plan
 ?drug db:casRegistryNumber ?id
 ```
 
-Riefederator plan:
+FREQEL plan:
 ```
                                                                             ⋈
                                                          +------------------+-------------------+
