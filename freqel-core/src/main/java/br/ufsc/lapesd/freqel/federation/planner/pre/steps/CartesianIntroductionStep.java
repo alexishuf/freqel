@@ -10,8 +10,9 @@ import br.ufsc.lapesd.freqel.federation.planner.phased.PlannerShallowStep;
 import br.ufsc.lapesd.freqel.federation.planner.phased.PlannerStep;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Modifier;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.ValuesModifier;
 import br.ufsc.lapesd.freqel.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
@@ -89,7 +90,7 @@ public class CartesianIntroductionStep implements PlannerStep, PlannerShallowSte
             MutableCQuery componentQuery = new MutableCQuery(query);
             componentQuery.removeIf(t -> !component.contains(t));
             componentQuery.mutateModifiers().removeIf(
-                    m -> !(m instanceof SPARQLFilter) && !(m instanceof ValuesModifier));
+                    m -> !(m instanceof JenaSPARQLFilter) && !(m instanceof ValuesModifier));
             componentQuery.sanitizeFiltersStrict();
             componentQuery.attr().setJoinConnected(true);
             componentNodes.add(new QueryOp(componentQuery));
@@ -97,7 +98,7 @@ public class CartesianIntroductionStep implements PlannerStep, PlannerShallowSte
         CartesianOp root = new CartesianOp(componentNodes);
         // add relevant modifiers to the root
         for (Modifier m : queryOp.modifiers()) {
-            if (m instanceof SPARQLFilter) {
+            if (m instanceof JenaSPARQLFilter) {
                 SPARQLFilter f = (SPARQLFilter) m;
                 boolean pending = componentNodes.stream().anyMatch(n -> !n.modifiers().contains(f)
                         && hasIntersect(n.getAllVars(), f.getVarNames()));

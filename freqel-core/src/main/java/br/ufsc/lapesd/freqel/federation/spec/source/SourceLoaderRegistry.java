@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
 import br.ufsc.lapesd.freqel.util.DictTree;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
 import org.jetbrains.annotations.Contract;
@@ -9,20 +10,20 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class SourceLoaderRegistry {
     private final static Logger logger = LoggerFactory.getLogger(SourceLoaderRegistry.class);
-    private final static SourceLoaderRegistry INSTANCE;
+    private static SourceLoaderRegistry INSTANCE = null;
 
-    static {
-        SourceLoaderRegistry r = new SourceLoaderRegistry();
-        r.register(new RDFFileSourceLoader());
-        r.register(new SPARQLServiceLoader());
-        r.register(new SwaggerSourceLoader());
-        r.register(new TDBSourceLoader());
-        INSTANCE = r;
+    public static @Nonnull SourceLoaderRegistry getDefault() {
+        if (INSTANCE != null)
+            return INSTANCE;
+        SourceLoaderRegistry registry = new SourceLoaderRegistry();
+        ServiceLoader<SourceLoader> svcLoader = ServiceLoader.load(SourceLoader.class);
+        for (SourceLoader sourceLoader : svcLoader)
+            registry.register(sourceLoader);
+        return INSTANCE = registry;
     }
 
     private final @Nonnull Map<String, SourceLoader> loaders;
@@ -35,8 +36,8 @@ public class SourceLoaderRegistry {
         this.loaders = loaders;
     }
 
-    public static @Nonnull SourceLoaderRegistry getDefault() {
-        return INSTANCE;
+    @VisibleForTesting @Nonnull Map<String, SourceLoader> getLoaders() {
+        return loaders;
     }
 
     @CheckReturnValue

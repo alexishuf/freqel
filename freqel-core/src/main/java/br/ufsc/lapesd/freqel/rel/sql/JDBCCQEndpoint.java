@@ -5,7 +5,7 @@ import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
-import br.ufsc.lapesd.freqel.federation.Source;
+import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;

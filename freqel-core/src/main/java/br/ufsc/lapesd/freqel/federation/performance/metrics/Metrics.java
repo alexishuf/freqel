@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.freqel.federation.performance.metrics;
 
 import br.ufsc.lapesd.freqel.algebra.Op;
-import br.ufsc.lapesd.freqel.benchmark.BenchmarkUtils;
+import br.ufsc.lapesd.freqel.util.BenchmarkUtils;
 import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.impl.SimpleMetric;

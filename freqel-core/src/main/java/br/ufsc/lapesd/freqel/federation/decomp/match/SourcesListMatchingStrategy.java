@@ -7,7 +7,7 @@ import br.ufsc.lapesd.freqel.description.CQueryMatch;
 import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.freqel.federation.PerformanceListener;
-import br.ufsc.lapesd.freqel.federation.Source;
+import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;
 import br.ufsc.lapesd.freqel.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.Metrics;

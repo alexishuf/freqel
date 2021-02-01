@@ -4,7 +4,8 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,13 +19,13 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 /**
- * Assign {@link SPARQLFilter}s of a query to the deepest possible node in plans.
+ * Assign {@link JenaSPARQLFilter}s of a query to the deepest possible node in plans.
  */
 public class FilterAssigner {
     private static final Logger logger = LoggerFactory.getLogger(FilterAssigner.class);
 
     /**
-     * Tries to place as many {@link SPARQLFilter} as possible in each {@link EndpointQueryOp}.
+     * Tries to place as many {@link JenaSPARQLFilter} as possible in each {@link EndpointQueryOp}.
      */
     public static void placeFiltersOnLeaves(@Nonnull Collection<? extends Op> nodes,
                                             @Nonnull Collection<SPARQLFilter> filters) {

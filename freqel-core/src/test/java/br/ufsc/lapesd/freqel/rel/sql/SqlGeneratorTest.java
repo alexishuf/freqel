@@ -3,12 +3,11 @@ package br.ufsc.lapesd.freqel.rel.sql;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
-import br.ufsc.lapesd.freqel.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.freqel.query.modifiers.Projection;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.*;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.rel.common.StarsHelper;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;
 import br.ufsc.lapesd.freqel.rel.mappings.context.ContextMapping;
@@ -16,7 +15,7 @@ import br.ufsc.lapesd.freqel.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
-import br.ufsc.lapesd.freqel.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -125,7 +124,7 @@ public class SqlGeneratorTest implements TestContext {
                                    y, aaT, age,  v, aaCv,
                                    y, aaT, name, u, aaCu,
                                    z, aaT, name, u, aaCu,
-                                   z, aaT, p1,   o, aaCo, SPARQLFilter.build("?o > 23"),
+                                   z, aaT, p1,   o, aaCo, JenaSPARQLFilter.build("?o > 23"),
                                    Projection.of("v", "u", "o")),
                         "sql-mapping-1.json",
                         "SELECT star_2.$ AS $, star_1.@ AS $, star_0.$ AS $ FROM " +
@@ -142,7 +141,7 @@ public class SqlGeneratorTest implements TestContext {
                                    y, aaT, age,  v, aaCv,
                                    y, aaT, name, u, aaCu,
                                    z, aaT, name, u, aaCu,
-                                   z, aaT, p1,   o, aaCo, SPARQLFilter.build("?o > 23")),
+                                   z, aaT, p1,   o, aaCo, JenaSPARQLFilter.build("?o > 23")),
                         "sql-mapping-1.json",
                         "SELECT star_0.$ AS $, " +
                                         "star_2.$ AS $, star_1.@ AS $, star_0.$ AS $ FROM " +
@@ -154,13 +153,13 @@ public class SqlGeneratorTest implements TestContext {
                                 "ON (star_2.$ = star_1.@);",
                         newHashSet(cu, cv, co), emptySet()),
                 // single star with WHERE clause and pending filter. x projection has no effect
-                asList(createQuery(x, aaT, name, u, aaCu, SPARQLFilter.build("REGEX(?u, \"b.*\")"),
-                                   x, aaT, age,  v, aaCv, SPARQLFilter.build("?v < 23")),
+                asList(createQuery(x, aaT, name, u, aaCu, JenaSPARQLFilter.build("REGEX(?u, \"b.*\")"),
+                                   x, aaT, age,  v, aaCv, JenaSPARQLFilter.build("?v < 23")),
                        "sql-mapping-1.json",
                        "SELECT star_0.$ AS $, star_0.$ AS $ " +
                                "FROM (SELECT T.@ AS $, T.@ AS $ FROM T WHERE (T.@ < 23)) " +
                                         "AS star_0 ;",
-                       newHashSet(cu, cv), singleton(SPARQLFilter.build("REGEX(?u, \"b.*\")"))),
+                       newHashSet(cu, cv), singleton(JenaSPARQLFilter.build("REGEX(?u, \"b.*\")"))),
                 // tolerate ColumnTag on Subject and TableTag on object
                 asList(createQuery(x, aaT2, name, u, aaCu2, Projection.of("u")),
                         "sql-mapping-1.json",
@@ -197,7 +196,7 @@ public class SqlGeneratorTest implements TestContext {
                                    y, aaT, age,  v, aaCv3,
                                    y, aaT, name, u, aaCu2,
                                    z, aaU, name, u, aaKu,
-                                   z, aaU, p1,   o, aaKo, SPARQLFilter.build("?o > 23")),
+                                   z, aaU, p1,   o, aaKo, JenaSPARQLFilter.build("?o > 23")),
                         "sql-mapping-1.json",
                         "SELECT star_[012].$ AS $, star_[012].$ AS $, star_[012].$ AS $, star_[012].@ AS $, " +
                                 "star_[012].$ AS $ FROM " +

@@ -8,8 +8,9 @@ import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;
 import br.ufsc.lapesd.freqel.rel.mappings.context.ContextMapping;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.ColumnsTag;
@@ -20,7 +21,7 @@ import br.ufsc.lapesd.freqel.rel.sql.impl.SqlSelectorFactory;
 import br.ufsc.lapesd.freqel.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
-import br.ufsc.lapesd.freqel.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
@@ -417,13 +418,13 @@ public class StarVarIndexTest implements TestContext {
     @Test
     public void testExposeColumnUsedInFilter() {
         CQuery q = createQuery(x, aaT, nameEx, TestContext.u, aaCu,
-                x, aaT, ageEx, v, aaCv, SPARQLFilter.build("REGEX(?v, \"2.*\")"),
+                x, aaT, ageEx, v, aaCv, JenaSPARQLFilter.build("REGEX(?v, \"2.*\")"),
                 Projection.of("u"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 1);
         assertEquals(index.getStar(0).getTriples(), q.attr().getSet());
         assertEquals(index.getStar(0).getFilters(),
-                singleton(SPARQLFilter.build("REGEX(?v, \"2.*\")")));
+                singleton(JenaSPARQLFilter.build("REGEX(?v, \"2.*\")")));
 
         assertValidIndex(index, true);
         // cv is exposed as the filter cannot be converted into a WHERE clause
@@ -435,7 +436,7 @@ public class StarVarIndexTest implements TestContext {
     public void testTwoStars() {
         CQuery q = createQuery(x, aaT, nameEx,        u, aaCu,
                 y, aaT, nameEx,        u, aaCu,
-                y, aaT, ageEx,         v, aaCv, SPARQLFilter.build("?v < 23"),
+                y, aaT, ageEx,         v, aaCv, JenaSPARQLFilter.build("?v < 23"),
                 y, aaT, university_id, o, aaCo);
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
@@ -460,7 +461,7 @@ public class StarVarIndexTest implements TestContext {
     public void testTwoStarsWithProjection() {
         CQuery q = createQuery(x, aaT, nameEx  , u, aaCu,
                 y, aaT, nameEx,   u, aaCu,
-                y, ageEx,         v, aaCv, SPARQLFilter.build("REGEX(?v, \"2.*\")"),
+                y, ageEx,         v, aaCv, JenaSPARQLFilter.build("REGEX(?v, \"2.*\")"),
                 y, university_id, o, aaCo, Projection.of("o"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
@@ -569,7 +570,7 @@ public class StarVarIndexTest implements TestContext {
         CQuery q = createQuery(x, aaT, nameEx, u, aaCu,
                 x, aaT, ageEx, v1, aaCv,
                 y, aaT, nameEx, u, aaCu,
-                y, aaT, ageEx, v2, aaCv, SPARQLFilter.build("?v2 > ?v1"));
+                y, aaT, ageEx, v2, aaCv, JenaSPARQLFilter.build("?v2 > ?v1"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
         assertValidIndex(index, false);
@@ -589,7 +590,7 @@ public class StarVarIndexTest implements TestContext {
         CQuery q = createQuery(x, aaT, nameEx, u, aaCu,
                 x, aaT, ageEx, v1, aaCv,
                 y, aaT, nameEx, u, aaCu,
-                y, aaT, ageEx, v2, aaCv, SPARQLFilter.build("?v2 > ?v1"),
+                y, aaT, ageEx, v2, aaCv, JenaSPARQLFilter.build("?v2 > ?v1"),
                 Projection.of("v1", "v2"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertEquals(index.getStarCount(), 2);
@@ -627,7 +628,7 @@ public class StarVarIndexTest implements TestContext {
     @Test
     public void testCreateSelectorFromFilter() {
         CQuery q = createQuery(x, aaT, nameEx, u, aaCu,
-                               x, aaT, ageEx, v, aaCv, SPARQLFilter.build("?v > 23"),
+                               x, aaT, ageEx, v, aaCv, JenaSPARQLFilter.build("?v > 23"),
                                Projection.of("x"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertValidIndex(index, true);
@@ -644,10 +645,10 @@ public class StarVarIndexTest implements TestContext {
 
     @Test
     public void testCreateSelectorsOnJoiningTriples() {
-        SPARQLFilter regexFilter = SPARQLFilter.build("REGEX(?o, \"the.*\")");
+        SPARQLFilter regexFilter = JenaSPARQLFilter.build("REGEX(?o, \"the.*\")");
         CQuery q = createQuery(x, aaT, ageEx, v, aaCv,
                 x, aaT, isAuthorOf, o, aaCo, regexFilter,
-                y, aaT, ageEx, v, aaCv, SPARQLFilter.build("?v > 23"),
+                y, aaT, ageEx, v, aaCv, JenaSPARQLFilter.build("?v > 23"),
                 Projection.of("x", "y", "v"));
         StarVarIndex index = new StarVarIndex(q, selectorFactory);
         assertValidIndex(index, false); //u is fetched for x and y
@@ -672,7 +673,7 @@ public class StarVarIndexTest implements TestContext {
 
     @Test
     public void testDoNotCreateSelectorForNonDirectMapping() {
-        CQuery q = createQuery(x, aaT, ageEx,      v, aaCvv, SPARQLFilter.build("?v > 23"),
+        CQuery q = createQuery(x, aaT, ageEx,      v, aaCvv, JenaSPARQLFilter.build("?v > 23"),
                                x, aaT, isAuthorOf, o, aaCo,
                                y, aaT, ageEx,      v, aaCvv,
                                Projection.of("x", "o"));
@@ -682,7 +683,7 @@ public class StarVarIndexTest implements TestContext {
         assertEquals(index.getStar(0).getCore(), x);
         assertEquals(index.getStar(1).getCore(), y);
 
-        assertEquals(index.getPendingFilters(0), singleton(SPARQLFilter.build("?v > 23")));
+        assertEquals(index.getPendingFilters(0), singleton(JenaSPARQLFilter.build("?v > 23")));
         assertEquals(index.getStar(1).getFilters(), emptySet());
         assertEquals(index.getPendingFilters(1), emptySet());
         assertEquals(index.getSelectors(0), emptySet());

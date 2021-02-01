@@ -1,13 +1,13 @@
 package br.ufsc.lapesd.freqel.federation;
 
-import br.ufsc.lapesd.freqel.federation.cardinality.CardinalityEnsemble;
-import br.ufsc.lapesd.freqel.federation.cardinality.CardinalityHeuristic;
-import br.ufsc.lapesd.freqel.federation.cardinality.EstimatePolicy;
-import br.ufsc.lapesd.freqel.federation.cardinality.JoinCardinalityEstimator;
-import br.ufsc.lapesd.freqel.federation.cardinality.impl.BindJoinCardinalityEstimator;
-import br.ufsc.lapesd.freqel.federation.cardinality.impl.LimitCardinalityHeuristic;
-import br.ufsc.lapesd.freqel.federation.cardinality.impl.QuickSelectivityHeuristic;
-import br.ufsc.lapesd.freqel.federation.cardinality.impl.WorstCaseCardinalityEnsemble;
+import br.ufsc.lapesd.freqel.cardinality.CardinalityEnsemble;
+import br.ufsc.lapesd.freqel.cardinality.CardinalityHeuristic;
+import br.ufsc.lapesd.freqel.cardinality.EstimatePolicy;
+import br.ufsc.lapesd.freqel.cardinality.JoinCardinalityEstimator;
+import br.ufsc.lapesd.freqel.cardinality.impl.BindJoinCardinalityEstimator;
+import br.ufsc.lapesd.freqel.cardinality.impl.LimitCardinalityHeuristic;
+import br.ufsc.lapesd.freqel.cardinality.impl.QuickSelectivityHeuristic;
+import br.ufsc.lapesd.freqel.cardinality.impl.WorstCaseCardinalityEnsemble;
 import br.ufsc.lapesd.freqel.federation.concurrent.PlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.concurrent.PoolPlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;

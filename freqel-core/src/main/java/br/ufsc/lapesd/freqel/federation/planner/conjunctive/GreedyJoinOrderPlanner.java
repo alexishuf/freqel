@@ -7,16 +7,15 @@ import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.CardinalityAdder;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
+import br.ufsc.lapesd.freqel.cardinality.CardinalityEnsemble;
+import br.ufsc.lapesd.freqel.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.freqel.federation.PerformanceListener;
-import br.ufsc.lapesd.freqel.federation.cardinality.CardinalityEnsemble;
-import br.ufsc.lapesd.freqel.federation.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.freqel.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.freqel.query.modifiers.Optional;
 import br.ufsc.lapesd.freqel.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
-import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.ImplementedBy;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -244,8 +243,8 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
 
         public static boolean hasWebApi(@Nonnull Op node) {
             for (Op op : TreeUtils.childrenIfUnion(node)) {
-                if (!(op instanceof EndpointQueryOp))                                continue;
-                if (((EndpointQueryOp)op).getEndpoint() instanceof WebAPICQEndpoint) return true;
+                if (!(op instanceof EndpointQueryOp))                    continue;
+                if (((EndpointQueryOp) op).getEndpoint().isWebAPILike()) return true;
             }
             return false;
         }

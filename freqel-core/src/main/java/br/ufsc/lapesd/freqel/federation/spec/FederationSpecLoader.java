@@ -2,7 +2,7 @@ package br.ufsc.lapesd.freqel.federation.spec;
 
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
-import br.ufsc.lapesd.freqel.federation.cardinality.EstimatePolicy;
+import br.ufsc.lapesd.freqel.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.freqel.federation.spec.source.SourceCache;
 import br.ufsc.lapesd.freqel.federation.spec.source.SourceLoader;
 import br.ufsc.lapesd.freqel.federation.spec.source.SourceLoaderRegistry;

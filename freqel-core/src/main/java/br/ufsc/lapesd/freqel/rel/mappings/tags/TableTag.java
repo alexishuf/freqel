@@ -14,6 +14,10 @@ public class TableTag  implements AtomTag {
         this.table = table;
     }
 
+    @Override public @Nonnull String shortDisplayName() {
+        return "tables";
+    }
+
     public @Nonnull String getTable() {
         return table;
     }

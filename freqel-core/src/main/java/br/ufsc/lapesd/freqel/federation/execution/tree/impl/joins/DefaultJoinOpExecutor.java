@@ -3,8 +3,8 @@ package br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
-import br.ufsc.lapesd.freqel.federation.cardinality.CardinalityComparator;
-import br.ufsc.lapesd.freqel.federation.cardinality.impl.ThresholdCardinalityComparator;
+import br.ufsc.lapesd.freqel.cardinality.CardinalityComparator;
+import br.ufsc.lapesd.freqel.cardinality.impl.ThresholdCardinalityComparator;
 import br.ufsc.lapesd.freqel.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.freqel.query.results.Results;
@@ -16,7 +16,7 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 
 import static br.ufsc.lapesd.freqel.algebra.Cardinality.Reliability.UPPER_BOUND;
-import static br.ufsc.lapesd.freqel.federation.cardinality.CardinalityUtils.multiply;
+import static br.ufsc.lapesd.freqel.cardinality.CardinalityUtils.multiply;
 
 public class DefaultJoinOpExecutor extends AbstractSimpleJoinOpExecutor {
     private static final Logger logger = LoggerFactory.getLogger(DefaultJoinOpExecutor.class);

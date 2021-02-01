@@ -4,8 +4,8 @@ import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.TripleAnnotation;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
 import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.parse.CQueryContext;
 import com.google.errorprone.annotations.Immutable;
 import org.testng.annotations.Test;
@@ -165,10 +165,10 @@ public class CQueryContextTest implements TestContext {
     public void testAddFilters() {
         CQuery query = createQuery(
                 Alice, p1, x,
-                x, p2, u, SPARQLFilter.build("?u > 23"),
-                x, p3, v, SPARQLFilter.build("?v < 23"));
+                x, p2, u, SPARQLFilterFactory.parseFilter("?u > 23"),
+                x, p3, v, SPARQLFilterFactory.parseFilter("?v < 23"));
         assertEquals(query.getModifiers(),
-                     newHashSet(SPARQLFilter.build("?u > 23"),
-                                SPARQLFilter.build("?v < 23")));
+                     newHashSet(SPARQLFilterFactory.parseFilter("?u > 23"),
+                                SPARQLFilterFactory.parseFilter("?v < 23")));
     }
 }

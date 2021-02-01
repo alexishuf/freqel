@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
 import br.ufsc.lapesd.freqel.description.Description;
-import br.ufsc.lapesd.freqel.federation.Source;
+import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.util.DictTree;
 
 import javax.annotation.Nonnull;

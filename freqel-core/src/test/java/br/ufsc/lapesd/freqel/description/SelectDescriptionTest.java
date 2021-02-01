@@ -6,7 +6,7 @@ import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.query.Query;
@@ -159,7 +159,7 @@ public class SelectDescriptionTest implements TestContext {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, TestContext.y,
-                SPARQLFilter.build("?y >= 23"));
+                JenaSPARQLFilter.build("?y >= 23"));
         SelectDescription description = new SelectDescription(rdf1, fetchClasses);
         CQueryMatch match = description.match(query);
         assertEquals(match.getKnownExclusiveGroups(), emptyList());

@@ -3,7 +3,7 @@ package br.ufsc.lapesd.freqel.rel.common;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;
 
 import javax.annotation.Nonnull;

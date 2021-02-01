@@ -15,7 +15,7 @@ import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.*;
 import br.ufsc.lapesd.freqel.query.modifiers.Modifier;
 import br.ufsc.lapesd.freqel.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.ResultsUtils;

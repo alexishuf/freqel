@@ -3,7 +3,7 @@ package br.ufsc.lapesd.freqel.federation.execution.tree.impl;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.CartesianOp;
-import br.ufsc.lapesd.freqel.federation.cardinality.CardinalityComparator;
+import br.ufsc.lapesd.freqel.cardinality.CardinalityComparator;
 import br.ufsc.lapesd.freqel.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.CartesianOpExecutor;
 import br.ufsc.lapesd.freqel.query.results.Results;

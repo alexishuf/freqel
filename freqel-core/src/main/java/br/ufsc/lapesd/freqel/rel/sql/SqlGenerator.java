@@ -3,7 +3,7 @@ package br.ufsc.lapesd.freqel.rel.sql;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
 import br.ufsc.lapesd.freqel.query.modifiers.ModifierUtils;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.rel.common.RelationalTermWriter;
 import br.ufsc.lapesd.freqel.rel.common.StarJoin;
 import br.ufsc.lapesd.freqel.rel.common.StarVarIndex;

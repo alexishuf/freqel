@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.freqel.rel.sql;
 
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.rel.common.StarSubQuery;
 import br.ufsc.lapesd.freqel.rel.common.StarVarIndex;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;

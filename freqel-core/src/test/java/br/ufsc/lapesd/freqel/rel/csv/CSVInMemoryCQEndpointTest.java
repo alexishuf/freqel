@@ -5,8 +5,8 @@ import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
 import br.ufsc.lapesd.freqel.rel.mappings.context.ContextMapping;
@@ -76,7 +76,7 @@ public class CSVInMemoryCQEndpointTest implements TestContext {
                        newHashSet(MapSolution.build(u, stanford), MapSolution.build(u, mit))),
                 // test filter
                 asList("data-1.csv",
-                       createQuery(x, nameEx, v, x, ageEx, y, SPARQLFilter.build("?y > 24")),
+                       createQuery(x, nameEx, v, x, ageEx, y, JenaSPARQLFilter.build("?y > 24")),
                        newHashSet(
                                MapSolution.builder()
                                        .put(x, new StdURI(EX+"inst/4"))
@@ -93,7 +93,7 @@ public class CSVInMemoryCQEndpointTest implements TestContext {
                                     y, nameEx, v,
                                     y, ageEx, z,
                                     y, university, u,
-                                    Projection.of("v"), SPARQLFilter.build("?z > 24")),
+                                    Projection.of("v"), JenaSPARQLFilter.build("?z > 24")),
                         newHashSet(MapSolution.build(v, dave),
                                    MapSolution.build(v, eddie))),
                 // test object-object join with FILTER and distinct
@@ -103,7 +103,7 @@ public class CSVInMemoryCQEndpointTest implements TestContext {
                                     y, nameEx, v,
                                     y, ageEx, z,
                                     y, university, u,
-                                    Projection.of("u"), SPARQLFilter.build("?z > 24"),
+                                    Projection.of("u"), JenaSPARQLFilter.build("?z > 24"),
                                     Distinct.INSTANCE),
                         singleton(MapSolution.build(u, mit)))
                 ).map(List::toArray).toArray(Object[][]::new);

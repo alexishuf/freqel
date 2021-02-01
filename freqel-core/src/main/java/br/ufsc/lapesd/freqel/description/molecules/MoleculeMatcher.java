@@ -1,21 +1,21 @@
 package br.ufsc.lapesd.freqel.description.molecules;
 
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
-import br.ufsc.lapesd.freqel.description.MatchAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticDescription;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
+import br.ufsc.lapesd.freqel.query.annotations.MatchAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.MergePolicyAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.NoMergePolicyAnnotation;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxReasoner;
 import br.ufsc.lapesd.freqel.util.CollectionUtils;
-import br.ufsc.lapesd.freqel.webapis.description.AtomAnnotation;
-import br.ufsc.lapesd.freqel.webapis.description.MoleculeLinkAnnotation;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -539,7 +539,7 @@ public class MoleculeMatcher implements SemanticDescription {
             protected MutableCQuery mQuery;
             protected Set<Var> allVars = new HashSet<>();
             protected SetMultimap<Term, String> term2atom = HashMultimap.create();
-            protected Map<SPARQLFilter.SubsumptionResult, AtomFilter> subsumption2matched
+            protected Map<JenaSPARQLFilter.SubsumptionResult, AtomFilter> subsumption2matched
                     = new HashMap<>();
 
             public EGQueryBuilder(int sizeHint) {
@@ -608,7 +608,7 @@ public class MoleculeMatcher implements SemanticDescription {
                 }
                 if (candidates == null) candidates = Collections.emptySet();
                 for (AtomFilter candidate : candidates) {
-                    SPARQLFilter.SubsumptionResult result;
+                    JenaSPARQLFilter.SubsumptionResult result;
                     result = filter.areResultsSubsumedBy(candidate.getSPARQLFilter());
                     if (result.getValue()) {
                         mQuery.mutateModifiers().add(filter);

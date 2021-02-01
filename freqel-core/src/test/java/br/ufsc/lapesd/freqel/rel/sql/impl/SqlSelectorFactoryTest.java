@@ -7,13 +7,14 @@ import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.std.StdBlank;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.rel.common.SelectorFactory;
 import br.ufsc.lapesd.freqel.rel.common.StarsHelper;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.TableTag;
-import br.ufsc.lapesd.freqel.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -108,10 +109,10 @@ public class SqlSelectorFactoryTest implements TestContext {
     public static @Nonnull
     Object[][] filterData() {
         return Stream.of(
-                asList(SPARQLFilter.build("regex(?u, \"a.*\")"), null),
-                asList(SPARQLFilter.build("?v > 23"), "(T.cv > 23)"),
-                asList(SPARQLFilter.build("?v > 23 && ?v < 30"), "((T.cv > 23) AND (T.cv < 30))"),
-                asList(SPARQLFilter.build("?v > 23 && (?v < 30 || ?o > 60)"),
+                asList(JenaSPARQLFilter.build("regex(?u, \"a.*\")"), null),
+                asList(JenaSPARQLFilter.build("?v > 23"), "(T.cv > 23)"),
+                asList(JenaSPARQLFilter.build("?v > 23 && ?v < 30"), "((T.cv > 23) AND (T.cv < 30))"),
+                asList(JenaSPARQLFilter.build("?v > 23 && (?v < 30 || ?o > 60)"),
                         "((T.cv > 23) AND ((T.cv < 30) OR (T.co > 60)))")
         ).map(List::toArray).toArray(Object[][]::new);
     }

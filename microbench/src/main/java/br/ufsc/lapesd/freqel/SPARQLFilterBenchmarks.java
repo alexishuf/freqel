@@ -7,7 +7,7 @@ import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.URI;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.ArraySolution;

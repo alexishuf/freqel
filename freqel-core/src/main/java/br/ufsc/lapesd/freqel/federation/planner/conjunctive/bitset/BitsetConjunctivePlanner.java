@@ -4,7 +4,7 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
-import br.ufsc.lapesd.freqel.federation.cardinality.InnerCardinalityComputer;
+import br.ufsc.lapesd.freqel.cardinality.InnerCardinalityComputer;
 import br.ufsc.lapesd.freqel.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.priv.BitJoinGraph;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.priv.InputsBitJoinGraph;

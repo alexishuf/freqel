@@ -7,7 +7,7 @@ import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.annotations.TripleAnnotation;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.PostRelationalTag;
@@ -15,7 +15,7 @@ import br.ufsc.lapesd.freqel.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.freqel.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
-import br.ufsc.lapesd.freqel.webapis.description.MoleculeLinkAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.MoleculeLinkAnnotation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -8,18 +8,15 @@ import br.ufsc.lapesd.freqel.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
 import br.ufsc.lapesd.freqel.algebra.inner.PipeOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
-import br.ufsc.lapesd.freqel.federation.cardinality.CardinalityComparator;
+import br.ufsc.lapesd.freqel.cardinality.CardinalityComparator;
 import br.ufsc.lapesd.freqel.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.freqel.jena.ExprUtils;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterNode;
 import br.ufsc.lapesd.freqel.util.ref.RefSet;
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.jena.sparql.core.Var;
-import org.apache.jena.sparql.expr.Expr;
-import org.apache.jena.sparql.expr.ExprFunction;
-import org.apache.jena.sparql.serializer.SerializationContext;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -270,19 +267,15 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
         }
 
         @VisibleForTesting
-        void addComponents(@Nonnull Expr expr) {
-            if (expr instanceof ExprFunction) {
-                ExprFunction function = (ExprFunction) expr;
-                String name = function.getOpName();
-                if (name == null) name = function.getFunctionName(new SerializationContext());
-
-                if (name.equals("&&")) {
-                    for (int i = 1; i <= function.numArgs(); i++)
-                        addComponents(function.getArg(i));
+        void addComponents(@Nonnull SPARQLFilterNode expr) {
+            if (!expr.isTerm()) {
+                if (expr.name().equals("&&")) {
+                    for (SPARQLFilterNode arg : expr.args())
+                        addComponents(arg);
                     return;
                 }
             }
-            addComponent(SPARQLFilter.build(expr));
+            addComponent(JenaSPARQLFilter.build(expr));
         }
 
         private void addComponent(@Nonnull SPARQLFilter filter) {
@@ -314,48 +307,47 @@ public class DefaultFilterJoinPlanner implements FilterJoinPlanner {
      * the cartesian product
      *
      * @param nodeVars the set V mentioned above ({@link Op#getAllVars()}
-     * @param expr the component {@link Expr}
+     * @param expr the component {@link SPARQLFilterNode}
      * @return whether conditions (1) and (2) are both satisfied
      */
     @VisibleForTesting
-    static boolean hasJoinByComponent(@Nonnull Set<String> nodeVars, @Nonnull Expr expr) {
-        if (expr instanceof ExprFunction) {
+    static boolean hasJoinByComponent(@Nonnull Set<String> nodeVars, @Nonnull SPARQLFilterNode expr) {
+        if (!expr.isTerm())
             return allHaveNodeVar(nodeVars, expr) && someHasExternalVar(nodeVars, expr);
-        }
         return false;
     }
 
-    private static boolean allHaveNodeVar(@Nonnull Set<String> nodeVars, @Nonnull Expr expr) {
-        if (expr instanceof ExprFunction) {
-            ExprFunction function = (ExprFunction) expr;
-            if (ExprUtils.L_OPS.contains(ExprUtils.getFunctionName(function))) {
-                for (int i = 1, size = function.numArgs(); i <= size; i++) {
-                    if (!allHaveNodeVar(nodeVars, function.getArg(i)))
+    private static boolean allHaveNodeVar(@Nonnull Set<String> nodeVars,
+                                          @Nonnull SPARQLFilterNode expr) {
+        if (!expr.isTerm()) {
+            if (expr.isLogicalOp()) {
+                for (SPARQLFilterNode arg : expr.args()) {
+                    if (!allHaveNodeVar(nodeVars, arg))
                         return false;
                 }
                 return true;
             }
         }
-        for (Var v : expr.getVarsMentioned()) {
-            if (nodeVars.contains(v.getVarName()))
+        for (String v : expr.varsMentioned()) {
+            if (nodeVars.contains(v))
                 return true;
         }
         return false;
     }
 
-    private static boolean someHasExternalVar(@Nonnull Set<String> nodeVars, @Nonnull Expr expr) {
-        if (expr instanceof ExprFunction) {
-            ExprFunction function = (ExprFunction) expr;
-            if (ExprUtils.L_OPS.contains(ExprUtils.getFunctionName(function))) {
-                for (int i = 1, size = function.numArgs(); i <= size; i++) {
-                    if (someHasExternalVar(nodeVars, function.getArg(i)))
+    private static boolean someHasExternalVar(@Nonnull Set<String> nodeVars,
+                                              @Nonnull SPARQLFilterNode expr) {
+        if (!expr.isTerm()) {
+            if (expr.isLogicalOp()) {
+                for (SPARQLFilterNode arg : expr.args()) {
+                    if (someHasExternalVar(nodeVars, arg))
                         return true;
                 }
                 return false;
             }
         }
-        for (Var v : expr.getVarsMentioned()) {
-            if (!nodeVars.contains(v.getVarName()))
+        for (String v : expr.varsMentioned()) {
+            if (!nodeVars.contains(v))
                 return true;
         }
         return false;

@@ -10,8 +10,8 @@ import br.ufsc.lapesd.freqel.model.term.std.StdBlank;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.modifiers.Ask;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.ArraySolution;
@@ -21,7 +21,7 @@ import br.ufsc.lapesd.freqel.rel.mappings.context.ContextMapping;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.freqel.util.DictTree;
-import br.ufsc.lapesd.freqel.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import org.apache.commons.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -233,26 +233,26 @@ public class JDBCCQEndpointTest implements TestContext {
                 ),
                 // Simple filter: gets ids of two oldest
                 asList("dump-1.sql", "sql-mapping-2.json",
-                        createQuery(x, idEx, v, x, ageEx, u, SPARQLFilter.build("?u >= 25"),
+                        createQuery(x, idEx, v, x, ageEx, u, JenaSPARQLFilter.build("?u >= 25"),
                                     Projection.of("v")),
                         newHashSet(MapSolution.build(v, i4), MapSolution.build(v, i5)), false
                 ),
                 // Expression filter (||):  get the oldest and youngest
                 asList("dump-1.sql", "sql-mapping-2.json",
                         createQuery(x, nameEx, v, x, ageEx, u,
-                                    SPARQLFilter.build("?u > 25 || ?u < 23"),
+                                    JenaSPARQLFilter.build("?u > 25 || ?u < 23"),
                                     Projection.of("v")),
                         newHashSet(MapSolution.build(v, Alice), MapSolution.build(v, Eddie)), false
                 ),
                 // Positive ask query with single star
                 asList("dump-1.sql", "sql-mapping-2.json",
                        createQuery(x, nameEx, u,
-                                   x, ageEx, v, SPARQLFilter.build("?v > 20"), Ask.INSTANCE),
+                                   x, ageEx, v, JenaSPARQLFilter.build("?v > 20"), Ask.INSTANCE),
                        singleton(ArraySolution.EMPTY), false),
                 // Negative ask query with single star
                 asList("dump-1.sql", "sql-mapping-2.json",
                         createQuery(x, nameEx, u,
-                                    x, ageEx, v, SPARQLFilter.build("?v < 18"), Ask.INSTANCE),
+                                    x, ageEx, v, JenaSPARQLFilter.build("?v < 18"), Ask.INSTANCE),
                         emptySet(), false),
                 // Positive ask with two stars: someone older than Alice in same university?
                 asList("dump-1.sql", "sql-mapping-2.json",
@@ -260,7 +260,7 @@ public class JDBCCQEndpointTest implements TestContext {
                                     x, ageEx,      v,
                                     x, university, u,
                                     y, university, u,
-                                    y, ageEx,      o, SPARQLFilter.build("?o > ?v"), Ask.INSTANCE),
+                                    y, ageEx,      o, JenaSPARQLFilter.build("?o > ?v"), Ask.INSTANCE),
                         singleton(ArraySolution.EMPTY), false),
                 // Negative ask with two stars: someone **younger** than Alice in same university?
                 asList("dump-1.sql", "sql-mapping-2.json",
@@ -268,7 +268,7 @@ public class JDBCCQEndpointTest implements TestContext {
                                     x, ageEx,      v,
                                     x, university, u,
                                     y, university, u,
-                                    y, ageEx,      o, SPARQLFilter.build("?o < ?v"), Ask.INSTANCE),
+                                    y, ageEx,      o, JenaSPARQLFilter.build("?o < ?v"), Ask.INSTANCE),
                         emptySet(), false),
                 // Single star on a multi-table database (test dump-2.sql and sql-mapping-2.json)
                 asList("dump-2.sql", "sql-mapping-3.json",
@@ -339,7 +339,7 @@ public class JDBCCQEndpointTest implements TestContext {
                 // Path-style 3-table join. Title of papers authored by who has >=24 years
                 asList("dump-2.sql", "sql-mapping-3.json",
                         createQuery(x, idEx,   u,
-                                    x, ageEx,    w, SPARQLFilter.build("?w >= 24"),
+                                    x, ageEx,    w, JenaSPARQLFilter.build("?w >= 24"),
                                     y, author_id, u,
                                     y, paper_id,  v,
                                     z, idEx,      v,
@@ -349,7 +349,7 @@ public class JDBCCQEndpointTest implements TestContext {
                 asList("dump-2.sql", "sql-mapping-3.json",
                         createQuery(x, aaPerson,     idEx,      u, aaPerson_id,
                                     x, aaPerson,     ageEx,     w, aaPerson_age,
-                                    SPARQLFilter.build("?w >= 24"),
+                                    JenaSPARQLFilter.build("?w >= 24"),
                                     y, aaAuthorship, author_id, u, aaAuthorship_author_id,
                                     y, aaAuthorship, paper_id,  v, aaAuthorship_paper_id,
                                     z, aaPaper,      idEx,      v, aaPaper_id,

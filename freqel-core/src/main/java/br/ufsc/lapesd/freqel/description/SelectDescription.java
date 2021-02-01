@@ -73,6 +73,10 @@ public class SelectDescription implements Description {
         isUpdated = true;
     }
 
+    public @Nonnull Source asSource() {
+        return new Source(this, endpoint);
+    }
+
     private static class State {
         public List<String> predicates = null;
         public List<String> classes = null;

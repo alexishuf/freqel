@@ -4,7 +4,7 @@ import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
@@ -173,7 +173,7 @@ public class AskDescriptionTest implements TestContext {
         AskDescription d = new AskDescription(ep);
         CQuery query = createQuery(x, age,   y,
                                    x, knows, Bob,
-                                   SPARQLFilter.build("?y > 23"));
+                                   JenaSPARQLFilter.build("?y > 23"));
         CQueryMatch match = d.match(query);
         assertEquals(match.getKnownExclusiveGroups(), emptyList());
         assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.attr().getSet());

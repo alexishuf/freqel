@@ -5,7 +5,8 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.TakenChildren;
 import br.ufsc.lapesd.freqel.algebra.inner.PipeOp;
 import br.ufsc.lapesd.freqel.federation.planner.phased.PlannerStep;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.util.ref.IdentityHashSet;
 import br.ufsc.lapesd.freqel.util.ref.RefSet;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -20,9 +21,9 @@ import java.util.ListIterator;
 public class PushFiltersStep implements PlannerStep {
 
     /**
-     * Walks the tree attempting to push any {@link SPARQLFilter} as deep as possible toward leaves.
+     * Walks the tree attempting to push any {@link JenaSPARQLFilter} as deep as possible toward leaves.
      *
-     * If necessary the {@link SPARQLFilter} will be placed on more than node (e.g., when it
+     * If necessary the {@link JenaSPARQLFilter} will be placed on more than node (e.g., when it
      * is found on an UnionOp).
      *
      * @param root the input plan (or query)

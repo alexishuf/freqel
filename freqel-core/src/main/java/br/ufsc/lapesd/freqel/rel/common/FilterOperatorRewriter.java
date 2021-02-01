@@ -1,15 +1,16 @@
 package br.ufsc.lapesd.freqel.rel.common;
 
-import br.ufsc.lapesd.freqel.jena.ExprUtils;
-import br.ufsc.lapesd.freqel.jena.model.term.node.JenaVarNode;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
+import br.ufsc.lapesd.freqel.model.term.Term;
+import br.ufsc.lapesd.freqel.model.term.Var;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterNode;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;
-import org.apache.jena.graph.Node_Variable;
-import org.apache.jena.sparql.expr.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Map;
+import java.util.Objects;
 
 import static br.ufsc.lapesd.freqel.jena.JenaWrappers.fromJena;
 
@@ -26,7 +27,7 @@ public class FilterOperatorRewriter {
     public @Nullable String rewrite(@Nonnull SelectorFactory.Context ctx,
                                     @Nonnull SPARQLFilter filter) {
         State state = createState(new StringBuilder(), ctx, filter);
-        return state.visit(filter.getExpr()) ? state.b.toString() : null;
+        return state.visit(JenaSPARQLFilter.build(filter).getExpr()) ? state.b.toString() : null;
     }
 
     protected @Nonnull State createState(@Nonnull StringBuilder b,
@@ -47,39 +48,38 @@ public class FilterOperatorRewriter {
             this.filter = filter;
         }
 
-        public boolean visit(@Nonnull Expr expr) {
-            if (expr instanceof NodeValue) {
-                return visitValue((NodeValue) expr);
-            } else if (expr instanceof ExprVar) {
-                return visitVar(expr);
-            } else if (expr instanceof ExprNone || expr instanceof ExprAggregator) {
-                return true;
+        public boolean visit(@Nonnull SPARQLFilterNode expr) {
+            if (expr.isTerm()) {
+                Term t = Objects.requireNonNull(expr.asTerm());
+                if (t.isVar())
+                    return visitVar(t.asVar());
+                else
+                    return visitValue(t);
+            } else {
+                return visitFunction(expr);
             }
-
-            assert expr instanceof ExprFunction;
-            return visitFunction((ExprFunction) expr);
         }
 
-        public boolean visitFunction(@Nonnull ExprFunction expr) {
-            String sql = sparqlOp2RelOp.get(ExprUtils.getFunctionName(expr));
+        public boolean visitFunction(@Nonnull SPARQLFilterNode expr) {
+            String sql = sparqlOp2RelOp.get(expr.name());
             if (sql == null)
                 return false; //abort
             return visitRelOp(expr, sql);
         }
 
-        public boolean visitRelOp(@Nonnull ExprFunction expr, @Nonnull String sqlOp) {
+        public boolean visitRelOp(@Nonnull SPARQLFilterNode expr, @Nonnull String sqlOp) {
             b.append('(');
-            if (expr.numArgs() == 2) {
-                if (!visit(expr.getArg(1)))
+            if (expr.argsCount() == 2) {
+                if (!visit(expr.arg(0)))
                     return false;
                 b.append(' ').append(sqlOp).append(' ');
-                if (visit(expr.getArg(2))) {
+                if (visit(expr.arg(1))) {
                     b.append(')');
                     return true;
                 }
-            } else if (expr.numArgs() == 1) {
+            } else if (expr.argsCount() == 1) {
                 b.append(sqlOp).append(' ');
-                if (visit(expr.getArg(1))) {
+                if (visit(expr.arg(0))) {
                     b.append(')');
                     return true;
                 }
@@ -87,21 +87,20 @@ public class FilterOperatorRewriter {
             return true;
         }
 
-        public boolean visitVar(@Nonnull Expr expr) {
-            Column column = getColumn((ExprVar) expr);
+        public boolean visitVar(@Nonnull Var var) {
+            Column column = getColumn(var);
             b.append(column);
             return true;
         }
 
-        protected @Nonnull Column getColumn(@Nonnull ExprVar expr) {
-            JenaVarNode var = new JenaVarNode((Node_Variable) expr.getAsNode());
+        protected @Nonnull Column getColumn(@Nonnull Var var) {
             Column column = ctx.getDirectMapped(var, null);
             assert  column != null;
             return column;
         }
 
-        public boolean visitValue(NodeValue expr) {
-            String sql = termWriter.apply(fromJena(expr.asNode()));
+        public boolean visitValue(@Nonnull Term term) {
+            String sql = termWriter.apply(term);
             boolean ok = sql != null;
             if (ok)
                 b.append(sql);

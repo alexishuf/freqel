@@ -8,6 +8,7 @@ import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.jena.JenaWrappers;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.JenaSolution;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.prefix.PrefixDict;
 import br.ufsc.lapesd.freqel.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.freqel.model.term.Term;
@@ -17,12 +18,12 @@ import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.modifiers.*;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
-import br.ufsc.lapesd.freqel.webapis.description.AtomInputAnnotation;
-import br.ufsc.lapesd.freqel.webapis.description.PureDescriptive;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
+import br.ufsc.lapesd.freqel.query.annotations.PureDescriptive;
 import com.google.common.collect.Sets;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.query.*;
@@ -112,7 +113,7 @@ public class SPARQLStringTest implements TestContext {
     @Test
     public void testSELECTWithFilter() {
         SPARQLString sparqlString = SPARQLString.create(
-                createQuery(x, age, y, SPARQLFilter.build("?y > 23")));
+                createQuery(x, age, y, JenaSPARQLFilter.build("?y > 23")));
         assertFalse(sparqlString.isAsk());
 
         Model model = ModelFactory.createDefaultModel();

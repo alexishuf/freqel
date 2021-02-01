@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.freqel.federation.decomp.match;
 
 import br.ufsc.lapesd.freqel.algebra.Op;
-import br.ufsc.lapesd.freqel.federation.Source;
+import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;

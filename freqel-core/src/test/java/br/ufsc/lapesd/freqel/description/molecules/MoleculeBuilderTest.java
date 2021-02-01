@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.freqel.description.molecules;
 
 import br.ufsc.lapesd.freqel.TestContext;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
@@ -59,7 +59,7 @@ public class MoleculeBuilderTest implements TestContext {
         Supplier<Molecule> supplier =
                 () -> Molecule.builder("core1").exclusive().closed().out(knows, b)
                         .startNewCore("core2").out(age, a1)
-                        .filter(AtomFilter.builder(SPARQLFilter.build("$actual > $input"))
+                        .filter(AtomFilter.builder(SPARQLFilterFactory.parseFilter("$actual > $input"))
                                 .map(AtomRole.OUTPUT.wrap(a1), "actual")
                                 .map(AtomRole.INPUT.wrap(a1), "input")
                                 .build())
@@ -77,7 +77,7 @@ public class MoleculeBuilderTest implements TestContext {
         assertEquals(m.getFiltersWithAtom("core2"), emptySet());
         assertEquals(m.getFiltersWithAtom(a1.getName()).size(), 1);
         AtomFilter filter = m.getFiltersWithAtom(a1.getName()).iterator().next();
-        assertEquals(filter.getSPARQLFilter(), SPARQLFilter.build("$actual > $input"));
+        assertEquals(filter.getSPARQLFilter(), SPARQLFilterFactory.parseFilter("$actual > $input"));
 
         assertEquals(m, supplier.get());
         assertEquals(m.hashCode(), supplier.get().hashCode());

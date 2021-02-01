@@ -5,11 +5,11 @@ import br.ufsc.lapesd.freqel.description.CQueryMatch;
 import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticCQueryMatch;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticDescription;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.URI;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxReasoner;
 import com.google.common.collect.Sets;
@@ -98,7 +98,7 @@ public class MoleculeMatcherTest implements TestContext {
     public static final @Nonnull Molecule person2oe1f = Molecule.builder("Person2oe1f")
             .out(name, new Atom("name"))
             .out(age, new Atom("age"))
-            .filter(AtomFilter.builder(SPARQLFilter.build("?ac >= ?in"))
+            .filter(AtomFilter.builder(JenaSPARQLFilter.build("?ac >= ?in"))
                     .map(AtomRole.INPUT.wrap("age"), "in")
                     .map(AtomRole.OUTPUT.wrap("age"), "ac").build())
             .exclusive().closed().build();
@@ -110,7 +110,7 @@ public class MoleculeMatcherTest implements TestContext {
                             .exclusive().closed().buildAtom())
             .out(name, new Atom("name"))
             .out(age, new Atom("age"))
-            .filter(AtomFilter.builder(SPARQLFilter.build("?ac >= ?in"))
+            .filter(AtomFilter.builder(JenaSPARQLFilter.build("?ac >= ?in"))
                     .map(AtomRole.INPUT.wrap("age"), "in")
                     .map(AtomRole.OUTPUT.wrap("age"), "ac").build())
             .exclusive().closed().build();
@@ -361,49 +361,49 @@ public class MoleculeMatcherTest implements TestContext {
                 // exact match with the description
                 asList(person2oe1f,
                        createQuery(x, name, y,
-                                   x, age, z, SPARQLFilter.build("?z >= 23")),
+                                   x, age, z, JenaSPARQLFilter.build("?z >= 23")),
                        singleton(createQuery(x, name, y,
                                              x, age, z,
-                                             SPARQLFilter.build("?z >= 23"))),
+                                             JenaSPARQLFilter.build("?z >= 23"))),
                        emptyList()),
                 // match only age, leave name out ...
                 asList(person2oe1f,
-                       createQuery(x, age, z, SPARQLFilter.build("?z >= 23")),
-                       singleton(createQuery(x, age, z, SPARQLFilter.build("?z >= 23"))),
+                       createQuery(x, age, z, JenaSPARQLFilter.build("?z >= 23")),
+                       singleton(createQuery(x, age, z, JenaSPARQLFilter.build("?z >= 23"))),
                        emptyList()),
                 // match all output links with molecule that has input...
                 asList(person1i2oe1f,
                        createQuery(x, name, y,
-                                   x, age, z, SPARQLFilter.build("?z >= 23")),
+                                   x, age, z, JenaSPARQLFilter.build("?z >= 23")),
                        singleton(createQuery(x, name, y,
-                                             x, age, z, SPARQLFilter.build("?z >= 23"))),
+                                             x, age, z, JenaSPARQLFilter.build("?z >= 23"))),
                        emptyList()),
                 // complete match with  molecule that has input...
                 asList(person1i2oe1f,
                         createQuery(x, name, y,
                                     w, primaryTopic, x,
                                     w, title, u,
-                                    x, age, z, SPARQLFilter.build("?z >= 23")),
+                                    x, age, z, JenaSPARQLFilter.build("?z >= 23")),
                         singleton(createQuery(x, name, y,
                                               w, primaryTopic, x,
                                               w, title, u,
-                                              x, age, z, SPARQLFilter.build("?z >= 23"))),
+                                              x, age, z, JenaSPARQLFilter.build("?z >= 23"))),
                         emptyList()),
                 // match only age on simple molecule but provide subsuming filter
                 asList(person2oe1f,
-                        createQuery(x, age, z, SPARQLFilter.build("?z > 23")),
-                        singleton(createQuery(x, age, z, SPARQLFilter.build("?z > 23"))),
+                        createQuery(x, age, z, JenaSPARQLFilter.build("?z > 23")),
+                        singleton(createQuery(x, age, z, JenaSPARQLFilter.build("?z > 23"))),
                         emptyList()),
                 // complete match with  molecule that has input and susuming filter
                 asList(person1i2oe1f,
                         createQuery(x, name, y,
                                 w, primaryTopic, x,
                                 w, title, u,
-                                x, age, z, SPARQLFilter.build("?z > 23")),
+                                x, age, z, JenaSPARQLFilter.build("?z > 23")),
                         singleton(createQuery(x, name, y,
                                 w, primaryTopic, x,
                                 w, title, u,
-                                x, age, z, SPARQLFilter.build("?z > 23"))),
+                                x, age, z, JenaSPARQLFilter.build("?z > 23"))),
                         emptyList()),
                 // query without filter against simple molecule with filter
                 asList(person2oe1f,
@@ -419,13 +419,13 @@ public class MoleculeMatcherTest implements TestContext {
                         emptyList()),
                 // query with incompatible filter
                 asList(person2oe1f,
-                        createQuery(x, age, z, SPARQLFilter.build("?x < 23")),
+                        createQuery(x, age, z, JenaSPARQLFilter.build("?x < 23")),
                         singleton(createQuery(x, age, z)),
                         emptyList()),
                 // conjunctive query with incompatible filter
                 asList(person2oe1f,
                         createQuery(x, name, y,
-                                    x, age, z, SPARQLFilter.build("?z < 23")),
+                                    x, age, z, JenaSPARQLFilter.build("?z < 23")),
                         singleton(createQuery(x, name, y,
                                               x, age, z)),
                         emptyList())

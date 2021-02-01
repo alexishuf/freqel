@@ -6,14 +6,14 @@ import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.model.term.Lit;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.query.CQuery;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
 import br.ufsc.lapesd.freqel.rel.common.StarVarIndex;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;
 import br.ufsc.lapesd.freqel.rel.mappings.context.ContextMapping;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.TableTag;
-import br.ufsc.lapesd.freqel.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -79,7 +79,7 @@ public class StarSqlWriterTest implements TestContext {
                        "(SELECT T.cu AS $ FROM T WHERE T.cv = 23 AND T.co = 24) AS star_0"),
                 asList(createQuery(x, aaT, age, v, aaCv),
                                    "T AS star_0"),
-                asList(createQuery(x, aaT, age, v, aaCv, SPARQLFilter.build("?v < 23")),
+                asList(createQuery(x, aaT, age, v, aaCv, JenaSPARQLFilter.build("?v < 23")),
                                    "(SELECT T.cv AS $, T.cu AS $ " +
                                    "FROM T WHERE (T.cv < 23)) AS star_0"),
                 // first case with multiple AtomAnnotations on subject

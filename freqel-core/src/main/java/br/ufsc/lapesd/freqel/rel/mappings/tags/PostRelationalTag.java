@@ -8,4 +8,8 @@ import javax.annotation.Nonnull;
 @Immutable
 public class PostRelationalTag implements HybridTag {
     public static final @Nonnull PostRelationalTag INSTANCE = new PostRelationalTag();
+
+    @Override public @Nonnull String shortDisplayName() {
+        return "postRelational";
+    }
 }

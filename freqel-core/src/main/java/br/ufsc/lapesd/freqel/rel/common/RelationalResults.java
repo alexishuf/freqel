@@ -8,10 +8,10 @@ import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
-import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
-import br.ufsc.lapesd.freqel.query.modifiers.Projection;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilterExecutor;
+import br.ufsc.lapesd.freqel.query.modifiers.*;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterExecutor;
 import br.ufsc.lapesd.freqel.query.results.AbstractResults;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.ResultsCloseException;
@@ -56,7 +56,7 @@ public abstract class RelationalResults extends AbstractResults {
     private final @Nonnull List<Set<String>> jVars;
     private final @Nonnull List<Set<String>> jrVars;
     private final @Nullable ArraySolution.ValueFactory projector;
-    private final @Nonnull SPARQLFilterExecutor filterExecutor = new SPARQLFilterExecutor();
+    private final @Nonnull SPARQLFilterExecutor filterExecutor = SPARQLFilterFactory.createExecutor();
 
     protected RelationalResults(@Nonnull RelationalRewriting rw,
                                 @Nonnull RelationalMapping mapping) {

@@ -1,12 +1,13 @@
 package br.ufsc.lapesd.freqel.query;
 
-import br.ufsc.lapesd.freqel.NamedFunction;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.*;
+import br.ufsc.lapesd.freqel.util.NamedFunction;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -31,7 +32,7 @@ public class ResultsTest implements TestContext {
         expectedOne = singletonList(MapSolution.build("x", Alice));
         expectedTWo = unmodifiableList(asList(MapSolution.build("x", Alice),
                                               MapSolution.build("x", Bob)));
-        SPARQLFilter tautology = SPARQLFilter.build("regex(str(?x), \"^http.*\")");
+        SPARQLFilter tautology = SPARQLFilterFactory.parseFilter("regex(str(?x), \"^http.*\")");
 
         factories = new ArrayList<>();
         factories.add(new NamedFunction<>("CollectionResults",

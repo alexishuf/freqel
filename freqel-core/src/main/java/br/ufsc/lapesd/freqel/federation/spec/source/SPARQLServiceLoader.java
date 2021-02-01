@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
 import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.federation.Source;
+import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import com.google.common.base.Stopwatch;

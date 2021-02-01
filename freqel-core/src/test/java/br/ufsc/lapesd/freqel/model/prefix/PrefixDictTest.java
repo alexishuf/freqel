@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.freqel.model.prefix;
 
-import br.ufsc.lapesd.freqel.NamedSupplier;
+import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.jena.model.prefix.PrefixMappingDict;
 import org.apache.jena.shared.impl.PrefixMappingImpl;

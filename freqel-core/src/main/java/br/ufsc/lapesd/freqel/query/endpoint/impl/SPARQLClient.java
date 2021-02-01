@@ -3,7 +3,7 @@ package br.ufsc.lapesd.freqel.query.endpoint.impl;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.util.DQPushChecker;
-import br.ufsc.lapesd.freqel.federation.cardinality.EstimatePolicy;
+import br.ufsc.lapesd.freqel.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.freqel.model.NTParseException;
 import br.ufsc.lapesd.freqel.model.RDFUtils;
 import br.ufsc.lapesd.freqel.model.SPARQLString;

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.federation;
 
+import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.impl.SequentialResultsExecutor;
 import com.google.inject.Guice;

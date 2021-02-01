@@ -7,7 +7,7 @@ import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.TableTag;
-import br.ufsc.lapesd.freqel.webapis.description.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

@@ -45,6 +45,10 @@ public class ColumnsTag implements HybridTag {
         return new ColumnsTag(singletonList(new Column(table, column)), false);
     }
 
+    @Override public @Nonnull String shortDisplayName() {
+        return "columns";
+    }
+
     public @Nonnull String getTable() {
         return table;
     }

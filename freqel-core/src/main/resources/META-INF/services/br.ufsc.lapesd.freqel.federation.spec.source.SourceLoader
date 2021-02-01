@@ -1,0 +1,3 @@
+br.ufsc.lapesd.freqel.federation.spec.source.RDFFileSourceLoader
+br.ufsc.lapesd.freqel.federation.spec.source.SPARQLServiceLoader
+br.ufsc.lapesd.freqel.federation.spec.source.TDBSourceLoader

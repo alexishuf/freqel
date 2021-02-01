@@ -7,10 +7,11 @@ import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
-import br.ufsc.lapesd.freqel.federation.Source;
+import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.freqel.jena.JenaWrappers;
 import br.ufsc.lapesd.freqel.jena.model.term.node.JenaNodeTermFactory;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilterExecutor;
 import br.ufsc.lapesd.freqel.model.NTParseException;
 import br.ufsc.lapesd.freqel.model.RDFUtils;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -25,7 +26,7 @@ import br.ufsc.lapesd.freqel.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilterExecutor;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterExecutor;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.*;
@@ -85,7 +86,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
     private @Nonnull final Molecule molecule;
     private @Nonnull final MoleculeMatcher moleculeMatcher;
     private @Nullable Federation federation;
-    private @Nonnull final SPARQLFilterExecutor filterExecutor = new SPARQLFilterExecutor();
+    private @Nonnull final SPARQLFilterExecutor filterExecutor = new JenaSPARQLFilterExecutor();
 
     /* --- --- --- Constructor & loader/parser --- --- --- */
 

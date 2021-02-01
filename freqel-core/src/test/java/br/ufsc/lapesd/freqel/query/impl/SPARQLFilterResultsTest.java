@@ -1,7 +1,8 @@
 package br.ufsc.lapesd.freqel.query.impl;
 
 import br.ufsc.lapesd.freqel.TestContext;
-import br.ufsc.lapesd.freqel.query.modifiers.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.CollectionResults;
@@ -31,19 +32,19 @@ public class SPARQLFilterResultsTest implements TestContext {
 
         return Stream.of(
                 asList(asList(1, 2, 3, 4),
-                       singletonList(SPARQLFilter.build("?x > 1")),
+                       singletonList(SPARQLFilterFactory.parseFilter("?x > 1")),
                        asList(2, 3, 4)),
                 asList(asList(1, 2, 3, 4),
-                       singletonList(SPARQLFilter.build("?x < 4")),
+                       singletonList(SPARQLFilterFactory.parseFilter("?x < 4")),
                        asList(1, 2, 3)),
                 asList(asList(1, 2, 3, 4, 5, 6),
-                       asList(SPARQLFilter.build("?x > 2"),
-                              SPARQLFilter.build("?x < 5")),
+                       asList(SPARQLFilterFactory.parseFilter("?x > 2"),
+                              SPARQLFilterFactory.parseFilter("?x < 5")),
                        asList(3, 4)),
                 asList(asList(1, 2, 3, 4, 5, 6),
-                       asList(SPARQLFilter.build("?x > 2"),
-                              SPARQLFilter.build("?x < 6"),
-                              SPARQLFilter.build("?x != 4")),
+                       asList(SPARQLFilterFactory.parseFilter("?x > 2"),
+                              SPARQLFilterFactory.parseFilter("?x < 6"),
+                              SPARQLFilterFactory.parseFilter("?x != 4")),
                        asList(3, 5))
         ).map(List::toArray).toArray(Object[][]::new);
     }
