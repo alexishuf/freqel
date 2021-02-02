@@ -3,13 +3,12 @@ package br.ufsc.lapesd.freqel.federation.execution.tree.impl;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
-import br.ufsc.lapesd.freqel.algebra.leaf.DQueryOp;
-import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
-import br.ufsc.lapesd.freqel.algebra.leaf.SPARQLValuesTemplateOp;
+import br.ufsc.lapesd.freqel.algebra.leaf.*;
 import br.ufsc.lapesd.freqel.algebra.util.DQPushChecker;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.*;
+import br.ufsc.lapesd.freqel.model.SPARQLString;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.*;
@@ -29,12 +28,10 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Provider;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Set;
+import java.util.*;
 
 import static br.ufsc.lapesd.freqel.algebra.util.TreeUtils.exposeFilterVars;
+import static br.ufsc.lapesd.freqel.algebra.util.TreeUtils.iteratePreOrder;
 
 public class SimpleQueryOpExecutor extends SimpleOpExecutor
         implements QueryOpExecutor, UnionOpExecutor, DQueryOpExecutor, CartesianOpExecutor,
@@ -105,38 +102,86 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         }
     }
 
-    protected @Nullable ModifiersSet getPendingModifiers(@Nonnull ModifiersSet in,
-                                                         @Nonnull TPEndpoint ep) {
-        ModifiersSet pending = null;
-        for (Modifier m : in) {
-            Capability capability = m.getCapability();
-            if (!ep.hasCapability(capability))
-                (pending == null ? pending = new ModifiersSet() : pending).add(m);
+    private static class PreprocessedQuery {
+        EndpointOp op;
+        boolean hasCopy = false;
+        ModifiersSet modifiers;
+        @Nullable ModifiersSet pending;
+
+        public PreprocessedQuery(@Nonnull EndpointOp op) {
+            setOp(op);
+            pending = getPendingModifiers(op.getEndpoint());
+            handleRequiredInputs();
         }
-        if (!ep.hasCapability(Capability.SPARQL_FILTER) && pending != null) {
-            pending.add(exposeFilterVars(in, in.filters()));
-            if (pending.add(in.limit())) in.remove(in.limit());
-            if (pending.add(in.ask()  )) in.remove(in.ask()  );
+
+        private void handleRequiredInputs() {
+            if (op.hasRequiredInputs()) {
+                assert false : "Query has required input vars";
+                // in production: try to recover by discarding FILTER()s
+                copy();
+                Set<SPARQLFilter> removed;
+                if (op instanceof EndpointQueryOp) {
+                    removed = eqOp().getQuery().sanitizeFiltersStrict();
+                } else {
+                    removed = new HashSet<>();
+                    for (Iterator<Op> it = iteratePreOrder(dqOp().getQuery()); it.hasNext(); ) {
+                        Op op = it.next();
+                        if (op instanceof QueryOp)
+                            removed.addAll(((QueryOp) op).getQuery().sanitizeFiltersStrict());
+                    }
+                }
+                logger.warn("Query against {} had unbound required input variables.\n  Offending " +
+                            "filters: {}\n  Pending inputs after removed filters: {}\n  Offending " +
+                            "query:\n    {}", op.getEndpoint(), removed, op.getRequiredInputVars(),
+                            SPARQLString.create(op).getSparql().replace("\n", "\n    "));
+            }
         }
-        return pending;
+
+        private void setOp(@Nonnull EndpointOp op) {
+            this.op = op;
+            this.modifiers = op.modifiers();
+            assert op instanceof EndpointQueryOp || op instanceof DQueryOp;
+        }
+
+        @Nonnull EndpointQueryOp eqOp() { return (EndpointQueryOp) op;}
+        @Nonnull DQueryOp dqOp() { return (DQueryOp) op;}
+        @Nonnull CQuery cQuery() { return eqOp().getQuery(); }
+
+        private @Nullable ModifiersSet getPendingModifiers(@Nonnull TPEndpoint ep) {
+            for (Modifier m : modifiers) {
+                Capability capability = m.getCapability();
+                if (!ep.hasCapability(capability))
+                    (pending == null ? pending = new ModifiersSet() : pending).add(m);
+            }
+            if (!ep.hasCapability(Capability.SPARQL_FILTER) && !modifiers.filters().isEmpty()) {
+                assert pending != null;
+                copy();
+                pending.add(exposeFilterVars(modifiers, modifiers.filters()));
+                if (pending.add(modifiers.limit())) modifiers.remove(modifiers.limit());
+                if (pending.add(modifiers.ask()  )) modifiers.remove(modifiers.ask()  );
+            }
+            if (pending != null) {
+                assert !pending.isEmpty();
+                copy();
+                modifiers.removeAll(pending);
+            }
+            return pending;
+        }
+
+        private void copy() {
+            if (!hasCopy) setOp((EndpointOp) op.flatCopy());
+            hasCopy = true;
+        }
     }
+
 
     protected @Nonnull Results doExecute(@Nonnull DQueryOp node) {
         DQEndpoint ep = node.getEndpoint();
-        Op query = node.getQuery();
+        PreprocessedQuery data = new PreprocessedQuery(node);
+        Op query = data.dqOp().getQuery();
         assert new DQPushChecker(ep.getDisjunctiveProfile()).setEndpoint(ep).canPush(query)
                : "Why did a non-executable plan got to this point!?";
-        // if save all unsupported modifiers in pending
-        ModifiersSet pending = getPendingModifiers(query.modifiers(), ep);
-        if (pending != null) { // replace query to a copy with supported modifiers
-            Op copy = TreeUtils.deepCopy(query);
-            for (Modifier m : query.modifiers()) {
-                if (!pending.contains(m))
-                    copy.modifiers().add(m);
-            }
-            query = copy;
-        }
-        return ResultsUtils.applyModifiers(ep.query(query), pending);
+        return ResultsUtils.applyModifiers(ep.query(query), data.pending);
     }
 
     @Override
@@ -151,31 +196,13 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
     }
 
     protected @Nonnull Results doExecute(@Nonnull EndpointQueryOp node) {
-        CQuery q = node.getQuery();
         TPEndpoint ep = node.getEndpoint();
-        ModifiersSet pending = getPendingModifiers(q.getModifiers(), ep);
-        if (!q.attr().reqInputVarNames().isEmpty()) {
-            assert false : "Query has required input vars";
-            // in production: try to recover by discarding FILTER()s
-            MutableCQuery mq = new MutableCQuery(q);
-            Set<SPARQLFilter> removed = mq.sanitizeFiltersStrict();
-            logger.warn("Query against {} had unbound required input variables.\n  Offending " +
-                        "filters: {}\n  Pending inputs after removed filters: {}\n  Offending " +
-                        "query:\n    {}", ep, removed, mq.attr().reqInputVarNames(),
-                        q.toString().replace("\n", "\n    "));
-            q = mq;
-        }
-        Results r;
-        if (pending == null) {
-            r = ep.query(q);
-        } else {
-            MutableCQuery mq = new MutableCQuery(q);
-            mq.mutateModifiers().removeIf(pending::contains);
-            assert q.getModifiers().containsAll(pending); // q not affected!
-            r = ResultsUtils.applyModifiers(ep.query(mq), pending);
-        }
-        assert q.getModifiers().optional() == null || r.isOptional();
-        assert r.getVarNames().equals(q.attr().publicVarNames());
+        PreprocessedQuery data = new PreprocessedQuery(node);
+        CQuery q = data.eqOp().getQuery();
+        Results r = ResultsUtils.applyModifiers(ep.query(q), data.pending);
+        MutableCQuery inputQuery = node.getQuery();
+        assert inputQuery.getModifiers().optional() == null || r.isOptional();
+        assert r.getVarNames().equals(inputQuery.attr().publicVarNames());
         return r;
     }
 
