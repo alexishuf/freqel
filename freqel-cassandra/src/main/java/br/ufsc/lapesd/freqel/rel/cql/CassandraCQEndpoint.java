@@ -29,7 +29,8 @@ import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.ArraySolution;
 import br.ufsc.lapesd.freqel.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.freqel.query.results.impl.LimitResults;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.rel.common.*;
 import br.ufsc.lapesd.freqel.rel.mappings.RelationalMapping;
 import br.ufsc.lapesd.freqel.rel.mappings.context.ContextMapping;
@@ -78,9 +79,8 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
         this.mapping = mapping;
         this.molecule = mapping.createMolecule();
         this.sharedSession = sharedSession;
-        TransitiveClosureTBoxReasoner empty = new TransitiveClosureTBoxReasoner();
         NoMergePolicyAnnotation policy = new NoMergePolicyAnnotation();
-        this.moleculeMatcher = new RelationalMoleculeMatcher(this.molecule, empty, policy);
+        this.moleculeMatcher = new RelationalMoleculeMatcher(this.molecule, new EmptyTBox(), policy);
         this.cqlGenerator = new CqlGenerator(DefaultSqlTermWriter.INSTANCE);
     }
 

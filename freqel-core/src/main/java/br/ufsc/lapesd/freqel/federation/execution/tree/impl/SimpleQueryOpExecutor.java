@@ -14,6 +14,7 @@ import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.*;
 import br.ufsc.lapesd.freqel.query.modifiers.Modifier;
 import br.ufsc.lapesd.freqel.query.modifiers.ModifiersSet;
+import br.ufsc.lapesd.freqel.query.modifiers.Reasoning;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
@@ -107,6 +108,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         boolean hasCopy = false;
         ModifiersSet modifiers;
         @Nullable ModifiersSet pending;
+        @Nullable Reasoning pendingReasoning;
 
         public PreprocessedQuery(@Nonnull EndpointOp op) {
             setOp(op);
@@ -145,13 +147,16 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
 
         @Nonnull EndpointQueryOp eqOp() { return (EndpointQueryOp) op;}
         @Nonnull DQueryOp dqOp() { return (DQueryOp) op;}
-        @Nonnull CQuery cQuery() { return eqOp().getQuery(); }
 
         private @Nullable ModifiersSet getPendingModifiers(@Nonnull TPEndpoint ep) {
             for (Modifier m : modifiers) {
                 Capability capability = m.getCapability();
-                if (!ep.hasCapability(capability))
-                    (pending == null ? pending = new ModifiersSet() : pending).add(m);
+                if (!ep.hasCapability(capability)) {
+                    if (capability == Capability.REASONING)
+                        pendingReasoning = (Reasoning) m;
+                    else
+                        (pending == null ? pending = new ModifiersSet() : pending).add(m);
+                }
             }
             if (!ep.hasCapability(Capability.SPARQL_FILTER) && !modifiers.filters().isEmpty()) {
                 assert pending != null;

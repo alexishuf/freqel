@@ -6,7 +6,7 @@ import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.MissingCapabilityException;
-import br.ufsc.lapesd.freqel.reason.tbox.TBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.TBox;
 
 import javax.annotation.Nonnull;
 import java.util.Objects;
@@ -16,19 +16,19 @@ import static br.ufsc.lapesd.freqel.description.semantic.SemanticCQueryMatch.EMP
 import static br.ufsc.lapesd.freqel.description.semantic.SemanticCQueryMatch.builder;
 
 public class SemanticSelectDescription extends SelectDescription implements SemanticDescription {
-    private final @Nonnull TBoxReasoner reasoner;
+    private final @Nonnull TBox reasoner;
 
     public SemanticSelectDescription(@Nonnull CQEndpoint endpoint,
-                                     @Nonnull TBoxReasoner tBoxReasoner)
+                                     @Nonnull TBox tBox)
             throws MissingCapabilityException  {
-        this(endpoint, false, tBoxReasoner);
+        this(endpoint, false, tBox);
     }
 
     public SemanticSelectDescription(@Nonnull CQEndpoint endpoint, boolean fetchClasses,
-                                     @Nonnull TBoxReasoner tBoxReasoner)
+                                     @Nonnull TBox tBox)
             throws MissingCapabilityException  {
         super(endpoint, fetchClasses);
-        this.reasoner = tBoxReasoner;
+        this.reasoner = tBox;
     }
 
     @Override

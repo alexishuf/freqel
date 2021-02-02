@@ -65,9 +65,9 @@ public class ModelUtils {
             boolean fromObject, boolean strict) {
         start = inModel(model, start);
         Set<Resource> visited = new HashSet<>();
-        visited.add(start);
         ArrayDeque<Resource> queue = new ArrayDeque<>();
         if (strict) {
+            visited.add(start);
             if (fromObject) listResources(model, null , prop, start).forEach(queue::add);
             else            listResources(model, start, prop, null ).forEach(queue::add);
         } else {

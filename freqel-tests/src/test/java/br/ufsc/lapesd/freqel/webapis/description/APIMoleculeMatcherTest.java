@@ -21,7 +21,7 @@ import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.annotations.PureDescriptive;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 import br.ufsc.lapesd.freqel.webapis.TransparencyService;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
-import static br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxReasoner.structural;
+import static br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxMaterializer.structural;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -402,7 +402,7 @@ public class APIMoleculeMatcherTest implements TestContext {
     public void testSemanticMatch(APIMolecule apiMolecule, Collection<Triple> query,
                                   Collection<CQuery> egs,
                                   List<? extends Set<CQuery>> alternatives) {
-        TransitiveClosureTBoxReasoner reasoner = new TransitiveClosureTBoxReasoner();
+        TransitiveClosureTBoxMaterializer reasoner = new TransitiveClosureTBoxMaterializer();
         TBoxSpec tboxSpec = new TBoxSpec()
                 .addResource(getClass(), "../../api-molecule-matcher-tests.ttl");
         reasoner.load(tboxSpec);
@@ -474,7 +474,7 @@ public class APIMoleculeMatcherTest implements TestContext {
 
     @Test
     public void testSemanticMatchPreservesPureDescriptive() {
-        TransitiveClosureTBoxReasoner reasoner = new TransitiveClosureTBoxReasoner();
+        TransitiveClosureTBoxMaterializer reasoner = new TransitiveClosureTBoxMaterializer();
         TBoxSpec tboxSpec = new TBoxSpec()
                 .addResource(getClass(), "../../api-molecule-matcher-tests.ttl");
         reasoner.load(tboxSpec);

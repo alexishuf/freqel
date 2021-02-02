@@ -57,10 +57,11 @@ import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
 import br.ufsc.lapesd.freqel.query.results.impl.SequentialResultsExecutor;
-import br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxReasoner;
-import br.ufsc.lapesd.freqel.reason.tbox.TBoxReasoner;
+import br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxMaterializer;
+import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializer;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.webapis.TransparencyService;
@@ -450,7 +451,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             else if (variantName.contains("AskDescription"))
                 description = new AskDescription(ep);
             else if (variantName.contains("SemanticSelectDescription"))
-                description = new SemanticSelectDescription(ep, true, new TransitiveClosureTBoxReasoner());
+                description = new SemanticSelectDescription(ep, true, new EmptyTBox());
             assert description != null;
 
             Source source = new Source(description, ep);
@@ -1188,18 +1189,18 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             return variantIdx >= 1 ? null : new SetupSimpleCNC(variantIdx+1);
         }
 
-        private @Nonnull TBoxReasoner createReasoner() {
+        private @Nonnull TBoxMaterializer createReasoner() {
             if (variantIdx == 0)
-                return new TransitiveClosureTBoxReasoner();
+                return new TransitiveClosureTBoxMaterializer();
             else if (variantIdx == 1)
-                return OWLAPITBoxReasoner.hermit();
+                return OWLAPITBoxMaterializer.hermit();
             throw new AssertionError("Unexpected variantIdx="+variantIdx);
         }
 
         @Override
         public void accept(Federation federation, String baseServiceUri) {
             ARQEndpoint data = createEndpoint("federation/cnc.ttl");
-            TBoxReasoner reasoner = createReasoner();
+            TBoxMaterializer reasoner = createReasoner();
             reasoner.load(new TBoxSpec().addResource(getClass(), "cnc-ontology.ttl"));
             SemanticSelectDescription matcher =
                     new SemanticSelectDescription(data, true, reasoner);

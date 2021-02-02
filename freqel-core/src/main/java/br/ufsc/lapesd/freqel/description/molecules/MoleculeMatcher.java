@@ -14,7 +14,7 @@ import br.ufsc.lapesd.freqel.query.annotations.MatchAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.MergePolicyAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
-import br.ufsc.lapesd.freqel.reason.tbox.TBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.TBox;
 import br.ufsc.lapesd.freqel.util.CollectionUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
@@ -37,22 +37,22 @@ import static java.util.stream.Collectors.toSet;
 
 public class MoleculeMatcher implements SemanticDescription {
     private final @Nonnull Molecule molecule;
-    private final @Nonnull TBoxReasoner reasoner;
+    private final @Nonnull TBox reasoner;
     private final @Nonnull MergePolicyAnnotation mergePolicyAnnotation;
     private @Nonnull SoftReference<Index> index = new SoftReference<>(null);
 
-    public MoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBoxReasoner reasoner) {
+    public MoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBox reasoner) {
         this(molecule, reasoner, new NoMergePolicyAnnotation());
     }
 
-    public MoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBoxReasoner reasoner,
+    public MoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBox reasoner,
                            @Nonnull MergePolicyAnnotation mergePolicy) {
         this.molecule = molecule;
         this.reasoner = reasoner;
         this.mergePolicyAnnotation = mergePolicy;
     }
 
-    public @Nonnull TBoxReasoner getReasoner() {
+    public @Nonnull TBox getReasoner() {
         return reasoner;
     }
 

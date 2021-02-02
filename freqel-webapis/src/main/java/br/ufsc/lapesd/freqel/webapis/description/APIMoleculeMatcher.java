@@ -11,8 +11,10 @@ import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
-import br.ufsc.lapesd.freqel.reason.tbox.TBoxReasoner;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializer;
+import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
@@ -102,14 +104,14 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
     }
 
     public APIMoleculeMatcher(@Nonnull APIMolecule apiMolecule,
-                              @Nonnull TBoxReasoner reasoner) {
+                              @Nonnull TBox reasoner) {
         super(apiMolecule.getMolecule(), reasoner, NoMergePolicyAnnotation.INSTANCE);
         this.apiMolecule = apiMolecule;
     }
 
-    /** Creates matcher with a dummy {@link TBoxReasoner} that performs no reasoning. */
+    /** Creates matcher with a dummy {@link TBoxMaterializer} that performs no reasoning. */
     public APIMoleculeMatcher(@Nonnull APIMolecule apiMolecule) {
-        this(apiMolecule, new TransitiveClosureTBoxReasoner());
+        this(apiMolecule, new EmptyTBox());
     }
 
 

@@ -30,7 +30,9 @@ import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterExecutor;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.*;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.rel.common.AnnotationStatus;
 import br.ufsc.lapesd.freqel.rel.common.RelationalMoleculeMatcher;
 import br.ufsc.lapesd.freqel.rel.common.StarSubQuery;
@@ -112,7 +114,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
 
         this.molecule = mapping.createMolecule(columnObjects);
         NoMergePolicyAnnotation policy = new NoMergePolicyAnnotation();
-        TransitiveClosureTBoxReasoner empty = new TransitiveClosureTBoxReasoner();
+        TBox empty = new EmptyTBox();
         this.moleculeMatcher = new RelationalMoleculeMatcher(this.molecule, empty, policy);
     }
 

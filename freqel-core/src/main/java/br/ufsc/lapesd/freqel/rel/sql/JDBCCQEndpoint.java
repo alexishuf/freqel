@@ -16,7 +16,9 @@ import br.ufsc.lapesd.freqel.query.endpoint.QueryExecutionException;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.impl.HashDistinctResults;
 import br.ufsc.lapesd.freqel.query.results.impl.LimitResults;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.rel.common.AnnotationStatus;
 import br.ufsc.lapesd.freqel.rel.common.RelationalMoleculeMatcher;
 import br.ufsc.lapesd.freqel.rel.common.RelationalResults;
@@ -56,7 +58,7 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
         this.name = name;
         this.connectionSupplier = connectionSupplier;
         this.molecule = mapping.createMolecule();
-        TransitiveClosureTBoxReasoner empty = new TransitiveClosureTBoxReasoner();
+        TBox empty = new EmptyTBox();
         this.moleculeMatcher = new RelationalMoleculeMatcher(this.molecule, empty);
     }
 

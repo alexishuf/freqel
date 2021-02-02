@@ -1,9 +1,13 @@
 package br.ufsc.lapesd.freqel.reason.tbox.vlog;
 
 import br.ufsc.lapesd.freqel.hdt.HDTUtils;
+import br.ufsc.lapesd.freqel.hdt.query.HDTEndpoint;
+import br.ufsc.lapesd.freqel.model.RDFUtils;
 import br.ufsc.lapesd.freqel.model.Triple.Position;
 import br.ufsc.lapesd.freqel.model.term.Term;
-import br.ufsc.lapesd.freqel.reason.tbox.TBoxReasoner;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
+import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializer;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.freqel.util.ExtractedResource;
 import br.ufsc.lapesd.freqel.util.PropertyReader;
@@ -23,6 +27,7 @@ import org.apache.jena.vocabulary.RDFS;
 import org.rdfhdt.hdt.exceptions.NotFoundException;
 import org.rdfhdt.hdt.hdt.HDT;
 import org.rdfhdt.hdt.hdt.HDTManager;
+import org.rdfhdt.hdt.triples.IteratorTripleString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,24 +35,24 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.*;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.freqel.hdt.HDTUtils.streamTerm;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class SystemVLogReasoner implements TBoxReasoner {
-    private static final Logger logger = LoggerFactory.getLogger(SystemVLogReasoner.class);
+public class SystemVLogMaterializer implements TBoxMaterializer {
+    private static final Logger logger = LoggerFactory.getLogger(SystemVLogMaterializer.class);
     private static final Pattern WIN_VAR_RX = Pattern.compile("%(.*)%");
     private static final String RULES_SAMEAS = "rules_sameAs";
     private static final CSVFormat VLOG_MAT_FORMAT
             = CSVFormat.DEFAULT.withHeader("s", "p", "o").withSkipHeaderRecord(false);
-    private static final String subClassOf = RDFS.subClassOf.getURI();
-    private static final String subPropertyOf = RDFS.subPropertyOf.getURI();
+    private static final String subClassOf = "http://www.w3.org/2000/01/rdf-schema#subClassOf";
+    private static final String subPropertyOf = "http://www.w3.org/2000/01/rdf-schema#subPropertyOf";
 
     private @Nonnull final PropertyReader<File> vlogTempDir =
             new PropertyReader<File>("vlog.tempdir", new File("")) {
@@ -98,6 +103,7 @@ public class SystemVLogReasoner implements TBoxReasoner {
     };
     private @Nullable File tempDir;
     private @Nullable HDT hdt;
+    private @Nullable TPEndpoint endpoint;
     private boolean warnedNotLoaded = false;
 
     private void warnNotLoaded() {
@@ -346,7 +352,20 @@ public class SystemVLogReasoner implements TBoxReasoner {
         }
     }
 
-    private @Nonnull Stream<Term> querySubjects(@Nonnull String predicate, @Nonnull Term term) {
+    @Override public @Nullable TPEndpoint getEndpoint() {
+        if (endpoint != null)
+            return endpoint;
+        if (hdt == null) {
+            warnNotLoaded();
+            endpoint = new EmptyEndpoint();
+        } else {
+            endpoint = new HDTEndpoint(hdt, "VLog materialization at "+tempDir);
+        }
+        return endpoint;
+    }
+
+    private @Nonnull Stream<Term> querySubjects(@Nonnull String predicate, @Nonnull Term term,
+                                                boolean strict) {
         if (hdt == null) {
             warnNotLoaded();
             return Stream.empty();
@@ -354,20 +373,92 @@ public class SystemVLogReasoner implements TBoxReasoner {
         if (!term.isURI())
             return Stream.empty();
         try {
-            String uri = term.asURI().getURI();
-            return HDTUtils.streamTerm(hdt.search(null, predicate, uri), Position.SUBJ)
-                   .filter(t -> !t.equals(term));
+            String uri = HDTUtils.toHDTTerm(term);
+            Stream<Term> stream = streamTerm(hdt.search(null, predicate, uri), Position.SUBJ)
+                                  .filter(t -> !t.equals(term));
+            if (!strict)
+                stream = Stream.concat(Stream.of(term), stream);
+            return stream;
         } catch (NotFoundException e) {
             return Stream.empty(); //term or predicate not in HDT (i.e., no results)
         }
     }
 
     @Override public @Nonnull Stream<Term> subClasses(@Nonnull Term term) {
-        return querySubjects(subClassOf, term);
+        return querySubjects(subClassOf, term, true);
+    }
+
+    @Override public @Nonnull Stream<Term> withSubClasses(@Nonnull Term term) {
+        return querySubjects(subClassOf, term, false);
     }
 
     @Override public @Nonnull Stream<Term> subProperties(@Nonnull Term term) {
-        return querySubjects(subPropertyOf, term);
+        return querySubjects(subPropertyOf, term, true);
+    }
+
+    @Override public @Nonnull Stream<Term> withSubProperties(@Nonnull Term term) {
+        return querySubjects(subPropertyOf, term, false);
+    }
+
+    @Override public boolean isSubClass(@Nonnull Term subClass, @Nonnull Term superClass) {
+        if (subClass.equals(superClass))
+            return true;
+        if (hdt == null) {
+            warnNotLoaded();
+            return false;
+        }
+        if (!subClass.isRes()) {
+            logger.warn("Suspicious call to isSubClass({}, {}): {} is not a resource",
+                         subClass, superClass, subClass);
+            return false;
+        }
+        if (superClass.isRes()) {
+            logger.warn("Suspicious call to isSubClass({}, {}): {} is nto a resource",
+                        subClass, superClass, superClass);
+            return false;
+        }
+        return hasPath(subClass, subClassOf, superClass);
+    }
+
+    @Override public boolean isSubProperty(@Nonnull Term subProperty, @Nonnull Term superProperty) {
+        if (subProperty.equals(superProperty))
+            return true;
+        if (hdt == null) {
+            warnNotLoaded();
+            return false;
+        }
+        if (!subProperty.isURI()) {
+            logger.warn("Suspicious call to isSubProperty({}, {}): {} is not an IRI",
+                        subProperty, superProperty, subProperty);
+            return false;
+        }
+        if (!superProperty.isURI()) {
+            logger.warn("Suspicious call to isSubProperty({}, {}): {} is not an IRI",
+                        subProperty, superProperty, superProperty);
+            return false;
+        }
+        return hasPath(subProperty, subPropertyOf, superProperty);
+    }
+
+    private boolean hasPath(@Nonnull Term startTerm, @Nonnull String predicate,
+                            @Nonnull Term endTerm) {
+        assert hdt != null;
+        String endString = HDTUtils.toHDTTerm(endTerm);
+        Set<String> visited = new HashSet<>();
+        ArrayDeque<String> stack = new ArrayDeque<>();
+        stack.push(HDTUtils.toHDTTerm(startTerm));
+        while (!stack.isEmpty()) {
+            String node = stack.pop();
+            if (node.equals(endString))
+                return true;
+            if (!visited.add(node))
+                continue;
+            try {
+                for (IteratorTripleString it = hdt.search(node, predicate, null); it.hasNext();)
+                    stack.push(it.next().getObject().toString());
+            } catch (NotFoundException ignored) { }
+        }
+        return false;
     }
 
     @Override public void close() {
@@ -380,6 +471,13 @@ public class SystemVLogReasoner implements TBoxReasoner {
             }
             hdt = null;
         }
+        if (endpoint != null) {
+            try {
+                endpoint.close();
+            } catch (Throwable t) {
+                logger.error("Failed to close {}: {}", endpoint, t.getMessage(), t);
+            }
+        }
         if (tempDir != null) {
             try {
                 FileUtils.deleteDirectory(tempDir);
@@ -391,5 +489,9 @@ public class SystemVLogReasoner implements TBoxReasoner {
         }
         if (exception != null)
             throw new VLogException("Exception on close()", exception);
+    }
+
+    @Override public @Nonnull String toString() {
+        return String.format("SystemVLogMaterializer@%x", System.identityHashCode(this));
     }
 }

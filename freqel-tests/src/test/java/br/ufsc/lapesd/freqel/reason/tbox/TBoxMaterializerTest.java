@@ -1,14 +1,17 @@
 package br.ufsc.lapesd.freqel.reason.tbox;
 
-import br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxReasoner;
+import br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxMaterializer;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.query.parse.CQueryContext;
 import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
-import br.ufsc.lapesd.freqel.reason.tbox.vlog.SystemVLogReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.vlog.SystemVLogMaterializer;
 import com.github.lapesd.rdfit.RIt;
 import com.github.lapesd.rdfit.iterator.RDFIt;
 import com.github.lapesd.rdfit.source.RDFResource;
+import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.vocabulary.OWL2;
 import org.rdfhdt.hdt.hdt.HDTManager;
@@ -26,19 +29,17 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
+import static com.google.common.collect.Sets.newHashSet;
 import static java.util.stream.Collectors.toSet;
-import static org.testng.Assert.assertFalse;
-import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.*;
 
-public class TBoxReasonerTest implements TestContext {
+public class TBoxMaterializerTest implements TestContext {
     private static final Queue<File> tempFiles = new LinkedBlockingQueue<>();
     private static Boolean hasVLog = null;
     private static void checkHasVLog() {
@@ -62,14 +63,14 @@ public class TBoxReasonerTest implements TestContext {
         }
     }
 
-    public static final List<NamedSupplier<TBoxReasoner>> suppliers = Arrays.asList(
-            new NamedSupplier<>("HermiT", OWLAPITBoxReasoner::hermit),
-            new NamedSupplier<>("StructuralReasoner", OWLAPITBoxReasoner::structural),
-            new NamedSupplier<>("JFact", OWLAPITBoxReasoner::jFact),
-            new NamedSupplier<>(TransitiveClosureTBoxReasoner.class),
+    public static final List<NamedSupplier<TBoxMaterializer>> suppliers = Arrays.asList(
+            new NamedSupplier<>("HermiT", OWLAPITBoxMaterializer::hermit),
+            new NamedSupplier<>("StructuralReasoner", OWLAPITBoxMaterializer::structural),
+            new NamedSupplier<>("JFact", OWLAPITBoxMaterializer::jFact),
+            new NamedSupplier<>(TransitiveClosureTBoxMaterializer.class),
             new NamedSupplier<>("SystemVLogReasoner", () -> {
                 checkHasVLog();
-                SystemVLogReasoner reasoner = new SystemVLogReasoner();
+                SystemVLogMaterializer reasoner = new SystemVLogMaterializer();
                 try {
                     File parent = Files.createTempDirectory("freqel").toFile();
                     tempFiles.add(parent);
@@ -102,7 +103,7 @@ public class TBoxReasonerTest implements TestContext {
     private static final StdURI p2 = new StdURI("http://example.org/onto-5.ttl#p2");
 
     private TBoxSpec onto4, onto5;
-    private TBoxReasoner tBoxReasoner;
+    private TBoxMaterializer tBoxMaterializer;
 
     @BeforeMethod(groups = {"fast"})
     public void setUp() {
@@ -112,8 +113,8 @@ public class TBoxReasonerTest implements TestContext {
 
     @AfterMethod(groups = {"fast"})
     public void tearDown() throws Exception {
-        TBoxReasoner local = this.tBoxReasoner;
-        tBoxReasoner = null;
+        TBoxMaterializer local = this.tBoxMaterializer;
+        tBoxMaterializer = null;
         if (local != null) local.close();
         for (File dir = tempFiles.poll(); dir != null; dir = tempFiles.poll())
             FileUtils.forceDelete(dir);
@@ -125,58 +126,110 @@ public class TBoxReasonerTest implements TestContext {
     }
 
     @Test(dataProvider = "supplierData", groups = {"fast"})
-    public void testLoadDoesNotBlowUp(@Nonnull Supplier<TBoxReasoner> supplier) {
+    public void testLoadDoesNotBlowUp(@Nonnull Supplier<TBoxMaterializer> supplier) {
         supplier.get().load(onto5);
     }
 
     @Test(dataProvider = "supplierData", groups = {"fast"})
-    public void testDirectSubclass(Supplier<TBoxReasoner> supplier) {
-        tBoxReasoner = supplier.get();
-        tBoxReasoner.load(onto5);
-        Set<Term> set = tBoxReasoner.subClasses(d).collect(toSet());
+    public void testDirectSubclass(Supplier<TBoxMaterializer> supplier) {
+        tBoxMaterializer = supplier.get();
+        tBoxMaterializer.load(onto5);
+        Set<Term> set = tBoxMaterializer.subClasses(d).collect(toSet());
         assertTrue(set.contains(d1));
         assertFalse(set.contains(d));
 
-        set = tBoxReasoner.subClasses(d1).collect(toSet());
+        Set<Term> withSet = tBoxMaterializer.withSubClasses(d).collect(toSet());
+        assertTrue(withSet.containsAll(set));
+        assertTrue(withSet.contains(d));
+        assertEquals(withSet.size(), set.size()+1);
+
+        set = tBoxMaterializer.subClasses(d1).collect(toSet());
         assertTrue(set.contains(d11));
         assertFalse(set.contains(d1));
         assertFalse(set.contains(d2));
+
+        withSet = tBoxMaterializer.withSubClasses(d1).collect(toSet());
+        assertTrue(withSet.containsAll(set));
+        assertTrue(withSet.contains(d1));
+        assertEquals(withSet.size(), set.size()+1);
     }
 
     @Test(dataProvider = "supplierData", groups = {"fast"})
-    public void testLoadOverwrites(Supplier<TBoxReasoner> supplier) {
-        tBoxReasoner = supplier.get();
-        tBoxReasoner.load(onto5);
-        assertTrue(tBoxReasoner.subClasses(d).collect(toSet()).contains(d1));
-        assertFalse(tBoxReasoner.subClasses(c).collect(toSet()).contains(c1));
+    public void testSubClassOfEndpoint(Supplier<TBoxMaterializer> supplier) {
+        tBoxMaterializer = supplier.get();
+        tBoxMaterializer.load(onto5);
+        TPEndpoint ep = tBoxMaterializer.getEndpoint();
+        if (ep == null)
+            return; //nothing to test
 
-        tBoxReasoner.load(onto4);
-        assertFalse(tBoxReasoner.subClasses(d).collect(toSet()).contains(d1));
-        assertTrue(tBoxReasoner.subClasses(c).collect(toSet()).contains(c1));
-        assertTrue(tBoxReasoner.subClasses(c).collect(toSet()).contains(c2));
+        Set<Term> set = new HashSet<>();
+        ep.query(createQuery(x, subClassOf, d2)).forEachRemainingThenClose(s -> set.add(s.get(x)));
+        assertEquals(set, newHashSet(d2));
+
+        set.clear();
+        ep.query(createQuery(x, subClassOf, d111)).forEachRemainingThenClose(s -> set.add(s.get(x)));
+        assertEquals(set, newHashSet(d111, d1111));
+
+        set.clear();
+        ep.query(createQuery(x, subClassOf, d)).forEachRemainingThenClose(s -> set.add(s.get(x)));
+        assertEquals(set, newHashSet(d, d1, d11, d111, d1111, d12, d2));
+    }
+
+    @Test(dataProvider = "supplierData", groups = {"fast"})
+    public void testSubPropertyOfEndpoint(Supplier<TBoxMaterializer> supplier) {
+        tBoxMaterializer = supplier.get();
+        tBoxMaterializer.load(onto5);
+        TPEndpoint ep = tBoxMaterializer.getEndpoint();
+        if (ep == null)
+            return; //nothing to test
+
+        Set<Term> set = new HashSet<>();
+        ep.query(createQuery(x, subPropertyOf, p2)).forEachRemainingThenClose(s -> set.add(s.get(x)));
+        assertEquals(set, newHashSet(p2));
+
+        set.clear();
+        ep.query(createQuery(x, subPropertyOf, p111)).forEachRemainingThenClose(s -> set.add(s.get(x)));
+        assertEquals(set, newHashSet(p111, p1111));
+
+        set.clear();
+        ep.query(createQuery(x, subPropertyOf, p)).forEachRemainingThenClose(s -> set.add(s.get(x)));
+        assertEquals(set, newHashSet(p, p1, p11, p111, p1111, p12, p2));
+    }
+
+    @Test(dataProvider = "supplierData", groups = {"fast"})
+    public void testLoadOverwrites(Supplier<TBoxMaterializer> supplier) {
+        tBoxMaterializer = supplier.get();
+        tBoxMaterializer.load(onto5);
+        assertTrue(tBoxMaterializer.subClasses(d).collect(toSet()).contains(d1));
+        assertFalse(tBoxMaterializer.subClasses(c).collect(toSet()).contains(c1));
+
+        tBoxMaterializer.load(onto4);
+        assertFalse(tBoxMaterializer.subClasses(d).collect(toSet()).contains(d1));
+        assertTrue(tBoxMaterializer.subClasses(c).collect(toSet()).contains(c1));
+        assertTrue(tBoxMaterializer.subClasses(c).collect(toSet()).contains(c2));
     }
 
     @Test(dataProvider = "supplierData", invocationCount = 64, threadPoolSize = 1)
-    public void testLoadOverwritesRepeat(Supplier<TBoxReasoner> supplier) {
-        tBoxReasoner = supplier.get();
-        tBoxReasoner.load(onto5);
-        assertTrue(tBoxReasoner.subClasses(d).collect(toSet()).contains(d1));
-        assertFalse(tBoxReasoner.subClasses(c).collect(toSet()).contains(c1));
+    public void testLoadOverwritesRepeat(Supplier<TBoxMaterializer> supplier) {
+        tBoxMaterializer = supplier.get();
+        tBoxMaterializer.load(onto5);
+        assertTrue(tBoxMaterializer.subClasses(d).collect(toSet()).contains(d1));
+        assertFalse(tBoxMaterializer.subClasses(c).collect(toSet()).contains(c1));
 
-        tBoxReasoner.load(onto4);
-        assertFalse(tBoxReasoner.subClasses(d).collect(toSet()).contains(d1));
-        assertTrue(tBoxReasoner.subClasses(c).collect(toSet()).contains(c1));
-        assertTrue(tBoxReasoner.subClasses(c).collect(toSet()).contains(c2));
+        tBoxMaterializer.load(onto4);
+        assertFalse(tBoxMaterializer.subClasses(d).collect(toSet()).contains(d1));
+        assertTrue(tBoxMaterializer.subClasses(c).collect(toSet()).contains(c1));
+        assertTrue(tBoxMaterializer.subClasses(c).collect(toSet()).contains(c2));
     }
 
     @Test(dataProvider = "supplierData", groups = {"fast"})
-    public void testIndirectSubclass(NamedSupplier<TBoxReasoner> supplier) {
+    public void testIndirectSubclass(NamedSupplier<TBoxMaterializer> supplier) {
         if (supplier.getName().equals("StructuralReasoner"))
             return; // mock reasoner, no transitivity
-        tBoxReasoner = supplier.get();
-        tBoxReasoner.load(onto5);
+        tBoxMaterializer = supplier.get();
+        tBoxMaterializer.load(onto5);
 
-        Set<Term> set = tBoxReasoner.subClasses(d).collect(toSet());
+        Set<Term> set = tBoxMaterializer.subClasses(d).collect(toSet());
         assertTrue(set.contains(d1));
         assertTrue(set.contains(d2));
         assertTrue(set.contains(d11));
@@ -184,27 +237,37 @@ public class TBoxReasonerTest implements TestContext {
         assertTrue(set.contains(d111));
         assertTrue(set.contains(d1111));
 
-        set = tBoxReasoner.subClasses(d1).collect(toSet());
+        Set<Term> withSet = tBoxMaterializer.withSubClasses(d).collect(toSet());
+        assertTrue(withSet.contains(d));
+        assertTrue(withSet.containsAll(set));
+        assertEquals(withSet.size(), set.size()+1);
+
+        set = tBoxMaterializer.subClasses(d1).collect(toSet());
         assertFalse(set.contains(d1));
         assertFalse(set.contains(d2));
         assertTrue(set.contains(d11));
         assertTrue(set.contains(d12));
         assertTrue(set.contains(d111));
         assertTrue(set.contains(d1111));
+
+        withSet = tBoxMaterializer.withSubClasses(d1).collect(toSet());
+        assertTrue(withSet.contains(d1));
+        assertTrue(withSet.containsAll(set));
+        assertEquals(withSet.size(), set.size()+1);
     }
 
 
     @Test(dataProvider = "supplierData", groups = {"fast"})
-    public void testDirectSubProperty(Supplier<TBoxReasoner> supplier) {
-        tBoxReasoner = supplier.get();
-        tBoxReasoner.load(onto5);
+    public void testDirectSubProperty(Supplier<TBoxMaterializer> supplier) {
+        tBoxMaterializer = supplier.get();
+        tBoxMaterializer.load(onto5);
 
-        Set<Term> set = tBoxReasoner.subProperties(p).collect(toSet());
+        Set<Term> set = tBoxMaterializer.subProperties(p).collect(toSet());
         assertFalse(set.contains(p));
         assertTrue(set.contains(p1));
         assertTrue(set.contains(p2));
 
-        set = tBoxReasoner.subProperties(p1).collect(toSet());
+        set = tBoxMaterializer.subProperties(p1).collect(toSet());
         assertFalse(set.contains(p1));
         assertFalse(set.contains(p2));
         assertTrue(set.contains(p11));
@@ -212,13 +275,13 @@ public class TBoxReasonerTest implements TestContext {
     }
 
     @Test(dataProvider = "supplierData", groups = {"fast"})
-    public void testIndirectSubProperty(NamedSupplier<TBoxReasoner> supplier) {
+    public void testIndirectSubProperty(NamedSupplier<TBoxMaterializer> supplier) {
         if (supplier.getName().equals("StructuralReasoner"))
             return; // mock reasoner, no transitivity
-        tBoxReasoner = supplier.get();
-        tBoxReasoner.load(onto5);
+        tBoxMaterializer = supplier.get();
+        tBoxMaterializer.load(onto5);
 
-        Set<Term> set = tBoxReasoner.subProperties(p).collect(toSet());
+        Set<Term> set = tBoxMaterializer.subProperties(p).collect(toSet());
         assertFalse(set.contains(p));
         assertTrue(set.contains(p1));
         assertTrue(set.contains(p11));
@@ -227,7 +290,12 @@ public class TBoxReasonerTest implements TestContext {
         assertTrue(set.contains(p12));
         assertTrue(set.contains(p2));
 
-        set = tBoxReasoner.subProperties(p1).collect(toSet());
+        Set<Term> withSet = tBoxMaterializer.withSubProperties(p).collect(toSet());
+        assertTrue(withSet.containsAll(set));
+        assertTrue(withSet.contains(p));
+        assertEquals(withSet.size(), set.size()+1);
+
+        set = tBoxMaterializer.subProperties(p1).collect(toSet());
         assertFalse(set.contains(p));
         assertFalse(set.contains(p1));
         assertTrue(set.contains(p11));
@@ -235,28 +303,33 @@ public class TBoxReasonerTest implements TestContext {
         assertTrue(set.contains(p1111));
         assertTrue(set.contains(p12));
         assertFalse(set.contains(p2));
+
+        withSet = tBoxMaterializer.withSubProperties(p1).collect(toSet());
+        assertTrue(withSet.containsAll(set));
+        assertTrue(withSet.contains(p1));
+        assertEquals(withSet.size(), set.size()+1);
     }
 
 
     @Test(dataProvider = "supplierData")
-    public void testLargeRDFBenchTBox(NamedSupplier<TBoxReasoner> supplier) throws Exception {
+    public void testLargeRDFBenchTBox(NamedSupplier<TBoxMaterializer> supplier) throws Exception {
         if (supplier.getName().equals("HermiT"))
             return; // HermiT will refuse some axioms
-        tBoxReasoner = supplier.get();
+        tBoxMaterializer = supplier.get();
 
         File tboxFile = hdtFileWithoutImports("../../LargeRDFBench-tbox.hdt");
         TBoxSpec spec = new TBoxSpec().add(tboxFile);
-        tBoxReasoner.load(spec);
+        tBoxMaterializer.load(spec);
 
         StdURI scientist    = new StdURI(DBO + "Scientist");
         StdURI person       = new StdURI(DBO + "Person");
         StdURI entomologist = new StdURI(DBO + "Entomologist");
-        Set<Term> set = tBoxReasoner.subClasses(scientist).collect(toSet());
+        Set<Term> set = tBoxMaterializer.subClasses(scientist).collect(toSet());
         assertTrue(set.contains(entomologist));
         assertFalse(set.contains(person));
         assertFalse(set.contains(scientist));
 
-        set = tBoxReasoner.subClasses(person).collect(toSet());
+        set = tBoxMaterializer.subClasses(person).collect(toSet());
         assertTrue(set.contains(scientist));
         assertTrue(set.contains(entomologist));
         assertFalse(set.contains(person));
@@ -264,12 +337,12 @@ public class TBoxReasonerTest implements TestContext {
         StdURI isClassifiedBy = new StdURI(DUL + "isClassifiedBy");
         StdURI genre          = new StdURI(DBO + "genre");
         StdURI literaryGenre  = new StdURI(DBO + "literaryGenre");
-        set = tBoxReasoner.subProperties(genre).collect(toSet());
+        set = tBoxMaterializer.subProperties(genre).collect(toSet());
         assertTrue(set.contains(literaryGenre));
         assertFalse(set.contains(genre));
         assertFalse(set.contains(isClassifiedBy));
 
-        set = tBoxReasoner.subProperties(isClassifiedBy).collect(toSet());
+        set = tBoxMaterializer.subProperties(isClassifiedBy).collect(toSet());
         assertTrue(set.contains(genre));
         assertTrue(set.contains(literaryGenre));
         assertFalse(set.contains(isClassifiedBy));

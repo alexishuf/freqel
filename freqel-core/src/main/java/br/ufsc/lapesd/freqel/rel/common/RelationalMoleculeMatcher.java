@@ -5,16 +5,16 @@ import br.ufsc.lapesd.freqel.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.annotations.MergePolicyAnnotation;
-import br.ufsc.lapesd.freqel.reason.tbox.TBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.TBox;
 
 import javax.annotation.Nonnull;
 
 public class RelationalMoleculeMatcher extends MoleculeMatcher {
-    public RelationalMoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBoxReasoner reasoner,
+    public RelationalMoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBox reasoner,
                                      @Nonnull MergePolicyAnnotation mergePolicy) {
         super(molecule, reasoner, mergePolicy);
     }
-    public RelationalMoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBoxReasoner reasoner) {
+    public RelationalMoleculeMatcher(@Nonnull Molecule molecule, @Nonnull TBox reasoner) {
         this(molecule, reasoner, new AmbiguityMergePolicy());
     }
 

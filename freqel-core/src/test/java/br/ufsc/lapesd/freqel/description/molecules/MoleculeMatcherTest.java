@@ -11,7 +11,7 @@ import br.ufsc.lapesd.freqel.model.term.URI;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import com.google.common.collect.Sets;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -502,7 +502,7 @@ public class MoleculeMatcherTest implements TestContext {
 
         List<Function<Molecule, Description>> factories = asList(
                 MoleculeMatcherWithDisjointness::new,
-                m -> new MoleculeMatcher(m, new TransitiveClosureTBoxReasoner(new TBoxSpec()))
+                m -> new MoleculeMatcher(m, new TransitiveClosureTBoxMaterializer(new TBoxSpec()))
         );
         List<Object[]> arrays = new ArrayList<>();
         for (Function<Molecule, Description> factory : factories) {
@@ -519,8 +519,8 @@ public class MoleculeMatcherTest implements TestContext {
     public static Object[][] semanticMatchData() {
         List<Object[]> arrays = new ArrayList<>();
         for (List<Object> row : allMatchData()) {
-            TransitiveClosureTBoxReasoner reasoner =
-                    new TransitiveClosureTBoxReasoner(new TBoxSpec());
+            TransitiveClosureTBoxMaterializer reasoner =
+                    new TransitiveClosureTBoxMaterializer(new TBoxSpec());
             MoleculeMatcher matcher = new MoleculeMatcher((Molecule) row.get(0), reasoner);
             row.set(0, matcher);
             arrays.add(row.toArray());

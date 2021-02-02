@@ -9,8 +9,8 @@ import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
-import br.ufsc.lapesd.freqel.reason.tbox.TBoxReasoner;
-import br.ufsc.lapesd.freqel.reason.tbox.TBoxReasonerTest;
+import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializer;
+import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializerTest;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import com.github.lapesd.rdfit.RIt;
 import com.github.lapesd.rdfit.components.jena.JenaHelpers;
@@ -46,7 +46,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
 
     private ARQEndpoint ep;
     private TBoxSpec tBoxSpec;
-    private TBoxReasoner reasoner;
+    private TBoxMaterializer reasoner;
 
     @BeforeMethod
     public void setUp() {
@@ -58,7 +58,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
 
     @AfterMethod
     public void tearDown() throws Exception {
-        TBoxReasoner reasoner = this.reasoner;
+        TBoxMaterializer reasoner = this.reasoner;
         if (reasoner != null) {
             reasoner.close();
             this.reasoner = null;
@@ -66,13 +66,13 @@ public class SemanticSelectDescriptionTest implements TestContext {
     }
     @DataProvider
     public static Object[][] reasonerData() {
-        return TBoxReasonerTest.suppliers.stream()
+        return TBoxMaterializerTest.suppliers.stream()
                 .filter(n -> !n.getName().equals("StructuralReasoner"))
                 .map(s -> new Object[]{s}).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "reasonerData")
-    public void testAskWithExactPredicate(Supplier<TBoxReasoner> supplier) {
+    public void testAskWithExactPredicate(Supplier<TBoxMaterializer> supplier) {
         reasoner = supplier.get();
         reasoner.load(tBoxSpec);
         SemanticSelectDescription d = new SemanticSelectDescription(ep, reasoner);
@@ -86,7 +86,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
     }
 
     @Test(dataProvider = "reasonerData")
-    public void testVarWithExactPredicates(Supplier<TBoxReasoner> supplier) {
+    public void testVarWithExactPredicates(Supplier<TBoxMaterializer> supplier) {
         reasoner = supplier.get();
         reasoner.load(tBoxSpec);
         Triple[] ts = {new Triple(Alice, manages, o), new Triple(o, mentors, Charlie)};
@@ -102,7 +102,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
     }
 
     @Test(dataProvider = "reasonerData")
-    public void testSuperPredicateNotUsed(Supplier<TBoxReasoner> supplier) {
+    public void testSuperPredicateNotUsed(Supplier<TBoxMaterializer> supplier) {
         reasoner = supplier.get();
         reasoner.load(tBoxSpec);
         SemanticSelectDescription d = new SemanticSelectDescription(ep, reasoner);
@@ -124,7 +124,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
     }
 
     @Test(dataProvider = "reasonerData")
-    public void testSuperPredicateUsed(Supplier<TBoxReasoner> supplier) {
+    public void testSuperPredicateUsed(Supplier<TBoxMaterializer> supplier) {
         reasoner = supplier.get();
         reasoner.load(tBoxSpec);
         SemanticSelectDescription d = new SemanticSelectDescription(ep, reasoner);
@@ -144,7 +144,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
 
 
     @Test(dataProvider = "reasonerData")
-    public void testVarWithExactClass(Supplier<TBoxReasoner> supplier) {
+    public void testVarWithExactClass(Supplier<TBoxMaterializer> supplier) {
         reasoner = supplier.get();
         reasoner.load(tBoxSpec);
         SemanticSelectDescription d = new SemanticSelectDescription(ep, true, reasoner);
@@ -159,7 +159,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
     }
 
     @Test(dataProvider = "reasonerData")
-    public void testVarWithSuperClassNotUsed(Supplier<TBoxReasoner> supplier) {
+    public void testVarWithSuperClassNotUsed(Supplier<TBoxMaterializer> supplier) {
         reasoner = supplier.get();
         reasoner.load(tBoxSpec);
         SemanticSelectDescription d = new SemanticSelectDescription(ep, true, reasoner);
@@ -180,7 +180,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
 
 
     @Test(dataProvider = "reasonerData")
-    public void testVarWithSuperClassUsed(Supplier<TBoxReasoner> supplier) {
+    public void testVarWithSuperClassUsed(Supplier<TBoxMaterializer> supplier) {
         reasoner = supplier.get();
         reasoner.load(tBoxSpec);
         SemanticSelectDescription d = new SemanticSelectDescription(ep, true, reasoner);
@@ -199,7 +199,7 @@ public class SemanticSelectDescriptionTest implements TestContext {
 
 
     @Test(dataProvider = "reasonerData")
-    public void testMatchSubPropertyWithFilter(Supplier<TBoxReasoner> supplier) {
+    public void testMatchSubPropertyWithFilter(Supplier<TBoxMaterializer> supplier) {
         reasoner = supplier.get();
         reasoner.load(tBoxSpec);
         SemanticSelectDescription description;

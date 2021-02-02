@@ -12,7 +12,8 @@ public enum  Capability {
     SPARQL_FILTER,
     VALUES,
     OPTIONAL,
-    CARTESIAN;
+    CARTESIAN,
+    REASONING;
 
     public boolean isUniqueModifier() {
         switch (this) {
@@ -23,6 +24,7 @@ public enum  Capability {
             case VALUES:
             case OPTIONAL:
             case CARTESIAN:
+            case REASONING:
                 return true;
             default:
                 return false;

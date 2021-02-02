@@ -31,7 +31,9 @@ import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.rel.cql.CassandraCQEndpoint;
 import br.ufsc.lapesd.freqel.rel.sql.JDBCCQEndpoint;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
@@ -151,7 +153,7 @@ public class AgglutinatorTest implements TestContext {
         List<Source> list = new ArrayList<>();
         for (Source s : sources) {
             CQEndpoint ep = (CQEndpoint)s.getEndpoint();
-            TransitiveClosureTBoxReasoner reasoner = new TransitiveClosureTBoxReasoner();
+            TBox reasoner = new EmptyTBox();
             SemanticSelectDescription description = new SemanticSelectDescription(ep, reasoner);
             list.add(new Source(description, ep));
         }

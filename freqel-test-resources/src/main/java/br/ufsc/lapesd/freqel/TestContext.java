@@ -33,6 +33,7 @@ public interface TestContext {
     @Nonnull URI type = new StdURI(RDF.type.getURI());
     @Nonnull URI sameAs = new StdURI(OWL2.sameAs.getURI());
 
+    @Nonnull URI subClassOf = new StdURI(RDFS.subClassOf.getURI());
     @Nonnull URI subPropertyOf = new StdURI(RDFS.subPropertyOf.getURI());
 
     @Nonnull URI xsdInt     = new StdURI(XSDDatatype.XSDint.getURI());

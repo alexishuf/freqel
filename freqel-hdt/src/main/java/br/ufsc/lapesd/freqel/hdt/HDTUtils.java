@@ -51,6 +51,9 @@ public class HDTUtils {
         }
     }
 
+    public static @Nonnull String toHDTTerm(@Nonnull Term term) {
+        return term.isURI() ? term.asURI().getURI() : RDFUtils.toNT(term);
+    }
     public static @Nonnull String toHDTQueryTerm(@Nonnull Term term) {
         if (term.isURI()) return term.asURI().getURI();
         else if (term.isBlank() || term.isVar()) return "";
