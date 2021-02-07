@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.query.endpoint;
 
+import br.ufsc.lapesd.freqel.query.endpoint.exceptions.MissingCapabilityException;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import javax.annotation.Nonnull;

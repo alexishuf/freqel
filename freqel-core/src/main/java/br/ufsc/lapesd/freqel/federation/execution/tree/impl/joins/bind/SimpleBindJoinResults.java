@@ -9,7 +9,7 @@ import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.CrudeSolu
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
-import br.ufsc.lapesd.freqel.query.endpoint.QueryExecutionException;
+import br.ufsc.lapesd.freqel.query.endpoint.exceptions.QueryExecutionException;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.modifiers.ValuesModifier;

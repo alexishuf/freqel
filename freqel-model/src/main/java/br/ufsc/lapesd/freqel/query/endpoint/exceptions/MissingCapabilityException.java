@@ -1,4 +1,7 @@
-package br.ufsc.lapesd.freqel.query.endpoint;
+package br.ufsc.lapesd.freqel.query.endpoint.exceptions;
+
+import br.ufsc.lapesd.freqel.query.endpoint.Capability;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
 

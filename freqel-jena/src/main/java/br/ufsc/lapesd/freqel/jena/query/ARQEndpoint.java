@@ -7,6 +7,8 @@ import br.ufsc.lapesd.freqel.model.SPARQLString;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.*;
+import br.ufsc.lapesd.freqel.query.endpoint.exceptions.DQEndpointException;
+import br.ufsc.lapesd.freqel.query.endpoint.exceptions.QueryExecutionException;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLDisjunctiveProfile;
 import br.ufsc.lapesd.freqel.query.modifiers.Ask;
 import br.ufsc.lapesd.freqel.query.modifiers.Limit;
@@ -175,7 +177,7 @@ public class ARQEndpoint extends AbstractTPEndpoint implements DQEndpoint {
 
     @Override
     public @Nonnull Results query(@Nonnull Op query) throws DQEndpointException,
-                                                            QueryExecutionException {
+            QueryExecutionException {
         assert query.modifiers().stream().allMatch(m -> hasCapability(m.getCapability()));
         assert new DQPushChecker(getDisjunctiveProfile()).setEndpoint(this).canPush(query);
         SPARQLString ss = SPARQLString.create(query);

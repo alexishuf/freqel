@@ -10,7 +10,7 @@ import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
-import br.ufsc.lapesd.freqel.query.endpoint.MissingCapabilityException;
+import br.ufsc.lapesd.freqel.query.endpoint.exceptions.MissingCapabilityException;
 import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.results.Results;

@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.freqel.query.endpoint;
 
+import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
+import br.ufsc.lapesd.freqel.query.results.Results;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
@@ -14,6 +16,10 @@ public abstract class AbstractTPEndpoint implements TPEndpoint {
     private @Nullable WeakHashMap<TPEndpoint, Object> alternatives = null;
     private @Nonnull SoftReference<Set<TPEndpoint>> alternativesClosure
             = new SoftReference<>(null);
+
+    @Override public @Nonnull Results query(@Nonnull Triple query) {
+        return query(CQuery.from(query));
+    }
 
     @Override public boolean isWebAPILike() {
         return false;

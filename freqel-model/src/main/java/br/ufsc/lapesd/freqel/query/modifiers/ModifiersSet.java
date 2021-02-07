@@ -392,6 +392,9 @@ public class ModifiersSet extends AbstractSet<Modifier> {
     public @Nullable Optional optional() {
         return (Optional) d.uniqueModifiers[Capability.OPTIONAL.ordinal()];
     }
+    public @Nullable Reasoning reasoning() {
+        return (Reasoning) d.uniqueModifiers[Capability.REASONING.ordinal()];
+    }
     public @Nonnull Set<SPARQLFilter> filters() {
         return d.filtersView;
     }

@@ -5,7 +5,7 @@ import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
-import br.ufsc.lapesd.freqel.query.endpoint.MissingCapabilityException;
+import br.ufsc.lapesd.freqel.query.endpoint.exceptions.MissingCapabilityException;
 import br.ufsc.lapesd.freqel.reason.tbox.TBox;
 
 import javax.annotation.Nonnull;

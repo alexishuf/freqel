@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.freqel.query.endpoint;
+package br.ufsc.lapesd.freqel.query.endpoint.exceptions;
 
 public class QueryExecutionException extends RuntimeException {
     public QueryExecutionException(String message) {

@@ -14,6 +14,8 @@ import br.ufsc.lapesd.freqel.model.term.std.StdTermFactory;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.*;
+import br.ufsc.lapesd.freqel.query.endpoint.exceptions.DQEndpointException;
+import br.ufsc.lapesd.freqel.query.endpoint.exceptions.QueryExecutionException;
 import br.ufsc.lapesd.freqel.query.modifiers.Ask;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.results.AbstractResults;
