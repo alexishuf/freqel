@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.freqel.cardinality.impl;
 
 import br.ufsc.lapesd.freqel.TestContext;
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.algebra.Cardinality.Reliability;
 import br.ufsc.lapesd.freqel.query.CQuery;
@@ -131,10 +132,10 @@ public class GeneralSelectivityHeuristicTest implements TestContext {
         CQuery cheap = parser.parseConjunctive("SELECT * WHERE {\n" +
                 "   ?film <http://dbpedia.org/ontology/director>  ?director .\n" +
                 "   ?director <http://dbpedia.org/ontology/nationality> <http://dbpedia.org/resource/Italy> .\n" +
-                "   ?x <http://www.w3.org/2002/07/owl#sameAs> ?film .\n" +
+                "   ?x <"+V.OWL.NS+"sameAs> ?film .\n" +
                 "}");
         CQuery expensive = parser.parseConjunctive("SELECT * WHERE {\n" +
-                "   ?x <http://www.w3.org/2002/07/owl#sameAs> ?film .\n" +
+                "   ?x <"+V.OWL.NS+"sameAs> ?film .\n" +
                 "   ?x <http://data.linkedmdb.org/resource/movie/genre> ?genre .\n" +
                 "}");
         Cardinality cheapCard = heuristic.estimate(cheap);

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.cardinality.impl;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.cardinality.CardinalityHeuristic;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -21,8 +22,8 @@ import java.util.List;
 
 public class QuickSelectivityHeuristic implements CardinalityHeuristic {
     private static final Term ground = new StdURI("urn:freqel:ground");
-    private static final Term type = new StdURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
-    private static final Term sameAs = new StdURI("http://www.w3.org/2002/07/owl#sameAs");
+    private static final Term type = V.RDF.type;
+    private static final Term sameAs = V.OWL.sameAs;
     private static final ThreadLocal<State> state = ThreadLocal.withInitial(State::new);
 
     private static final int[] GENERIC_COST = {

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.model;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.*;
 import br.ufsc.lapesd.freqel.algebra.leaf.EmptyOp;
@@ -29,8 +30,8 @@ import java.util.Set;
 import static java.util.stream.Collectors.joining;
 
 public class SPARQLString {
-    private static final @Nonnull URI rdfType = new StdURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
-    private static final @Nonnull URI xsdString = new StdURI("http://www.w3.org/2001/XMLSchema#string");
+    private static final @Nonnull URI rdfType = V.RDF.type;
+    private static final @Nonnull URI xsdString = V.XSD.xstring;
 
     private final boolean distinct, ask;
     private final int limit;

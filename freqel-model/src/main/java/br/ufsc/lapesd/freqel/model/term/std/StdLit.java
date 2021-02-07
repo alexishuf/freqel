@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.model.term.std;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.model.RDFUtils;
 import br.ufsc.lapesd.freqel.model.term.AbstractLit;
 import br.ufsc.lapesd.freqel.model.term.URI;
@@ -15,8 +16,8 @@ public class StdLit extends AbstractLit {
     private final @Nonnull URI dt;
     private final @Nonnull String lexical;
     private final boolean escaped;
-    private static final @Nonnull StdURI xsdString = new StdURI("http://www.w3.org/2001/XMLSchema#string");
-    private static final @Nonnull StdURI rdfLangString = new StdURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#langString");
+    private static final @Nonnull StdURI xsdString = V.XSD.xstring;
+    private static final @Nonnull StdURI rdfLangString = V.RDF.langString;
 
     private StdLit(@Nonnull String lexical, boolean escaped, @Nonnull URI dt, @Nullable String lang) {
         assert lang == null ^ dt.equals(rdfLangString);

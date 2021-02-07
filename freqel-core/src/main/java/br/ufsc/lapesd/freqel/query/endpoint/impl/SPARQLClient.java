@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.query.endpoint.impl;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.util.DQPushChecker;
@@ -77,7 +78,7 @@ public class SPARQLClient extends AbstractTPEndpoint implements DQEndpoint {
                                              "text/tab-separated-values; q=0.9";
     private static final String JSON_ACCEPT = "application/sparql-results+json, " +
                                               "application/json; q=0.9";
-    private static final String XSD_STRING_SUFFIX = "^^<http://www.w3.org/2001/XMLSchema#string>";
+    private static final String XSD_STRING_SUFFIX = "^^<"+ V.XSD.xstring.getURI()+">";
     private static final Pattern CSV_URI_RX = Pattern.compile("^\"?\\w+:");
     private static final Pattern DISTINCT_RX = Pattern.compile("(?i)^SELECT\\W*DISTINCT");
     private static final String POST_QUOTE = "@^\t\r\n";

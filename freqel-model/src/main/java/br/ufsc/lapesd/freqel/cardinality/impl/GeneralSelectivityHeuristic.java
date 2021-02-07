@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.cardinality.impl;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.cardinality.CardinalityHeuristic;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -45,45 +46,45 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
 
     static {
         Map<URI, Integer> map = new HashMap<>();
-        map.put(new StdURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),            1000000);
-        map.put(new StdURI("http://purl.org/dc/terms/title"),        500000);
-        map.put(new StdURI("http://www.w3.org/2000/01/rdf-schema#label"),           500000);
-        map.put(new StdURI("http://purl.org/dc/terms/description"),  250000);
-        map.put(new StdURI("http://www.w3.org/2002/07/owl#sameAs"),          250000);
-        map.put(new StdURI("http://www.w3.org/2000/01/rdf-schema#seeAlso"),         125000);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/name"),             60000);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/familyName"),       45000);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/givenName"),        45000);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/mbox"),             45000);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/mbox_sha1sum"),     45000);
+        map.put(V.RDF.type,            1000000);
+        map.put(V.DCT.title,            500000);
+        map.put(V.RDFS.label,           500000);
+        map.put(V.DCT.description,      250000);
+        map.put(V.OWL.sameAs,           250000);
+        map.put(V.RDFS.seeAlso,         125000);
+        map.put(V.FOAF.name,             60000);
+        map.put(V.FOAF.familyName,       45000);
+        map.put(V.FOAF.givenName,        45000);
+        map.put(V.FOAF.mbox,             45000);
+        map.put(V.FOAF.mbox_sha1sum,     45000);
         doublePenalty = ImmutableMap.copyOf(map);
 
         map.clear();
-        map.put(new StdURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),             50000);
-        map.put(new StdURI("http://www.w3.org/2000/01/rdf-schema#label"),            5000);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/givenName"),        5000);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/name"),             2500);
-        map.put(new StdURI("http://purl.org/dc/terms/title"),         1000);
-        map.put(new StdURI("http://purl.org/dc/terms/description"),   1000);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/familyName"),       1000);
-        map.put(new StdURI("http://www.w3.org/2000/01/rdf-schema#seeAlso"),           300);
-        map.put(new StdURI("http://www.w3.org/2002/07/owl#sameAs"),            150);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/mbox"),              100);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/mbox_sha1sum"),      100);
+        map.put(V.RDF.type,             50000);
+        map.put(V.RDFS.label,            5000);
+        map.put(V.FOAF.givenName,        5000);
+        map.put(V.FOAF.name,             2500);
+        map.put(V.DCT.title,             1000);
+        map.put(V.DCT.description,       1000);
+        map.put(V.FOAF.familyName,       1000);
+        map.put(V.RDFS.seeAlso,           300);
+        map.put(V.OWL.sameAs,             150);
+        map.put(V.FOAF.mbox,              100);
+        map.put(V.FOAF.mbox_sha1sum,      100);
         subjectPenalty = ImmutableMap.copyOf(map);
 
         map.clear();
-        map.put(new StdURI("http://www.w3.org/2002/07/owl#sameAs"),           70);
-        map.put(new StdURI("http://purl.org/dc/terms/title"),         50);
-        map.put(new StdURI("http://www.w3.org/2000/01/rdf-schema#label"),            50);
-        map.put(new StdURI("http://purl.org/dc/terms/description"),   50);
-        map.put(new StdURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),              20);
-        map.put(new StdURI("http://www.w3.org/2000/01/rdf-schema#seeAlso"),          10);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/name"),             10);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/familyName"),       10);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/givenName"),        10);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/mbox"),             10);
-        map.put(new StdURI("http://xmlns.com/foaf/0.1/mbox_sha1sum"),     10);
+        map.put(V.OWL.sameAs,            70);
+        map.put(V.DCT.title,             50);
+        map.put(V.RDFS.label,            50);
+        map.put(V.DCT.description,       50);
+        map.put(V.RDF.type,              20);
+        map.put(V.RDFS.seeAlso,          10);
+        map.put(V.FOAF.name,             10);
+        map.put(V.FOAF.familyName,       10);
+        map.put(V.FOAF.givenName,        10);
+        map.put(V.FOAF.mbox,             10);
+        map.put(V.FOAF.mbox_sha1sum,     10);
         objectPenalty = ImmutableMap.copyOf(map);
     }
 

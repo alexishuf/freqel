@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.freqel.reason.tbox.vlog;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.hdt.HDTUtils;
 import br.ufsc.lapesd.freqel.hdt.query.HDTEndpoint;
-import br.ufsc.lapesd.freqel.model.RDFUtils;
 import br.ufsc.lapesd.freqel.model.Triple.Position;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
@@ -23,7 +23,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.riot.writer.NTriplesWriter;
-import org.apache.jena.vocabulary.RDFS;
 import org.rdfhdt.hdt.exceptions.NotFoundException;
 import org.rdfhdt.hdt.hdt.HDT;
 import org.rdfhdt.hdt.hdt.HDTManager;
@@ -51,8 +50,8 @@ public class SystemVLogMaterializer implements TBoxMaterializer {
     private static final String RULES_SAMEAS = "rules_sameAs";
     private static final CSVFormat VLOG_MAT_FORMAT
             = CSVFormat.DEFAULT.withHeader("s", "p", "o").withSkipHeaderRecord(false);
-    private static final String subClassOf = "http://www.w3.org/2000/01/rdf-schema#subClassOf";
-    private static final String subPropertyOf = "http://www.w3.org/2000/01/rdf-schema#subPropertyOf";
+    private static final String subClassOf = V.RDFS.subClassOf.getURI();
+    private static final String subPropertyOf = V.RDFS.subPropertyOf.getURI();
 
     private @Nonnull final PropertyReader<File> vlogTempDir =
             new PropertyReader<File>("vlog.tempdir", new File("")) {

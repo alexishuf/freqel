@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.model;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.model.prefix.PrefixDict;
 import br.ufsc.lapesd.freqel.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.freqel.model.term.Lit;
@@ -26,14 +27,6 @@ import java.util.regex.Pattern;
 @SuppressWarnings("WeakerAccess")
 public class RDFUtils {
     private static final Logger logger = LoggerFactory.getLogger(RDFUtils.class);
-
-    private static final @Nonnull String xsdString = "http://www.w3.org/2001/XMLSchema#string";
-    private static final @Nonnull String xsdInteger = "http://www.w3.org/2001/XMLSchema#integer";
-    private static final @Nonnull String xsdDouble = "http://www.w3.org/2001/XMLSchema#double";
-    private static final @Nonnull String xsdDecimal = "http://www.w3.org/2001/XMLSchema#decimal";
-    private static final @Nonnull String xsdBoolean = "http://www.w3.org/2001/XMLSchema#boolean";
-
-    private static final @Nonnull URI xsdIntegerURI = new StdURI(xsdInteger);
 
     private static final @Nonnull Pattern INTEGER_SHORT_RX =
             Pattern.compile("^[+-]?[0-9]+$");
@@ -203,7 +196,7 @@ public class RDFUtils {
         if (first == '<' && last == '>')
             return termFactory.createURI(string.substring(1, string.length()-1));
         else if (first == '"' && last == '"')
-            return termFactory.createLit(string.substring(1, string.length()-1), xsdString);
+            return termFactory.createLit(string.substring(1, string.length()-1), V.XSD.xstring);
 
         Matcher matcher = LIT_DT_RX.matcher(string);
         if (matcher.find()) {
@@ -285,13 +278,13 @@ public class RDFUtils {
         assert !string.matches("^<.*>$") : "string looks like a URI";
 
         if (INTEGER_SHORT_RX.matcher(string).matches())
-            return termFactory.createLit(string, xsdInteger);
+            return termFactory.createLit(string, V.XSD.integer);
         if (BOOLEAN_SHORT_RX.matcher(string).matches())
-            return termFactory.createLit(string.toLowerCase(), xsdBoolean);
+            return termFactory.createLit(string.toLowerCase(), V.XSD.xboolean);
         if (DECIMAL_SHORT_RX.matcher(string).matches())
-            return termFactory.createLit(string, xsdDecimal);
+            return termFactory.createLit(string, V.XSD.decimal);
         if (DOUBLE_SHORT_RX.matcher(string).matches())
-            return termFactory.createLit(string, xsdDouble);
+            return termFactory.createLit(string, V.XSD.xdouble);
         throw new NTParseException(string+" does not match a turtle short form");
     }
 
@@ -333,7 +326,7 @@ public class RDFUtils {
         for (String var : vars) {
             Term t = solution.get(var);
             if (t != null && t.isLiteral() && INTEGER_DTS.contains(t.asLiteral().getDatatype()))
-                t = StdLit.fromUnescaped(t.asLiteral().getLexicalForm(), xsdIntegerURI);
+                t = StdLit.fromUnescaped(t.asLiteral().getLexicalForm(), V.XSD.integer);
             values[i++] = t;
         }
         return new ArraySolution(vars, values);

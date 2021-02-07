@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.model.prefix;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.jena.model.prefix.PrefixMappingDict;
@@ -37,10 +38,10 @@ public class PrefixDictTest implements TestContext {
         }
     }
 
-    private static final @Nonnull String RDF_PREFIX = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
-    private static final @Nonnull String FOAF_PREFIX = "http://xmlns.com/foaf/0.1/";
-    private static final @Nonnull String TYPE = RDF_PREFIX + "type";
-    private static final @Nonnull String PERSON = FOAF_PREFIX+"Person";
+    private static final @Nonnull String RDF_PREFIX = V.RDF.NS;
+    private static final @Nonnull String FOAF_PREFIX = V.FOAF.NS;
+    private static final @Nonnull String TYPE = V.RDF.type.getURI();
+    private static final @Nonnull String PERSON = V.FOAF.Person.getURI();
     private static final @Nonnull String ALICE = "http://example.org/Alice"; //ALICE < *_PREFIX
     private static final @Nonnull String BOB = "https://example.org/Alice"; //"https:" > "http:"
 

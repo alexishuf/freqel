@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.owlapi.reason.tbox;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxLoadException;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import com.github.lapesd.rdfit.RIt;
@@ -48,9 +49,9 @@ public class OWLAPITBoxSpec {
         try {
             // OWL and RDFS are language, trying to import them as ontologies will break stuff
             // in owlapi and their reasoners.
-            mgr.createOntology(IRI.create("http://www.w3.org/2002/07/owl"));
-            mgr.createOntology(IRI.create("http://www.w3.org/1999/02/22-rdf-syntax-ns#"));
-            mgr.createOntology(IRI.create("http://www.w3.org/1999/02/22-rdf-syntax-ns"));
+            mgr.createOntology(IRI.create(V.OWL.ONTOLOGY_IRI));
+            mgr.createOntology(IRI.create(V.RDF.NS));
+            mgr.createOntology(IRI.create(V.RDF.ONTOLOGY_IRI));
             // ignore failures to load owl:imports
             mgr.setOntologyLoaderConfiguration(mgr.getOntologyLoaderConfiguration()
                     .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
@@ -106,7 +107,7 @@ public class OWLAPITBoxSpec {
             main = File.createTempFile("onto_imports", ".nt");
             main.deleteOnExit();
             try (PrintStream out = new PrintStream(new FileOutputStream(main))) {
-                out.println("@prefix owl: <http://www.w3.org/2002/07/owl#> .");
+                out.println("@prefix owl: <"+V.OWL.NS+"> .");
                 out.printf("<file://%s> a owl:Ontology", main.getAbsolutePath());
                 for (String uri : extracted.getSourceFilesURIs())
                     out.printf(";\n  owl:imports <%s> ", uri);

@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.deprecated;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.model.prefix.AbstractPrefixDict;
 import br.ufsc.lapesd.freqel.model.prefix.MutablePrefixDict;
 import br.ufsc.lapesd.freqel.model.prefix.PrefixDict;
@@ -27,16 +28,16 @@ public class TriePrefixDict extends AbstractPrefixDict implements MutablePrefixD
     static {
         EMPTY = new StdPrefixDict();
         StdPrefixDict std = new StdPrefixDict();
-        std.put("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#");
-        std.put("rdfs", "http://www.w3.org/2000/01/rdf-schema#");
-        std.put("xsd", "http://www.w3.org/2001/XMLSchema#");
-        std.put("owl", "http://www.w3.org/2002/07/owl#");
+        std.put("rdf", V.RDF.NS);
+        std.put("rdfs", V.RDFS.NS);
+        std.put("xsd", V.XSD.NS);
+        std.put("owl", V.OWL.NS);
         std.put("shacl", "http://www.w3.org/ns/shacl#");
         STANDARD = std;
         StdPrefixDict def = new StdPrefixDict();
         std.entries().forEach(e -> def.put(e.getKey(), e.getValue()));
-        def.put("foaf", "http://xmlns.com/foaf/0.1/");
-        def.put("dct", "http://purl.org/dc/terms/");
+        def.put("foaf", V.FOAF.NS);
+        def.put("dct", V.FOAF.NS);
         def.put("dcmit", "http://purl.org/dc/dcmitype/");
         def.put("earl", "http://www.w3.org/ns/earl#");
         def.put("time", "http://www.w3.org/2006/time#");

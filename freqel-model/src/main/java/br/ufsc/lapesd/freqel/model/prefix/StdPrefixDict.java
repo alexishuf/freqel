@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.model.prefix;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.util.UnmodifiableMapEntry;
 import br.ufsc.lapesd.freqel.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.ImmFullIndexSet;
@@ -21,14 +22,14 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
     static {
         EMPTY = new StdPrefixDict();
         Builder b = builder();
-        b.put("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#");
-        b.put("rdfs", "http://www.w3.org/2000/01/rdf-schema#");
-        b.put("xsd", "http://www.w3.org/2001/XMLSchema#");
-        b.put("owl", "http://www.w3.org/2002/07/owl#");
+        b.put("rdf", V.RDF.NS);
+        b.put("rdfs", V.RDFS.NS);
+        b.put("xsd", V.XSD.NS);
+        b.put("owl", V.OWL.NS);
         b.put("shacl", "http://www.w3.org/ns/shacl#");
         STANDARD = b.build();
-        b.put("foaf", "http://xmlns.com/foaf/0.1/");
-        b.put("dct", "http://purl.org/dc/terms/");
+        b.put("foaf", V.FOAF.NS);
+        b.put("dct", V.DCT.NS);
         b.put("dcmit", "http://purl.org/dc/dcmitype/");
         b.put("earl", "http://www.w3.org/ns/earl#");
         b.put("time", "http://www.w3.org/2006/time#");
