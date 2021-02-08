@@ -5,6 +5,7 @@ import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.util.DQPushChecker;
 import br.ufsc.lapesd.freqel.cardinality.EstimatePolicy;
+import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.model.NTParseException;
 import br.ufsc.lapesd.freqel.model.RDFUtils;
 import br.ufsc.lapesd.freqel.model.SPARQLString;
@@ -127,6 +128,10 @@ public class SPARQLClient extends AbstractTPEndpoint implements DQEndpoint {
                 2, 30, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(), new ThreadPoolExecutor.CallerRunsPolicy());
         connectExecutor.submit(() -> {}); //dummy to keep an initial thread ready
+    }
+
+    public @Nonnull String getURI() {
+        return uri;
     }
 
     /**

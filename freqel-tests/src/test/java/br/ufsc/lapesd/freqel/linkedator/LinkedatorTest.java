@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.freqel.linkedator;
 
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.freqel.model.term.std.StdPlain;
 import br.ufsc.lapesd.freqel.model.term.std.TemplateLink;
 import br.ufsc.lapesd.freqel.query.CQuery;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import br.ufsc.lapesd.freqel.webapis.TransparencyService;
 import br.ufsc.lapesd.freqel.webapis.TransparencyServiceTestContext;
@@ -59,9 +59,9 @@ public class LinkedatorTest implements TransparencyServiceTestContext {
         WebAPICQEndpoint procurements = TransparencyService.getProcurementsClient(target);
         WebAPICQEndpoint procurementsByNumber = TransparencyService.getProcurementByNumberClient(target);
         WebAPICQEndpoint procurementsById = TransparencyService.getProcurementsByIdClient(target);
-        List<Source> sources = Stream.of(
+        List<TPEndpoint> sources = Stream.of(
                 contracts, contractsById, procurements, procurementsById, procurementsByNumber
-        ).map(WebAPICQEndpoint::asSource).collect(Collectors.toList());
+        ).collect(Collectors.toList());
 
         Linkedator linkedator = Linkedator.getDefault();
         List<LinkedatorResult> suggestions = linkedator.getSuggestions(sources);

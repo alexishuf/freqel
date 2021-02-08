@@ -76,7 +76,7 @@ public class StandardAgglutinator implements Agglutinator {
         public StandardState(@Nonnull CQuery query) {
             super(query);
             assert matchingStrategy != null;
-            this.epSet = matchingStrategy.getEndpointsSet();
+            this.epSet = matchingStrategy.getEndpoints();
             int epSetSize = epSet.size();
             ep2net = new ArrayList<>(epSetSize);
             ep2ext = new ArrayList<>(epSetSize);
@@ -99,7 +99,7 @@ public class StandardAgglutinator implements Agglutinator {
         public void reset(@Nonnull CQuery query) {
             setQuery(query);
             assert matchingStrategy != null;
-            this.epSet = matchingStrategy.getEndpointsSet();
+            this.epSet = matchingStrategy.getEndpoints();
             assert ep2net.size() == ep2match.size();
             int nTriples = triplesUniverse.size();
             for (int i = ep2ext.size(), size = epSet.size(); i < size; i++) {

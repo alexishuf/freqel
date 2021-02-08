@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
 import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.description.Source;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import com.google.common.base.Stopwatch;
@@ -22,6 +22,7 @@ import static java.util.Collections.singleton;
 public class SPARQLServiceLoader implements SourceLoader {
     private static final Logger logger = LoggerFactory.getLogger(SPARQLServiceLoader.class);
     private static final Set<String> NAMES = Sets.newHashSet("sparql");
+    private static final Set<String> DESCRIPTION_NAMES = Sets.newHashSet("select", "ask");
 
     @Override
     public @Nonnull Set<String> names() {
@@ -29,36 +30,48 @@ public class SPARQLServiceLoader implements SourceLoader {
     }
 
     @Override
-    public @Nonnull Set<Source> load(@Nonnull DictTree spec, @Nullable SourceCache cacheDir,
-                                     @Nonnull File reference) throws SourceLoadException {
+    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec, @Nullable SourceCache cacheDir,
+                                         @Nonnull File reference) throws SourceLoadException {
         String loader = spec.getString("loader", "").trim().toLowerCase();
         if (!loader.equals("sparql"))
             throw new IllegalArgumentException(this+" does not support loader="+loader);
         String uri = getURI(spec);
-        boolean fetchClasses = spec.getBoolean("fetchClasses", true);
-        SPARQLClient ep = new SPARQLClient(uri);
 
-        SelectDescription description = null;
-        if (cacheDir != null) {
-            try {
-                Stopwatch sw = Stopwatch.createStarted();
-                description = SelectDescription.fromCache(ep, cacheDir, uri);
-                logger.debug("Loaded SelectDescription for {} from {} in {}ms",
-                             uri, cacheDir.getDir(), sw.elapsed(TimeUnit.MICROSECONDS)/1000.0);
-            } catch (IOException e) {
-                logger.error("Failed to load SelectDescription from cache dir {}",
-                             cacheDir.getDir(), e);
-            }
-            if (description == null) {
-                description = new SelectDescription(ep, fetchClasses);
-                description.saveWhenReady(cacheDir, uri);
-            }
-        } else {
-            description = new SelectDescription(ep, fetchClasses);
+        SPARQLClient ep = new SPARQLClient(uri);
+        setupDescription(spec, cacheDir, ep);
+        return singleton(ep);
+    }
+
+    private void setupDescription(@Nonnull DictTree spec, @Nullable SourceCache cacheDir,
+                                  @Nonnull SPARQLClient ep) {
+        String descriptionType = spec.getString("description", "ask");
+        if (!DESCRIPTION_NAMES.contains(descriptionType)) {
+            throw new IllegalArgumentException("Bad description key: "+descriptionType+
+                    " expected one of"+DESCRIPTION_NAMES);
         }
-        Source source = new Source(description, ep, uri);
-        source.setCloseEndpoint(true);
-        return singleton(source);
+        boolean fetchClasses = spec.getBoolean("fetchClasses", true);
+        SelectDescription description = null;
+        if (descriptionType.equalsIgnoreCase("select")) {
+            if (cacheDir != null) {
+                try {
+                    Stopwatch sw = Stopwatch.createStarted();
+                    description = SelectDescription.fromCache(ep, cacheDir, ep.getURI());
+                    logger.debug("Loaded SelectDescription for {} from {} in {}ms",
+                                 ep.getURI(), cacheDir.getDir(),
+                                 sw.elapsed(TimeUnit.MICROSECONDS) / 1000.0);
+                } catch (IOException e) {
+                    logger.error("Failed to load SelectDescription from cache dir {}",
+                            cacheDir.getDir(), e);
+                }
+                if (description == null) {
+                    description = new SelectDescription(ep, fetchClasses);
+                    description.saveWhenReady(cacheDir, ep.getURI());
+                }
+            } else {
+                description = new SelectDescription(ep, fetchClasses);
+            }
+            ep.setDescription(description);
+        }
     }
 
     private @Nonnull String getURI(@Nonnull DictTree spec) throws SourceLoadException {

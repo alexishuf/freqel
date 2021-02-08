@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
-import br.ufsc.lapesd.freqel.description.Source;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.freqel.webapis.parser.APIDescriptionParseException;
@@ -26,8 +26,8 @@ public class SwaggerSourceLoader implements SourceLoader {
     }
 
     @Override
-    public @Nonnull Set<Source> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
-                                     @Nonnull File reference) throws SourceLoadException {
+    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
+                                         @Nonnull File reference) throws SourceLoadException {
         String loaderKey = spec.getString("loader", "").trim().toLowerCase();
         if (!loaderKey.equals("swagger"))
             throw new IllegalArgumentException(this+"does not support loader="+loaderKey);
@@ -36,7 +36,7 @@ public class SwaggerSourceLoader implements SourceLoader {
         Set<String> white = getStringSet(spec, "whitelist");
         Set<String> black = getStringSet(spec, "blacklist");
         int discarded = 0, failed = 0;
-        Map<String, Source> sources = new HashMap<>();
+        Map<String, TPEndpoint> sources = new HashMap<>();
 
         for (String endpoint : parser.getEndpoints()) {
             if ((!white.isEmpty() && !white.contains(endpoint)) || black.contains(endpoint)) {
@@ -45,7 +45,7 @@ public class SwaggerSourceLoader implements SourceLoader {
             }
             try {
                 WebAPICQEndpoint ep = parser.getEndpoint(endpoint);
-                sources.put(endpoint, ep.asSource());
+                sources.put(endpoint, ep);
             } catch (APIDescriptionParseException e) {
                 if (spec.getBoolean("stop-on-error", false))
                     throw e;
@@ -55,10 +55,10 @@ public class SwaggerSourceLoader implements SourceLoader {
             }
         }
         for (ImmutablePair<String, String> pair : parser.getEquivalences()) {
-            Source l = sources.get(pair.left), r = sources.get(pair.right);
+            TPEndpoint l = sources.get(pair.left), r = sources.get(pair.right);
             if (l != null && r != null) {
-                l.getEndpoint().addAlternative(r.getEndpoint());
-                r.getEndpoint().addAlternative(l.getEndpoint());
+                l.addAlternative(r);
+                r.addAlternative(l);
             }
         }
 

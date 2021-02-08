@@ -3,8 +3,8 @@ package br.ufsc.lapesd.freqel.server.endpoints;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.server.utils.PercentEncoder;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import com.google.common.collect.Sets;
@@ -51,14 +51,14 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
 
 
     @SuppressWarnings("SameParameterValue")
-    private @Nonnull Source getSource(@Nonnull String resourceRelativePath) {
+    private @Nonnull TPEndpoint getSource(@Nonnull String resourceRelativePath) {
         try (InputStream in = getClass().getResourceAsStream(resourceRelativePath)) {
             if (in == null)
                 fail("Resource "+resourceRelativePath+" not found");
             Model model = ModelFactory.createDefaultModel();
             RDFDataMgr.read(model, in, Lang.NT);
             ARQEndpoint ep = ARQEndpoint.forModel(model, "rdf-1.nt");
-            return new Source(new SelectDescription(ep), ep);
+            return ep.setDescription(new SelectDescription(ep));
         } catch (IOException e) {
             fail("Unexpected exception", e);
         }

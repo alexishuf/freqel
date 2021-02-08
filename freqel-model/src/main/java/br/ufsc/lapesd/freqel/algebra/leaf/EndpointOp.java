@@ -7,4 +7,7 @@ import javax.annotation.Nonnull;
 
 public interface EndpointOp extends Op {
     @Nonnull TPEndpoint getEndpoint();
+    default @Nonnull TPEndpoint getEffectiveEndpoint() {
+        return getEndpoint().getEffective();
+    }
 }

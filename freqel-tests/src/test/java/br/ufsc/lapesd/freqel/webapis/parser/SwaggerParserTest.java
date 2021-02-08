@@ -270,7 +270,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
         String endpointPath = "/api-de-dados/licitacoes/{id}";
         WebAPICQEndpoint endpoint = parser.getEndpoint(endpointPath);
 
-        CQueryMatch match = endpoint.getMatcher().match(createQuery(
+        CQueryMatch match = endpoint.getDescription().match(createQuery(
                 x, unidadeGestora, y,
                 y, orgaoMaximo, u,
                 y, orgaoVinculado, z,
@@ -284,7 +284,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
                 u, codigo, v,
                 y, orgaoVinculado, z,
                 z, codigoSIAFI, lit("26246"));
-        match = endpoint.getMatcher().match(query);
+        match = endpoint.getDescription().match(query);
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
 
         try (Results results = endpoint.query(query)) {
@@ -312,7 +312,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
                 z, codigoSIAFI, lit("26246")
         );
 
-        CQueryMatch match = endpoint.getMatcher().match(query);
+        CQueryMatch match = endpoint.getDescription().match(query);
         assertFalse(match.isEmpty());
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
         assertEquals(match.getNonExclusiveRelevant().size(), 0);

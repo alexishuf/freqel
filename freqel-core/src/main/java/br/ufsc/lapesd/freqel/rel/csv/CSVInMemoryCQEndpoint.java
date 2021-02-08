@@ -3,11 +3,10 @@ package br.ufsc.lapesd.freqel.rel.csv;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
+import br.ufsc.lapesd.freqel.description.TrapDescription;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.freqel.jena.JenaWrappers;
 import br.ufsc.lapesd.freqel.jena.model.term.node.JenaNodeTermFactory;
@@ -26,13 +25,13 @@ import br.ufsc.lapesd.freqel.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
+import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterExecutor;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.*;
 import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
 import br.ufsc.lapesd.freqel.reason.tbox.TBox;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.rel.common.AnnotationStatus;
 import br.ufsc.lapesd.freqel.rel.common.RelationalMoleculeMatcher;
 import br.ufsc.lapesd.freqel.rel.common.StarSubQuery;
@@ -63,6 +62,7 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.function.Function;
 
+import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
 import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.getInjector;
 import static br.ufsc.lapesd.freqel.jena.JenaWrappers.toJenaNode;
 import static br.ufsc.lapesd.freqel.rel.mappings.RelationalMappingUtils.predicate2column;
@@ -94,6 +94,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
 
     public CSVInMemoryCQEndpoint(@Nonnull Collection<String> columns, @Nonnull List<Object> data,
                                  @Nonnull RelationalMapping mapping) {
+        super(TrapDescription.FACTORY);
         this.columns = FullIndexSet.from(columns);
         this.data = data;
         this.rows = data.size() / columns.size();
@@ -276,11 +277,8 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
     public @Nonnull Molecule getMolecule() {
         return molecule;
     }
-    public @Nonnull MoleculeMatcher getDefaultMatcher() {
+    @Override public @Nonnull MoleculeMatcher getDescription() {
         return moleculeMatcher;
-    }
-    public @Nonnull Source asSource() {
-        return new Source(getDefaultMatcher(), this);
     }
 
     /* --- --- --- Interface implementation --- --- --- */
@@ -317,7 +315,7 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
 
     private @Nonnull Federation getFederation() {
         if (federation == null)
-            federation = SingletonSourceFederation.createFederation(asSource());
+            federation = createFederation(EndpointDecorators.uncloseable(this));
         return federation;
     }
 

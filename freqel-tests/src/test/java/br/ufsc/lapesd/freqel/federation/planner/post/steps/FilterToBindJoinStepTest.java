@@ -9,11 +9,11 @@ import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.planner.utils.FilterJoinPlannerTest;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.TPEndpointTest;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
@@ -69,23 +69,23 @@ public class FilterToBindJoinStepTest implements TestContext {
         });
     }
 
-    private static @Nonnull Source createSPARQLClient(@Nonnull String file) {
+    private static @Nonnull TPEndpoint createSPARQLClient(@Nonnull String file) {
         SPARQLClient ep = new SPARQLClient(getFusekiEndpoint(file).uri);
-        return new Source(new SelectDescription(ep), ep);
+        return ep.setDescription(new SelectDescription(ep));
     }
 
-    private static @Nonnull Source createARQEndpoint(@Nonnull String file) {
+    private static @Nonnull TPEndpoint createARQEndpoint(@Nonnull String file) {
         ARQEndpoint ep = ARQEndpoint.forService(getFusekiEndpoint(file).uri);
-        return new Source(new SelectDescription(ep), ep);
+        return ep.setDescription(new SelectDescription(ep));
     }
 
-    private static @Nonnull Source createLocalARQEndpoint(@Nonnull String file) {
+    private static @Nonnull TPEndpoint createLocalARQEndpoint(@Nonnull String file) {
         Model model = new TBoxSpec().addResource(FilterToBindJoinStepTest.class, file).loadModel();
         ARQEndpoint ep = ARQEndpoint.forModel(model, file);
-        return new Source(new SelectDescription(ep), ep);
+        return ep.setDescription(new SelectDescription(ep));
     }
 
-    private static final List<Function<String, Source>> sourceFactories = asList(
+    private static final List<Function<String, TPEndpoint>> sourceFactories = asList(
             FilterToBindJoinStepTest::createLocalARQEndpoint,
             FilterToBindJoinStepTest::createARQEndpoint,
             FilterToBindJoinStepTest::createSPARQLClient
@@ -137,14 +137,14 @@ public class FilterToBindJoinStepTest implements TestContext {
         ).flatMap(base -> sourceFactories.stream().map(f -> {
             ArrayList<Object> copy = new ArrayList<>(base);
             @SuppressWarnings("unchecked") List<String> files = (List<String>)copy.remove(0);
-            List<Source> sources = files.stream().map(f).collect(toList());
+            List<TPEndpoint> sources = files.stream().map(f).collect(toList());
             copy.add(0, sources);
             return copy;
         })).map(List::toArray).toArray(Object[][]::new);
     }
 
     @Test(dataProvider = "testQueryData")
-    public void testDefaultQuery(@Nonnull List<Source> sources,
+    public void testDefaultQuery(@Nonnull List<TPEndpoint> sources,
                                  @Nonnull String sparql,
                                  @Nonnull List<Solution> expected) throws SPARQLParseException {
         try (Federation federation = Federation.createDefault()) {
@@ -156,7 +156,7 @@ public class FilterToBindJoinStepTest implements TestContext {
 
 
     @Test(dataProvider = "testQueryData")
-    public void testDefaultPlanNoProduct(@Nonnull List<Source> sources, @Nonnull String sparql,
+    public void testDefaultPlanNoProduct(@Nonnull List<TPEndpoint> sources, @Nonnull String sparql,
                                          @Nonnull List<Solution> ignored) throws SPARQLParseException {
         try (Federation federation = Federation.createDefault()) {
             sources.forEach(federation::addSource);

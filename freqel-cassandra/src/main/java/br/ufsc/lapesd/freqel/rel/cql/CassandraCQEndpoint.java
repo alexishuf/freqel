@@ -4,11 +4,11 @@ import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
+import br.ufsc.lapesd.freqel.description.TrapDescription;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.std.StdPlain;
@@ -19,6 +19,7 @@ import br.ufsc.lapesd.freqel.query.annotations.NoMergePolicyAnnotation;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
+import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
 import br.ufsc.lapesd.freqel.query.endpoint.exceptions.QueryExecutionException;
 import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
 import br.ufsc.lapesd.freqel.query.modifiers.ModifiersSet;
@@ -55,6 +56,8 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.*;
 
+import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
+
 public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(CassandraCQEndpoint.class);
     private static final int ROWS_QUEUE_MAX = 16384;
@@ -73,6 +76,7 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
 
     public CassandraCQEndpoint(@Nonnull CqlSession cqlSession, @Nonnull String name,
                                @Nonnull RelationalMapping mapping, boolean sharedSession) {
+        super(TrapDescription.FACTORY);
         this.cqlSession = cqlSession;
         this.name = name;
         this.mapping = mapping;
@@ -248,17 +252,11 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
     public @Nonnull Molecule getMolecule() {
         return molecule;
     }
-    public @Nonnull MoleculeMatcher getDefaultMatcher() {
+    @Override public @Nonnull MoleculeMatcher getDescription() {
         return moleculeMatcher;
     }
     public @Nonnull String getName() {
         return name;
-    }
-
-    public @Nonnull Source asSource() {
-        Source src = new Source(getDefaultMatcher(), this, getName());
-        src.setCloseEndpoint(true);
-        return src;
     }
 
     /* --- --- --- Interface implementation --- --- --- */
@@ -462,7 +460,7 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
 
     private @Nonnull Federation getFederation() {
         if (federation == null)
-            federation = SingletonSourceFederation.createFederation(asSource());
+            federation = createFederation(EndpointDecorators.uncloseable(this));
         return federation;
     }
 

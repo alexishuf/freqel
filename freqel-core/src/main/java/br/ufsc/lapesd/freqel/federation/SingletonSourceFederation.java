@@ -1,6 +1,6 @@
 package br.ufsc.lapesd.freqel.federation;
 
-import br.ufsc.lapesd.freqel.description.Source;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.impl.SequentialResultsExecutor;
 import com.google.inject.Guice;
@@ -18,7 +18,7 @@ public class SingletonSourceFederation extends SimpleFederationModule {
         return injector;
     }
 
-    public static @Nonnull Federation createFederation(@Nonnull Source source) {
+    public static @Nonnull Federation createFederation(@Nonnull TPEndpoint source) {
         Federation federation = getInjector().getInstance(Federation.class);
         federation.addSource(source);
         return federation;

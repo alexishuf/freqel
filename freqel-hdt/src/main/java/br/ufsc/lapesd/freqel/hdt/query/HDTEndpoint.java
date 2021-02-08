@@ -3,8 +3,6 @@ package br.ufsc.lapesd.freqel.hdt.query;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.description.AskDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.hdt.HDTUtils;
 import br.ufsc.lapesd.freqel.hdt.util.LoggerHDTProgressListener;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -12,6 +10,7 @@ import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.ResultsUtils;
 import org.rdfhdt.hdt.exceptions.NotFoundException;
@@ -32,6 +31,7 @@ import java.util.Collections;
 import java.util.Iterator;
 
 import static br.ufsc.lapesd.freqel.cardinality.EstimatePolicy.canLocal;
+import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
 
 public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(HDTEndpoint.class);
@@ -46,6 +46,7 @@ public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
     }
 
     public HDTEndpoint(@Nonnull HDT hdt, @Nonnull String name, boolean closeHDT) {
+        super(e -> new AskDescription(e, 1024));
         this.hdt = hdt;
         this.name = name;
         this.closeHDT = closeHDT;
@@ -99,10 +100,6 @@ public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
             federation.close();
     }
 
-    public @Nonnull Source asSource() {
-        return new Source(new AskDescription(this), this);
-    }
-
     public boolean isEmpty() {
         if (empty == null) {
             try {
@@ -116,7 +113,7 @@ public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
         return empty;
     }
 
-    public @Override @Nonnull Results query(@Nonnull Triple query) {
+    @Override public @Nonnull Results query(@Nonnull Triple query) {
         Iterator<TripleString> hdtIt = createIterator(query);
         return new HDTResults(hdtIt, query);
     }
@@ -136,17 +133,17 @@ public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
         return hdtIt;
     }
 
-    public @Override @Nonnull Results query(@Nonnull CQuery query) {
+    @Override public @Nonnull Results query(@Nonnull CQuery query) {
         if (query.size() > 1) {
             if (federation == null)
-                federation = SingletonSourceFederation.createFederation(asSource());
+                federation = createFederation(EndpointDecorators.uncloseable(this));
             return federation.query(query);
         } else {
             return ResultsUtils.applyModifiers(query(query.get(0)), query.getModifiers());
         }
     }
 
-    public @Override @Nonnull Cardinality estimate(@Nonnull CQuery query, int estimatePolicy) {
+    @Override public @Nonnull Cardinality estimate(@Nonnull CQuery query, int estimatePolicy) {
         if (query.isEmpty()) return Cardinality.EMPTY;
         if (canLocal(estimatePolicy)) {
             if (isEmpty()) return Cardinality.EMPTY;

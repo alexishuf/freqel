@@ -1,7 +1,7 @@
 package br.ufsc.lapesd.freqel.linkedator.strategies;
 
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.linkedator.LinkedatorResult;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -15,5 +15,5 @@ public interface LinkedatorStrategy {
      * @return a non-null set of {@link LinkedatorResult} instances.
      */
     @CheckReturnValue
-    @Nonnull Collection<LinkedatorResult> getSuggestions(@Nonnull Collection<Source> sources);
+    @Nonnull Collection<LinkedatorResult> getSuggestions(@Nonnull Collection<TPEndpoint> sources);
 }

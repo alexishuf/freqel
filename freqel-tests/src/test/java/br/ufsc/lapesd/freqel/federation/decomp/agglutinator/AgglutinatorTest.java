@@ -13,7 +13,6 @@ import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticSelectDescription;
 import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.concurrent.PoolPlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.decomp.match.MatchingStrategy;
 import br.ufsc.lapesd.freqel.federation.decomp.match.SourcesListMatchingStrategy;
@@ -30,10 +29,10 @@ import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
 import br.ufsc.lapesd.freqel.reason.tbox.TBox;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.rel.cql.CassandraCQEndpoint;
 import br.ufsc.lapesd.freqel.rel.sql.JDBCCQEndpoint;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
@@ -149,13 +148,13 @@ public class AgglutinatorTest implements TestContext {
         return list;
     }
 
-    private static  @Nonnull List<Source> toSemanticSources(@Nonnull List<Source> sources) {
-        List<Source> list = new ArrayList<>();
-        for (Source s : sources) {
-            CQEndpoint ep = (CQEndpoint)s.getEndpoint();
+    private static  @Nonnull List<CQEndpoint> toSemanticSources(@Nonnull List<TPEndpoint> sources) {
+        List<CQEndpoint> list = new ArrayList<>();
+        for (TPEndpoint ep : sources) {
             TBox reasoner = new EmptyTBox();
-            SemanticSelectDescription description = new SemanticSelectDescription(ep, reasoner);
-            list.add(new Source(description, ep));
+            CQEndpoint cep = (CQEndpoint) ep;
+            SemanticSelectDescription description = new SemanticSelectDescription(cep, reasoner);
+            list.add(EndpointDecorators.withDescription(cep, description));
         }
         return list;
     }
@@ -176,10 +175,10 @@ public class AgglutinatorTest implements TestContext {
                 throw new RuntimeException(e);
             }
         });
-        List<Source> lrbSources = ConjunctivePlanBenchmarksTestBase.largeRDFBenchSources();
-        List<Source> bsbmSources = ConjunctivePlanBenchmarksTestBase.bsbmSources();
-        List<Source> semLRBSources = toSemanticSources(lrbSources);
-        List<Source> semBSBMSources = toSemanticSources(bsbmSources);
+        List<TPEndpoint> lrbSources = ConjunctivePlanBenchmarksTestBase.largeRDFBenchSources();
+        List<TPEndpoint> bsbmSources = ConjunctivePlanBenchmarksTestBase.bsbmSources();
+        List<CQEndpoint> semLRBSources = toSemanticSources(lrbSources);
+        List<CQEndpoint> semBSBMSources = toSemanticSources(bsbmSources);
 
         List<Object[]> rows = new ArrayList<>();
         for (CQuery q : lrbQueries)
@@ -199,7 +198,7 @@ public class AgglutinatorTest implements TestContext {
     }
 
     @Test(dataProvider = "agglutinateBenchmarksData", groups = {"fast"})
-    public void testAgglutinateBenchmarks(@Nonnull CQuery query, @Nonnull List<Source> sources,
+    public void testAgglutinateBenchmarks(@Nonnull CQuery query, @Nonnull List<TPEndpoint> sources,
                                           @Nonnull Agglutinator agglutinator) {
         SourcesListMatchingStrategy matchingStrategy = new SourcesListMatchingStrategy();
         sources.forEach(matchingStrategy::addSource);
@@ -214,7 +213,7 @@ public class AgglutinatorTest implements TestContext {
 
     @Test(dataProvider = "agglutinateBenchmarksData")
     public void testConcurrentAgglutinateBenchmarks(@Nonnull CQuery query,
-                                                    @Nonnull List<Source> sources,
+                                                    @Nonnull List<CQEndpoint> sources,
                                                     @Nonnull Agglutinator agglutinator)
             throws ExecutionException, InterruptedException {
         SourcesListMatchingStrategy matchingStrategy = new SourcesListMatchingStrategy();
@@ -355,7 +354,7 @@ public class AgglutinatorTest implements TestContext {
                         UriTemplateExecutor.from(tpl).withRequired(inputName).build();
                 APIMolecule apiMolecule = new APIMolecule(molecule, uriExecutor, el2in);
                 APIMoleculeMatcher matcher = new APIMoleculeMatcher(apiMolecule);
-                matchingStrategy.addSource(new Source(matcher, ep));
+                matchingStrategy.addSource(EndpointDecorators.withDescription(ep, matcher));
             }
         }
         agglutinator.setMatchingStrategy(matchingStrategy);

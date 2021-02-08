@@ -82,7 +82,7 @@ public class ParallelStandardAgglutinator implements Agglutinator {
         public StandardState(@Nonnull CQuery query) {
             super(query);
             assert matchingStrategy != null;
-            this.epSet = matchingStrategy.getEndpointsSet();
+            this.epSet = matchingStrategy.getEndpoints();
             int nEps = epSet.size(), nTriples = triplesUniverse.size();
             inEG = Bitsets.create(query.size());
             ep2net = new ArrayList<>(nEps);
@@ -110,7 +110,7 @@ public class ParallelStandardAgglutinator implements Agglutinator {
         public void reset(@Nonnull CQuery query) {
             setQuery(query);
             assert matchingStrategy != null;
-            this.epSet = matchingStrategy.getEndpointsSet();
+            this.epSet = matchingStrategy.getEndpoints();
             int nEps = epSet.size(), nTriples = triplesUniverse.size();
 
             assert ep2net.size() == ep2match.size();

@@ -10,7 +10,6 @@ import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.planner.post.steps.PushDistinctStep;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
@@ -170,7 +169,7 @@ public class PushDistinctStepTest implements TestContext {
             for (String file : sources) {
                 Model model = new TBoxSpec().addResource(getClass(), file).loadModel();
                 ARQEndpoint ep = ARQEndpoint.forModel(model);
-                federation.addSource(new Source(new SelectDescription(ep), ep));
+                federation.addSource(ep.setDescription(new SelectDescription(ep)));
             }
 
             Op query = SPARQLParser.strict().parse(sparql);

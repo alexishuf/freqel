@@ -1,6 +1,8 @@
 package br.ufsc.lapesd.freqel.query.endpoint.impl;
 
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
+import br.ufsc.lapesd.freqel.description.Description;
+import br.ufsc.lapesd.freqel.description.EmptyDescription;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
@@ -18,10 +20,12 @@ public class EmptyEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private final @Nullable String name;
 
     public EmptyEndpoint() {
+        super(EmptyDescription.FACTORY);
         this.name = null;
     }
 
     public EmptyEndpoint(@Nonnull String name) {
+        super(EmptyDescription.FACTORY);
         this.name = name;
     }
 

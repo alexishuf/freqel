@@ -3,7 +3,6 @@ package br.ufsc.lapesd.freqel.linkedator;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.linkedator.strategies.APIMoleculeInputsLinkedatorStrategy;
 import br.ufsc.lapesd.freqel.linkedator.strategies.LinkedatorStrategy;
 import br.ufsc.lapesd.freqel.model.SPARQLString;
@@ -12,6 +11,7 @@ import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.model.term.std.TemplateLink;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.TemplateExpander;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.freqel.util.DictTree;
@@ -45,7 +45,7 @@ public class Linkedator {
         return this;
     }
 
-    public @Nonnull List<LinkedatorResult> getSuggestions(@Nonnull Collection<Source> sources) {
+    public @Nonnull List<LinkedatorResult> getSuggestions(@Nonnull Collection<TPEndpoint> sources) {
         List<LinkedatorResult> suggestions = new ArrayList<>();
         for (LinkedatorStrategy strategy : strategies) {
             Collection<LinkedatorResult> collection = strategy.getSuggestions(sources);

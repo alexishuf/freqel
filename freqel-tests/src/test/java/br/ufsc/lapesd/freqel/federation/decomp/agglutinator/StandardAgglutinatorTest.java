@@ -4,7 +4,6 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.decomp.match.SourcesListMatchingStrategy;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
@@ -40,7 +39,7 @@ public class StandardAgglutinatorTest {
     }
 
     @Test(dataProvider = "agglutinateBenchmarksData", groups = {"fast"})
-    public void testAgglutinateBenchmarks(@Nonnull CQuery query, @Nonnull List<Source> sources,
+    public void testAgglutinateBenchmarks(@Nonnull CQuery query, @Nonnull List<TPEndpoint> sources,
                                           @Nonnull Agglutinator agglutinator) {
         SourcesListMatchingStrategy matchingStrategy = new SourcesListMatchingStrategy();
         sources.forEach(matchingStrategy::addSource);

@@ -8,7 +8,6 @@ import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.cardinality.InnerCardinalityComputer;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.concurrent.PlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.decomp.FilterAssigner;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;
@@ -51,7 +50,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 
 /**
- * A {@link CQEndpoint} that decomposes queries into the registered {@link Source}s.
+ * A {@link CQEndpoint} that decomposes queries into the registered {@link TPEndpoint}s.
  */
 public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(Federation.class);
@@ -114,13 +113,13 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     }
 
     @Contract("_ -> this") @CanIgnoreReturnValue
-    public @Nonnull Federation addSource(@Nonnull Source source) {
+    public @Nonnull Federation addSource(@Nonnull TPEndpoint source) {
         matchingStrategy.addSource(source);
         return this;
     }
 
-    public @Nonnull Collection<Source> getSources() {
-        return matchingStrategy.getSources();
+    public @Nonnull Collection<TPEndpoint> getSources() {
+        return matchingStrategy.getEndpoints();
     }
 
     /**
@@ -140,12 +139,12 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
             int timeoutMs = (int)MILLISECONDS.convert(timeout, unit);
             Stopwatch sw = Stopwatch.createStarted();
 
-            for (Source source : getSources())
+            for (TPEndpoint source : getSources())
                 source.getDescription().init();
 
             int allowed = timeoutMs - (int)sw.elapsed(MILLISECONDS);
             int ok = 0, total = getSources().size();
-            for (Source source : getSources()) {
+            for (TPEndpoint source : getSources()) {
                 if (source.getDescription().waitForInit(allowed))
                     ++ok;
                 allowed = timeoutMs - (int)sw.elapsed(MILLISECONDS);
@@ -288,15 +287,11 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     @Override
     public void close() {
         executorService.release();
-        // close endpoints that asked to be closed
-        for (Source source : getSources()) {
-            if (source.getCloseEndpoint()) {
-                TPEndpoint ep = source.getEndpoint();
-                try {
-                    ep.close();
-                } catch (RuntimeException e) {
-                    logger.error("Source said to close endpoint {} and it failed", ep, e);
-                }
+        for (TPEndpoint ep : getSources()) {
+            try {
+                ep.close(); // to avoid this, use UncloseableTPEndpoint
+            } catch (RuntimeException e) {
+                logger.error("Source said to close endpoint {} and it failed", ep, e);
             }
         }
         resultsExecutor.close();

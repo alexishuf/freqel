@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
 import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import com.github.lapesd.rdfit.components.jena.JenaHelpers;
 import com.github.lapesd.rdfit.errors.RDFItException;
@@ -31,8 +31,8 @@ public class RDFFileSourceLoader implements SourceLoader {
     }
 
     @Override
-    public @Nonnull Set<Source> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
-                                     @Nonnull File reference) throws SourceLoadException {
+    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
+                                         @Nonnull File reference) throws SourceLoadException {
         Model model = ModelFactory.createDefaultModel();
         List<String> nameParts = new ArrayList<>();
         String loader = spec.getString("loader", "");
@@ -50,8 +50,7 @@ public class RDFFileSourceLoader implements SourceLoader {
         }
         String name = spec.getString("name", nameParts.toString());
 
-        ARQEndpoint ep = ARQEndpoint.forModel(model, name);
-        return singleton(new Source(new SelectDescription(ep, true), ep, name));
+        return singleton(ARQEndpoint.forModel(model, name));
     }
 
     private @Nonnull String loadSource(@Nonnull DictTree spec, @Nonnull String src,

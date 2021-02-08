@@ -118,9 +118,9 @@ public class DQPushChecker {
     protected static @Nullable DQEndpoint getEndpoint(@Nonnull Op op) {
         TPEndpoint ep = null;
         if (op instanceof SPARQLValuesTemplateOp)
-            ep = ((SPARQLValuesTemplateOp) op).getEndpoint();
+            ep = ((SPARQLValuesTemplateOp) op).getEndpoint().getEffective();
         else if (op instanceof EndpointOp)
-            ep = ((EndpointOp) op).getEndpoint();
+            ep = ((EndpointOp) op).getEffectiveEndpoint();
         return ep instanceof DQEndpoint ? (DQEndpoint)ep : null;
     }
 }

@@ -3,7 +3,6 @@ package br.ufsc.lapesd.freqel.linkedator.strategies;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.linkedator.LinkedatorResult;
 import br.ufsc.lapesd.freqel.linkedator.strategies.impl.AtomSignature;
 import br.ufsc.lapesd.freqel.model.term.URI;
@@ -14,6 +13,7 @@ import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.model.term.std.TemplateLink;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.SimplePath;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.webapis.TransparencyService;
 import br.ufsc.lapesd.freqel.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
@@ -216,8 +216,8 @@ public class APIMoleculeInputsLinkedatorStrategyTest implements TestContext,
 
     @DataProvider
     public static @Nonnull Object[][] getSuggestionsData() {
-        Source contractById = new WebAPICQEndpoint(ContractById).asSource();
-        Source procurementByNumber = new WebAPICQEndpoint(ProcurementByNumber).asSource();
+        TPEndpoint contractById = new WebAPICQEndpoint(ContractById);
+        TPEndpoint procurementByNumber = new WebAPICQEndpoint(ProcurementByNumber);
         return Stream.of(
                 asList(asList(contractById, procurementByNumber),
                        singleton(new StdPlain("hasLicitacao")))
@@ -225,7 +225,7 @@ public class APIMoleculeInputsLinkedatorStrategyTest implements TestContext,
     }
 
     @Test(dataProvider = "getSuggestionsData")
-    public void testGetSuggestions(Collection<Source> sources,
+    public void testGetSuggestions(Collection<TPEndpoint> sources,
                                    Collection<URI> expectedRelations) {
         APIMoleculeInputsLinkedatorStrategy strategy = new APIMoleculeInputsLinkedatorStrategy();
         Collection<LinkedatorResult> suggestions = strategy.getSuggestions(sources);
@@ -243,9 +243,9 @@ public class APIMoleculeInputsLinkedatorStrategyTest implements TestContext,
         WebAPICQEndpoint procurementsByNumber = TransparencyService.getProcurementByNumberClient(target);
         WebAPICQEndpoint procurementsById = TransparencyService.getProcurementsByIdClient(target);
         WebAPICQEndpoint organizations = TransparencyService.getOrgaosSiafiClient(target);
-        List<Source> sources = Stream.of(
+        List<TPEndpoint> sources = Stream.of(
                 contracts, contractsById, procurements, procurementsById, procurementsByNumber, organizations
-        ).map(WebAPICQEndpoint::asSource).collect(Collectors.toList());
+        ).collect(Collectors.toList());
         APIMoleculeInputsLinkedatorStrategy strategy = new APIMoleculeInputsLinkedatorStrategy();
         Collection<LinkedatorResult> suggestions = strategy.getSuggestions(sources);
         Set<URI> relations = suggestions.stream().map(r -> r.getTemplateLink().asURI())

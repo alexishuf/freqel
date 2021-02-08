@@ -1,7 +1,6 @@
 package br.ufsc.lapesd.freqel.linkedator.strategies;
 
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.linkedator.LinkedatorResult;
 import br.ufsc.lapesd.freqel.linkedator.strategies.impl.AtomSignature;
 import br.ufsc.lapesd.freqel.model.term.Term;
@@ -11,6 +10,7 @@ import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.model.term.std.TemplateLink;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.SimplePath;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 import br.ufsc.lapesd.freqel.webapis.description.APIMolecule;
@@ -124,16 +124,16 @@ public class APIMoleculeInputsLinkedatorStrategy implements LinkedatorStrategy {
     }
 
     @Override
-    public @Nonnull Collection<LinkedatorResult> getSuggestions(@Nonnull Collection<Source> sources) {
+    public @Nonnull Collection<LinkedatorResult> getSuggestions(@Nonnull Collection<TPEndpoint> sources) {
         Set<LinkedatorResult> results = new HashSet<>();
-        for (Source source : sources) {
+        for (TPEndpoint source : sources) {
             if (!(source.getDescription() instanceof APIMoleculeMatcher))
                 continue;
             APIMolecule apiMol = ((APIMoleculeMatcher) source.getDescription()).getApiMolecule();
             if (apiMol.getMolecule().getCores().size() > 1)
                 continue; //only support single-core molecules1
             for (AtomSignature inSig : createInputSignatures(apiMol)) {
-                for (Source other : sources) {
+                for (TPEndpoint other : sources) {
                     if (other != source) {
                         Molecule mol;
                         if (other.getDescription() instanceof Molecule)

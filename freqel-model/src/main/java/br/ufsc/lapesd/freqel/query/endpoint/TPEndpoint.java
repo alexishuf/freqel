@@ -2,6 +2,7 @@ package br.ufsc.lapesd.freqel.query.endpoint;
 
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.cardinality.EstimatePolicy;
+import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.annotations.OverrideAnnotation;
@@ -15,6 +16,19 @@ import java.util.Collections;
 import java.util.Set;
 
 public interface TPEndpoint extends AutoCloseable {
+    /**
+     * Traverse all decorators and return the underlying {@link TPEndpoint} instance.
+     *
+     * This should be used if endpoint comparison (by reference) is necessary and one
+     * of the operators is not decorated or both operators com from different origins
+     * and one of them may be a decorated version of the other.
+     *
+     * @return effective (non-decorator) {@link TPEndpoint}
+     */
+    default @Nonnull TPEndpoint getEffective() {
+        return this;
+    }
+
     /**
      * Return a {@link Results} over the possible bindings for each variable in query.
      *
@@ -56,6 +70,8 @@ public interface TPEndpoint extends AutoCloseable {
     default @Nonnull Cardinality estimate(@Nonnull CQuery query) {
         return estimate(query, 0);
     }
+
+    @Nonnull Description getDescription();
 
     /**
      * If true, this endpoint is either backed by an Web API or by something whose input/output

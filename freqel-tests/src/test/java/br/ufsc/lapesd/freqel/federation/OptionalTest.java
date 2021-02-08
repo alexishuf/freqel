@@ -4,7 +4,6 @@ import br.ufsc.lapesd.freqel.ResultsAssert;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.term.Lit;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
@@ -80,7 +79,7 @@ public class OptionalTest implements TestContext {
         try (Federation federation = Federation.createDefault()) {
             ARQEndpoint ep = ARQEndpoint.forModel(new TBoxSpec()
                     .addResource(getClass(), "rdf-optional-1.ttl").loadModel());
-            federation.addSource(new Source(new SelectDescription(ep), ep));
+            federation.addSource(ep.setDescription(new SelectDescription(ep)));
             ResultsAssert.assertExpectedResults(federation.query(query), expectedList);
         }
     }

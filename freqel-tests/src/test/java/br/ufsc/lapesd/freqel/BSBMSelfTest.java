@@ -3,7 +3,6 @@ package br.ufsc.lapesd.freqel;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecException;
@@ -222,8 +221,8 @@ public class BSBMSelfTest {
         Op query = loadQuery(queryName);
         Set<Solution> ac = new HashSet<>(), ex = new HashSet<>();
         ARQEndpoint ep = ARQEndpoint.forModel(allData());
-        Source source = new Source(new SelectDescription(ep), ep);
-        try (Federation federation = SingletonSourceFederation.createFederation(source)) {
+        ep.setDescription(new SelectDescription(ep));
+        try (Federation federation = SingletonSourceFederation.createFederation(ep)) {
             Op plan = federation.plan(query);
             assertPlanAnswers(plan, query);
             federation.execute(plan).forEachRemainingThenClose(ac::add);

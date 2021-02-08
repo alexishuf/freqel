@@ -38,8 +38,8 @@ public class ParallelSourcesListMatchingStrategy extends SourcesListMatchingStra
         AtomicInteger nMatches = new AtomicInteger(0);
         try (TimeSampler ignored = Metrics.SELECTION_MS.createThreadSampler(perfListener)) {
             Agglutinator.State state = agglutinator.createState(q);
-            executor.parallelFor(0, sources.size(), i -> {
-                if (match(sources.get(i), q, state))
+            executor.parallelFor(0, endpoints.size(), i -> {
+                if (match(endpoints.get(i), q, state))
                     nMatches.incrementAndGet();
             });
             perfListener.sample(Metrics.SOURCES_COUNT, nMatches.get());

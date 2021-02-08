@@ -1,17 +1,18 @@
 package br.ufsc.lapesd.freqel.rel.sql;
 
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
+import br.ufsc.lapesd.freqel.description.Description;
+import br.ufsc.lapesd.freqel.description.TrapDescription;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
+import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
 import br.ufsc.lapesd.freqel.query.endpoint.exceptions.QueryExecutionException;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.impl.HashDistinctResults;
@@ -30,6 +31,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.sql.*;
 import java.util.Properties;
+
+import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
 
 public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(JDBCCQEndpoint.class);
@@ -52,6 +55,7 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     public JDBCCQEndpoint(@Nonnull RelationalMapping mapping, @Nonnull String name,
                           @Nonnull ConnectionSupplier connectionSupplier) {
+        super(TrapDescription.FACTORY);
         this.mapping = mapping;
         this.sqlGenerator = new SqlGenerator(mapping).setExposeJoinVars(true);
         this.name = name;
@@ -104,21 +108,18 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     public @Nonnull Molecule getMolecule() {
         return molecule;
     }
-    public @Nonnull MoleculeMatcher getDefaultMatcher() {
-        return moleculeMatcher;
-    }
     public @Nonnull String getName() {
         return name;
     }
-    public @Nonnull Source asSource() {
-        return new Source(getDefaultMatcher(), this);
+    @Override public @Nonnull Description getDescription() {
+        return moleculeMatcher;
     }
 
     /* --- --- --- Internals --- --- --- */
 
     private @Nonnull Results runUnderFederation(@Nonnull CQuery query) {
         if (federation == null)
-            federation = SingletonSourceFederation.createFederation(asSource());
+            federation = createFederation(EndpointDecorators.uncloseable(this));
         return federation.query(query);
     }
 

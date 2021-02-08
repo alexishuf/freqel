@@ -2,16 +2,16 @@ package br.ufsc.lapesd.freqel.webapis;
 
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
+import br.ufsc.lapesd.freqel.description.TrapDescription;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
+import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
 import br.ufsc.lapesd.freqel.query.modifiers.ModifierUtils;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.impl.CollectionResults;
@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 
+import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
 import static br.ufsc.lapesd.freqel.query.results.ResultsUtils.applyNonFilterModifiers;
 import static java.util.stream.Collectors.toSet;
 
@@ -45,20 +46,12 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     private @Nullable Federation federation;
 
     public WebAPICQEndpoint(@Nonnull APIMolecule molecule) {
+        super(TrapDescription.FACTORY);
         this.molecule = molecule;
     }
 
     public @Nonnull APIMolecule getMolecule() {
         return molecule;
-    }
-
-    public @Nonnull Source asSource() {
-        return asSource(molecule.getName());
-    }
-
-    public @Nonnull Source asSource(@Nullable String name) {
-        return new Source(getMatcher(), this,
-                          name != null ? name : getMolecule().getExecutor().toString());
     }
 
     @Override public double alternativePenalty(@NotNull CQuery query) {
@@ -151,7 +144,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
 
     private @Nonnull Results matchAndQuery(@Nonnull CQuery query, boolean throwOnFailedMatch) {
         Set<String> varNames = query.attr().allVarNames();
-        CQueryMatch match = getMatcher().match(query);
+        CQueryMatch match = getDescription().match(query);
         if (match.getKnownExclusiveGroups().isEmpty()) {
             return reportFailure(query, throwOnFailedMatch, varNames);
         } else if (match.getKnownExclusiveGroups().size() == 1) {
@@ -169,19 +162,18 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
     }
 
     private @Nonnull Federation getFederation() {
-        if (federation == null) {
-            Source source = new Source(getMatcher(), this);
-            federation = SingletonSourceFederation.createFederation(source);
-        }
+        if (federation == null)
+            federation = createFederation(EndpointDecorators.uncloseable(this));
         return federation;
     }
 
-    public @Nonnull APIMoleculeMatcher getMatcher() {
+    @Override public @Nonnull APIMoleculeMatcher getDescription() {
         APIMoleculeMatcher matcher = this.matcher.get();
         if (matcher == null)
             this.matcher = new SoftReference<>(matcher = new APIMoleculeMatcher(getMolecule()));
         return matcher;
     }
+
 
     public @Nullable HTTPRequestObserver setObserver(@Nonnull HTTPRequestObserver observer) {
         return this.molecule.getExecutor().setObserver(observer);

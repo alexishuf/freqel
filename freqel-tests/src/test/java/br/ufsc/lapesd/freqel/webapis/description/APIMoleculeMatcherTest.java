@@ -506,7 +506,7 @@ public class APIMoleculeMatcherTest implements TestContext {
     public void regressionTestBadMatchOnContractsEndpoint() throws IOException {
         WebTarget target = ClientBuilder.newClient().target("http://dummy.example.org:1234/");
         WebAPICQEndpoint endpoint = TransparencyService.getContractsClient(target);
-        APIMoleculeMatcher matcher = endpoint.getMatcher();
+        APIMoleculeMatcher matcher = endpoint.getDescription();
         CQuery query = createQuery(
                 x, plain("id"), y,
                 x, plain("unidadeGestora"), x1,
@@ -525,7 +525,7 @@ public class APIMoleculeMatcherTest implements TestContext {
     public void regressionTestMatchOnProcurementsEndpoint() throws IOException {
         WebTarget target = ClientBuilder.newClient().target("http://dummy.example.org:1234/");
         WebAPICQEndpoint endpoint = TransparencyService.getProcurementsClient(target);
-        APIMoleculeMatcher matcher = endpoint.getMatcher();
+        APIMoleculeMatcher matcher = endpoint.getDescription();
         CQuery query = createQuery(
                 x, plain("id"), y,
                 x, plain("unidadeGestora"), x1,
@@ -552,7 +552,7 @@ public class APIMoleculeMatcherTest implements TestContext {
         }
         WebTarget target = ClientBuilder.newClient().target("http://dummy.example.org:1234/");
         WebAPICQEndpoint endpoint = TransparencyService.getContractsClient(target);
-        APIMoleculeMatcher matcher = endpoint.getMatcher();
+        APIMoleculeMatcher matcher = endpoint.getDescription();
 
         CQueryMatch match = matcher.match(query);
         assertFalse(match.isEmpty());

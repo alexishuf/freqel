@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
 import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import com.google.common.collect.Sets;
 import org.apache.jena.query.Dataset;
@@ -25,8 +25,8 @@ public class TDBSourceLoader implements SourceLoader {
     }
 
     @Override
-    public @Nonnull Set<Source> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
-                                     @Nonnull File reference) throws SourceLoadException {
+    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
+                                         @Nonnull File reference) throws SourceLoadException {
         String loader = spec.getString("loader", "").trim().toLowerCase();
         String dirPath = spec.getString("dir", null);
         if (dirPath == null)
@@ -47,7 +47,6 @@ public class TDBSourceLoader implements SourceLoader {
             throw new IllegalArgumentException("Loader "+loader+" not supported by"+this);
         }
 
-        ARQEndpoint ep = ARQEndpoint.forCloseableDataset(dataset);
-        return singleton(new Source(new SelectDescription(ep, true), ep, absolutePath));
+        return singleton(ARQEndpoint.forCloseableDataset(dataset));
     }
 }

@@ -6,10 +6,10 @@ import br.ufsc.lapesd.freqel.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.JenaSolution;
 import br.ufsc.lapesd.freqel.query.TPEndpointTest;
+import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
@@ -51,6 +51,8 @@ import static br.ufsc.lapesd.freqel.SPARQLAssert.assertTripleUniverse;
 import static br.ufsc.lapesd.freqel.SPARQLAssert.assertVarsUniverse;
 import static br.ufsc.lapesd.freqel.algebra.util.TreeUtils.streamPreOrder;
 import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
+import static br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators.uncloseable;
+import static br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators.withDescription;
 import static br.ufsc.lapesd.freqel.testgen.LRBTestResourcesGenerator.parseResults;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
@@ -281,7 +283,7 @@ public class LargeRDFBenchSelfTest {
             if (root instanceof QueryOp) {
                 actual = ep.query(((QueryOp) root).getQuery());
             } else {
-                try (Federation federation = createFederation(new SelectDescription(ep).asSource())) {
+                try (Federation federation = createFederation(withDescription(ep, new SelectDescription(ep)))) {
                     actual = federation.query(root);
                 }
             }
@@ -310,8 +312,8 @@ public class LargeRDFBenchSelfTest {
             if (root instanceof QueryOp) {
                 actual = client.query(((QueryOp) root).getQuery());
             } else {
-                Source source = new Source(new SelectDescription(client), client);
-                try (Federation federation = createFederation(source)) {
+//                client.setDescription(new SelectDescription(client));
+                try (Federation federation = createFederation(uncloseable(client))) {
                     actual = federation.query(root);
                 }
             }
@@ -348,7 +350,7 @@ public class LargeRDFBenchSelfTest {
         try (Federation federation = Federation.createDefault()) {
             for (String filename : DATA_FILENAMES) {
                 ARQEndpoint ep = ARQEndpoint.forModel(loadData(filename));
-                federation.addSource(new Source(new SelectDescription(ep), ep));
+                federation.addSource(ep.setDescription(new SelectDescription(ep)));
             }
             Op query = loadQuery("B4");
 

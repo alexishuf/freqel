@@ -74,6 +74,7 @@ public class FederationSpecLoaderTest implements TestContext {
                     "sources:\n" +
                     "  - loader: sparql\n" +
                     "    uri: %s\n" +
+                    "    description: select\n" +
                     "sources-cache: cache\n", fusekiEndpoint.uri);
         }
 

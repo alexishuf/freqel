@@ -7,7 +7,6 @@ import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.description.AskDescription;
 import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticSelectDescription;
 import br.ufsc.lapesd.freqel.cardinality.CardinalityEnsemble;
@@ -46,7 +45,10 @@ import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.TPEndpointTest;
+import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
@@ -131,6 +133,7 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.jena.rdf.model.ResourceFactory.*;
 import static org.testng.Assert.*;
 
+@SuppressWarnings("SameParameterValue")
 public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         implements TestContext, TransparencyServiceTestContext {
     public static final @Nonnull StdLit title1 = StdLit.fromUnescaped("title 1", "en");
@@ -149,18 +152,19 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         return forModel(m);
     }
 
-    private static @Nonnull Source createWebAPISource(@Nonnull Molecule molecule,
-                                                      @Nonnull String base, @Nonnull String file) {
+    private static @Nonnull TPEndpoint createWebAPISource(@Nonnull Molecule molecule,
+                                                          @Nonnull String base,
+                                                          @Nonnull String file) {
         UriTemplate uriTemplate = new UriTemplate(base+"/describe/"+file+"{?uri}");
         UriTemplateExecutor executor = new UriTemplateExecutor(uriTemplate);
         Map<String, String> atom2input = new HashMap<>();
         atom2input.put(molecule.getCore().getName(), "uri");
         APIMolecule apiMolecule = new APIMolecule(molecule, executor, atom2input);
-        WebAPICQEndpoint endpoint = new WebAPICQEndpoint(apiMolecule);
-        return new Source(endpoint.getMatcher(), endpoint);
+        return new WebAPICQEndpoint(apiMolecule);
+
     }
 
-    private static @Nonnull Source
+    private static @Nonnull TPEndpoint
     createSubjectsWebAPISource(@Nonnull Molecule molecule, @Nonnull String base,
                                @Nonnull String file, @Nonnull StdURI predicate,
                                @Nonnull String inAtomName) {
@@ -176,8 +180,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         assertTrue(molecule.getAtomMap().containsKey(inAtomName));
         atom2input.put(inAtomName, "uri");
         APIMolecule apiMolecule = new APIMolecule(molecule, executor, atom2input);
-        WebAPICQEndpoint endpoint = new WebAPICQEndpoint(apiMolecule);
-        return new Source(endpoint.getMatcher(), endpoint);
+        return new WebAPICQEndpoint(apiMolecule);
     }
 
     @Path("/")
@@ -281,7 +284,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         @Override
         public void accept(@Nonnull Federation federation, @Nonnull String baseServiceUri) {
             ARQEndpoint ep = createEndpoint("rdf-1.nt");
-            federation.addSource(new Source(new SelectDescription(ep), ep));
+            federation.addSource(ep.setDescription(new SelectDescription(ep)));
         }
         @Override
         public boolean requiresBindJoin() { return false; }
@@ -295,9 +298,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         @Override
         public void accept(@Nonnull Federation federation, @Nonnull String baseServiceUri) {
             ARQEndpoint ep = createEndpoint("rdf-1.nt");
-            federation.addSource(new Source(new SelectDescription(ep), ep));
+            federation.addSource(ep.setDescription(new SelectDescription(ep)));
             ep = createEndpoint("rdf-2.nt");
-            federation.addSource(new Source(new AskDescription(ep), ep));
+            federation.addSource(ep.setDescription(new AskDescription(ep)));
         }
         @Override
         public boolean requiresBindJoin() { return false; }
@@ -325,7 +328,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         @Override
         public void accept(Federation federation, @Nonnull String base) {
             ARQEndpoint authors = createEndpoint("authors.nt");
-            federation.addSource(new Source(new SelectDescription(authors), authors));
+            federation.addSource(authors.setDescription(new SelectDescription(authors)));
             if (variantIdx == 1) {
                 Molecule bookMolecule = Molecule.builder("Book")
                         .out(type, Molecule.builder("class").buildAtom())
@@ -340,10 +343,10 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                         "books.nt", ex("genre"), "genre"));
             } else {
                 ARQEndpoint books = createEndpoint("books.nt");
-                federation.addSource(new Source(new SelectDescription(books), books));
+                federation.addSource(books.setDescription(new SelectDescription(books)));
             }
             ARQEndpoint genres = createEndpoint("genres.nt");
-            federation.addSource(new Source(new SelectDescription(genres), genres));
+            federation.addSource(genres.setDescription(new SelectDescription(genres)));
         }
         @Override
         public String toString() {
@@ -366,19 +369,19 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         public void accept(Federation federation, String base) {
             WebTarget target = ClientBuilder.newClient().target(base);
             try {
-                federation.addSource(getContractsClient(target).asSource());
-                federation.addSource(getContractByIdClient(target).asSource());
-                federation.addSource(getProcurementsClient(target).asSource());
-                federation.addSource(getProcurementsByIdClient(target).asSource());
-                federation.addSource(getProcurementByNumberClient(target).asSource());
-                federation.addSource(getOrgaosSiafiClient(target).asSource());
+                federation.addSource(getContractsClient(target));
+                federation.addSource(getContractByIdClient(target));
+                federation.addSource(getProcurementsClient(target));
+                federation.addSource(getProcurementsByIdClient(target));
+                federation.addSource(getProcurementByNumberClient(target));
+                federation.addSource(getOrgaosSiafiClient(target));
                 ARQEndpoint ep = createEndpoint("modalidades.ttl");
-                federation.addSource(new Source(new SelectDescription(ep), ep));
+                federation.addSource(ep.setDescription(new SelectDescription(ep)));
                 //some completely unrelated endpoints...
                 ep = createEndpoint("books.nt");
-                federation.addSource(new Source(new SelectDescription(ep), ep));
+                federation.addSource(ep.setDescription(new SelectDescription(ep)));
                 ep = createEndpoint("genres.nt");
-                federation.addSource(new Source(new SelectDescription(ep), ep));
+                federation.addSource(ep.setDescription(new SelectDescription(ep)));
 
                 Linkedator linkedator = Linkedator.getDefault();
                 List<LinkedatorResult> suggestions;
@@ -430,8 +433,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         @Override
         public boolean requiresFastModule() { return true; }
 
-        static @Nonnull Source wrap(@Nonnull Model model, @Nonnull String endpointName,
-                                    @Nonnull String variantName) {
+        static @Nonnull TPEndpoint wrap(@Nonnull Model model, @Nonnull String endpointName,
+                                        @Nonnull String variantName) {
             CQEndpoint ep = null;
             Description description = null;
             if (variantName.contains("SPARQLClient")) {
@@ -453,11 +456,11 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             else if (variantName.contains("SemanticSelectDescription"))
                 description = new SemanticSelectDescription(ep, true, new EmptyTBox());
             assert description != null;
+            ((AbstractTPEndpoint)ep).setDescription(description);
 
-            Source source = new Source(description, ep);
-            if (variantName.contains("SPARQLClient"))
-                source.setCloseEndpoint(true);
-            return source;
+            if (!variantName.contains("SPARQLClient"))
+                ep = EndpointDecorators.uncloseable(ep);
+            return ep;
         }
 
         @Override
@@ -528,7 +531,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             String variant = variantNames[variantIdx];
             if (variant.contains("union")) {
                 Model model = BSBMSelfTest.allData();
-                Source src = SetupLargeRDFBench.wrap(model, "BSBM", variant);
+                TPEndpoint src = SetupLargeRDFBench.wrap(model, "BSBM", variant);
                 federation.addSource(src);
             } else {
                 for (String filename : BSBMSelfTest.DATA_FILENAMES) {
@@ -538,7 +541,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                     } catch (IOException e) {
                         fail("Could not load BSBM dataset "+filename, e);
                     }
-                    Source src = SetupLargeRDFBench.wrap(model, filename, variant);
+                    TPEndpoint src = SetupLargeRDFBench.wrap(model, filename, variant);
                     federation.addSource(src);
                 }
             }
@@ -1148,10 +1151,10 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 .with(module));
         federation = injector.getInstance(Federation.class);
 
-        ARQEndpoint dbpEp = forModel(LargeRDFBenchSelfTest.loadData("DBPedia-Subset.nt"), "DBPedia-Subset");
-        Source dbp = new Source(new SelectDescription(dbpEp), dbpEp);
-        ARQEndpoint nytEp = forService("http://127.0.0.178:8897/sparql");
-        Source nyt = new Source(new SelectDescription(nytEp), nytEp);
+        ARQEndpoint dbp = forModel(LargeRDFBenchSelfTest.loadData("DBPedia-Subset.nt"), "DBPedia-Subset");
+        dbp.setDescription(new SelectDescription(dbp));
+        ARQEndpoint nyt = forService("http://127.0.0.178:8897/sparql");
+        nyt.setDescription(new SelectDescription(nyt));
         federation.addSource(dbp);
         federation.addSource(nyt);
 
@@ -1204,7 +1207,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             reasoner.load(new TBoxSpec().addResource(getClass(), "cnc-ontology.ttl"));
             SemanticSelectDescription matcher =
                     new SemanticSelectDescription(data, true, reasoner);
-            federation.addSource(new Source(matcher, data));
+            federation.addSource(data.setDescription(matcher));
         }
 
         @Override

@@ -8,7 +8,6 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
 import br.ufsc.lapesd.freqel.federation.concurrent.PlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.decomp.FilterAssigner;
@@ -20,6 +19,8 @@ import br.ufsc.lapesd.freqel.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.freqel.federation.planner.PrePlanner;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.query.CQuery;
+import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -41,27 +42,27 @@ public abstract class ConjunctivePlanBenchmarksTestBase {
     private final Injector defInjector = Guice.createInjector(new SimpleFederationModule());
 
     @Test(enabled = false)
-    public static @Nonnull List<Source> largeRDFBenchSources() throws IOException {
-        List<Source> list = new ArrayList<>();
+    public static @Nonnull List<TPEndpoint> largeRDFBenchSources() throws IOException {
+        List<TPEndpoint> list = new ArrayList<>();
         for (String filename : LargeRDFBenchSelfTest.DATA_FILENAMES) {
             ARQEndpoint ep = ARQEndpoint.forModel(LargeRDFBenchSelfTest.loadData(filename));
-            list.add(new Source(new SelectDescription(ep), ep));
+            list.add(ep.setDescription(new SelectDescription(ep)));
         }
         return list;
     }
 
     @Test(enabled = false)
-    public static @Nonnull List<Source> bsbmSources() throws IOException {
-        ArrayList<Source> list = new ArrayList<>();
+    public static @Nonnull List<TPEndpoint> bsbmSources() throws IOException {
+        ArrayList<TPEndpoint> list = new ArrayList<>();
         for (String filename : BSBMSelfTest.DATA_FILENAMES) {
             ARQEndpoint ep = ARQEndpoint.forModel(BSBMSelfTest.loadData(filename));
-            list.add(new Source(new SelectDescription(ep), ep));
+            list.add(ep.setDescription(new SelectDescription(ep)));
         }
         return list;
     }
 
     private @Nonnull List<ImmutablePair<CQuery, List<Op>>>
-    getQueriesAndFragments(@Nonnull Op query, @Nonnull List<Source> sources) {
+    getQueriesAndFragments(@Nonnull Op query, @Nonnull List<TPEndpoint> sources) {
         SPARQLAssert.assertUniverses(query);
         Op root = TreeUtils.deepCopy(query);
         assert root.assertTreeInvariants();
@@ -94,12 +95,12 @@ public abstract class ConjunctivePlanBenchmarksTestBase {
 
     @DataProvider public @Nonnull Object[][] planData() throws IOException, SPARQLParseException {
         List<ImmutablePair<CQuery, List<Op>>> list = new ArrayList<>();
-        List<Source> lrbSources = largeRDFBenchSources();
+        List<TPEndpoint> lrbSources = largeRDFBenchSources();
         for (String filename : LargeRDFBenchSelfTest.QUERY_FILENAMES) {
             Op query = LargeRDFBenchSelfTest.loadQuery(filename);
             list.addAll(getQueriesAndFragments(query, lrbSources));
         }
-        List<Source> bsbmSources = bsbmSources();
+        List<TPEndpoint> bsbmSources = bsbmSources();
         for (String filename : BSBMSelfTest.QUERY_FILENAMES) {
             Op query = BSBMSelfTest.loadQuery(filename);
             list.addAll(getQueriesAndFragments(query, bsbmSources));

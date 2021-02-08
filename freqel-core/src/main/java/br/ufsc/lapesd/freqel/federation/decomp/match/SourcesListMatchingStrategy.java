@@ -7,7 +7,6 @@ import br.ufsc.lapesd.freqel.description.CQueryMatch;
 import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.freqel.federation.PerformanceListener;
-import br.ufsc.lapesd.freqel.description.Source;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;
 import br.ufsc.lapesd.freqel.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.Metrics;
@@ -28,10 +27,8 @@ import java.util.Collections;
 import java.util.List;
 
 public class SourcesListMatchingStrategy implements MatchingStrategy {
-    protected final @Nonnull List<Source> sources = new ArrayList<>();
-    private final @Nonnull RefIndexSet<TPEndpoint> endpoints = new RefIndexSet<>();
+    protected final @Nonnull RefIndexSet<TPEndpoint> endpoints = new RefIndexSet<>();
     private final @Nonnull ImmRefIndexSet<TPEndpoint> immEndpoints = endpoints.asImmutable();
-    private final @Nonnull List<Source> unmodifiableSources = Collections.unmodifiableList(sources);
     protected final @Nonnull PerformanceListener perfListener;
 
     @Inject
@@ -43,18 +40,17 @@ public class SourcesListMatchingStrategy implements MatchingStrategy {
         this(NoOpPerformanceListener.INSTANCE);
     }
 
-    @Override public void addSource(@Nonnull Source source) {
-        sources.add(source);
-        endpoints.add(source.getEndpoint());
+    @Override public void addSource(@Nonnull TPEndpoint endpoint) {
+        endpoints.add(endpoint);
     }
 
-    protected boolean match(@Nonnull Source source, @Nonnull CQuery query,
+    protected boolean match(@Nonnull TPEndpoint source, @Nonnull CQuery query,
                             @Nonnull Agglutinator.State state) {
         Description description = source.getDescription();
         CQueryMatch match = description instanceof SemanticDescription
                 ? ((SemanticDescription) description).semanticMatch(query)
                 : description.match(query);
-        state.addMatch(source.getEndpoint(), match);
+        state.addMatch(source, match);
         return !match.isEmpty();
     }
 
@@ -79,7 +75,7 @@ public class SourcesListMatchingStrategy implements MatchingStrategy {
         int nMatches = 0;
         try (TimeSampler ignored = Metrics.SELECTION_MS.createThreadSampler(perfListener)) {
             Agglutinator.State state = agglutinator.createState(query);
-            for (Source source : sources) {
+            for (TPEndpoint source : endpoints) {
                 if (match(source, query, state))
                     nMatches++;
             }
@@ -89,11 +85,7 @@ public class SourcesListMatchingStrategy implements MatchingStrategy {
         }
     }
 
-    @Override public @Nonnull Collection<Source> getSources() {
-        return unmodifiableSources;
-    }
-
-    @Override public @Nonnull ImmRefIndexSet<TPEndpoint> getEndpointsSet() {
+    @Override public @Nonnull ImmRefIndexSet<TPEndpoint> getEndpoints() {
         return immEndpoints;
     }
 }

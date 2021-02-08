@@ -10,6 +10,7 @@ import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.exceptions.MissingCapabilityException;
 import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
@@ -31,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.function.Function;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
@@ -73,9 +75,23 @@ public class SelectDescription implements Description {
         isUpdated = true;
     }
 
-    public @Nonnull Source asSource() {
-        return new Source(this, endpoint);
-    }
+    public static final @Nonnull Function<TPEndpoint, SelectDescription> MEM_FACTORY = ep -> {
+        try {
+            return new SelectDescription((CQEndpoint) ep);
+        } catch (MissingCapabilityException e) {
+            throw new IllegalArgumentException("Unexpected MissingCapabilityException", e);
+        }
+    };
+    public static final @Nonnull Function<TPEndpoint, SelectDescription> MEM_FACTORY_WITH_CLASSES
+            = ep -> {
+        try {
+            return new SelectDescription((CQEndpoint) ep, true);
+        } catch (MissingCapabilityException e) {
+            throw new IllegalArgumentException("Unexpected MissingCapabilityException", e);
+        }
+    };
+
+
 
     private static class State {
         public List<String> predicates = null;
