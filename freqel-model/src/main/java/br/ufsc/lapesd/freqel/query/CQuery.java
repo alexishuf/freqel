@@ -1,22 +1,26 @@
 package br.ufsc.lapesd.freqel.query;
 
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.description.molecules.tags.AtomTag;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.Triple.Position;
 import br.ufsc.lapesd.freqel.model.prefix.PrefixDict;
 import br.ufsc.lapesd.freqel.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.freqel.model.term.Term;
+import br.ufsc.lapesd.freqel.model.term.Var;
+import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.freqel.query.modifiers.Modifier;
 import br.ufsc.lapesd.freqel.query.modifiers.ModifiersSet;
+import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -33,6 +37,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.lang.ref.SoftReference;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import static java.util.Collections.unmodifiableSet;
 import static java.util.stream.Collectors.joining;
@@ -233,31 +238,116 @@ public class CQuery implements  List<Triple> {
         IndexSubset<Triple> triples = d.cache.getSet().emptySubset();
         for (Position position : positions)
             triples.addAll(d.cache.triplesWithTermAt(term, position));
-
         MutableCQuery other = MutableCQuery.from(triples);
-        IndexSet<String> allowed = other.attr().tripleVarNames();
-        other.d.modifiers.silenced = true;
-        boolean hadFilter = false;
-        for (Modifier m : getModifiers()) {
-            if (m instanceof SPARQLFilter) {
-                hadFilter = true;
-                if (!allowed.containsAll(((SPARQLFilter) m).getVarNames()))
-                    continue;
-            }
-            other.d.modifiers.add(m);
-        }
-        if (hadFilter)
-            d.cache.invalidateAllTerms(); // new filters may have introduced new ground terms
-        other.d.modifiers.silenced = false;
-        other.copyTripleAnnotations(this);
-        other.copyTermAnnotations(this);
-        other.sanitizeProjectionStrict();
+        other.copyAnnotationsAndModifiersStrictly(this);
         return other;
     }
 
     /** Equivalent to <code>containing(term, asList(positions))</code>. */
     public @Nonnull CQuery containing(@Nonnull Term term, Position... positions) {
         return containing(term, Arrays.asList(positions));
+    }
+
+    /**
+     * Create a CQuery containing only the given triples (which must be a subset of this).
+     *
+     * All annotations (term, triple, query), modifiers and universe sets are copied to the
+     * new instance. Filter and projections are sanitized strictly: filters are only copied if
+     * all vars occur in <code>triples</code> and a copied projection will be stripped to
+     * vars occurring in <code>triples</code>
+     *
+     * @param triples a subset of triples that will make up the new query
+     * @return a new sub query
+     */
+    public @Nonnull CQuery subQuery(@Nonnull Collection<Triple> triples) {
+        MutableCQuery sub = MutableCQuery.from(triples);
+        sub.copyAnnotationsAndModifiersStrictly(this);
+        return sub;
+    }
+
+
+    private static @Nonnull Triple bind(@Nonnull Triple t, @Nonnull Function<Term, Term> mapper) {
+        Term s = t.getSubject(),   rs = mapper.apply(t.getSubject());
+        Term p = t.getPredicate(), rp = mapper.apply(t.getPredicate());
+        Term o = t.getObject(),    ro = mapper.apply(t.getObject());
+        if (s != rs || p != rp || o != ro)
+            return new Triple(rs, rp, ro);
+        return t;
+    }
+
+    private static @Nonnull Modifier bind(@Nonnull Modifier modifier,
+                                          @Nonnull Function<Term, Term> mapper) {
+        if (modifier instanceof SPARQLFilter) {
+            return ((SPARQLFilter) modifier).bind(mapper);
+        } else if (modifier instanceof Projection) {
+            Set<String> before = ((Projection) modifier).getVarNames();
+            Set<String> after = new HashSet<>();
+            for (String varName : before) {
+                StdVar var = new StdVar(varName);
+                Term bound = mapper.apply(var);
+                if (bound.isVar()) {
+                    String boundName = bound.asVar().getName();
+                    after.add(boundName);
+                }
+                return after.equals(before) ? modifier : Projection.of(after);
+            }
+        }
+        return modifier;
+    }
+
+    public @Nonnull MutableCQuery bind(@Nonnull Function<Term, Term> mapper) {
+        MutableCQuery boundQuery = new MutableCQuery();
+        // handle triples, and (triple, term, query) annotations
+        for (Triple triple : this) {
+            Triple bound = bind(triple, mapper);
+            boundQuery.add(bound);
+            for (TripleAnnotation ann : d.tripleAnns().get(triple))
+                boundQuery.annotate(bound, ann);
+        }
+        for (Map.Entry<Term, TermAnnotation> e : d.termAnns.entries())
+            boundQuery.d.termAnns().put(mapper.apply(e.getKey()), e.getValue());
+        boundQuery.d.queryAnns().addAll(d.queryAnns);
+
+        // handle modifiers
+        boolean filterChange = false;
+        boundQuery.d.modifiers.silenced = true;
+        try {
+            for (Modifier modifier : d.modifiers) {
+                Modifier boundModifier = bind(modifier, mapper);
+                boundQuery.d.modifiers.add(boundModifier);
+                filterChange |= boundModifier != modifier && modifier instanceof SPARQLFilter;
+            }
+        } finally {
+            boundQuery.d.modifiers.silenced = false;
+        }
+        if (filterChange)
+            d.cache.invalidateAllTerms();
+
+        // try to reuse vars universe. Triples universe almost never can be reused
+        IndexSet<String> varsUniverse = d.cache.varNamesUniverseOffer();
+        if (varsUniverse != null) {
+            boolean safe = true;
+            IndexSet<Var> vars = d.cache.allVars();
+            for (Var var : vars) {
+                Term bound = mapper.apply(var);
+                if (bound.isVar() && !vars.contains(bound.asVar()))
+                    safe = false;
+            }
+            if (safe)
+                boundQuery.d.cache.offerVarNamesUniverse(varsUniverse);
+        }
+        return boundQuery;
+    }
+    public @Nonnull MutableCQuery bind(@Nonnull Map<?, Term> assignments) {
+        return bind(t -> {
+            Term replacement = assignments.getOrDefault(t, null);
+            if (replacement == null && t.isVar())
+                return assignments.getOrDefault(t.asVar().getName(), t);
+            return t;
+        });
+    }
+    public @Nonnull MutableCQuery bind(@Nonnull Solution solution) {
+        return bind(t -> t.isVar() ? solution.get(t.asVar().getName(), t) : t);
     }
 
     /* ~~~ Iterator/ListIterator implementations forbidding mutations ~~~ */

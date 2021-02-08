@@ -1,13 +1,18 @@
 package br.ufsc.lapesd.freqel.algebra.leaf;
 
+import br.ufsc.lapesd.freqel.model.RDFUtils;
 import br.ufsc.lapesd.freqel.model.term.Term;
+import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.annotations.OverrideAnnotation;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.results.Solution;
+import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
 
 import javax.annotation.Nonnull;
+
+import static br.ufsc.lapesd.freqel.algebra.util.TreeUtils.addBoundModifiers;
 
 public class EndpointQueryOp extends QueryOp implements EndpointOp {
     protected final @Nonnull TPEndpoint endpoint;
@@ -32,21 +37,30 @@ public class EndpointQueryOp extends QueryOp implements EndpointOp {
         return new EndpointQueryOp(getEndpoint(), query);
     }
 
-    @Override
-    protected Term bind(@Nonnull Term term, @Nonnull Solution solution, Term fallback) {
-        return endpoint.requiresBindWithOverride() ? term : super.bind(term, solution, fallback);
-    }
+    @Override protected @Nonnull MutableCQuery bindQuery(@Nonnull Solution solution) {
+        if (!endpoint.requiresBindWithOverride())
+            return super.bindQuery(solution);
+        solution = RDFUtils.generalizeLiterals(solution);
+        MutableCQuery original = getQuery();
+        MutableCQuery boundQuery = new MutableCQuery(original);
+        boundQuery.mutateModifiers().removeAll(original.getModifiers().filters());
+        addBoundModifiers(boundQuery.mutateModifiers(), original.getModifiers(), solution);
 
-    @Override
-    protected void annotationBind(@Nonnull Term term, @Nonnull Solution solution, Term fallback,
-                                  @Nonnull MutableCQuery query) {
-        if (endpoint.requiresBindWithOverride()) {
-            Term bound = super.bind(term, solution, fallback);
-            if (bound != fallback) {
-                query.deannotateTermIf(term, OverrideAnnotation.class::isInstance);
-                query.annotate(term, new OverrideAnnotation(bound));
+        IndexSubset<Var> filterVars = original.attr().allVars().fullSubset();
+        filterVars.removeAll(original.attr().tripleVars());
+        for (Var filterVar : filterVars) {
+            if (solution.get(filterVar) != null)
+                boundQuery.deannotate(filterVar);
+        }
+
+        for (Var var : boundQuery.attr().allVars()) {
+            Term bound = solution.get(var);
+            if (bound != null) {
+                boundQuery.deannotateTermIf(var, OverrideAnnotation.class::isInstance);
+                boundQuery.annotate(var, new OverrideAnnotation(bound));
             }
         }
+        return boundQuery;
     }
 
     @Override
@@ -59,7 +73,7 @@ public class EndpointQueryOp extends QueryOp implements EndpointOp {
         return builder;
     }
 
-    @Nonnull @Override protected StringBuilder prettyPrintQArgs(@Nonnull StringBuilder b) {
+    @Override protected @Nonnull StringBuilder prettyPrintQArgs(@Nonnull StringBuilder b) {
         return b.append(' ').append(getEndpoint());
     }
 

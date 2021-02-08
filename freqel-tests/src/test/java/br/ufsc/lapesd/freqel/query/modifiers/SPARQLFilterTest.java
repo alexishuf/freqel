@@ -7,9 +7,9 @@ import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterExecutor;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
 import com.google.common.collect.Sets;
@@ -91,6 +91,11 @@ public class SPARQLFilterTest implements TestContext {
         assertEquals(bound.getVarNames(), singleton("x"));
         assertEquals(bound.getVars(), singleton(x));
         assertEquals(bound.getTerms(), Sets.newHashSet(x, lit(23)));
+
+        SPARQLFilter bound2 = filter.bind(t -> t.equals(u) ? lit(23) : t);
+        assertEquals(bound2.getVarNames(), singleton("x"));
+        assertEquals(bound2.getVars(), singleton(x));
+        assertEquals(bound2.getTerms(), Sets.newHashSet(x, lit(23)));
     }
 
     @Test
@@ -290,6 +295,7 @@ public class SPARQLFilterTest implements TestContext {
     public void testBind(@Nonnull SPARQLFilter filter, @Nonnull Solution solution,
                          @Nonnull SPARQLFilter bound) {
         assertEquals(filter.bind(solution), bound);
+        assertEquals(filter.bind(t -> t.isVar() ? solution.get(t.asVar().getName(), t) : t), bound);
         Set<String> names = bound.getExpr().varsMentioned();
         assertEquals(bound.getVarNames(), names);
         assertEquals(bound.getVars(), names.stream().map(StdVar::new).collect(toSet()));

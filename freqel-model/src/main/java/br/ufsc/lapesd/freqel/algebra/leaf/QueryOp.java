@@ -2,19 +2,15 @@ package br.ufsc.lapesd.freqel.algebra.leaf;
 
 import br.ufsc.lapesd.freqel.algebra.AbstractOp;
 import br.ufsc.lapesd.freqel.algebra.Op;
-import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.model.RDFUtils;
 import br.ufsc.lapesd.freqel.model.Triple;
-import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.CQueryCache;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
-import br.ufsc.lapesd.freqel.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.freqel.query.modifiers.*;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
-import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -131,49 +127,8 @@ public class QueryOp extends AbstractOp {
         return query.attr().inputVarNames();
     }
 
-    @Contract("_, _, !null -> !null")
-    protected Term bind(@Nonnull Term term, @Nonnull Solution solution, Term fallback) {
-        return term.isVar() ? solution.get(term.asVar().getName(), fallback) : fallback;
-    }
-    protected void annotationBind(@Nonnull Term term, @Nonnull Solution solution, Term fallback,
-                                  @Nonnull MutableCQuery query) {
-        // do nothing by default
-    }
-
-    protected @Nonnull Triple bind(@Nonnull Triple t, @Nonnull Solution solution,
-                                   @Nonnull MutableCQuery target) {
-        Term s = bind(t.getSubject(), solution, null);
-        Term p = bind(t.getPredicate(), solution, null);
-        Term o = bind(t.getObject(), solution, null);
-        Triple t2 = t;
-        if (s != null || p != null || o != null) {
-            t2 = new Triple(s == null ? t.getSubject()   : s,
-                            p == null ? t.getPredicate() : p,
-                            o == null ? t.getObject()    : o);
-        }
-        target.add(t2);
-        annotationBind(t.getSubject(), solution, null, target);
-        annotationBind(t.getPredicate(), solution, null, target);
-        annotationBind(t.getObject(), solution, null, target);
-        return t2;
-    }
-
     protected @Nonnull MutableCQuery bindQuery(@Nonnull Solution solution) {
-        Solution s = RDFUtils.generalizeLiterals(solution);
-        CQuery q = getQuery();
-        MutableCQuery b = new MutableCQuery();
-        for (Triple triple : q) {
-            Triple bound = bind(triple, s, b);
-            q.getTripleAnnotations(triple).forEach(a -> b.annotate(bound, a));
-        }
-        TreeUtils.addBoundModifiers(b.mutateModifiers(), q.getModifiers(), s);
-        q.forEachTermAnnotation((t, a) -> {
-            assert t != null && a != null;
-            b.annotate(bind(t, s, t), a);
-        });
-        for (QueryAnnotation ann : q.getQueryAnnotations())
-            b.annotate(ann);
-        return b;
+        return getQuery().bind(RDFUtils.generalizeLiterals(solution));
     }
 
     protected @Nonnull QueryOp createWith(@Nonnull CQuery query) {

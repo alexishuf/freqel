@@ -9,7 +9,10 @@ import br.ufsc.lapesd.freqel.query.annotations.QueryAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.TermAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.TripleAnnotation;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
-import br.ufsc.lapesd.freqel.query.modifiers.*;
+import br.ufsc.lapesd.freqel.query.modifiers.Modifier;
+import br.ufsc.lapesd.freqel.query.modifiers.ModifiersSet;
+import br.ufsc.lapesd.freqel.query.modifiers.Projection;
+import br.ufsc.lapesd.freqel.query.modifiers.UnsafeMergeException;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
@@ -345,7 +348,6 @@ public class MutableCQuery extends CQuery {
      * @return true if any annotation was removed, false otherwise
      */
     public @CanIgnoreReturnValue boolean deannotate(@Nonnull Term term) {
-        assert d.cache.allTerms().contains(term) : "Term not in query, likely an error";
         makeExclusive();
         Set<TermAnnotation> removed = d.termAnns.removeAll(term);
         removed.forEach(a -> d.cache.notifyTermAnnotationChange(a.getClass()));
@@ -468,6 +470,68 @@ public class MutableCQuery extends CQuery {
             assert false : "Earlier check failed to throw, query is already mutated!";
             throw e;
         }
+        return change;
+    }
+
+    /**
+     * Copy all modifiers and annotations (triple, terms and query) from source into this query.
+     *
+     * Modifiers undergo strict sanitization: filters are only copied if all vars occur within
+     * triples in this query. If a projection is copied, it also will be stripped to vars
+     * occurring inside triples of this query.
+     *
+     * If this query did not received a triples or var names universe offer and the source did,
+     * these universe sets will also be offered to this instance, but only if this instance
+     * triples and vars are contained in the corresponding universe set.
+     *
+     * @param source the source {@link CQuery} for annotations, modifiers and universe sets.
+     * @return whether this instance was changed
+     */
+    public boolean copyAnnotationsAndModifiersStrictly(@Nonnull CQuery source) {
+        makeExclusive();
+
+        boolean triplesSubset = false;
+        boolean change = false;
+        if (d.cache.triplesUniverseOffer() == null) {
+            IndexSet<Triple> triplesUniverse = source.attr().triplesUniverseOffer();
+            if (triplesUniverse != null) {
+                triplesSubset = triplesUniverse.containsAll(this);
+                if (triplesSubset) {
+                    d.cache.offerTriplesUniverse(triplesUniverse);
+                    change = true;
+                }
+            }
+        }
+        if (d.cache.varNamesUniverseOffer() == null) {
+            IndexSet<String> varsUniverse = source.attr().varNamesUniverseOffer();
+            if (varsUniverse != null) {
+                if (triplesSubset || varsUniverse.containsAll(d.cache.allVarNames())) {
+                    d.cache.offerVarNamesUniverse(varsUniverse);
+                    change = true;
+                }
+            }
+        }
+
+        IndexSet<String> allowed = attr().tripleVarNames();
+        d.modifiers.silenced = true;
+        try {
+            boolean hadFilter = false;
+            for (Modifier m : source.getModifiers()) {
+                if (m instanceof SPARQLFilter) {
+                    hadFilter = true;
+                    if (!allowed.containsAll(((SPARQLFilter)m).getVarNames()))
+                        continue;
+                }
+                change |= d.modifiers.add(m);
+            }
+            if (hadFilter)
+                d.cache.invalidateAllTerms();
+        } finally {
+            d.modifiers.silenced = false;
+        }
+        change |= copyTripleAnnotations(source);
+        change |= copyTermAnnotations(source);
+        change |= sanitizeProjectionStrict();
         return change;
     }
 

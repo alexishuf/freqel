@@ -1,13 +1,13 @@
 package br.ufsc.lapesd.freqel.jena.query.modifiers.filter;
 
 import br.ufsc.lapesd.freqel.jena.JenaWrappers;
+import br.ufsc.lapesd.freqel.jena.model.term.node.JenaNodeTerm;
 import br.ufsc.lapesd.freqel.jena.model.term.node.JenaVarNode;
 import br.ufsc.lapesd.freqel.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
-import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterNode;
 import br.ufsc.lapesd.freqel.query.results.Solution;
@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static br.ufsc.lapesd.freqel.jena.ExprUtils.*;
@@ -460,6 +461,18 @@ public class JenaSPARQLFilter implements SPARQLFilter {
             return bound == null ? n : bound;
         });
         return build(boundExpr);
+    }
+
+    @Override public @Nonnull SPARQLFilter bind(@Nonnull Function<Term, Term> mapper) {
+        boolean[] anyChange = {false};
+        Expr boundExpr = this.expr.applyNodeTransform(n -> {
+            JenaNodeTerm term = fromJena(n);
+            Term bound = mapper.apply(term);
+            boolean termChange = bound != null && bound != term;
+            anyChange[0] |= termChange;
+            return termChange ? JenaWrappers.toJenaNode(bound) : n;
+        });
+        return anyChange[0] ?  build(boundExpr) : this;
     }
 
     /* --- --- --- Object methods --- --- --- */

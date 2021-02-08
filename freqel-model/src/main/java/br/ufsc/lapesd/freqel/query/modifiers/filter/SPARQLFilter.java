@@ -15,6 +15,7 @@ import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 import static java.util.Collections.emptySet;
 
@@ -47,6 +48,30 @@ public interface SPARQLFilter extends Modifier {
      */
     SubsumptionResult areResultsSubsumedBy(@Nonnull SPARQLFilter other);
 
+    /**
+     * Create a new {@link SPARQLFilter} instance with all terms replaced according the the
+     * given mapper.
+     *
+     * Note that unlike {@link #bind(Solution)}, this will replace any term, not just variables.
+     *
+     * @param mapper a function that maps every term in this filter to a replacement term,
+     *               or returns the current term itself. If the function happens to
+     *               return null, it will be interpreted the same as if the input term
+     *               was returned. Implementations of the mapping function should not
+     *               return distinct objects that are equal to the input.
+     * @return a new SPARQLFilter
+     */
+    @Nonnull SPARQLFilter bind(@Nonnull Function<Term, Term> mapper);
+
+    /**
+     * Same as {@link #bind(Function)}, but only replaces Var instances.
+     *
+     * Since this version only replaces variables, implementations may take some shortcuts
+     * for calls where no replacement would occur
+     *
+     * @param solution the solution assigning {@link Term}s to variable names.
+     * @return a new {@link SPARQLFilter} or this instance if no replacement occurs.
+     */
     @Nonnull SPARQLFilter bind(@Nonnull Solution solution);
 
     @Immutable
