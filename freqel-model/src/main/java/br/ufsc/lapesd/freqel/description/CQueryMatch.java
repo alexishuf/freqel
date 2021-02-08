@@ -5,6 +5,9 @@ import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.prefix.PrefixDict;
 import br.ufsc.lapesd.freqel.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.freqel.query.CQuery;
+import br.ufsc.lapesd.freqel.util.indexed.ImmFullIndexSet;
+import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
+import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.Immutable;
 import com.google.errorprone.annotations.concurrent.LazyInit;
@@ -14,11 +17,9 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.WillClose;
 import java.util.*;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.*;
 
 /**
  * The result of matching a conjunctive query against a {@link Description}.
@@ -26,26 +27,33 @@ import static java.util.Collections.unmodifiableList;
 @Immutable
 public class CQueryMatch {
     private final @Nonnull List<CQuery> exclusiveGroups;
-    private final @Nonnull List<Triple> nonExclusiveRelevant;
+    private final @Nonnull IndexSet<Triple> nonExclusiveRelevant;
+    private final @Nonnull IndexSet<Triple> unknown;
+    private final @Nullable IndexSet<Triple> triplesUniverse;
     @SuppressWarnings("Immutable")
-    private @LazyInit @Nullable List<Triple> allRelevant = null;
+    private @LazyInit @Nullable Set<Triple> allRelevant = null;
 
     public static final @Nonnull CQueryMatch EMPTY = new CQueryMatch();
 
     protected CQueryMatch() {
-        this(emptyList(), emptyList());
+        this(emptyList(), ImmFullIndexSet.empty(), ImmFullIndexSet.empty(), null);
     }
 
     public CQueryMatch(@Nonnull List<CQuery> exclusiveGroups,
-                       @Nonnull List<Triple> nonExclusiveRelevant) {
+                       @Nonnull IndexSet<Triple> nonExclusiveRelevant,
+                       @Nonnull IndexSet<Triple> unknown,
+                       @Nullable IndexSet<Triple> triplesUniverse) {
         this.exclusiveGroups = exclusiveGroups;
         this.nonExclusiveRelevant = nonExclusiveRelevant;
+        this.unknown = unknown;
+        this.triplesUniverse = triplesUniverse;
     }
 
     public static class Builder {
         protected final @Nonnull CQuery query;
         protected @Nullable List<CQuery> exclusiveGroups;
-        protected @Nullable List<Triple> nonExclusive;
+        protected @Nullable IndexSet<Triple> nonExclusive;
+        protected @Nullable IndexSet<Triple> unknown;
         protected boolean built = false;
         private final int capacity;
 
@@ -75,9 +83,22 @@ public class CQueryMatch {
             if (CQueryMatch.class.desiredAssertionStatus())
                 checkArgument(query.contains(triple), "Triple not in query");
             if (nonExclusive == null)
-                nonExclusive = new ArrayList<>(capacity);
+                nonExclusive = query.attr().getSet().emptySubset();
             assert !nonExclusive.contains(triple) : "Triple already added";
             nonExclusive.add(triple);
+            return this;
+        }
+
+        @Contract("_ -> this")
+        public @Nonnull Builder addUnknown(@Nonnull Triple triple) {
+            Preconditions.checkState(!built);
+            assert query.contains(triple) : "triple not in query";
+            (unknown == null ? unknown = query.attr().getSet().emptySubset() : unknown).add(triple);
+            return this;
+        }
+
+        public @Nonnull Builder allUnknown() {
+            unknown = query.attr().getSet().immutableFullSubset();
             return this;
         }
 
@@ -87,8 +108,11 @@ public class CQueryMatch {
             built = true;
             List<CQuery> ex = exclusiveGroups == null ? emptyList()
                                                       : unmodifiableList(exclusiveGroups);
-            List<Triple> ne = nonExclusive == null ? emptyList() : unmodifiableList(nonExclusive);
-            return new CQueryMatch(ex, ne);
+            IndexSet<Triple> ne = nonExclusive != null ? nonExclusive
+                                : query.attr().getSet().immutableEmptySubset();
+            IndexSet<Triple> unknown = this.unknown != null ? this.unknown
+                                     : query.attr().getSet().immutableEmptySubset();
+            return new CQueryMatch(ex, ne, unknown, query.attr().triplesUniverseOffer());
         }
     }
 
@@ -108,16 +132,22 @@ public class CQueryMatch {
      *
      * @return An unmodifiable List with the triples
      */
-    public @Nonnull List<Triple> getAllRelevant() {
+    public @Nonnull Set<Triple> getAllRelevant() {
         if (allRelevant == null) {
-            int size = nonExclusiveRelevant.size();
-            for (CQuery group : exclusiveGroups)
-                size += group.size();
-            ArrayList<Triple> list = new ArrayList<>(size);
-            for (CQuery group : exclusiveGroups)
-                list.addAll(group);
-            list.addAll(nonExclusiveRelevant);
-            allRelevant = unmodifiableList(list);
+            if (triplesUniverse != null) {
+                IndexSubset<Triple> universe = triplesUniverse.emptySubset();
+                IndexSubset<Triple> ss = universe.emptySubset();
+                for (Triple t : nonExclusiveRelevant) ss.safeAdd(t);
+                for (CQuery eg : exclusiveGroups) {
+                    for (Triple t : eg) ss.safeAdd(t);
+                }
+                allRelevant = ss.asImmutable();
+            } else {
+                Set<Triple> ss = new HashSet<>(nonExclusiveRelevant);
+                for (CQuery eg : exclusiveGroups)
+                    ss.addAll(eg);
+                allRelevant = unmodifiableSet(ss);
+            }
         }
         return allRelevant;
     }
@@ -127,10 +157,22 @@ public class CQueryMatch {
      * @return An unmodifiable List with the triples
      */
     public @Nonnull Collection<Triple> getIrrelevant(@Nonnull CQuery query) {
-        Set<Triple> set = new LinkedHashSet<>(query);
-        Stream.concat(exclusiveGroups.stream().flatMap(Collection::stream),
-                nonExclusiveRelevant.stream()).forEach(set::remove);
+        IndexSubset<Triple> set = query.attr().getSet().fullSubset();
+        set.removeAll(getAllRelevant());
+        set.removeAll(getUnknown());
         return set;
+    }
+
+    /**
+     * Get a set of triples that were in the original query being matched but which
+     * could not be confirmed to neither be present or to be not present in the source.
+     * This happens, for instance with {@link Description#localMatch(CQuery, MatchReasoning)}
+     * calls.
+     *
+     * @return a non-null but possibly empty set of triples of unknown relevant/irrelevant state
+     */
+    public @Nonnull IndexSet<Triple> getUnknown() {
+        return unknown;
     }
 
     /**

@@ -3,18 +3,19 @@ package br.ufsc.lapesd.freqel.webapis.parser;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
+import br.ufsc.lapesd.freqel.description.MatchReasoning;
 import br.ufsc.lapesd.freqel.description.molecules.AtomFilter;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.MoleculeLink;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.term.std.StdPlain;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.util.DictTree;
+import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.webapis.TransparencyService;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
-import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.webapis.requests.paging.PagingStrategy;
 import br.ufsc.lapesd.freqel.webapis.requests.paging.impl.ParamPagingStrategy;
 import br.ufsc.lapesd.freqel.webapis.requests.parsers.PrimitiveParser;
@@ -274,7 +275,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
                 x, unidadeGestora, y,
                 y, orgaoMaximo, u,
                 y, orgaoVinculado, z,
-                z, codigoSIAFI, lit("26246")));
+                z, codigoSIAFI, lit("26246")), MatchReasoning.NONE);
         assertTrue(match.isEmpty()); // missing required inputss !
 
         CQuery query = createQuery(
@@ -284,7 +285,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
                 u, codigo, v,
                 y, orgaoVinculado, z,
                 z, codigoSIAFI, lit("26246"));
-        match = endpoint.getDescription().match(query);
+        match = endpoint.getDescription().match(query, MatchReasoning.NONE);
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
 
         try (Results results = endpoint.query(query)) {
@@ -312,7 +313,7 @@ public class SwaggerParserTest extends JerseyTestNg.ContainerPerClassTest implem
                 z, codigoSIAFI, lit("26246")
         );
 
-        CQueryMatch match = endpoint.getDescription().match(query);
+        CQueryMatch match = endpoint.getDescription().match(query, MatchReasoning.NONE);
         assertFalse(match.isEmpty());
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
         assertEquals(match.getNonExclusiveRelevant().size(), 0);

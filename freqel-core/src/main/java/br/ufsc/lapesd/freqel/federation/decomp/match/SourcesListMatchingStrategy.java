@@ -5,7 +5,8 @@ import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
 import br.ufsc.lapesd.freqel.description.Description;
-import br.ufsc.lapesd.freqel.description.semantic.SemanticDescription;
+import br.ufsc.lapesd.freqel.description.MatchReasoning;
+import br.ufsc.lapesd.freqel.description.semantic.AlternativesSemanticDescription;
 import br.ufsc.lapesd.freqel.federation.PerformanceListener;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;
 import br.ufsc.lapesd.freqel.federation.performance.NoOpPerformanceListener;
@@ -21,10 +22,7 @@ import br.ufsc.lapesd.freqel.util.indexed.ref.RefIndexSet;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 public class SourcesListMatchingStrategy implements MatchingStrategy {
     protected final @Nonnull RefIndexSet<TPEndpoint> endpoints = new RefIndexSet<>();
@@ -47,9 +45,9 @@ public class SourcesListMatchingStrategy implements MatchingStrategy {
     protected boolean match(@Nonnull TPEndpoint source, @Nonnull CQuery query,
                             @Nonnull Agglutinator.State state) {
         Description description = source.getDescription();
-        CQueryMatch match = description instanceof SemanticDescription
-                ? ((SemanticDescription) description).semanticMatch(query)
-                : description.match(query);
+        CQueryMatch match = description instanceof AlternativesSemanticDescription
+                ? ((AlternativesSemanticDescription) description).semanticMatch(query)
+                : description.match(query, MatchReasoning.NONE);
         state.addMatch(source, match);
         return !match.isEmpty();
     }

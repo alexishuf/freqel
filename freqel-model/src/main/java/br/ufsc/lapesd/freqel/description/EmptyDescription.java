@@ -10,8 +10,18 @@ public class EmptyDescription implements Description {
     public static final EmptyDescription INSTANCE = new EmptyDescription();
     public static final Function<TPEndpoint, Description> FACTORY = e -> INSTANCE;
 
-    @Override public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
+    @Override public @Nonnull CQueryMatch match(@Nonnull CQuery query,
+                                                @Nonnull MatchReasoning reasoning) {
         return CQueryMatch.EMPTY;
+    }
+
+    @Override public @Nonnull CQueryMatch localMatch(@Nonnull CQuery query,
+                                                     @Nonnull MatchReasoning reasoning) {
+        return CQueryMatch.EMPTY;
+    }
+
+    @Override public boolean supports(@Nonnull MatchReasoning mode) {
+        return MatchReasoning.NONE.equals(mode);
     }
 
     @Override public void update() { }

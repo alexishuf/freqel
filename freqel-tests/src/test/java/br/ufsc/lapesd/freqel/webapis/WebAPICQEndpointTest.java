@@ -2,8 +2,10 @@ package br.ufsc.lapesd.freqel.webapis;
 
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
+import br.ufsc.lapesd.freqel.description.MatchReasoning;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.jena.JenaWrappers;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Lit;
@@ -12,13 +14,12 @@ import br.ufsc.lapesd.freqel.model.term.URI;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
+import br.ufsc.lapesd.freqel.query.annotations.PureDescriptive;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
+import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.webapis.description.APIMolecule;
 import br.ufsc.lapesd.freqel.webapis.description.APIMoleculeMatcher;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
-import br.ufsc.lapesd.freqel.query.annotations.PureDescriptive;
-import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.webapis.requests.impl.UriTemplateExecutor;
 import br.ufsc.lapesd.freqel.webapis.requests.paging.impl.ParamPagingStrategy;
 import org.apache.jena.rdf.model.*;
@@ -238,7 +239,7 @@ public class WebAPICQEndpointTest
         APIMoleculeMatcher matcher = new APIMoleculeMatcher(ep.getMolecule());
         CQuery query = CQuery.from(new Triple(x, op1, i2),
                                    new Triple(x, result, y));
-        CQueryMatch match = matcher.match(query);
+        CQueryMatch match = matcher.match(query, MatchReasoning.NONE);
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
 
         Results results = ep.query(match.getKnownExclusiveGroups().get(0));
@@ -257,7 +258,7 @@ public class WebAPICQEndpointTest
         APIMoleculeMatcher matcher = new APIMoleculeMatcher(ep.getMolecule());
         CQuery query = CQuery.from(new Triple(x, total, i3),
                                    new Triple(x, result, y));
-        CQueryMatch match = matcher.match(query);
+        CQueryMatch match = matcher.match(query, MatchReasoning.NONE);
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
 
         Atom Total = ep.getMolecule().getMolecule().getAtomMap().get("Total");

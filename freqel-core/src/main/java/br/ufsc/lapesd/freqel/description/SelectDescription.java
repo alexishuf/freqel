@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.freqel.description;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.federation.spec.source.SourceCache;
 import br.ufsc.lapesd.freqel.jena.JenaWrappers;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
-import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
@@ -20,7 +20,6 @@ import com.esotericsoftware.yamlbeans.YamlReader;
 import com.esotericsoftware.yamlbeans.YamlWriter;
 import com.google.common.base.Stopwatch;
 import org.apache.jena.rdf.model.ResourceFactory;
-import org.apache.jena.vocabulary.RDF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +45,6 @@ import static java.util.stream.Collectors.toList;
  */
 public class SelectDescription implements Description {
     private static final Logger logger = LoggerFactory.getLogger(SelectDescription.class);
-    protected static final @Nonnull StdURI TYPE = new StdURI(RDF.type.getURI());
 
     private final @Nonnull CQEndpoint endpoint;
     private final boolean fetchClasses;
@@ -91,9 +89,7 @@ public class SelectDescription implements Description {
         }
     };
 
-
-
-    private static class State {
+    protected static class State {
         public List<String> predicates = null;
         public List<String> classes = null;
 
@@ -233,7 +229,7 @@ public class SelectDescription implements Description {
             this.predicates = predicates;
         }
         if (fetchClasses) {
-            Set<Term> classes = fill(new Triple(s, TYPE, o), "o");
+            Set<Term> classes = fill(new Triple(s, V.RDF.type, o), "o");
             logger.debug("Fetched {} classes from {} in {}ms",
                          classes.size(), endpoint, sw.elapsed(MICROSECONDS)/1000.0);
             synchronized (this) {
@@ -292,7 +288,8 @@ public class SelectDescription implements Description {
                 }
             }
         } catch (TimeoutException e) {
-            logger.warn("waitForInit timed out after {} ms", timeoutMilliseconds);
+            if (timeoutMilliseconds > 0)
+                logger.warn("waitForInit timed out after {} ms", timeoutMilliseconds);
         }
         assert !isUpdated || ( predicates != null && (!fetchClasses || classes != null) );
         return isUpdated;
@@ -319,22 +316,36 @@ public class SelectDescription implements Description {
         }
     }
 
+    protected boolean match(@Nonnull Triple triple, @Nonnull MatchReasoning reasoning) {
+        assert predicates != null;
+        Term p = triple.getPredicate();
+        Term o = triple.getObject();
+        if (classes != null && p.equals(V.RDF.type) && o.isGround())
+            return classes.contains(o);
+        else
+            return p.isVar() || predicates.contains(p);
+    }
+
     @Override
-    public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
+    public @Nonnull CQueryMatch match(@Nonnull CQuery query, @Nonnull MatchReasoning reasoning) {
         CQueryMatch.Builder b = null;
         if (!initSync())
             return CQueryMatch.EMPTY; //return empty result if timed out or error
-        Set<Term> predicates = requireNonNull(this.predicates);
         for (Triple triple : query) {
-            Term p = triple.getPredicate();
-            Term o = triple.getObject();
-            if (classes != null && p.equals(TYPE) && o.isGround()) {
-                if (classes.contains(o))
-                    (b == null ? (b = CQueryMatch.builder(query)) : b).addTriple(triple);
-            } else if (p.isVar() || predicates.contains(p)) {
+            if (match(triple, reasoning))
                 (b == null ? (b = CQueryMatch.builder(query)) : b).addTriple(triple);
-            }
         }
         return b == null ? CQueryMatch.EMPTY : b.build();
+    }
+
+    @Override public @Nonnull CQueryMatch localMatch(@Nonnull CQuery query,
+                                                      @Nonnull MatchReasoning reasoning) {
+        if (!waitForInit(0)) //not ready or init() not called
+            return CQueryMatch.builder(query).allUnknown().build();
+        return match(query, reasoning);
+    }
+
+    @Override public boolean supports(@Nonnull MatchReasoning mode) {
+        return MatchReasoning.NONE.equals(mode);
     }
 }

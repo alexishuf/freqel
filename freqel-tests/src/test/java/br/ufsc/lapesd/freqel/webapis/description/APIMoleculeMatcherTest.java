@@ -2,7 +2,6 @@ package br.ufsc.lapesd.freqel.webapis.description;
 
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
-import br.ufsc.lapesd.freqel.query.annotations.MatchAnnotation;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.AtomFilter;
 import br.ufsc.lapesd.freqel.description.molecules.AtomRole;
@@ -10,6 +9,7 @@ import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticCQueryMatch;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Lit;
 import br.ufsc.lapesd.freqel.model.term.URI;
@@ -17,9 +17,9 @@ import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
+import br.ufsc.lapesd.freqel.query.annotations.MatchAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.PureDescriptive;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
@@ -41,8 +41,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
+import static br.ufsc.lapesd.freqel.description.MatchReasoning.NONE;
 import static br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxMaterializer.structural;
+import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -297,7 +298,7 @@ public class APIMoleculeMatcherTest implements TestContext {
     public void testMatch(APIMolecule apiMolecule, Collection<Triple> query,
                           Collection<CQuery> egs) {
         APIMoleculeMatcher matcher = new APIMoleculeMatcher(apiMolecule, structural());
-        CQueryMatch match = matcher.match(CQuery.from(query));
+        CQueryMatch match = matcher.match(CQuery.from(query), NONE);
         assertCompatible(match.getKnownExclusiveGroups(), egs);
     }
 
@@ -441,7 +442,7 @@ public class APIMoleculeMatcherTest implements TestContext {
 
 
     private CQuery preservePureDescriptiveAnnotationTest(CQuery query, Triple annotated) {
-        CQueryMatch match = new APIMoleculeMatcher(BOOKS_BY_AUTHOR).match(query);
+        CQueryMatch match = new APIMoleculeMatcher(BOOKS_BY_AUTHOR).match(query, NONE);
         assertEquals(match.getNonExclusiveRelevant().size(), 0);
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
 
@@ -516,7 +517,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                 JenaSPARQLFilter.build("?z >= \"2019-12-01\"^^xsd:date"),
                 JenaSPARQLFilter.build("?z <= \"2019-12-31\"^^xsd:date")
         );
-        CQueryMatch match = matcher.match(query);
+        CQueryMatch match = matcher.match(query, NONE);
         // match fails bcs z is not matched, leaving filters and 2 required inputs out
         assertTrue(match.isEmpty());
     }
@@ -535,7 +536,7 @@ public class APIMoleculeMatcherTest implements TestContext {
                 JenaSPARQLFilter.build("?z >= \"2019-12-01\"^^xsd:date"),
                 JenaSPARQLFilter.build("?z <= \"2019-12-31\"^^xsd:date")
         );
-        CQueryMatch match = matcher.match(query);
+        CQueryMatch match = matcher.match(query, NONE);
         // match fails bcs z is not matched, leaving filters and 2 required inputs out
         assertFalse(match.isEmpty());
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
@@ -554,7 +555,7 @@ public class APIMoleculeMatcherTest implements TestContext {
         WebAPICQEndpoint endpoint = TransparencyService.getContractsClient(target);
         APIMoleculeMatcher matcher = endpoint.getDescription();
 
-        CQueryMatch match = matcher.match(query);
+        CQueryMatch match = matcher.match(query, NONE);
         assertFalse(match.isEmpty());
         assertEquals(match.getKnownExclusiveGroups().size(), 1);
         CQuery eg = match.getKnownExclusiveGroups().iterator().next();

@@ -6,6 +6,7 @@ import br.ufsc.lapesd.freqel.query.CQuery;
 import com.google.common.base.Splitter;
 import org.testng.annotations.Test;
 
+import java.util.HashSet;
 import java.util.List;
 
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
@@ -67,7 +68,7 @@ public class CQueryMatchTest implements TestContext {
                                           new Triple(x, type, Person)))
                 .addTriple(new Triple(x, knows, Bob)).build();
         assertFalse(m.isEmpty());
-        assertEquals(m.getAllRelevant(), query.subList(0, 3));
+        assertEquals(m.getAllRelevant(), new HashSet<>(query.subList(0, 3)));
         assertEquals(m.getIrrelevant(CQuery.from(query)), query.subList(3, 4));
         assertEquals(m.getNonExclusiveRelevant(), query.subList(2, 3));
         assertEquals(m.getKnownExclusiveGroups(), singletonList(query.subList(0, 2)));

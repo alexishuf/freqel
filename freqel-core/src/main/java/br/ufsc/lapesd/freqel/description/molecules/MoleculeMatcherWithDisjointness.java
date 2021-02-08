@@ -2,6 +2,7 @@ package br.ufsc.lapesd.freqel.description.molecules;
 
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
 import br.ufsc.lapesd.freqel.description.Description;
+import br.ufsc.lapesd.freqel.description.MatchReasoning;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.CQuery;
@@ -22,7 +23,8 @@ import java.lang.ref.SoftReference;
 import java.util.*;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 
 @Immutable
 public class MoleculeMatcherWithDisjointness implements Description {
@@ -327,8 +329,17 @@ public class MoleculeMatcherWithDisjointness implements Description {
     }
 
     @Override
-    public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
+    public @Nonnull CQueryMatch match(@Nonnull CQuery query, @Nonnull MatchReasoning reasoning) {
         return new State(query).start().build();
+    }
+
+    @Override public @Nonnull CQueryMatch localMatch(@Nonnull CQuery query,
+                                                      @Nonnull MatchReasoning reasoning) {
+        return match(query, reasoning);
+    }
+
+    @Override public boolean supports(@Nonnull MatchReasoning mode) {
+        return MatchReasoning.NONE.equals(mode) || MatchReasoning.ALTERNATIVES.equals(mode);
     }
 
     @Override

@@ -1,9 +1,10 @@
 package br.ufsc.lapesd.freqel.description.molecules;
 
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
+import br.ufsc.lapesd.freqel.description.MatchReasoning;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.semantic.AlternativesSemanticDescription;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticCQueryMatch;
-import br.ufsc.lapesd.freqel.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
@@ -35,7 +36,7 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-public class MoleculeMatcher implements SemanticDescription {
+public class MoleculeMatcher implements AlternativesSemanticDescription {
     private final @Nonnull Molecule molecule;
     private final @Nonnull TBox reasoner;
     private final @Nonnull MergePolicyAnnotation mergePolicyAnnotation;
@@ -61,8 +62,18 @@ public class MoleculeMatcher implements SemanticDescription {
     }
 
     @Override
-    public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
-        return createState(query, false).matchExclusive().matchNonExclusive().build();
+    public @Nonnull CQueryMatch match(@Nonnull CQuery query, @Nonnull MatchReasoning reasoning) {
+        boolean altReason = reasoning == MatchReasoning.ALTERNATIVES;
+        return createState(query, altReason).matchExclusive().matchNonExclusive().build();
+    }
+
+    @Override public @Nonnull CQueryMatch localMatch(@Nonnull CQuery query,
+                                                      @Nonnull MatchReasoning reasoning) {
+        return match(query, reasoning);
+    }
+
+    @Override public boolean supports(@Nonnull MatchReasoning mode) {
+        return MatchReasoning.NONE.equals(mode) || MatchReasoning.ALTERNATIVES.equals(mode);
     }
 
     protected @Nonnull MoleculeMatcher.State createState(@Nonnull CQuery query, boolean reasoning) {

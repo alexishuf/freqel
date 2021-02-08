@@ -17,19 +17,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static java.lang.Math.max;
 
 public class AskDescription implements Description {
-    private static final StdVar surrogateSubject = new StdVar("AskDescriptionSurrogateSubject");
-    private static final StdVar surrogatePredicate  = new StdVar("AskDescriptionSurrogatePredicate");
-    private static final StdVar surrogateObject  = new StdVar("AskDescriptionSurrogateObject");
+    protected static final StdVar surrogateSubject = new StdVar("AskDescriptionSurrogateSubject");
+    protected static final StdVar surrogatePredicate  = new StdVar("AskDescriptionSurrogatePredicate");
+    protected static final StdVar surrogateObject  = new StdVar("AskDescriptionSurrogateObject");
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(AskDescription.class);
     private static final int DEFAULT_CACHE_SIZE = 8192;
-    private @Nonnull final TPEndpoint endpoint;
-    private final LoadingCache<Triple, Boolean> cache;
+    protected @Nonnull final TPEndpoint endpoint;
+    protected final LoadingCache<Triple, Boolean> cache;
 
     /* ~~~ Constructors ~~~ */
 
@@ -57,14 +58,16 @@ public class AskDescription implements Description {
 
     /* ~~~ private methods ~~~ */
 
-    private @Nonnull Triple sanitize(@Nonnull Triple triple) {
+    protected @Nonnull Triple sanitize(@Nonnull Triple triple) {
         Term p = triple.getPredicate(), o = triple.getObject();
         if (p.isVar()) p = surrogatePredicate;
         if (o.isVar()) o = surrogateObject;
         return new Triple(surrogateSubject, p, o);
     }
 
-    private boolean match(@Nonnull Triple t) {
+
+    protected @Nullable Boolean match(@Nonnull Triple t, @Nonnull MatchReasoning reasoning,
+                                      boolean onlyCache) {
         t = sanitize(t);
         boolean ok = false;
         if (t.getObject().isGround()) {
@@ -72,16 +75,14 @@ public class AskDescription implements Description {
             if (maybe != null && !maybe)
                 return false; //generalized already failed, do not try new ASK
         }
+        if (onlyCache)
+            return cache.getIfPresent(t);
         try {
             ok = cache.get(t);
             if (t.getObject().isGround()) {
-                if (ok) {
-                    // remember that the broadened query is also satisfied
-                    cache.put(t.withObject(surrogateObject), true);
-                } else {
-                    // try to fail a broadened query to avoid further ASKs
-                    cache.get(t.withObject(surrogateObject));
-                }
+                Triple gen = t.withObject(surrogateObject);
+                if (ok) cache.put(gen, true);  //remember success for generalized
+                else    cache.get(gen);        //try to fail broader
             }
         } catch (ExecutionException | UncheckedExecutionException e) {
             logger.error("Exception while sending ASK.", e.getCause());
@@ -89,17 +90,34 @@ public class AskDescription implements Description {
         return ok;
     }
 
-    /* ~~~ Public methods ~~~ */
-
-    @Override
-    public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
+    protected @Nonnull CQueryMatch match(@Nonnull CQuery query, @Nonnull MatchReasoning reasoning,
+                                          boolean onlyLocal) {
         CQueryMatch.Builder b = null;
         for (Triple triple : query) {
-            if (match(triple)) {
+            Boolean tripleMatched = match(triple, reasoning, onlyLocal);
+            if (tripleMatched == null) {
+                (b == null ? b = CQueryMatch.builder(query) : b).addUnknown(triple);
+            } else if (tripleMatched) {
                 (b == null ? b = CQueryMatch.builder(query) : b).addTriple(triple);
             }
         }
         return b == null ? CQueryMatch.EMPTY : b.build();
+    }
+
+    /* ~~~ Public methods ~~~ */
+
+    @Override
+    public @Nonnull CQueryMatch match(@Nonnull CQuery query, @Nonnull MatchReasoning reasoning) {
+        return match(query, reasoning, false);
+    }
+
+    @Override public @Nonnull CQueryMatch localMatch(@Nonnull CQuery query,
+                                                     @Nonnull MatchReasoning reasoning) {
+        return match(query, reasoning, true);
+    }
+
+    @Override public boolean supports(@Nonnull MatchReasoning mode) {
+        return MatchReasoning.NONE.equals(mode);
     }
 
     @Override

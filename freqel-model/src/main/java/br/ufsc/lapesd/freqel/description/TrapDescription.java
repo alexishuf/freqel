@@ -10,9 +10,20 @@ public class TrapDescription implements Description {
     public static final TrapDescription INSTANCE = new TrapDescription();
     public static final Function<TPEndpoint, Description> FACTORY = e -> INSTANCE;
 
-    @Override public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
+    @Override public @Nonnull CQueryMatch match(@Nonnull CQuery query,
+                                                @Nonnull MatchReasoning reasoning) {
         assert false : "This Description instance should have not been called";
         return CQueryMatch.EMPTY;
+    }
+
+    @Override public @Nonnull CQueryMatch localMatch(@Nonnull CQuery query,
+                                                      @Nonnull MatchReasoning reasoning) {
+        assert false : "This Description instance should have not been called";
+        return CQueryMatch.builder(query).allUnknown().build();
+    }
+
+    @Override public boolean supports(@Nonnull MatchReasoning mode) {
+        return MatchReasoning.NONE.equals(mode);
     }
 
     @Override public void update() {

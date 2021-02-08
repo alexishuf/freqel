@@ -2,6 +2,7 @@ package br.ufsc.lapesd.freqel.webapis;
 
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
+import br.ufsc.lapesd.freqel.description.MatchReasoning;
 import br.ufsc.lapesd.freqel.description.TrapDescription;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
@@ -17,7 +18,9 @@ import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.freqel.query.results.impl.EndpointIteratorResults;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
-import br.ufsc.lapesd.freqel.webapis.description.*;
+import br.ufsc.lapesd.freqel.webapis.description.APIMolecule;
+import br.ufsc.lapesd.freqel.webapis.description.APIMoleculeMatcher;
+import br.ufsc.lapesd.freqel.webapis.description.IndexedParam;
 import br.ufsc.lapesd.freqel.webapis.requests.APIRequestExecutor;
 import br.ufsc.lapesd.freqel.webapis.requests.HTTPRequestObserver;
 import br.ufsc.lapesd.freqel.webapis.requests.MismatchingQueryException;
@@ -144,7 +147,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
 
     private @Nonnull Results matchAndQuery(@Nonnull CQuery query, boolean throwOnFailedMatch) {
         Set<String> varNames = query.attr().allVarNames();
-        CQueryMatch match = getDescription().match(query);
+        CQueryMatch match = getDescription().match(query, MatchReasoning.NONE);
         if (match.getKnownExclusiveGroups().isEmpty()) {
             return reportFailure(query, throwOnFailedMatch, varNames);
         } else if (match.getKnownExclusiveGroups().size() == 1) {

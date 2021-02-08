@@ -3,8 +3,9 @@ package br.ufsc.lapesd.freqel.description.molecules;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
 import br.ufsc.lapesd.freqel.description.Description;
+import br.ufsc.lapesd.freqel.description.MatchReasoning;
+import br.ufsc.lapesd.freqel.description.semantic.AlternativesSemanticDescription;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticCQueryMatch;
-import br.ufsc.lapesd.freqel.description.semantic.SemanticDescription;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.URI;
@@ -546,7 +547,7 @@ public class MoleculeMatcherTest implements TestContext {
                 exclusiveGroupsAsTriples.add((Collection<Triple>)eg);
         }
 
-        CQueryMatch match = description.match(query);
+        CQueryMatch match = description.match(query, MatchReasoning.NONE);
 
         // compare relevant & irrelevant triple patterns
         assertEquals(newHashSet(match.getAllRelevant()), concat(nonExclusive.stream(),
@@ -596,7 +597,7 @@ public class MoleculeMatcherTest implements TestContext {
     }
 
     @Test(dataProvider = "semanticMatchData")
-    public void testSemanticMatchEmptyTBox(@Nonnull SemanticDescription description,
+    public void testSemanticMatchEmptyTBox(@Nonnull AlternativesSemanticDescription description,
                                            @Nonnull List<Triple> queryAsList,
                                            @Nonnull Collection<Collection<Triple>> exclusiveGroups,
                                            @Nonnull Collection<Triple> nonExclusive) {

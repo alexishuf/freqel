@@ -1,10 +1,11 @@
 package br.ufsc.lapesd.freqel.description.semantic;
 
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
-import br.ufsc.lapesd.freqel.query.annotations.MatchAnnotation;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
+import br.ufsc.lapesd.freqel.query.annotations.MatchAnnotation;
+import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.MultimapBuilder;
@@ -38,10 +39,12 @@ public class SemanticCQueryMatch extends CQueryMatch {
     }
 
     public SemanticCQueryMatch(@Nonnull List<CQuery> exclusiveGroups,
-                               @Nonnull List<Triple> nonExclusiveRelevant,
+                               @Nonnull IndexSet<Triple> nonExclusiveRelevant,
+                               @Nonnull IndexSet<Triple> unknown,
                                @Nonnull SetMultimap<Triple, CQuery> alternatives,
-                               @Nonnull SetMultimap<CQuery, CQuery> exgAlternatives) {
-        super(exclusiveGroups, nonExclusiveRelevant);
+                               @Nonnull SetMultimap<CQuery, CQuery> exgAlternatives,
+                               @Nullable IndexSet<Triple> triplesUniverse) {
+        super(exclusiveGroups, nonExclusiveRelevant, unknown, triplesUniverse);
         this.alternatives = alternatives;
         this.exgAlternatives = exgAlternatives;
     }
@@ -71,14 +74,20 @@ public class SemanticCQueryMatch extends CQueryMatch {
 
         @Override @CanIgnoreReturnValue
         public @Nonnull Builder addExclusiveGroup(@Nonnull Collection<Triple> group) {
-            super.addExclusiveGroup(group);
-            return this;
+            return (Builder) super.addExclusiveGroup(group);
         }
 
         @Override @CanIgnoreReturnValue
         public @Nonnull Builder addTriple(@Nonnull Triple triple) {
-            super.addTriple(triple);
-            return this;
+            return (Builder) super.addTriple(triple);
+        }
+
+        @Override public @Nonnull Builder addUnknown(@Nonnull Triple triple) {
+            return (Builder) super.addUnknown(triple);
+        }
+
+        @Override public @Nonnull Builder allUnknown() {
+            return (Builder) super.allUnknown();
         }
 
         @CanIgnoreReturnValue
@@ -112,12 +121,16 @@ public class SemanticCQueryMatch extends CQueryMatch {
             built = true;
             List<CQuery> ex = exclusiveGroups == null ? emptyList()
                                                       : unmodifiableList(exclusiveGroups);
-            List<Triple> ne = nonExclusive == null ? emptyList() : unmodifiableList(nonExclusive);
+            IndexSet<Triple> ne = nonExclusive != null ? nonExclusive
+                                : query.attr().getSet().immutableEmptySubset();
+            IndexSet<Triple> unknown = this.unknown != null ? this.unknown
+                                     : query.attr().getSet().immutableFullSubset();
             SetMultimap<Triple, CQuery> alt = alternatives == null ? ImmutableSetMultimap.of()
                                                                    : alternatives;
             SetMultimap<CQuery, CQuery> exAlt = this.exgAlternatives == null
                                               ? ImmutableSetMultimap.of() : exgAlternatives;
-            return new SemanticCQueryMatch(ex, ne, alt, exAlt);
+            IndexSet<Triple> universe = query.attr().triplesUniverseOffer();
+            return new SemanticCQueryMatch(ex, ne, unknown, alt, exAlt, universe);
         }
     }
 

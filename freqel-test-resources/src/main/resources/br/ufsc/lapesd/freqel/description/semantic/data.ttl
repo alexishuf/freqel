@@ -1,0 +1,28 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix : <http://example.org/> .
+
+:S0 a :D .
+:S2 a :D2 .
+:S11 a :D11 .
+:S12 a :D12 .
+
+:T0
+    a :D ;
+    :p :U0 .
+:T11
+    a :D11 ;
+    :p11 :U11 .
+:T12
+    a :D12 ;
+    :p12 :U12 .
+:T2
+    a :D2 ;
+    :p2 :U2 .
+
+:U0 a :D .
+:U11 a :D11 .
+:U12 a :D12 .
+:U2 a :D2 .

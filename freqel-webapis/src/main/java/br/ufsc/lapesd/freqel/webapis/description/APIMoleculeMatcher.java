@@ -1,20 +1,20 @@
 package br.ufsc.lapesd.freqel.webapis.description;
 
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
+import br.ufsc.lapesd.freqel.description.MatchReasoning;
 import br.ufsc.lapesd.freqel.description.molecules.*;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticCQueryMatch;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.annotations.NoMergePolicyAnnotation;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
 import br.ufsc.lapesd.freqel.reason.tbox.TBox;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializer;
-import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
@@ -132,7 +132,7 @@ public class APIMoleculeMatcher extends MoleculeMatcher {
     }
 
     @Override
-    public @Nonnull CQueryMatch match(@Nonnull CQuery query) {
+    public @Nonnull CQueryMatch match(@Nonnull CQuery query, @Nonnull MatchReasoning mode) {
         return new APIState(query, false).matchExclusive().build();
     }
 

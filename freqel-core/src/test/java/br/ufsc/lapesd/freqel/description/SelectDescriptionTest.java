@@ -1,13 +1,16 @@
 package br.ufsc.lapesd.freqel.description;
 
 import br.ufsc.lapesd.freqel.TestContext;
+import br.ufsc.lapesd.freqel.description.semantic.SemanticSelectDescription;
 import br.ufsc.lapesd.freqel.federation.spec.source.SourceCache;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
+import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
+import com.google.common.collect.Lists;
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
@@ -33,13 +36,12 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import static br.ufsc.lapesd.freqel.description.MatchReasoning.NONE;
 import static br.ufsc.lapesd.freqel.model.term.std.StdLit.fromUnescaped;
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 import static org.testng.Assert.*;
-
 
 public class SelectDescriptionTest implements TestContext {
     public static final @Nonnull StdLit A_AGE = fromUnescaped("23", xsdInt);
@@ -68,62 +70,71 @@ public class SelectDescriptionTest implements TestContext {
 
     @DataProvider
     public static Object[][] matchData() {
-        return new Object[][] {
-                new Object[]{true, singletonList(new Triple(s, name, o)),
-                                   singletonList(new Triple(s, name, o))},
-                new Object[]{true, singletonList(new Triple(s, type, Person)),
-                                   singletonList(new Triple(s, type, Person))},
-                new Object[]{true, singletonList(new Triple(Alice, knows, Bob)),
-                                   singletonList(new Triple(Alice, knows, Bob))},
+        List<List<Object>> baseRows = Arrays.asList(
+                Arrays.asList(true, singletonList(new Triple(s, name, o)),
+                                   singletonList(new Triple(s, name, o))),
+                Arrays.asList(true, singletonList(new Triple(s, type, Person)),
+                                   singletonList(new Triple(s, type, Person))),
+                Arrays.asList(true, singletonList(new Triple(Alice, knows, Bob)),
+                                   singletonList(new Triple(Alice, knows, Bob))),
                 // ok: not in rdf-1.nt, but matches predicate
-                new Object[]{true, singletonList(new Triple(Alice, knows, Alice)),
-                                   singletonList(new Triple(Alice, knows, Alice))},
-                new Object[]{true, singletonList(new Triple(Alice, age, A_AGE)),
-                                   singletonList(new Triple(Alice, age, A_AGE))},
-                new Object[]{true, singletonList(new Triple(Alice, age, A_AGE)),
-                                   singletonList(new Triple(Alice, age, A_AGE))},
+                Arrays.asList(true, singletonList(new Triple(Alice, knows, Alice)),
+                                   singletonList(new Triple(Alice, knows, Alice))),
+                Arrays.asList(true, singletonList(new Triple(Alice, age, A_AGE)),
+                                   singletonList(new Triple(Alice, age, A_AGE))),
+                Arrays.asList(true, singletonList(new Triple(Alice, age, A_AGE)),
+                                   singletonList(new Triple(Alice, age, A_AGE))),
                 // fail: bad predicate
-                new Object[]{true, singletonList(new Triple(s, primaryTopic, Alice)), emptyList()},
+                Arrays.asList(true, singletonList(new Triple(s, primaryTopic, Alice)), emptyList()),
                 // fail: bad predicate
-                new Object[]{true, singletonList(new Triple(s, primaryTopic, o)), emptyList()},
+                Arrays.asList(true, singletonList(new Triple(s, primaryTopic, o)), emptyList()),
                 // fail: still bad predicate without classes
-                new Object[]{false, singletonList(new Triple(s, primaryTopic, o)), emptyList()},
+                Arrays.asList(false, singletonList(new Triple(s, primaryTopic, o)), emptyList()),
                 // ok: predicate is a variable
-                new Object[]{true, singletonList(new Triple(s, p, o)),
-                                   singletonList(new Triple(s, p, o))},
+                Arrays.asList(true, singletonList(new Triple(s, p, o)),
+                                   singletonList(new Triple(s, p, o))),
                 // still ok without classes
-                new Object[]{false, singletonList(new Triple(s, p, o)),
-                                    singletonList(new Triple(s, p, o))},
+                Arrays.asList(false, singletonList(new Triple(s, p, o)),
+                                    singletonList(new Triple(s, p, o))),
                 // ok: predicate is a variable
-                new Object[]{true, singletonList(new Triple(Alice, p, Alice)),
-                                   singletonList(new Triple(Alice, p, Alice))},
+                Arrays.asList(true, singletonList(new Triple(Alice, p, Alice)),
+                                   singletonList(new Triple(Alice, p, Alice))),
                 // ok: predicate is a variable
-                new Object[]{true, singletonList(new Triple(primaryTopic, p, Alice)),
-                                   singletonList(new Triple(primaryTopic, p, Alice))},
+                Arrays.asList(true, singletonList(new Triple(primaryTopic, p, Alice)),
+                                   singletonList(new Triple(primaryTopic, p, Alice))),
                 // fail bcs classes were collected and there is no Document instance
-                new Object[]{true, singletonList(new Triple(s, type, Document)), emptyList()},
+                Arrays.asList(true, singletonList(new Triple(s, type, Document)), emptyList()),
                 // ok without classes data
-                new Object[]{false, singletonList(new Triple(s, type, Document)),
-                                    singletonList(new Triple(s, type, Document))},
+                Arrays.asList(false, singletonList(new Triple(s, type, Document)),
+                                    singletonList(new Triple(s, type, Document))),
                 // both match (var predicate and known predicate)
-                new Object[]{true, asList(new Triple(s, p, o), new Triple(Alice, knows, o)),
-                                   asList(new Triple(s, p, o), new Triple(Alice, knows, o))},
+                Arrays.asList(true, asList(new Triple(s, p, o), new Triple(Alice, knows, o)),
+                                   asList(new Triple(s, p, o), new Triple(Alice, knows, o))),
                 // partial match bcs PRIMARY_TOPIC is not matched
-                new Object[]{true, asList(new Triple(s, primaryTopic, o), new Triple(Alice, knows, o)),
-                                   singletonList(new Triple(Alice, knows, o))},
+                Arrays.asList(true, asList(new Triple(s, primaryTopic, o), new Triple(Alice, knows, o)),
+                                   singletonList(new Triple(Alice, knows, o))),
                 // partial match bcs PRIMARY_TOPIC is not matched (reverse query order)
-                new Object[]{true, asList(new Triple(Alice, knows, o), new Triple(s, primaryTopic, o)),
-                                   singletonList(new Triple(Alice, knows, o))},
+                Arrays.asList(true, asList(new Triple(Alice, knows, o), new Triple(s, primaryTopic, o)),
+                                   singletonList(new Triple(Alice, knows, o))),
                 // partial match bcs class-elimination
-                new Object[]{true, asList(new Triple(s, knows, o), new Triple(s, type, Document)),
-                                   singletonList(new Triple(s, knows, o))},
+                Arrays.asList(true, asList(new Triple(s, knows, o), new Triple(s, type, Document)),
+                                   singletonList(new Triple(s, knows, o))),
                 // no evidence for class-elimination
-                new Object[]{true, asList(new Triple(s, knows, o), new Triple(s, knows, Document)),
-                                   asList(new Triple(s, knows, o), new Triple(s, knows, Document))},
+                Arrays.asList(true, asList(new Triple(s, knows, o), new Triple(s, knows, Document)),
+                                   asList(new Triple(s, knows, o), new Triple(s, knows, Document))),
                 // full match without classes data
-                new Object[]{false, asList(new Triple(s, knows, o), new Triple(s, type, Document)),
-                                    asList(new Triple(s, knows, o), new Triple(s, type, Document))},
-        };
+                Arrays.asList(false, asList(new Triple(s, knows, o), new Triple(s, type, Document)),
+                                    asList(new Triple(s, knows, o), new Triple(s, type, Document)))
+        );
+        List<List<Object>> rows = new ArrayList<>(baseRows.size()*2);
+        for (List<Object> baseRow : baseRows) {
+            ArrayList<Object> row = new ArrayList<>(baseRow);
+            row.add(0, false);
+            rows.add(new ArrayList<>(row));
+            row.set(0, true);
+            rows.add(row);
+        }
+        return rows.stream().map(List::toArray).toArray(Object[][]::new);
     }
 
     /* ~~~  setUp/tearDown ~~~ */
@@ -140,40 +151,57 @@ public class SelectDescriptionTest implements TestContext {
     /* ~~~  test methods ~~~ */
 
     @Test(dataProvider = "matchData", groups = {"fast"})
-    public void testMatch(boolean fetchClasses, @Nonnull List<Triple> query,
+    public void testMatch(boolean semantic, boolean fetchClasses, @Nonnull List<Triple> query,
                           @Nonnull List<Triple> expected) {
-        SelectDescription description = new SelectDescription(rdf1, fetchClasses);
+        SelectDescription description = createDescription(semantic, fetchClasses);
 
-        CQueryMatch match = description.match(CQuery.from(query));
+        CQueryMatch match = description.match(CQuery.from(query), NONE);
         assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), new HashSet<>(expected));
         assertEquals(match.getKnownExclusiveGroups(), Collections.emptySet());
     }
 
-    @DataProvider
-    public static @Nonnull Object[][] fetchClassesData() {
-        return new Object[][] { new Object[]{true}, new Object[]{false} };
+    @Nonnull
+    private SelectDescription createDescription(boolean semantic, boolean fetchClasses) {
+        return semantic
+                ? new SemanticSelectDescription(rdf1, fetchClasses, new EmptyTBox())
+                : new SelectDescription(rdf1, fetchClasses);
     }
 
-    @Test(dataProvider = "fetchClassesData", groups = {"fast"})
-    public void testMatchWithFilter(boolean fetchClasses) {
+    @DataProvider
+    public static @Nonnull Object[][] constructorData() {
+        return Lists.cartesianProduct(asList(false, true), asList(false, true))
+                    .stream().map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "constructorData", groups = {"fast"})
+    public void testMatchWithFilter(boolean fetchClasses, boolean semantic) {
         CQuery query = createQuery(
                 Alice, knows, x,
                 x, age, TestContext.y,
                 JenaSPARQLFilter.build("?y >= 23"));
-        SelectDescription description = new SelectDescription(rdf1, fetchClasses);
-        CQueryMatch match = description.match(query);
+        SelectDescription description = createDescription(semantic, fetchClasses);
+        CQueryMatch match = description.match(query, NONE);
         assertEquals(match.getKnownExclusiveGroups(), emptyList());
         assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.attr().getSet());
+        assertEquals(match.getUnknown(), emptySet());
+
+        CQueryMatch localMatch = description.localMatch(query, NONE);
+        assertNotNull(localMatch);
+        assertEquals(localMatch.getAllRelevant(), match.getAllRelevant());
+        assertEquals(localMatch.getNonExclusiveRelevant(), match.getNonExclusiveRelevant());
+        assertEquals(localMatch.getKnownExclusiveGroups(), match.getKnownExclusiveGroups());
+        assertEquals(localMatch.getUnknown(), emptySet());
     }
 
-    @Test(dataProvider = "fetchClassesData", groups = {"fast"})
-    public void testSaveAndLoadDescription(boolean fetchClasses) throws IOException {
+    @Test(dataProvider = "constructorData", groups = {"fast"})
+    public void testSaveAndLoadDescription(boolean fetchClasses,
+                                           boolean semantic) throws IOException {
         File dir = Files.createTempDirectory("freqel").toFile();
         try {
             String uri = "http://rdf1.example.org/sparql";
             SourceCache cache = new SourceCache(dir);
             rdf1.queries = 0;
-            SelectDescription d1 = new SelectDescription(rdf1, fetchClasses);
+            SelectDescription d1 = createDescription(semantic, fetchClasses);
 
             d1.saveWhenReady(cache, uri);
             rdf1.queries = 0;
@@ -189,15 +217,25 @@ public class SelectDescriptionTest implements TestContext {
 
             // both answer match() correctly
             CQuery q = createQuery(s, name, o);
-            assertEquals(d2.match(q).getNonExclusiveRelevant(), q.asList());
-            assertEquals(d1.match(q).getNonExclusiveRelevant(), q.asList());
+            assertEquals(d2.match(q, NONE).getNonExclusiveRelevant(), q.asList());
+            assertEquals(d1.match(q, NONE).getNonExclusiveRelevant(), q.asList());
+
+            CQueryMatch localMatch = d2.localMatch(q, NONE);
+            assertNotNull(localMatch);
+            assertEquals(localMatch.getNonExclusiveRelevant(), q.asList());
+            assertEquals(localMatch.getUnknown(), emptySet());
+            localMatch = d1.localMatch(q, NONE);
+            assertNotNull(localMatch);
+            assertEquals(localMatch.getNonExclusiveRelevant(), q.asList());
+            assertEquals(localMatch.getUnknown(), emptySet());
         } finally {
             FileUtils.deleteDirectory(dir);
         }
     }
 
-    @Test(dataProvider = "fetchClassesData")
-    public void testParallelSaveAndLoadDescription(boolean fetchClasses) throws Exception {
+    @Test(dataProvider = "constructorData")
+    public void testParallelSaveAndLoadDescription(boolean fetchClasses,
+                                                   boolean semantic) throws Exception {
         for (int run = 0; run < 10; run++) {
             ExecutorService outer = Executors.newCachedThreadPool();
             File dir = Files.createTempDirectory("freqel").toFile();
@@ -208,7 +246,7 @@ public class SelectDescriptionTest implements TestContext {
                     final int taskId = i;
                     futures.add(outer.submit(() -> {
                         String uri = "http://rdf-" + taskId + ".example.org/sparql";
-                        SelectDescription d1 = new SelectDescription(rdf1, fetchClasses);
+                        SelectDescription d1 = createDescription(semantic, fetchClasses);
 
                         d1.saveWhenReady(cache, uri);
                         d1.init();
@@ -220,8 +258,8 @@ public class SelectDescriptionTest implements TestContext {
 
                         // both answer match() correctly
                         CQuery q = createQuery(s, name, o);
-                        assertEquals(d2.match(q).getNonExclusiveRelevant(), q.asList());
-                        assertEquals(d1.match(q).getNonExclusiveRelevant(), q.asList());
+                        assertEquals(d2.match(q, NONE).getNonExclusiveRelevant(), q.asList());
+                        assertEquals(d1.match(q, NONE).getNonExclusiveRelevant(), q.asList());
                         return null;
                     }));
                 }

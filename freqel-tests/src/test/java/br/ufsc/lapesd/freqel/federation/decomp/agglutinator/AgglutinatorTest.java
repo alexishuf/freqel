@@ -11,7 +11,9 @@ import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.description.CQueryMatch;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
-import br.ufsc.lapesd.freqel.description.semantic.SemanticSelectDescription;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
+import br.ufsc.lapesd.freqel.description.semantic.AlternativesSemanticSelectDescription;
 import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
 import br.ufsc.lapesd.freqel.federation.concurrent.PoolPlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.decomp.match.MatchingStrategy;
@@ -38,8 +40,6 @@ import br.ufsc.lapesd.freqel.rel.sql.JDBCCQEndpoint;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.freqel.webapis.description.APIMolecule;
 import br.ufsc.lapesd.freqel.webapis.description.APIMoleculeMatcher;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.webapis.requests.impl.UriTemplateExecutor;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -153,7 +153,7 @@ public class AgglutinatorTest implements TestContext {
         for (TPEndpoint ep : sources) {
             TBox reasoner = new EmptyTBox();
             CQEndpoint cep = (CQEndpoint) ep;
-            SemanticSelectDescription description = new SemanticSelectDescription(cep, reasoner);
+            AlternativesSemanticSelectDescription description = new AlternativesSemanticSelectDescription(cep, reasoner);
             list.add(EndpointDecorators.withDescription(cep, description));
         }
         return list;

@@ -2,10 +2,12 @@ package br.ufsc.lapesd.freqel.description;
 
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
+import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.results.Results;
+import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
@@ -26,11 +28,9 @@ import java.util.function.Function;
 
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 import static org.apache.jena.query.QueryExecutionFactory.create;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
 public class AskDescriptionTest implements TestContext {
@@ -118,7 +118,7 @@ public class AskDescriptionTest implements TestContext {
     @Test(dataProvider = "matchData")
     public void testMatch(@Nonnull List<Triple> query, @Nonnull List<Triple> expected) {
         AskDescription description = new AskDescription(ARQEndpoint.forModel(rdf1));
-        CQueryMatch match = description.match(CQuery.from(query));
+        CQueryMatch match = description.match(CQuery.from(query), MatchReasoning.NONE);
 
         assertEquals(match.getKnownExclusiveGroups(), Collections.emptySet());
         assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), new HashSet<>(expected));
@@ -128,15 +128,15 @@ public class AskDescriptionTest implements TestContext {
     public void testCache() {
         CountingARQEndpoint ep = createEndpoint();
         AskDescription d = new AskDescription(ep);
-        CQueryMatch match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, o))));
+        CQueryMatch match = d.match(createQuery(Alice, knows, o), MatchReasoning.NONE);
         assertEquals(ep.calls, 1);
         assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, o)));
 
-        match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, o))));
+        match = d.match(createQuery(Alice, knows, o), MatchReasoning.NONE);
         assertEquals(ep.calls, 1);
         assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, o)));
 
-        match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, x))));
+        match = d.match(createQuery(Alice, knows, x), MatchReasoning.NONE);
         assertEquals(ep.calls, 1); //different var name should not matter
         assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, x)));
     }
@@ -145,11 +145,11 @@ public class AskDescriptionTest implements TestContext {
     public void testCacheLearnsGeneralized() {
         CountingARQEndpoint ep = createEndpoint();
         AskDescription d = new AskDescription(ep);
-        CQueryMatch match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, Bob))));
+        CQueryMatch match = d.match(createQuery(Alice, knows, Bob), MatchReasoning.NONE);
         assertEquals(ep.calls, 1);
         assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, Bob)));
 
-        match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, o))));
+        match = d.match(createQuery(Alice, knows, o), MatchReasoning.NONE);
         assertEquals(ep.calls, 1); //should have learned from previous query
         assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, o)));
     }
@@ -158,11 +158,11 @@ public class AskDescriptionTest implements TestContext {
     public void testTriesToFailGeneralized() {
         CountingARQEndpoint ep = createEndpoint();
         AskDescription d = new AskDescription(ep);
-        CQueryMatch match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, Charlie))));
+        CQueryMatch match = d.match(createQuery(Alice, knows, Charlie), MatchReasoning.NONE);
         assertEquals(ep.calls, 2); //already tries to prove failure of subsequent
         assertTrue(match.isEmpty());
 
-        match = d.match(CQuery.from(singletonList(new Triple(Alice, knows, o))));
+        match = d.match(createQuery(Alice, knows, o), MatchReasoning.NONE);
         assertEquals(ep.calls, 2); // no new ASK
         assertEquals(match.getNonExclusiveRelevant(), singletonList(new Triple(Alice, knows, o)));
     }
@@ -174,8 +174,49 @@ public class AskDescriptionTest implements TestContext {
         CQuery query = createQuery(x, age,   y,
                                    x, knows, Bob,
                                    JenaSPARQLFilter.build("?y > 23"));
-        CQueryMatch match = d.match(query);
+        CQueryMatch match = d.match(query, MatchReasoning.NONE);
         assertEquals(match.getKnownExclusiveGroups(), emptyList());
         assertEquals(new HashSet<>(match.getNonExclusiveRelevant()), query.attr().getSet());
+    }
+
+    public void testLocalMatch() {
+        CountingARQEndpoint ep = createEndpoint();
+        AskDescription d = new AskDescription(ep);
+
+        MutableCQuery q1 = createQuery(Alice, age, lit(23));
+        CQueryMatch match1 = d.match(q1, MatchReasoning.NONE);
+        assertEquals(match1.getAllRelevant(), q1.attr().getSet());
+        CQueryMatch actual = d.localMatch(q1, MatchReasoning.NONE);
+        assertNotNull(actual);
+        assertEquals(actual.getNonExclusiveRelevant(), match1.getNonExclusiveRelevant());
+        assertEquals(actual.getKnownExclusiveGroups(), match1.getKnownExclusiveGroups());
+
+        // matching q1 should have cached a generalized subject version as well
+        MutableCQuery genSubjectQ1 = createQuery(x, age, lit(23));
+        actual = d.localMatch(genSubjectQ1, MatchReasoning.NONE);
+        assertNotNull(actual);
+        assertEquals(actual.getAllRelevant(), genSubjectQ1.attr().getSet());
+
+        // matching q1 should have cached a generalized object version as well
+        MutableCQuery genObjectQ1 = createQuery(Alice, age, y);
+        actual = d.localMatch(genObjectQ1, MatchReasoning.NONE);
+        assertNotNull(actual);
+        assertEquals(actual.getAllRelevant(), genObjectQ1.attr().getSet());
+
+        // nothing in cache
+        actual = d.localMatch(createQuery(x, name, y), MatchReasoning.NONE);
+        assertNotNull(actual);
+        assertEquals(actual.getAllRelevant(), emptySet());
+        assertEquals(actual.getUnknown(), singleton(new Triple(x, name, y)));
+
+        // first triple matches from cache, but second does not
+        CQuery partialLocal = createQuery(x, age, lit(23),
+                                          x, name, y);
+        actual = d.localMatch(partialLocal, MatchReasoning.NONE);
+        IndexSubset<Triple> matched, unknown;
+        matched = partialLocal.attr().getSet().subset(new Triple(x, age, lit(23)));
+        unknown = partialLocal.attr().getSet().subset(new Triple(x, name, y));
+        assertEquals(actual.getAllRelevant(), matched);
+        assertEquals(actual.getUnknown(), unknown);
     }
 }

@@ -1,20 +1,23 @@
 package br.ufsc.lapesd.freqel.federation;
 
-import br.ufsc.lapesd.freqel.*;
+import br.ufsc.lapesd.freqel.BSBMSelfTest;
+import br.ufsc.lapesd.freqel.LargeRDFBenchSelfTest;
+import br.ufsc.lapesd.freqel.ResultsAssert;
+import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
-import br.ufsc.lapesd.freqel.description.AskDescription;
-import br.ufsc.lapesd.freqel.description.Description;
-import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.description.molecules.Molecule;
-import br.ufsc.lapesd.freqel.description.semantic.SemanticSelectDescription;
 import br.ufsc.lapesd.freqel.cardinality.CardinalityEnsemble;
 import br.ufsc.lapesd.freqel.cardinality.CardinalityHeuristic;
 import br.ufsc.lapesd.freqel.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.freqel.cardinality.impl.GeneralSelectivityHeuristic;
 import br.ufsc.lapesd.freqel.cardinality.impl.NoCardinalityEnsemble;
 import br.ufsc.lapesd.freqel.cardinality.impl.WorstCaseCardinalityEnsemble;
+import br.ufsc.lapesd.freqel.description.AskDescription;
+import br.ufsc.lapesd.freqel.description.Description;
+import br.ufsc.lapesd.freqel.description.SelectDescription;
+import br.ufsc.lapesd.freqel.description.molecules.Molecule;
+import br.ufsc.lapesd.freqel.description.semantic.AlternativesSemanticSelectDescription;
 import br.ufsc.lapesd.freqel.federation.concurrent.PlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.concurrent.PoolPlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;
@@ -43,6 +46,7 @@ import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Res;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
+import br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxMaterializer;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.TPEndpointTest;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
@@ -51,15 +55,14 @@ import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
 import br.ufsc.lapesd.freqel.query.results.impl.SequentialResultsExecutor;
-import br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxMaterializer;
 import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializer;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
@@ -454,7 +457,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             else if (variantName.contains("AskDescription"))
                 description = new AskDescription(ep);
             else if (variantName.contains("SemanticSelectDescription"))
-                description = new SemanticSelectDescription(ep, true, new EmptyTBox());
+                description = new AlternativesSemanticSelectDescription(ep, true, new EmptyTBox());
             assert description != null;
             ((AbstractTPEndpoint)ep).setDescription(description);
 
@@ -1205,8 +1208,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
             ARQEndpoint data = createEndpoint("federation/cnc.ttl");
             TBoxMaterializer reasoner = createReasoner();
             reasoner.load(new TBoxSpec().addResource(getClass(), "cnc-ontology.ttl"));
-            SemanticSelectDescription matcher =
-                    new SemanticSelectDescription(data, true, reasoner);
+            AlternativesSemanticSelectDescription matcher =
+                    new AlternativesSemanticSelectDescription(data, true, reasoner);
             federation.addSource(data.setDescription(matcher));
         }
 
