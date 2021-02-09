@@ -102,7 +102,7 @@ public abstract class RelationalResults extends AbstractResults {
                 // subseting on allVars avoid joining the over the dummy p and o vars
                 IndexSubset<String> set = allVars.subset(jenaVars.get(i));
                 jVars.add(set.createIntersection(jenaVars.get(i-1)));
-                set.addAll(jenaVars.get(i-1));
+                set.addAll(jrVars.get(i-1));
                 jrVars.add(set);
             }
         }
