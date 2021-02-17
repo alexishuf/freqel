@@ -71,6 +71,10 @@ public class QuickSelectivityHeuristic implements CardinalityHeuristic {
         return Cardinality.guess(state.get().estimate(query));
     }
 
+    @Override public @Nonnull String toString() {
+        return QuickSelectivityHeuristic.class.getSimpleName();
+    }
+
     private static class State {
         private int nObjects;
         private float groundObjectsRate;

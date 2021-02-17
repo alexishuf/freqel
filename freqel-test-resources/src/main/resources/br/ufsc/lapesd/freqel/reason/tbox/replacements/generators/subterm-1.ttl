@@ -1,0 +1,27 @@
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix : <http://example.org/> .
+
+:onto a owl:Ontology.
+
+:Alice
+    a          foaf:Person ;
+    foaf:knows :Bob ;
+    :p     :Charlie ;
+    :p1    :Dave ;
+    :p11   :Eric .
+
+:Bob
+    a          :D ;
+    foaf:knows :Charlie .
+
+:Charlie
+    a        :D2 ;
+    foaf:age 25 .
+
+:Dave
+    a        :D11 ;
+    foaf:age 23 .

@@ -7,6 +7,10 @@ import javax.annotation.concurrent.Immutable;
 
 @Immutable
 public class Reasoning implements Modifier {
+    public static final @Nonnull Reasoning INSTANCE = new Reasoning();
+
+    protected Reasoning() {}
+
     @Override public @Nonnull Capability getCapability() {
         return Capability.REASONING;
     }

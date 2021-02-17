@@ -343,7 +343,7 @@ public class CQuery implements  List<Triple> {
             Term replacement = assignments.getOrDefault(t, null);
             if (replacement == null && t.isVar())
                 return assignments.getOrDefault(t.asVar().getName(), t);
-            return t;
+            return replacement == null ? t : replacement;
         });
     }
     public @Nonnull MutableCQuery bind(@Nonnull Solution solution) {

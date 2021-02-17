@@ -7,24 +7,39 @@ import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
 
-@SuppressWarnings("unchecked")
 public class EndpointDecorators {
-    public static @Nonnull <T extends TPEndpoint> T uncloseable(@Nonnull T ep) {
+    public static @Nonnull TPEndpoint uncloseable(@Nonnull TPEndpoint ep) {
         if (ep instanceof DQEndpoint)
-            return (T)new UncloseableDQEndpoint((DQEndpoint) ep);
+            return new UncloseableDQEndpoint((DQEndpoint) ep);
         else if (ep instanceof CQEndpoint)
-            return (T)new UncloseableCQEndpoint((CQEndpoint) ep);
+            return new UncloseableCQEndpoint((CQEndpoint) ep);
         else
-            return (T)new UncloseableTPEndpoint(ep);
+            return new UncloseableTPEndpoint(ep);
+    }
+    public static @Nonnull CQEndpoint uncloseable(@Nonnull CQEndpoint ep) {
+        return (CQEndpoint) uncloseable((TPEndpoint) ep);
+    }
+    public static @Nonnull DQEndpoint uncloseable(@Nonnull DQEndpoint ep) {
+        return (DQEndpoint) uncloseable((TPEndpoint) ep);
     }
 
-    public static @Nonnull <T extends TPEndpoint> T
-    withDescription(@Nonnull T ep, @Nonnull Description description) {
+    public static @Nonnull TPEndpoint
+    withDescription(@Nonnull TPEndpoint ep, @Nonnull Description description) {
         if (ep instanceof DQEndpoint)
-            return (T)new WithDescriptionDQEndpoint((DQEndpoint) ep, description);
+            return new WithDescriptionDQEndpoint((DQEndpoint) ep, description);
         else if (ep instanceof CQEndpoint)
-            return (T)new WithDescriptionCQEndpoint((CQEndpoint) ep, description);
+            return new WithDescriptionCQEndpoint((CQEndpoint) ep, description);
         else
-            return (T)new WithDescriptionTPEndpoint(ep, description);
+            return new WithDescriptionTPEndpoint(ep, description);
+    }
+
+    public static @Nonnull CQEndpoint
+    withDescription(@Nonnull CQEndpoint ep, @Nonnull Description description) {
+        return (CQEndpoint) withDescription((TPEndpoint) ep, description);
+    }
+
+    public static @Nonnull DQEndpoint
+    withDescription(@Nonnull DQEndpoint ep, @Nonnull Description description) {
+        return (DQEndpoint) withDescription((TPEndpoint) ep, description);
     }
 }

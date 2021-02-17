@@ -47,7 +47,7 @@ public class SourcesListMatchingStrategy implements MatchingStrategy {
         Description description = source.getDescription();
         CQueryMatch match = description instanceof AlternativesSemanticDescription
                 ? ((AlternativesSemanticDescription) description).semanticMatch(query)
-                : description.match(query, MatchReasoning.NONE);
+                : description.match(query, MatchReasoning.TRANSPARENT.ifRequested(query));
         state.addMatch(source, match);
         return !match.isEmpty();
     }

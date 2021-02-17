@@ -6,11 +6,14 @@ import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.annotations.OverrideAnnotation;
+import br.ufsc.lapesd.freqel.query.modifiers.Reasoning;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
+import br.ufsc.lapesd.freqel.reason.tbox.EndpointReasoner;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
@@ -72,6 +75,17 @@ public interface TPEndpoint extends AutoCloseable {
     }
 
     @Nonnull Description getDescription();
+
+    /**
+     * If this endpoint does not offer the {@link Capability#REASONING} capability it MAY have
+     * a preferred implementation of {@link EndpointReasoner} to be used by an OpExecutor.
+     *
+     * If the endpoint offers the REASONING capability this should be ignored.
+     *
+     * If the endpoint offers no REASONING capability, returns null here and a query has the
+     * {@link Reasoning}} modifier, a the OpExecutor should use a default.
+     */
+    @Nullable EndpointReasoner getPreferredReasoner();
 
     /**
      * If true, this endpoint is either backed by an Web API or by something whose input/output

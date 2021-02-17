@@ -2,8 +2,8 @@ package br.ufsc.lapesd.freqel.query;
 
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
-import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.*;
@@ -50,6 +50,9 @@ public class ResultsTest implements TestContext {
         factories.add(new NamedFunction<>("singleton FlatMapResults",
                 coll -> new FlatMapResults(new CollectionResults(coll, xSet), xSet,
                                            s -> new CollectionResults(singleton(s), xSet))));
+        factories.add((new NamedFunction<>("singleton ThenResults",
+                coll -> new ThenResults(xSet,
+                                        singleton(() -> new CollectionResults(coll, xSet))))));
     }
 
     @DataProvider

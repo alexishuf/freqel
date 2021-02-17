@@ -25,6 +25,7 @@ public interface TestContext {
     @Nonnull URI Bob     = new StdURI(EX+"Bob");
     @Nonnull URI Charlie = new StdURI(EX+"Charlie");
     @Nonnull URI Dave    = new StdURI(EX+"Dave");
+    @Nonnull URI Eric    = new StdURI(EX+"Eric");
 
     @Nonnull URI Class1    = new StdURI(EX+"Class1");
     @Nonnull URI Class2    = new StdURI(EX+"Class2");

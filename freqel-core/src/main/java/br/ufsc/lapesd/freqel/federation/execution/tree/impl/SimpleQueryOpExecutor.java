@@ -9,16 +9,20 @@ import br.ufsc.lapesd.freqel.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.*;
 import br.ufsc.lapesd.freqel.model.SPARQLString;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.endpoint.*;
+import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.Capability;
+import br.ufsc.lapesd.freqel.query.endpoint.DQEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.exceptions.QueryExecutionException;
 import br.ufsc.lapesd.freqel.query.modifiers.Modifier;
 import br.ufsc.lapesd.freqel.query.modifiers.ModifiersSet;
-import br.ufsc.lapesd.freqel.query.modifiers.Reasoning;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.ResultsUtils;
 import br.ufsc.lapesd.freqel.query.results.impl.CollectionResults;
+import br.ufsc.lapesd.freqel.reason.tbox.EndpointReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.NoEndpointReasoner;
 import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,12 +42,15 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         SPARQLValuesTemplateOpExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SimpleQueryOpExecutor.class);
     private final @Nonnull ResultsExecutor resultsExecutor;
+    private final @Nonnull EndpointReasoner endpointReasoner;
 
     @Inject
     public SimpleQueryOpExecutor(@Nonnull Provider<PlanExecutor> planExecutorProvider,
-                                 @Nonnull ResultsExecutor resultsExecutor) {
+                                 @Nonnull ResultsExecutor resultsExecutor,
+                                 @Nonnull EndpointReasoner endpointReasoner) {
         super(planExecutorProvider);
         this.resultsExecutor = resultsExecutor;
+        this.endpointReasoner = endpointReasoner;
     }
 
     @VisibleForTesting
@@ -51,6 +58,7 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
                                  @Nonnull ResultsExecutor resultsExecutor) {
         super(planExecutor);
         this.resultsExecutor = resultsExecutor;
+        this.endpointReasoner = NoEndpointReasoner.INSTANCE;
     }
 
     @Override
@@ -64,15 +72,22 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
 
     @Override
     public @Nonnull Results execute(@Nonnull Op node) {
+        Results results;
         if (node instanceof UnionOp)
-            return execute((UnionOp)node);
+            results = execute((UnionOp)node);
         else if (node instanceof EndpointQueryOp)
-            return execute((EndpointQueryOp)node);
+            results = execute((EndpointQueryOp)node);
         else if (node instanceof DQueryOp)
-            return execute((DQueryOp) node);
+            results = execute((DQueryOp) node);
         else if (node instanceof SPARQLValuesTemplateOp)
-            return execute((SPARQLValuesTemplateOp)node);
-        throw new IllegalArgumentException("Unexpected node class "+node.getClass());
+            results = execute((SPARQLValuesTemplateOp)node);
+        else
+            throw new IllegalArgumentException("Unexpected node class "+node.getClass());
+
+        assert node.modifiers().optional() == null || results.isOptional();
+        assert results.getVarNames().containsAll(node.getResultVars());
+        assert node.getPublicVars().containsAll(results.getVarNames());
+        return results;
     }
 
     @Override
@@ -107,7 +122,6 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         boolean hasCopy = false;
         ModifiersSet modifiers;
         @Nullable ModifiersSet pending;
-        @Nullable Reasoning pendingReasoning;
 
         public PreprocessedQuery(@Nonnull EndpointOp op) {
             setOp(op);
@@ -150,12 +164,8 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         private @Nullable ModifiersSet getPendingModifiers(@Nonnull TPEndpoint ep) {
             for (Modifier m : modifiers) {
                 Capability capability = m.getCapability();
-                if (!ep.hasCapability(capability)) {
-                    if (capability == Capability.REASONING)
-                        pendingReasoning = (Reasoning) m;
-                    else
-                        (pending == null ? pending = new ModifiersSet() : pending).add(m);
-                }
+                if (!ep.hasCapability(capability))
+                    (pending == null ? pending = new ModifiersSet() : pending).add(m);
             }
             if (!ep.hasCapability(Capability.SPARQL_FILTER) && !modifiers.filters().isEmpty()) {
                 assert pending != null;
@@ -178,14 +188,19 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
         }
     }
 
-
     protected @Nonnull Results doExecute(@Nonnull DQueryOp node) {
         DQEndpoint ep = node.getEndpoint();
         PreprocessedQuery data = new PreprocessedQuery(node);
-        Op query = data.dqOp().getQuery();
-        assert new DQPushChecker(ep.getDisjunctiveProfile()).setEndpoint(ep).canPush(query)
-               : "Why did a non-executable plan got to this point!?";
-        return ResultsUtils.applyModifiers(ep.query(query), data.pending);
+        if (data.pending != null && data.pending.reasoning() != null) {
+            if (!endpointReasoner.acceptDisjunctive())
+                return getPlanExecutor().executeNode(node.getQuery());
+            return endpointReasoner.apply(data.dqOp(), this::execute);
+        } else {
+            Op query = data.dqOp().getQuery();
+            assert new DQPushChecker(ep.getDisjunctiveProfile()).setEndpoint(ep).canPush(query)
+                    : "Why did a non-executable plan got to this point!?";
+            return ResultsUtils.applyModifiers(ep.query(query), data.pending);
+        }
     }
 
     @Override
@@ -202,12 +217,10 @@ public class SimpleQueryOpExecutor extends SimpleOpExecutor
     protected @Nonnull Results doExecute(@Nonnull EndpointQueryOp node) {
         TPEndpoint ep = node.getEndpoint();
         PreprocessedQuery data = new PreprocessedQuery(node);
+        if (data.pending != null && data.pending.reasoning() != null)
+            return endpointReasoner.apply(data.eqOp(), this::execute);
         CQuery q = data.eqOp().getQuery();
-        Results r = ResultsUtils.applyModifiers(ep.query(q), data.pending);
-        CQuery inputQuery = node.getQuery();
-        assert inputQuery.getModifiers().optional() == null || r.isOptional();
-        assert r.getVarNames().equals(inputQuery.attr().publicVarNames());
-        return r;
+        return ResultsUtils.applyModifiers(ep.query(q), data.pending);
     }
 
     @CheckReturnValue

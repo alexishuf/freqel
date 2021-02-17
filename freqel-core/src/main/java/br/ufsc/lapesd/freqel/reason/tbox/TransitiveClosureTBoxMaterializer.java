@@ -41,11 +41,16 @@ public class TransitiveClosureTBoxMaterializer implements TBoxMaterializer {
     private @Nullable Model model;
     private boolean warnedEmpty = false;
     private @Nullable TPEndpoint endpoint = null;
+    private @Nullable String name;
 
     public TransitiveClosureTBoxMaterializer() { }
 
     public TransitiveClosureTBoxMaterializer(@Nonnull TBoxSpec spec) throws TBoxLoadException {
         load(spec);
+    }
+
+    public void setName(@Nonnull String name) {
+        this.name = name;
     }
 
     private void warnEmpty() {
@@ -209,7 +214,11 @@ public class TransitiveClosureTBoxMaterializer implements TBoxMaterializer {
     }
 
     @Override public @Nonnull String toString() {
-        return String.format("TransitiveClosureTBoxMaterializer@%x",
-                             System.identityHashCode(this));
+        StringBuilder b = new StringBuilder("TransitiveClosureTBox");
+        if (name != null)
+            b.append('(').append(name).append(')');
+        else
+            b.append(String.format("@%x", System.identityHashCode(this)));
+        return b.toString();
     }
 }

@@ -5,6 +5,7 @@ import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.results.Results;
+import br.ufsc.lapesd.freqel.reason.tbox.EndpointReasoner;
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.jetbrains.annotations.NotNull;
 
@@ -49,6 +50,10 @@ public abstract class AbstractTPEndpoint implements TPEndpoint {
 
     @Override public boolean isWebAPILike() {
         return false;
+    }
+
+    @Override public @Nullable EndpointReasoner getPreferredReasoner() {
+        return null;
     }
 
     @Override

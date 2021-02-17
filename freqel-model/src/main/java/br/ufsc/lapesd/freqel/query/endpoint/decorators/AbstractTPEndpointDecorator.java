@@ -7,9 +7,11 @@ import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.results.Results;
+import br.ufsc.lapesd.freqel.reason.tbox.EndpointReasoner;
 import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.Set;
 
@@ -48,6 +50,10 @@ public abstract class AbstractTPEndpointDecorator implements TPEndpoint {
 
     @Override @Nonnull public Description getDescription() {
         return delegate.getDescription();
+    }
+
+    @Override public @Nullable EndpointReasoner getPreferredReasoner() {
+        return delegate.getPreferredReasoner();
     }
 
     @Override public boolean isWebAPILike() {

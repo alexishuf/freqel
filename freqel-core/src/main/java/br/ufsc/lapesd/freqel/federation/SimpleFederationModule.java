@@ -76,6 +76,7 @@ public class SimpleFederationModule extends SimpleExecutionModule {
     public static void configureCardinalityEstimation(@Nonnull Binder binder, int estimatePolicy) {
         binder.bind(JoinCardinalityEstimator.class).to(BindJoinCardinalityEstimator.class);
         binder.bind(CardinalityEnsemble.class).to(WorstCaseCardinalityEnsemble.class);
+        binder.bind(CardinalityHeuristic.class).to(QuickSelectivityHeuristic.class);
 
         Multibinder<CardinalityHeuristic> mBinder
                 = Multibinder.newSetBinder(binder, CardinalityHeuristic.class);
