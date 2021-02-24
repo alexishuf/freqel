@@ -25,8 +25,12 @@ public class SwaggerSourceLoader implements SourceLoader {
         return NAMES;
     }
 
+    @Override public void setTempDir(@Nonnull File ignored) { }
+
+    @Override public void setSourceCache(@Nullable SourceCache sourceCache) { }
+
     @Override
-    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
+    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec,
                                          @Nonnull File reference) throws SourceLoadException {
         String loaderKey = spec.getString("loader", "").trim().toLowerCase();
         if (!loaderKey.equals("swagger"))

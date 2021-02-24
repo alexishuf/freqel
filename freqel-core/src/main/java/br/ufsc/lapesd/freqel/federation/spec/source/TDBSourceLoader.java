@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
-import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.util.DictTree;
@@ -24,8 +23,12 @@ public class TDBSourceLoader implements SourceLoader {
         return NAMES;
     }
 
+    @Override public void setTempDir(@Nonnull File ignored) { }
+
+    @Override public void setSourceCache(@Nullable SourceCache ignored) { }
+
     @Override
-    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
+    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec,
                                          @Nonnull File reference) throws SourceLoadException {
         String loader = spec.getString("loader", "").trim().toLowerCase();
         String dirPath = spec.getString("dir", null);

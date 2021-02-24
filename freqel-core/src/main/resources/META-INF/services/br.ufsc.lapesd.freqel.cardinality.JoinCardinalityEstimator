@@ -1,0 +1,2 @@
+br.ufsc.lapesd.freqel.cardinality.impl.BindJoinCardinalityEstimator
+br.ufsc.lapesd.freqel.cardinality.impl.AverageJoinCardinalityEstimator

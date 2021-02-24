@@ -7,7 +7,7 @@ import br.ufsc.lapesd.freqel.algebra.inner.ConjunctionOp;
 import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
@@ -108,8 +108,7 @@ public class ConjunctionReplaceStepTest implements TestContext {
         if (expected == null)
             expected = in;
         boolean equalsIn = expected.equals(in);
-        JoinOrderPlanner joPlanner =
-                SingletonSourceFederation.getInjector().getInstance(JoinOrderPlanner.class);
+        JoinOrderPlanner joPlanner = DaggerTestComponent.builder().build().joinOrderPlanner();
         ConjunctionReplaceStep step = new ConjunctionReplaceStep(joPlanner);
         Op actual = step.plan(in, locked);
         assertEquals(actual, expected);

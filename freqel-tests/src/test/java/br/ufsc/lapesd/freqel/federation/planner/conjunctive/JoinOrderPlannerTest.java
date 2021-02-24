@@ -1,21 +1,22 @@
 package br.ufsc.lapesd.freqel.federation.planner.conjunctive;
 
 import br.ufsc.lapesd.freqel.PlanAssert;
-import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.JoinInfo;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
-import br.ufsc.lapesd.freqel.description.molecules.Atom;
-import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
-import br.ufsc.lapesd.freqel.cardinality.CardinalityEnsemble;
-import br.ufsc.lapesd.freqel.cardinality.CardinalityHeuristic;
-import br.ufsc.lapesd.freqel.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.freqel.cardinality.impl.GeneralSelectivityHeuristic;
+import br.ufsc.lapesd.freqel.cardinality.impl.NoCardinalityEnsemble;
+import br.ufsc.lapesd.freqel.cardinality.impl.QuickSelectivityHeuristic;
 import br.ufsc.lapesd.freqel.cardinality.impl.WorstCaseCardinalityEnsemble;
+import br.ufsc.lapesd.freqel.description.molecules.Atom;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.TestComponent;
 import br.ufsc.lapesd.freqel.federation.planner.JoinOrderPlanner;
+import br.ufsc.lapesd.freqel.federation.planner.equiv.DefaultEquivCleaner;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.URI;
 import br.ufsc.lapesd.freqel.model.term.Var;
@@ -26,12 +27,9 @@ import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.freqel.query.modifiers.Optional;
 import br.ufsc.lapesd.freqel.util.CollectionUtils;
+import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.util.indexed.ref.RefIndexSet;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import com.google.common.collect.Collections2;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.multibindings.Multibinder;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -45,6 +43,8 @@ import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.freqel.algebra.JoinInfo.getJoinability;
 import static br.ufsc.lapesd.freqel.algebra.util.TreeUtils.*;
+import static br.ufsc.lapesd.freqel.federation.FreqelConfig.Key.*;
+import static br.ufsc.lapesd.freqel.federation.FreqelConfig.createDefault;
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -77,33 +77,50 @@ public class JoinOrderPlannerTest implements TestContext {
     public static final List<Supplier<JoinOrderPlanner>> suppliers =
             asList(
                     new NamedSupplier<>(ArbitraryJoinOrderPlanner.class),
+                    new NamedSupplier<>("Default JoinOrderPlanner",
+                            () -> DaggerTestComponent.builder()
+                                    .overrideFreqelConfig(createDefault()
+                                            .set(EQUIV_CLEANER, DefaultEquivCleaner.class))
+                                    .build().joinOrderPlanner()),
+                    new NamedSupplier<>("Default GreedyJoinOrderPlanner",
+                            () -> {
+                                TestComponent.Builder b = DaggerTestComponent.builder();
+                                b.overrideFreqelConfig(createDefault()
+                                        .set(EQUIV_CLEANER, DefaultEquivCleaner.class)
+                                        .set(JOIN_ORDER_PLANNER, GreedyJoinOrderPlanner.class));
+                                return b.build().joinOrderPlanner();
+                            }),
                     new NamedSupplier<>("GreedyJoinOrderPlanner, without estimation",
-                        () -> Guice.createInjector(new AbstractModule() {
-                            @Override
-                            protected void configure() {
-                                bind(GreedyJoinOrderPlanner.EquivCleaner.class).toInstance(GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
-                            }
-                        }).getInstance(GreedyJoinOrderPlanner.class)),
+                            () -> {
+                                TestComponent.Builder b = DaggerTestComponent.builder();
+                                b.overrideEquivCleaner(DefaultEquivCleaner.INSTANCE);
+                                b.overrideFreqelConfig(createDefault()
+                                        .set(JOIN_ORDER_PLANNER, GreedyJoinOrderPlanner.class)
+                                        .set(CARDINALITY_ENSEMBLE, NoCardinalityEnsemble.class));
+                                return b.build().joinOrderPlanner();
+                    }),
                     new NamedSupplier<>("GreedyJoinOrderPlanner+GeneralSelectivityHeuristic",
-                            () -> Guice.createInjector(new AbstractModule() {
-                                @Override
-                                protected void configure() {
-                                    bind(CardinalityEnsemble.class).to(WorstCaseCardinalityEnsemble.class);
-                                    bind(GreedyJoinOrderPlanner.EquivCleaner.class).toInstance(GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
-                                    Multibinder<CardinalityHeuristic> mb
-                                            = Multibinder.newSetBinder(binder(), CardinalityHeuristic.class);
-                                    mb.addBinding().to(GeneralSelectivityHeuristic.class);
-                                }
-                            }).getInstance(GreedyJoinOrderPlanner.class)),
-                    new NamedSupplier<>("GreedyJoinOrderPlanner+default estimation",
-                        () -> Guice.createInjector(new AbstractModule() {
-                            @Override
-                            protected void configure() {
-                                bind(GreedyJoinOrderPlanner.EquivCleaner.class).toInstance(GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
-                                SimpleFederationModule.configureCardinalityEstimation(binder(),
-                                        EstimatePolicy.local(50));
-                            }
-                        }).getInstance(GreedyJoinOrderPlanner.class))
+                            () -> {
+                                TestComponent.Builder b = DaggerTestComponent.builder();
+                                b.overrideFreqelConfig(createDefault()
+                                        .set(CARDINALITY_ENSEMBLE, WorstCaseCardinalityEnsemble.class)
+                                        .set(EQUIV_CLEANER, DefaultEquivCleaner.class)
+                                        .set(CARDINALITY_HEURISTICS, singleton(GeneralSelectivityHeuristic.class))
+                                        .set(JOIN_ORDER_PLANNER, GreedyJoinOrderPlanner.class)
+                                );
+                                return b.build().joinOrderPlanner();
+                            }),
+                    new NamedSupplier<>("GreedyJoinOrderPlanner+QuickSelectivityHeuristic",
+                            () -> {
+                                TestComponent.Builder b = DaggerTestComponent.builder();
+                                b.overrideFreqelConfig(createDefault()
+                                        .set(CARDINALITY_ENSEMBLE, WorstCaseCardinalityEnsemble.class)
+                                        .set(EQUIV_CLEANER, DefaultEquivCleaner.class)
+                                        .set(CARDINALITY_HEURISTICS, singleton(QuickSelectivityHeuristic.class))
+                                        .set(JOIN_ORDER_PLANNER, GreedyJoinOrderPlanner.class)
+                                );
+                                return b.build().joinOrderPlanner();
+                            })
             );
 
     private void checkPlan(Op root, Set<Op> expectedLeaves) {

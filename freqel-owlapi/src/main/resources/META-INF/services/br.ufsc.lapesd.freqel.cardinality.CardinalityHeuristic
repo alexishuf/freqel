@@ -1,0 +1,2 @@
+br.ufsc.lapesd.freqel.cardinality.impl.QuickSelectivityHeuristic
+br.ufsc.lapesd.freqel.cardinality.impl.GeneralSelectivityHeuristic

@@ -6,6 +6,7 @@ import br.ufsc.lapesd.freqel.description.TrapDescription;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.freqel.federation.Federation;
+import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
@@ -31,8 +32,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.sql.*;
 import java.util.Properties;
-
-import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
 
 public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(JDBCCQEndpoint.class);
@@ -119,7 +118,7 @@ public class JDBCCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
 
     private @Nonnull Results runUnderFederation(@Nonnull CQuery query) {
         if (federation == null)
-            federation = createFederation(EndpointDecorators.uncloseable(this));
+            federation = Freqel.createFederation(EndpointDecorators.uncloseable(this));
         return federation.query(query);
     }
 

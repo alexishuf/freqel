@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
-import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.util.DictTree;
@@ -22,7 +21,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 
 public class RDFFileSourceLoader implements SourceLoader {
-    private static final @Nonnull Pattern URI_RX = Pattern.compile("^[^:]:");
+    private static final @Nonnull Pattern URI_RX = Pattern.compile("^[^:]+:");
     private static final @Nonnull Set<String> NAMES = Sets.newHashSet("rdf-file", "rdf-url");
 
     @Override
@@ -30,8 +29,12 @@ public class RDFFileSourceLoader implements SourceLoader {
         return NAMES;
     }
 
+    @Override public void setTempDir(@Nonnull File ignored) { }
+
+    @Override public void setSourceCache(@Nullable SourceCache ignored) { }
+
     @Override
-    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec, @Nullable SourceCache ignored,
+    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec,
                                          @Nonnull File reference) throws SourceLoadException {
         Model model = ModelFactory.createDefaultModel();
         List<String> nameParts = new ArrayList<>();

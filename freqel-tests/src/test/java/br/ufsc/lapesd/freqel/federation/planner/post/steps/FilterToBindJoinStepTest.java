@@ -9,16 +9,17 @@ import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
+import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.federation.planner.utils.FilterJoinPlannerTest;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.TPEndpointTest;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
@@ -34,7 +35,9 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -147,7 +150,7 @@ public class FilterToBindJoinStepTest implements TestContext {
     public void testDefaultQuery(@Nonnull List<TPEndpoint> sources,
                                  @Nonnull String sparql,
                                  @Nonnull List<Solution> expected) throws SPARQLParseException {
-        try (Federation federation = Federation.createDefault()) {
+        try (Federation federation = Freqel.createFederation()) {
             sources.forEach(federation::addSource);
             Op query = SPARQLParser.strict().parse(sparql);
             ResultsAssert.assertExpectedResults(federation.query(query), expected);
@@ -158,7 +161,7 @@ public class FilterToBindJoinStepTest implements TestContext {
     @Test(dataProvider = "testQueryData")
     public void testDefaultPlanNoProduct(@Nonnull List<TPEndpoint> sources, @Nonnull String sparql,
                                          @Nonnull List<Solution> ignored) throws SPARQLParseException {
-        try (Federation federation = Federation.createDefault()) {
+        try (Federation federation = Freqel.createFederation()) {
             sources.forEach(federation::addSource);
             Op query = SPARQLParser.strict().parse(sparql);
             Op plan = federation.plan(query);

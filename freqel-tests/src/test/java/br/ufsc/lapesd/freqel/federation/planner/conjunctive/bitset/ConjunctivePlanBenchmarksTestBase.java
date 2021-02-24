@@ -8,25 +8,21 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
-import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
+import br.ufsc.lapesd.freqel.federation.FreqelConfig;
 import br.ufsc.lapesd.freqel.federation.concurrent.PlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.decomp.FilterAssigner;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;
 import br.ufsc.lapesd.freqel.federation.decomp.match.MatchingStrategy;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.TestComponent;
 import br.ufsc.lapesd.freqel.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.freqel.federation.planner.ConjunctivePlannerTest;
 import br.ufsc.lapesd.freqel.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.freqel.federation.planner.PrePlanner;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.query.CQuery;
-import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Module;
-import com.google.inject.util.Modules;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -39,8 +35,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public abstract class ConjunctivePlanBenchmarksTestBase {
-    private final Injector defInjector = Guice.createInjector(new SimpleFederationModule());
-
     @Test(enabled = false)
     public static @Nonnull List<TPEndpoint> largeRDFBenchSources() throws IOException {
         List<TPEndpoint> list = new ArrayList<>();
@@ -68,17 +62,19 @@ public abstract class ConjunctivePlanBenchmarksTestBase {
         assert root.assertTreeInvariants();
         SPARQLAssert.assertUniverses(root);
 
-        PlanningExecutorService executor = defInjector.getInstance(PlanningExecutorService.class);
+        TestComponent testComponent = DaggerTestComponent.builder().build();
+
+        PlanningExecutorService executor = testComponent.planningExecutorService();
         executor.bind();
         try {
 
-            PrePlanner prePlanner = defInjector.getInstance(PrePlanner.class);
+            PrePlanner prePlanner = testComponent.prePlanner();
             root = prePlanner.plan(root);
             assert root.assertTreeInvariants();
             SPARQLAssert.assertUniverses(root);
 
-            MatchingStrategy matchingStrategy = defInjector.getInstance(MatchingStrategy.class);
-            Agglutinator agglutinator = defInjector.getInstance(Agglutinator.class);
+            MatchingStrategy matchingStrategy = testComponent.matchingStrategy();
+            Agglutinator agglutinator = testComponent.agglutinator();
             agglutinator.setMatchingStrategy(matchingStrategy);
             sources.forEach(matchingStrategy::addSource);
             return TreeUtils.streamPreOrder(root).filter(QueryOp.class::isInstance).map(o -> {
@@ -118,13 +114,10 @@ public abstract class ConjunctivePlanBenchmarksTestBase {
     @Test(dataProvider = "planData", groups = {"fast"})
     public void testPlan(@Nonnull Class<? extends JoinOrderPlanner> joinOrderPlannerClass,
                          @Nonnull CQuery query, @Nonnull List<Op> fragments) {
-        Module module = Modules.override(new SimpleFederationModule()).with(new AbstractModule() {
-            @Override protected void configure() {
-                super.configure();
-                bind(JoinOrderPlanner.class).to(joinOrderPlannerClass);
-            }
-        });
-        ConjunctivePlanner planner = Guice.createInjector(module).getInstance(getPlannerClass());
+        TestComponent.Builder builder = DaggerTestComponent.builder();
+        builder.overrideFreqelConfig(FreqelConfig.createDefault()
+                .set(FreqelConfig.Key.JOIN_ORDER_PLANNER, joinOrderPlannerClass));
+        ConjunctivePlanner planner = builder.build().conjunctivePlanner();
         Op plan = planner.plan(query, fragments);
         // ConjunctivePlanner is modifier-oblivious. Add them so that assertPlanAnswers() passes.
         FilterAssigner.placeInnerBottommost(plan, query.getModifiers().filters());

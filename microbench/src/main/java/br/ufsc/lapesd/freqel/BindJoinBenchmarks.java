@@ -1,9 +1,10 @@
 package br.ufsc.lapesd.freqel;
 
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
-import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
 import br.ufsc.lapesd.freqel.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.TestComponent;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
@@ -15,8 +16,6 @@ import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.freqel.util.FusekiProcess;
 import com.google.common.collect.Sets;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
@@ -95,9 +94,9 @@ public class BindJoinBenchmarks {
         rightEpCannotValues = new SPARQLClient(rightFuseki.getSparqlEndpoint());
         rightEpCannotValues.removeRemoteCapability(Capability.VALUES);
 
-        Injector injector = Guice.createInjector(new SimpleFederationModule());
-        planExecutor = injector.getInstance(PlanExecutor.class);
-        resultsExec = injector.getInstance(ResultsExecutor.class);
+        TestComponent testComponent = DaggerTestComponent.builder().build();
+        planExecutor = testComponent.planExecutor();
+        resultsExec = testComponent.resultsExecutor();
         seqResultsExec = new SequentialResultsExecutor();
 
         Var x = new StdVar("x"), y = new StdVar("y"), z = new StdVar("z");

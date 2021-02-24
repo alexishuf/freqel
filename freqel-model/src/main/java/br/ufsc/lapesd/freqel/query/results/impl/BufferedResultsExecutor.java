@@ -2,12 +2,13 @@ package br.ufsc.lapesd.freqel.query.results.impl;
 
 import br.ufsc.lapesd.freqel.query.results.*;
 import br.ufsc.lapesd.freqel.util.indexed.FullIndexSet;
-import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,10 +22,10 @@ public class BufferedResultsExecutor implements ResultsExecutor {
     private final @Nonnull ExecutorService executorService;
     private final int perInputBufferSize;
 
-    @VisibleForTesting
-    public BufferedResultsExecutor(@Nonnull ExecutorService executorService,
-                                   int perInputBufferSize) {
-        this.executorService = executorService;
+    @Inject
+    public BufferedResultsExecutor(@Named("resultsExecutor") @Nonnull ExecutorService service,
+                                   @Named("resultsExecutorBufferSize") int perInputBufferSize) {
+        this.executorService = service;
         this.perInputBufferSize = perInputBufferSize;
     }
 

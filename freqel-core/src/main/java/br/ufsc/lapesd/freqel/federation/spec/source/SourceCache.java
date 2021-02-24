@@ -7,6 +7,8 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -59,7 +61,7 @@ public class SourceCache {
         }
     }
 
-    public SourceCache(@Nonnull File dir) {
+    @Inject public SourceCache(@Named("sourceCacheDir") @Nonnull File dir) {
         this.dir = dir;
     }
 

@@ -3,8 +3,8 @@ package br.ufsc.lapesd.freqel.federation.execution.tree.impl;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.inner.PipeOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.freqel.federation.execution.tree.PipeOpExecutor;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
@@ -25,7 +25,7 @@ import static java.util.Collections.singleton;
 
 public class SimplePipeOpExecutorTest implements TestContext {
     private static final List<Supplier<PipeOpExecutor>> suppliers = Collections.singletonList(
-            () -> SingletonSourceFederation.getInjector().getInstance(SimplePipeOpExecutor.class)
+            () -> DaggerTestComponent.builder().build().simplePipeOpExecutor()
     );
 
     @DataProvider public static Object[][] applyFilterData() {

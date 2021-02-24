@@ -2,7 +2,6 @@ package br.ufsc.lapesd.freqel.federation.planner;
 
 import br.ufsc.lapesd.freqel.LargeRDFBenchSelfTest;
 import br.ufsc.lapesd.freqel.PlanAssert;
-import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.CartesianOp;
@@ -11,14 +10,14 @@ import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
-import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.modifiers.Ask;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -42,11 +41,8 @@ public class PrePlannerTest implements TestContext {
 
     public static @Nonnull List<Provider<? extends PrePlanner>> providers = singletonList(
             new NamedSupplier<>("default",
-                    () -> SingletonSourceFederation.getInjector().getInstance(PrePlanner.class))
+                    () -> DaggerTestComponent.builder().build().prePlanner())
     );
-
-    public static @Nonnull List<Class<? extends Provider<? extends PrePlanner>>> providerClasses
-            = singletonList(SimpleFederationModule.DefaultPrePlannerProvider.class);
 
     @DataProvider
     public static @Nonnull Object[][] planData() throws IOException, SPARQLParseException {
@@ -246,8 +242,7 @@ public class PrePlannerTest implements TestContext {
 
     @Test(dataProvider = "exactTreeData")
     public void testExactTree(@Nonnull Op in, @Nonnull Op expected) {
-        PrePlanner planner = SingletonSourceFederation.getInjector()
-                .getInstance(PrePlanner.class);
+        PrePlanner planner = DaggerTestComponent.builder().build().prePlanner();
         Op actual = planner.plan(in);
         assertEquals(actual, expected);
     }

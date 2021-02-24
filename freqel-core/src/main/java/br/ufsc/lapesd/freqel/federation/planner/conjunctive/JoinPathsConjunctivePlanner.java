@@ -37,7 +37,6 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
 
-import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.getInjector;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.*;
 
@@ -46,12 +45,15 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
     private static final int PATHS_PAR_THRESHOLD = 10;
     private final @Nonnull JoinOrderPlanner joinOrderPlanner;
     private final @Nonnull InnerCardinalityComputer innerCardComputer;
+    private final @Nonnull PrePlanner prePlanner;
 
     @Inject
     public JoinPathsConjunctivePlanner(@Nonnull JoinOrderPlanner joinOrderPlanner,
-                                       @Nonnull InnerCardinalityComputer innerCardComputer) {
+                                       @Nonnull InnerCardinalityComputer innerCardComputer,
+                                       @Nonnull PrePlanner prePlanner) {
         this.joinOrderPlanner = joinOrderPlanner;
         this.innerCardComputer = innerCardComputer;
+        this.prePlanner = prePlanner;
     }
 
     @Override
@@ -78,7 +80,7 @@ public class JoinPathsConjunctivePlanner implements ConjunctivePlanner {
            built a Federation using incompatible components. This is likely a bug in the
            Federation creator */
         if (!query.attr().isJoinConnected()) {
-            Op plan = getInjector().getInstance(PrePlanner.class).plan(new QueryOp(query));
+            Op plan = prePlanner.plan(new QueryOp(query));
             logger.warn("JoinPathsPlanner was designed for handling conjunctive queries, yet " +
                         "the given query requires Cartesian products or unions. Will try to " +
                         "continue, but planning may fail. Query: {}", query);

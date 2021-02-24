@@ -1,21 +1,17 @@
 package br.ufsc.lapesd.freqel.federation.execution.tree;
 
-import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.SimpleExecutionModule;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.SimpleQueryOpExecutor;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
+import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import com.google.common.collect.Sets;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.util.Modules;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
@@ -39,15 +35,8 @@ import static org.testng.Assert.fail;
 public class UnionOpExecutorTest implements TestContext {
 
     private static final List<NamedSupplier<UnionOpExecutor>> suppliers = singletonList(
-            new NamedSupplier<>("SimpleQueryNodeExecutor",
-                    () -> Guice.createInjector(Modules.override(new SimpleExecutionModule())
-                            .with(new AbstractModule() {
-                                    @Override
-                                    protected void configure() {
-                                        bind(UnionOpExecutor.class).to(SimpleQueryOpExecutor.class);
-                                    }
-                                })
-                        ).getInstance(SimpleQueryOpExecutor.class))
+            new NamedSupplier<>("SimpleQueryOpExecutor",
+                    () -> DaggerTestComponent.builder().build().unionOpExecutor())
     );
 
     private static final @Nonnull ARQEndpoint rdf1, rdf2;

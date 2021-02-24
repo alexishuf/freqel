@@ -7,7 +7,7 @@
 # is relative to this yaml file). Not all Description implementations do
 # this. Currently, only SelectDescription stores the result of the
 # "list predicates" and "list classes" queries
-sources-cache: cache
+sources-cache-dir: cache
 # List sources participating in the federation. Each source must have a
 # loader specified. Further required properties and their meaning is
 # defined by each SourceLoader implementation. The default list of

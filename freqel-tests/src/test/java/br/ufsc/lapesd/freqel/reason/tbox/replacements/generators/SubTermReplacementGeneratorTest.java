@@ -6,7 +6,7 @@ import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticAskDescription;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticSelectDescription;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.SimpleExecutionModule;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
@@ -42,7 +42,6 @@ import static br.ufsc.lapesd.freqel.description.MatchReasoning.NONE;
 import static br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory.parseFilter;
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static com.google.common.collect.Sets.newHashSet;
-import static com.google.inject.Guice.createInjector;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
@@ -144,7 +143,7 @@ public class SubTermReplacementGeneratorTest implements TestContext {
         List<ReplacementPruner> pruners = Arrays.asList(
                 new NoReplacementPruner(),
                 new DescriptionReplacementPruner(),
-                createInjector(new SimpleExecutionModule()).getInstance(ReplacementPruner.class));
+                DaggerTestComponent.builder().build().replacementPruner());
         return Lists.cartesianProduct(pruners, factories).stream().map(List::toArray)
                 .toArray(Object[][]::new);
     }

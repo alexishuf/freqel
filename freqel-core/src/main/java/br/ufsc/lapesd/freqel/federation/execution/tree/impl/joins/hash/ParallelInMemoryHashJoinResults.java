@@ -126,7 +126,6 @@ public class ParallelInMemoryHashJoinResults extends AbstractResults implements 
         Set<String> allVars = Stream.concat(left.getVarNames().stream(),
                                             right.getVarNames().stream()).collect(toSet());
         Preconditions.checkArgument(allVars.containsAll(joinVars));
-        Preconditions.checkArgument(allVars.containsAll(resultVars));
         solFac = ArraySolution.forVars(resultVars);
 
         executorService = new ThreadPoolExecutor(0, 2,

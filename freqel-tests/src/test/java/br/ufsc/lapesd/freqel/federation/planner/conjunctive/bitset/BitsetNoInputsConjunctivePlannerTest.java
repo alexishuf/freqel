@@ -3,7 +3,7 @@ package br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.GroupNodesTestBase;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.priv.BitJoinGraph;
@@ -86,8 +86,8 @@ public class BitsetNoInputsConjunctivePlannerTest implements TestContext {
         @Override protected @Nonnull List<Op> groupNodes(@Nonnull List<Op> list) {
             if (list.stream().anyMatch(Op::hasInputs))
                 throw new SkipGroupNodesException();
-            BitsetNoInputsConjunctivePlanner planner = SingletonSourceFederation.getInjector()
-                    .getInstance(BitsetNoInputsConjunctivePlanner.class);
+            BitsetNoInputsConjunctivePlanner planner =
+                    DaggerTestComponent.builder().build().bsNoInputsPlanner();
             return planner.groupNodes(withUniverseSets(list));
         }
     }
@@ -142,9 +142,8 @@ public class BitsetNoInputsConjunctivePlannerTest implements TestContext {
         RefIndexSet<Op> graphNodes = RefIndexSet.fromRefDistinct(withUniverseSets(graphNodesList));
         BitJoinGraph dummyGraph = new BitJoinGraph(graphNodes);
 
-        BitsetNoInputsConjunctivePlanner planner = SingletonSourceFederation.getInjector()
-                .getInstance(BitsetNoInputsConjunctivePlanner.class);
-        List<Bitset> list = planner.findCommonSubsets(states, dummyGraph);
+        List<Bitset> list = DaggerTestComponent.builder().build().bsNoInputsPlanner()
+                                               .findCommonSubsets(states, dummyGraph);
         assertEquals(new HashSet<>(list), new HashSet<>(expected));
     }
 

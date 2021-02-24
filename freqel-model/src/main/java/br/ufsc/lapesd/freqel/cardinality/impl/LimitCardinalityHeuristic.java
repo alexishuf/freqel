@@ -7,16 +7,18 @@ import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.inject.Inject;
+import javax.inject.Named;
 
 /**
  * Estimates cardinality by delegation to {@link TPEndpoint#estimate(CQuery, int)}.
  *
- * This will incurr ASK and LIMIT queries to the endpoint as allowed by the estimatePolicy.
+ * This will issue ASK and LIMIT queries to the endpoint as allowed by the estimatePolicy.
  */
 public class LimitCardinalityHeuristic implements CardinalityHeuristic {
     private final int policy;
 
-    public LimitCardinalityHeuristic(int policy) {
+    @Inject public LimitCardinalityHeuristic(@Named("estimatePolicy") int policy) {
         this.policy = policy;
     }
 

@@ -4,17 +4,17 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
+import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecLoader;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.JenaBindingResults;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.TPEndpointTest;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.query.modifiers.Limit;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.CollectionResults;
 import org.apache.commons.io.FileUtils;
@@ -222,7 +222,7 @@ public class BSBMSelfTest {
         Set<Solution> ac = new HashSet<>(), ex = new HashSet<>();
         ARQEndpoint ep = ARQEndpoint.forModel(allData());
         ep.setDescription(new SelectDescription(ep));
-        try (Federation federation = SingletonSourceFederation.createFederation(ep)) {
+        try (Federation federation = Freqel.createFederation(ep)) {
             Op plan = federation.plan(query);
             assertPlanAnswers(plan, query);
             federation.execute(plan).forEachRemainingThenClose(ac::add);
@@ -272,7 +272,7 @@ public class BSBMSelfTest {
                 }
                 File config = new File(dir, "config.yaml");
                 try (PrintStream out = new PrintStream(new FileOutputStream(config))) {
-                    out.println("sources-cache: cache");
+                    out.println("sources-cache-dir: cache");
                     out.println("sources:");
                     for (TPEndpointTest.FusekiEndpoint ep : eps) {
                         out.println("  - loader: sparql");

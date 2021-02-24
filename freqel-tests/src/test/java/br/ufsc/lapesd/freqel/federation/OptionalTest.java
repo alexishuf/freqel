@@ -76,7 +76,7 @@ public class OptionalTest implements TestContext {
                                          @Nonnull List<Solution> expectedList)
             throws SPARQLParseException {
         Op query = SPARQLParser.strict().parse(sparql);
-        try (Federation federation = Federation.createDefault()) {
+        try (Federation federation = Freqel.createFederation()) {
             ARQEndpoint ep = ARQEndpoint.forModel(new TBoxSpec()
                     .addResource(getClass(), "rdf-optional-1.ttl").loadModel());
             federation.addSource(ep.setDescription(new SelectDescription(ep)));

@@ -8,19 +8,17 @@ import br.ufsc.lapesd.freqel.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.freqel.cardinality.CardinalityComparator;
 import br.ufsc.lapesd.freqel.cardinality.impl.ThresholdCardinalityComparator;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.federation.planner.JoinOrderPlanner;
-import br.ufsc.lapesd.freqel.federation.planner.conjunctive.GreedyJoinOrderPlanner;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.util.ref.EmptyRefSet;
-import com.google.inject.Injector;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -43,16 +41,16 @@ import static org.testng.Assert.*;
 
 public class FilterJoinPlannerTest implements TestContext {
     private static final CQEndpoint ep = ARQEndpoint.forModel(ModelFactory.createDefaultModel());
-    private static final Injector injector = SingletonSourceFederation.getInjector();
 
     public static final @Nonnull List<Supplier<FilterJoinPlanner>> suppliers = asList(
             DefaultFilterJoinPlannerTest::createDefault,
             () -> {
-                JoinOrderPlanner joPlanner = injector.getInstance(GreedyJoinOrderPlanner.class);
+                JoinOrderPlanner joPlanner = DaggerTestComponent.builder().build()
+                                                                .greedyJoinOrderPlanner();
                 CardinalityComparator cardComparator = ThresholdCardinalityComparator.DEFAULT;
                 return new DefaultFilterJoinPlanner(cardComparator, joPlanner);
             },
-            () -> injector.getInstance(DefaultFilterJoinPlanner.class)
+            () -> DaggerTestComponent.builder().build().defaultFilterJoinPlanner()
     );
 
     private static @Nonnull EndpointQueryOp q(Cardinality cardinality, Object... args) {

@@ -63,7 +63,6 @@ public class InMemoryHashJoinResults extends AbstractResults implements Results 
         Set<String> allVars = Stream.concat(smaller.getVarNames().stream(),
                                             larger.getVarNames().stream()).collect(toSet());
         Preconditions.checkArgument(allVars.containsAll(joinVars));
-        Preconditions.checkArgument(allVars.containsAll(resultVars));
 
         this.hashTable = new CrudeSolutionHashTable(joinVars, 512);
         this.smaller = smaller;

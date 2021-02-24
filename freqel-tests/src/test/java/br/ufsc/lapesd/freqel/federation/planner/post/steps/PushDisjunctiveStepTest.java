@@ -9,13 +9,13 @@ import br.ufsc.lapesd.freqel.algebra.leaf.DQueryOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.DQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.DisjunctiveProfile;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLDisjunctiveProfile;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Optional;
 import br.ufsc.lapesd.freqel.util.ref.EmptyRefSet;
 import org.apache.jena.query.QueryExecutionFactory;
@@ -35,7 +35,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
 @Test(groups = {"fast"})
-public class EndpointPushStepTest implements TestContext {
+public class PushDisjunctiveStepTest implements TestContext {
     private static final Model emptyModel = ModelFactory.createDefaultModel();
 
     private static final DQEndpoint dq1 = ARQEndpoint.forModel(ModelFactory.createDefaultModel());
@@ -133,7 +133,7 @@ public class EndpointPushStepTest implements TestContext {
             expected = in;
         boolean expectSame = expected == in;
         expected = TreeUtils.deepCopy(expected);
-        Op actual = new EndpointPushStep().plan(in, EmptyRefSet.emptySet());
+        Op actual = new PushDisjunctiveStep().plan(in, EmptyRefSet.emptySet());
 
         assertEquals(actual, expected);
         if (expectSame)

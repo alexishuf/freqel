@@ -14,13 +14,12 @@ import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.inject.Inject;
 import java.util.*;
 
 public abstract class PruningReplacementGenerator implements ReplacementGenerator {
     private final @Nonnull ReplacementPruner pruner;
 
-    @Inject public PruningReplacementGenerator(@Nonnull ReplacementPruner pruner) {
+    public PruningReplacementGenerator(@Nonnull ReplacementPruner pruner) {
         this.pruner = pruner;
     }
 

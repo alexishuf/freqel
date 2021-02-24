@@ -10,6 +10,7 @@ import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
+import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.federation.planner.post.steps.PushDistinctStep;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
@@ -165,7 +166,7 @@ public class PushDistinctStepTest implements TestContext {
     @Test(dataProvider = "testOnDefaultFederationData")
     public void testOnDefaultFederation(@Nonnull String sparql, @Nonnull List<String> sources,
                                         @Nonnull Set<Solution> expected) throws SPARQLParseException {
-        try (Federation federation = Federation.createDefault()) {
+        try (Federation federation = Freqel.createFederation()) {
             for (String file : sources) {
                 Model model = new TBoxSpec().addResource(getClass(), file).loadModel();
                 ARQEndpoint ep = ARQEndpoint.forModel(model);

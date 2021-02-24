@@ -4,6 +4,8 @@ import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.cardinality.CardinalityComparator;
 
 import javax.annotation.Nonnull;
+import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Provider;
 
 import static br.ufsc.lapesd.freqel.algebra.Cardinality.Reliability.*;
@@ -25,7 +27,8 @@ public class ThresholdCardinalityComparator implements CardinalityComparator {
         this(256, 2048);
     }
 
-    public ThresholdCardinalityComparator(int large, int huge) {
+    @Inject public ThresholdCardinalityComparator(@Named("largeCardinalityThreshold") int large,
+                                                  @Named("hugeCardinalityThreshold") int huge) {
         this.large = large;
         this.huge = huge;
     }

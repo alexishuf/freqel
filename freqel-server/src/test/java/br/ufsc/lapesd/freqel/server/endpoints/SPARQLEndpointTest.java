@@ -3,6 +3,7 @@ package br.ufsc.lapesd.freqel.server.endpoints;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
+import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.server.utils.PercentEncoder;
@@ -67,7 +68,7 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
 
     @Override
     protected Application configure() {
-        federation = Federation.createDefault();
+        federation = Freqel.createFederation();
         federation.addSource(getSource("../../rdf-1.nt"));
         return new ResourceConfig()
                 .property(Federation.class.getName(), federation)

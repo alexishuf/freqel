@@ -16,6 +16,7 @@ import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -62,6 +63,8 @@ public class QuickSelectivityHeuristic implements CardinalityHeuristic {
         int sum = a + b;
         return (sum >> 1) + (sum >> 4) + 1; // avg + 6.25% of sum + 1
     }
+
+    @Inject public QuickSelectivityHeuristic() { }
 
     @Override
     public @Nonnull Cardinality estimate(@Nonnull CQuery query, @Nullable TPEndpoint endpoint) {

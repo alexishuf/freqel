@@ -4,17 +4,17 @@ import br.ufsc.lapesd.freqel.ResultsAssert;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
 import br.ufsc.lapesd.freqel.federation.execution.PlanExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.model.term.Lit;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.query.endpoint.Capability;
 import br.ufsc.lapesd.freqel.query.modifiers.Optional;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.ResultsCloseException;
 import br.ufsc.lapesd.freqel.query.results.Solution;
@@ -23,7 +23,6 @@ import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
 import br.ufsc.lapesd.freqel.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.freqel.util.CollectionUtils;
-import com.google.inject.Injector;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.vocabulary.FOAF;
@@ -49,9 +48,8 @@ import static org.testng.Assert.assertTrue;
 
 public class JoinResultsTest implements TestContext {
 
-    public static final Injector injector = SingletonSourceFederation.getInjector();
-    public static final QueryOpExecutor opExecutor = injector.getInstance(QueryOpExecutor.class);
-    public static final PlanExecutor planExecutor = injector.getInstance(PlanExecutor.class);
+    public static final QueryOpExecutor opExecutor = DaggerTestComponent.builder().build().queryOpExecutor();
+    public static final PlanExecutor planExecutor = DaggerTestComponent.builder().build().planExecutor();
 
     public static abstract class JoinFactory
             implements BiFunction<EndpointQueryOp, EndpointQueryOp, Results> {

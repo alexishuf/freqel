@@ -16,7 +16,9 @@ public class SourceLoadRegistryTest {
     }
 
     private long countLoaderInstances(@Nonnull Class<? extends SourceLoader> cls) {
-        Map<String, SourceLoader> map = SourceLoaderRegistry.getDefault().getLoaders();
+        SourceLoaderRegistry registry = new SourceLoaderRegistry();
+        registry.registerAllSPIs();
+        Map<String, SourceLoader> map = registry.getLoaders();
         return map.values().stream().filter(cls::isInstance).count();
     }
 }

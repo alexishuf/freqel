@@ -8,13 +8,12 @@ import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.JenaSolution;
-import br.ufsc.lapesd.freqel.query.TPEndpointTest;
-import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
-import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
+import br.ufsc.lapesd.freqel.query.TPEndpointTest;
+import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.CollectionResults;
@@ -50,7 +49,7 @@ import static br.ufsc.lapesd.freqel.ResultsAssert.assertExpectedResults;
 import static br.ufsc.lapesd.freqel.SPARQLAssert.assertTripleUniverse;
 import static br.ufsc.lapesd.freqel.SPARQLAssert.assertVarsUniverse;
 import static br.ufsc.lapesd.freqel.algebra.util.TreeUtils.streamPreOrder;
-import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
+import static br.ufsc.lapesd.freqel.federation.Freqel.createFederation;
 import static br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators.uncloseable;
 import static br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators.withDescription;
 import static br.ufsc.lapesd.freqel.testgen.LRBTestResourcesGenerator.parseResults;
@@ -280,15 +279,16 @@ public class LargeRDFBenchSelfTest {
             Op root = SPARQLParser.tolerant().parse(stream);
             ARQEndpoint ep = ARQEndpoint.forModel(allData);
             Results actual;
+            List<Solution> actualList = new ArrayList<>();
             if (root instanceof QueryOp) {
                 actual = ep.query(((QueryOp) root).getQuery());
+                actual.forEachRemainingThenClose(actualList::add);
             } else {
                 try (Federation federation = createFederation(withDescription(ep, new SelectDescription(ep)))) {
                     actual = federation.query(root);
+                    actual.forEachRemainingThenClose(actualList::add);
                 }
             }
-            List<Solution> actualList = new ArrayList<>();
-            actual.forEachRemainingThenClose(actualList::add);
             assertTrue(actualList.containsAll(expected.getCollection()), "Missing solutions");
             //noinspection SuspiciousMethodCalls
             assertTrue(expected.getCollection().containsAll(actualList), "Unexpected solutions");
@@ -309,16 +309,16 @@ public class LargeRDFBenchSelfTest {
 
             Op root = SPARQLParser.tolerant().parse(stream);
             Results actual;
+            List<Solution> actualList = new ArrayList<>();
             if (root instanceof QueryOp) {
                 actual = client.query(((QueryOp) root).getQuery());
+                actual.forEachRemainingThenClose(actualList::add);
             } else {
-//                client.setDescription(new SelectDescription(client));
                 try (Federation federation = createFederation(uncloseable(client))) {
                     actual = federation.query(root);
+                    actual.forEachRemainingThenClose(actualList::add);
                 }
             }
-            List<Solution> actualList = new ArrayList<>();
-            actual.forEachRemainingThenClose(actualList::add);
             assertTrue(actualList.containsAll(expected.getCollection()), "Missing solutions");
             //noinspection SuspiciousMethodCalls
             assertTrue(expected.getCollection().containsAll(actualList), "Unexpected solutions");
@@ -347,7 +347,7 @@ public class LargeRDFBenchSelfTest {
 
     @Test
     public void testB4FilterPushedDown() throws IOException, SPARQLParseException {
-        try (Federation federation = Federation.createDefault()) {
+        try (Federation federation = createFederation()) {
             for (String filename : DATA_FILENAMES) {
                 ARQEndpoint ep = ARQEndpoint.forModel(loadData(filename));
                 federation.addSource(ep.setDescription(new SelectDescription(ep)));

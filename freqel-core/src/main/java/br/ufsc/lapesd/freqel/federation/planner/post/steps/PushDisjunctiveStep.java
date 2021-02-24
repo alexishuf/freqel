@@ -15,7 +15,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 
-public class EndpointPushStep implements PlannerStep {
+public class PushDisjunctiveStep implements PlannerStep {
     @Override
     public @Nonnull Op plan(@Nonnull Op root, @Nonnull RefSet<Op> shared) {
         if (isTrivial(root))

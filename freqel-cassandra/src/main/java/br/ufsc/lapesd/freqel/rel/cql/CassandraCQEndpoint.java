@@ -8,8 +8,7 @@ import br.ufsc.lapesd.freqel.description.TrapDescription;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
-import br.ufsc.lapesd.freqel.federation.planner.ConjunctivePlanner;
+import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.std.StdPlain;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
@@ -56,7 +55,6 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.*;
 
-import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
 
 public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(CassandraCQEndpoint.class);
@@ -70,7 +68,6 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
     private @Nonnull final RelationalMapping mapping;
     private @Nonnull final CqlGenerator cqlGenerator;
     private @Nullable Federation federation;
-    private @Nullable ConjunctivePlanner planner;
 
     /* --- --- --- Constructor and builder --- --- --- */
 
@@ -460,7 +457,7 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
 
     private @Nonnull Federation getFederation() {
         if (federation == null)
-            federation = createFederation(EndpointDecorators.uncloseable(this));
+            federation = Freqel.createFederation(EndpointDecorators.uncloseable(this));
         return federation;
     }
 
@@ -481,13 +478,13 @@ public class CassandraCQEndpoint extends AbstractTPEndpoint implements CQEndpoin
                 cQuery.mutateModifiers().add(Distinct.INSTANCE);
             leaves.add(new EndpointQueryOp(this, cQuery));
         }
+        Federation federation = getFederation();
         // optimize as usual, then execute under the inner federation
-        ConjunctivePlanner planner = SingletonSourceFederation.getInjector().getInstance(ConjunctivePlanner.class);
-        Op plan = planner.plan(query, leaves);
+        Op plan = federation.getConjunctivePlanner().plan(query, leaves);
         ModifiersSet planModifiers = plan.modifiers();
         planModifiers.addAll(index.getCrossStarFilters());
         TreeUtils.copyNonFilter(plan, query.getModifiers());
-        return getFederation().execute(plan);
+        return federation.execute(plan);
     }
 
     /* --- --- --- Object methods --- --- --- */

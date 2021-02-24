@@ -7,10 +7,12 @@ import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.RelativeCardinalityAdder;
-import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.freqel.cardinality.impl.*;
+import br.ufsc.lapesd.freqel.description.molecules.Atom;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.federation.performance.NoOpPerformanceListener;
+import br.ufsc.lapesd.freqel.federation.planner.equiv.DefaultEquivCleaner;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.Var;
@@ -21,7 +23,6 @@ import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.freqel.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.freqel.webapis.EmptyWebApiEndpoint;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
@@ -63,7 +64,7 @@ public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
                 NoOpPerformanceListener.INSTANCE, NoCardinalityEnsemble.INSTANCE,
                 RelativeCardinalityAdder.DEFAULT,
                 new AverageJoinCardinalityEstimator(ThresholdCardinalityComparator.DEFAULT),
-                GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
+                DefaultEquivCleaner.INSTANCE);
         return planner.createData(graph);
     }
 
@@ -331,7 +332,7 @@ public class GreedyJoinOrderConjunctivePlannerTest implements TestContext {
                 = new GreedyJoinOrderPlanner(NoOpPerformanceListener.INSTANCE,
                                              NoCardinalityEnsemble.INSTANCE,
                                              RelativeCardinalityAdder.DEFAULT, joinCardinalityEstimator,
-                                             GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
+                                             DefaultEquivCleaner.INSTANCE);
         JoinGraph graph = new ArrayJoinGraph(RefIndexSet.fromRefDistinct(Scenario1.nodes));
         Op root = planner.plan(graph, Scenario1.nodes);
 

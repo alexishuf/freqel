@@ -5,9 +5,14 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.RelativeCardinalityAdder;
-import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.cardinality.impl.DefaultInnerCardinalityComputer;
 import br.ufsc.lapesd.freqel.cardinality.impl.ThresholdCardinalityComparator;
+import br.ufsc.lapesd.freqel.description.molecules.Atom;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
+import br.ufsc.lapesd.freqel.federation.FreqelConfig;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.modules.PlanningModule;
+import br.ufsc.lapesd.freqel.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.paths.JoinComponent;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
@@ -17,8 +22,6 @@ import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.freqel.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Sets;
@@ -73,7 +76,9 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
     private static @Nonnull JoinPathsConjunctivePlanner createPathsPlanner() {
         return new JoinPathsConjunctivePlanner(new ArbitraryJoinOrderPlanner(),
                 new DefaultInnerCardinalityComputer(ThresholdCardinalityComparator.DEFAULT,
-                                                    RelativeCardinalityAdder.DEFAULT));
+                                                    RelativeCardinalityAdder.DEFAULT),
+                PlanningModule.prePlanner(null, FreqelConfig.createDefault(),
+                        NoOpPerformanceListener.INSTANCE));
     }
 
     @DataProvider

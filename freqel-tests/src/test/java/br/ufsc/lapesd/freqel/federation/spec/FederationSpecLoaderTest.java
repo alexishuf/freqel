@@ -4,7 +4,6 @@ import br.ufsc.lapesd.freqel.PlanAssert;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.federation.spec.source.SourceLoaderRegistry;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.TPEndpointTest;
@@ -75,7 +74,7 @@ public class FederationSpecLoaderTest implements TestContext {
                     "  - loader: sparql\n" +
                     "    uri: %s\n" +
                     "    description: select\n" +
-                    "sources-cache: cache\n", fusekiEndpoint.uri);
+                    "sources-cache-dir: cache\n", fusekiEndpoint.uri);
         }
 
         try (Federation federation = new FederationSpecLoader().load(config)) {

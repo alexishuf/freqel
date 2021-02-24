@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.inject.Named;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,9 +54,9 @@ public class HeuristicEndpointReasoner implements EndpointReasoner {
 
     @Inject
     public HeuristicEndpointReasoner(@Nonnull ReplacementGenerator replacementGenerator,
-                                     @Nonnull CardinalityHeuristic cardinalityHeuristic) {
+                                     @Nonnull @Named("fast") CardinalityHeuristic heuristic) {
         this.replacementGenerator = replacementGenerator;
-        this.cardinalityHeuristic = cardinalityHeuristic;
+        this.cardinalityHeuristic = heuristic;
     }
 
     public int getEstimationThreshold() {
@@ -65,7 +66,7 @@ public class HeuristicEndpointReasoner implements EndpointReasoner {
         this.estimationThreshold = estimationThreshold;
     }
 
-    @Override public void offerTBox(@Nonnull TBox tBox) {
+    @Override public void setTBox(@Nonnull TBox tBox) {
         this.tBox = tBox;
         TBox old = replacementGenerator.setTBox(tBox);
         if (old != null && old != tBox)

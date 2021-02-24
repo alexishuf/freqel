@@ -4,6 +4,8 @@ import br.ufsc.lapesd.freqel.algebra.Cardinality;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Provider;
 
 import static br.ufsc.lapesd.freqel.algebra.Cardinality.Reliability.*;
@@ -22,7 +24,10 @@ public class RelativeCardinalityAdder implements CardinalityAdder {
         }
     }
 
-    public RelativeCardinalityAdder(int nonEmptyMin, double nonEmptyProportion, double unsupportedProportion) {
+    @Inject public
+    RelativeCardinalityAdder(@Named("relCardAdder.neMin") int nonEmptyMin,
+                             @Named("relCardAdder.neProportion") double nonEmptyProportion,
+                             @Named("relCardAdder.unsProportion") double unsupportedProportion) {
         this.nonEmptyMin = nonEmptyMin;
         this.nonEmptyProportion = nonEmptyProportion;
         this.unsupportedProportion = unsupportedProportion;

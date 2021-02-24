@@ -3,6 +3,7 @@ package br.ufsc.lapesd.freqel.hdt.query;
 import br.ufsc.lapesd.freqel.algebra.Cardinality;
 import br.ufsc.lapesd.freqel.description.AskDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
+import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.hdt.HDTUtils;
 import br.ufsc.lapesd.freqel.hdt.util.LoggerHDTProgressListener;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -24,17 +25,23 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.regex.Pattern;
 
 import static br.ufsc.lapesd.freqel.cardinality.EstimatePolicy.canLocal;
-import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(HDTEndpoint.class);
+    private static final Pattern URI_RX = Pattern.compile("^[^:]+:");
+
     private final @Nonnull String name;
     private final @Nonnull HDT hdt;
     private final boolean closeHDT;
@@ -53,7 +60,17 @@ public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
     }
 
     public static @Nonnull HDTEndpoint fromFile(@Nonnull String path) throws IOException {
-        return fromFile(new File(path.replaceFirst("^file:(//)?", "")));
+        if (path.startsWith("file:")) {
+            try {
+                path = new URI(path).getPath();
+            } catch (URISyntaxException e) {
+                throw new IllegalArgumentException("Bad URI:" + path);
+            }
+        }
+        File file = new File(path);
+        if (URI_RX.matcher(path).find() && !file.exists())
+            throw new FileNotFoundException("Given path ("+path+") is a non-file URI");
+        return fromFile(file);
     }
     public static @Nonnull HDTEndpoint fromFile(@Nonnull File file) throws IOException {
         ProgressListener listener = new LoggerHDTProgressListener(logger,
@@ -83,6 +100,35 @@ public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
         } catch (IOException e) {
             throw new IllegalArgumentException("Failed to load HDT from resource"+path, e);
         }
+    }
+
+    public static @Nullable HDTEndpoint tryFromFile(Object source) throws IOException {
+        File file;
+        if (source instanceof CharSequence && source.toString().startsWith("file:")) {
+            try {
+                file = Paths.get(new URI(source.toString())).toFile();
+            } catch (URISyntaxException e) {
+                logger.error("String starts with file: but is not a valid URI");
+                return null;
+            }
+        } else if (source instanceof CharSequence) {
+            file = new File(source.toString());
+        } else if (source instanceof Path) {
+            file = ((Path)source).toFile();
+        } else if (source instanceof File) {
+            file = (File) source;
+        } else {
+            logger.error("Cannot convert {} to a File", source);
+            return null;
+        }
+        try (FileInputStream in = new FileInputStream(file)) {
+            byte[] cookie = new byte[4];
+            if (in.read(cookie) != 4 || !Arrays.equals(cookie, "$HDT".getBytes(UTF_8))) {
+                logger.error("File {} does not have $HDT cookie", file);
+                return null;
+            }
+        }
+        return fromFile(file);
     }
 
     @Override public String toString() {
@@ -136,7 +182,7 @@ public class HDTEndpoint extends AbstractTPEndpoint implements TPEndpoint {
     @Override public @Nonnull Results query(@Nonnull CQuery query) {
         if (query.size() > 1) {
             if (federation == null)
-                federation = createFederation(EndpointDecorators.uncloseable(this));
+                federation = Freqel.createFederation(EndpointDecorators.uncloseable(this));
             return federation.query(query);
         } else {
             return ResultsUtils.applyModifiers(query(query.get(0)), query.getModifiers());

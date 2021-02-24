@@ -9,7 +9,9 @@ import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticAskDescription;
 import br.ufsc.lapesd.freqel.description.semantic.SemanticSelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
+import br.ufsc.lapesd.freqel.federation.FreqelConfig;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerFederationComponent;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.FederationComponent;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
@@ -23,13 +25,11 @@ import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
-import br.ufsc.lapesd.freqel.reason.tbox.*;
+import br.ufsc.lapesd.freqel.reason.tbox.NoEndpointReasoner;
+import br.ufsc.lapesd.freqel.reason.tbox.TBox;
+import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
+import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import com.google.common.collect.Lists;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Module;
-import com.google.inject.util.Modules;
 import org.apache.jena.rdf.model.Model;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
+import static br.ufsc.lapesd.freqel.federation.FreqelConfig.Key.ENDPOINT_REASONER;
 import static br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory.parseFilter;
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static br.ufsc.lapesd.freqel.query.results.impl.CollectionResults.greedy;
@@ -71,26 +72,18 @@ public class HeuristicEndpointReasonerTest implements TestContext {
 
 
     @DataProvider public @Nonnull Object[][] epReasonerData() {
-        List<Module> modules = asList(
-                new SimpleFederationModule() {
-                    @Override public @Nonnull String toString() {
-                        return "default SimpleFederationModule";
-                    }
-                },
-                new SimpleFederationModule() {
-                    @Override protected void configure() {
-                        super.configure();
-                        bind(EndpointReasoner.class).to(HeuristicEndpointReasoner.class);
-                    }
-                    @Override public @Nonnull String toString() {
-                        return "SimpleFederationModule+HeuristicEndpointReasoner";
-                    }
-                });
+        List<FederationComponent.Builder> builders = asList(
+                DaggerFederationComponent.builder(),
+                DaggerFederationComponent.builder()
+                        .overrideFreqelConfig(FreqelConfig.createDefault()
+                                .set(ENDPOINT_REASONER,
+                                     HeuristicEndpointReasoner.class))
+        );
         List<BiFunction<TPEndpoint, TBox, ? extends Description>> descriptionFactories = asList(
                 (ep, tBox) -> new SemanticSelectDescription((CQEndpoint) ep, tBox),
                 SemanticAskDescription::new
         );
-        return Lists.cartesianProduct(modules, descriptionFactories).stream().map(List::toArray)
+        return Lists.cartesianProduct(builders, descriptionFactories).stream().map(List::toArray)
                     .toArray(Object[][]::new);
     }
 
@@ -147,23 +140,15 @@ public class HeuristicEndpointReasonerTest implements TestContext {
     }
 
     @Test(dataProvider = "queryData")
-    public void testQuery(@Nonnull Module module0,
+    public void testQuery(@Nonnull FederationComponent.Builder builder,
                           @Nonnull BiFunction<TPEndpoint, TBox, Description> descriptionFactory,
                           @Nonnull Object queryObject,
                           @Nonnull Collection<Solution> expected) throws SPARQLParseException {
         String prefix = "../replacements/generators/subterm-";
-        Injector injector0 = Guice.createInjector(module0);
-        EndpointReasoner epReasoner = injector0.getInstance(EndpointReasoner.class);
         TBox tBox = loadTBox(prefix + "onto.ttl");
-        epReasoner.offerTBox(tBox);
-        Module module = Modules.override(module0).with(new AbstractModule() {
-            @Override protected void configure() {
-                bind(EndpointReasoner.class).toInstance(epReasoner);
-            }
-        });
-        Injector injector = Guice.createInjector(module);
-        Federation federation = injector.getInstance(Federation.class);
-
+        builder.overrideTBox(tBox);
+        FederationComponent component = builder.build();
+        Federation federation = component.federation();
         ARQEndpoint ep = createEndpoint(prefix + "1.ttl", tBox, descriptionFactory);
         federation.addSource(ep);
 
@@ -177,7 +162,10 @@ public class HeuristicEndpointReasonerTest implements TestContext {
         } else {
             query = (Op)queryObject;
         }
-        if (!(epReasoner instanceof NoEndpointReasoner) || query.modifiers().reasoning() == null) {
+
+        boolean isNoEndpointReasoner = component.config().get(ENDPOINT_REASONER, String.class)
+                                                .equals(NoEndpointReasoner.class.getName());
+        if (!isNoEndpointReasoner || query.modifiers().reasoning() == null) {
             Op plan = federation.plan(query);
             PlanAssert.assertPlanAnswers(plan, query, expected.isEmpty(), false);
             CollectionResults actual = greedy(federation.execute(plan));

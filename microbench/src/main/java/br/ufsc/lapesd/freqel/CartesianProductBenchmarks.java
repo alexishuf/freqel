@@ -3,10 +3,11 @@ package br.ufsc.lapesd.freqel;
 import br.ufsc.lapesd.freqel.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.deprecated.EagerCartesianOpExecutor;
-import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
+import br.ufsc.lapesd.freqel.federation.FreqelConfig;
 import br.ufsc.lapesd.freqel.federation.execution.PlanExecutor;
-import br.ufsc.lapesd.freqel.federation.execution.tree.CartesianOpExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.LazyCartesianOpExecutor;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.TestComponent;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
@@ -18,9 +19,6 @@ import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.freqel.util.FusekiProcess;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.util.Modules;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
@@ -82,28 +80,16 @@ public class CartesianProductBenchmarks {
         }
         resultsExecutor = parallelResultsExecutor ? new BufferedResultsExecutor()
                                                   : new SequentialResultsExecutor();
-        planExecutorEager = Guice.createInjector(Modules.override(new SimpleFederationModule() {
-            @Override
-            protected void configureResultsExecutor() {
-                bind(ResultsExecutor.class).toInstance(resultsExecutor);
-            }
-        }).with(new AbstractModule() {
-            @Override
-            protected void configure() {
-                bind(CartesianOpExecutor.class).to(EagerCartesianOpExecutor.class);
-            }
-        })).getInstance(PlanExecutor.class);
-        planExecutorLazy = Guice.createInjector(Modules.override(new SimpleFederationModule() {
-            @Override
-            protected void configureResultsExecutor() {
-                bind(ResultsExecutor.class).toInstance(resultsExecutor);
-            }
-        }).with(new AbstractModule() {
-            @Override
-            protected void configure() {
-                bind(CartesianOpExecutor.class).to(LazyCartesianOpExecutor.class);
-            }
-        })).getInstance(PlanExecutor.class);
+        TestComponent.Builder b = DaggerTestComponent.builder();
+        b.overrideFreqelConfig(FreqelConfig.createDefault()
+                .set(FreqelConfig.Key.CARTESIAN_OP_EXECUTOR, EagerCartesianOpExecutor.class));
+        b.overrideResultsExecutor(resultsExecutor);
+        planExecutorEager = b.build().planExecutor();
+        b = DaggerTestComponent.builder();
+        b.overrideFreqelConfig(FreqelConfig.createDefault()
+                .set(FreqelConfig.Key.CARTESIAN_OP_EXECUTOR, LazyCartesianOpExecutor.class));
+        b.overrideResultsExecutor(resultsExecutor);
+        planExecutorLazy = b.build().planExecutor();
 
         if (!local) {
             this.left = new SPARQLClient(leftFuseki.getSparqlEndpoint());

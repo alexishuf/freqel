@@ -1,16 +1,12 @@
 package br.ufsc.lapesd.freqel.federation;
 
-import br.ufsc.lapesd.freqel.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.freqel.federation.performance.SamplerRegistry;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.Metric;
-import com.google.inject.ProvidedBy;
-import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collection;
 
-@ProvidedBy(NoOpPerformanceListener.SingletonProvider.class)
 public interface PerformanceListener extends AutoCloseable {
     /**
      * Stores a sample of a value. Samples are multi-valued by default.

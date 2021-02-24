@@ -5,12 +5,9 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.CartesianOp;
 import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
-import br.ufsc.lapesd.freqel.cardinality.impl.DefaultInnerCardinalityComputer;
-import com.google.inject.ImplementedBy;
 
 import javax.annotation.Nonnull;
 
-@ImplementedBy(DefaultInnerCardinalityComputer.class)
 public interface InnerCardinalityComputer {
     @Nonnull Cardinality compute(JoinOp node);
     @Nonnull Cardinality compute(CartesianOp node);

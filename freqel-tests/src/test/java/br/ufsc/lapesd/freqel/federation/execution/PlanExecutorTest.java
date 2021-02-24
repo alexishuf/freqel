@@ -9,19 +9,17 @@ import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
-import br.ufsc.lapesd.freqel.federation.execution.tree.*;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.LazyCartesianOpExecutor;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.SimpleEmptyOpExecutor;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.SimpleQueryOpExecutor;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
+import br.ufsc.lapesd.freqel.federation.FreqelConfig;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.DefaultHashJoinOpExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.DefaultJoinOpExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.FixedBindJoinOpExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.FixedHashJoinOpExecutor;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.jena.model.term.JenaRes;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -30,20 +28,13 @@ import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.results.Results;
-import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
-import br.ufsc.lapesd.freqel.query.results.impl.SequentialResultsExecutor;
+import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.freqel.webapis.description.APIMolecule;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
-import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.webapis.requests.impl.UriTemplateExecutor;
 import com.google.common.collect.Sets;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Module;
 import org.apache.jena.rdf.model.*;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
@@ -65,6 +56,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.*;
 
+import static br.ufsc.lapesd.freqel.federation.FreqelConfig.Key.*;
+import static br.ufsc.lapesd.freqel.federation.FreqelConfig.createDefault;
 import static br.ufsc.lapesd.freqel.jena.JenaWrappers.*;
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
@@ -80,101 +73,28 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         return new StdURI("http://example.org/"+local);
     }
 
-    /* ~~~ Modules ~~~ */
-
-    public static class SimpleModule extends AbstractModule {
-        private final boolean canBindJoin;
-        public SimpleModule() {
-            this(false);
-        }
-        public SimpleModule(boolean canBindJoin) {
-            this.canBindJoin = canBindJoin;
-        }
-        public boolean canBindJoin() {return canBindJoin;}
-
-        @Override
-        protected void configure() {
-            bind(ResultsExecutor.class).to(SequentialResultsExecutor.class);
-            bind(QueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
-            bind(DQueryOpExecutor.class).to(SimpleQueryOpExecutor.class);
-            bind(UnionOpExecutor.class).to(SimpleQueryOpExecutor.class);
-            bind(SPARQLValuesTemplateOpExecutor.class).to(SimpleQueryOpExecutor.class);
-            bind(CartesianOpExecutor.class).to(LazyCartesianOpExecutor.class);
-            bind(EmptyOpExecutor.class).toInstance(SimpleEmptyOpExecutor.INSTANCE);
-            bind(PlanExecutor.class).to(InjectedExecutor.class);
-        }
-    }
-
-    public static final @Nonnull List<SimpleModule> modules = asList(
-            new SimpleModule() {
-                @Override
-                protected void configure() { //Simple* implementations
-                    super.configure();
-                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
-                    bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults.FACTORY);
-                }
-                @Override
-                public @Nonnull String toString() {
-                    return "Fixed InMemoryHashJoinResults";
-                }
-            },
-            new SimpleModule() {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
-                    bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults.FACTORY);
-                }
-                @Override
-                public @Nonnull String toString() {
-                    return "Fixed ParallelInMemoryHashJoinResults";
-                }
-            },
-            new SimpleModule() {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(JoinOpExecutor.class).to(DefaultHashJoinOpExecutor.class);
-                }
-                @Override
-                public @Nonnull String toString() {
-                    return "HashJoinNodeExecutor";
-                }
-            },
-            new SimpleModule(true) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
-                    bind(JoinOpExecutor.class).to(DefaultJoinOpExecutor.class);
-                }
-                @Override
-                public @Nonnull String toString() {
-                    return "DefaultJoinNodeExecutor";
-                }
-            },
-            new SimpleModule(true) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(JoinOpExecutor.class).to(FixedBindJoinOpExecutor.class);
-                    bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
-                }
-                @Override
-                public @Nonnull String toString() {
-                    return "Fixed SimpleBindJoinResults";
-                }
-            }
+    public static final @Nonnull List<FreqelConfig> configs = asList(
+            createDefault().set(JOIN_OP_EXECUTOR, FixedHashJoinOpExecutor.class)
+                           .set(HASH_JOIN_RESULTS_FACTORY, InMemoryHashJoinResults.Factory.class),
+            createDefault().set(JOIN_OP_EXECUTOR, FixedHashJoinOpExecutor.class)
+                           .set(HASH_JOIN_RESULTS_FACTORY, ParallelInMemoryHashJoinResults.Factory.class),
+            createDefault().set(JOIN_OP_EXECUTOR, DefaultHashJoinOpExecutor.class),
+            createDefault().set(JOIN_OP_EXECUTOR, DefaultJoinOpExecutor.class)
+                           .set(BIND_JOIN_RESULTS_FACTORY, SimpleBindJoinResults.Factory.class),
+            createDefault().set(JOIN_OP_EXECUTOR, FixedBindJoinOpExecutor.class)
+                           .set(BIND_JOIN_RESULTS_FACTORY, SimpleBindJoinResults.Factory.class)
     );
 
     @DataProvider
     public static@Nonnull Object[][] modulesData() {
-        return modules.stream().map(m -> new Object[]{m}).toArray(Object[][]::new);
+        return configs.stream().map(m -> new Object[]{m}).toArray(Object[][]::new);
     }
 
     @DataProvider
     public static@Nonnull Object[][] bindJoinModulesData() {
-        return modules.stream().filter(SimpleModule::canBindJoin)
+
+        return configs.stream()
+                .filter(c -> !c.get(JOIN_OP_EXECUTOR, String.class).endsWith("HashJoinOpExecutor"))
                 .map(m -> new Object[]{m}).toArray(Object[][]::new);
     }
 
@@ -297,81 +217,81 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         assertTrue(model.isIsomorphicWith(expected));
     }
 
-    private void test(@Nonnull Module module, @Nonnull Op root,
+    private void test(@Nonnull FreqelConfig config, @Nonnull Op root,
                       @Nonnull Set<Solution> expected) {
         Set<Solution> all = new HashSet<>();
-        PlanExecutor executor = Guice.createInjector(module).getInstance(PlanExecutor.class);
+        PlanExecutor executor = DaggerTestComponent.builder().overrideFreqelConfig(config).build().planExecutor();
         ResultsAssert.assertExpectedResults(executor.executeNode(root), expected);
     }
 
     @Test(dataProvider = "modulesData")
-    public void testSingleQueryNode(@Nonnull Module module) {
+    public void testSingleQueryNode(@Nonnull FreqelConfig config) {
         EndpointQueryOp node = new EndpointQueryOp(ep, createQuery(Alice, knows, x));
-        test(module, node, Sets.newHashSet(MapSolution.build(x, Bob)));
+        test(config, node, Sets.newHashSet(MapSolution.build(x, Bob)));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testMultiQuery(@Nonnull Module module) {
+    public void testMultiQuery(@Nonnull FreqelConfig config) {
         EndpointQueryOp q1 = new EndpointQueryOp(ep, createQuery(Alice, knows, x));
         EndpointQueryOp q2 = new EndpointQueryOp(ep, createQuery(x, knows, Bob));
         Op node = UnionOp.builder().add(q1).add(q2).build();
-        test(module, node, Sets.newHashSet(
+        test(config, node, Sets.newHashSet(
                 MapSolution.build(x, Bob),
                 MapSolution.build(x, Alice)));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testMultiQueryDifferentVars(@Nonnull Module module) {
+    public void testMultiQueryDifferentVars(@Nonnull FreqelConfig config) {
         EndpointQueryOp q1 = new EndpointQueryOp(ep, createQuery(Alice, knows, x));
         EndpointQueryOp q2 = new EndpointQueryOp(ep, createQuery(y, knows, Bob));
         Op node = UnionOp.builder().add(q1).add(q2).build();
-        test(module, node, Sets.newHashSet(
+        test(config, node, Sets.newHashSet(
                 MapSolution.build(x, Bob),
                 MapSolution.build(y, Alice)));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testCartesianProduct(@Nonnull Module module) {
+    public void testCartesianProduct(@Nonnull FreqelConfig config) {
         EndpointQueryOp left = new EndpointQueryOp(ep, createQuery(x, knows, Bob));
         EndpointQueryOp right = new EndpointQueryOp(ep, createQuery(Bob, name, y));
 
         CartesianOp node = new CartesianOp(asList(left, right));
-        test(module, node, Sets.newHashSet(
+        test(config, node, Sets.newHashSet(
                 MapSolution.builder().put("x", Alice).put("y", bob).build(),
                 MapSolution.builder().put("x", Alice).put("y", beto).build()
         ));
 
         node = new CartesianOp(asList(left, right));
-        test(module, node, Sets.newHashSet(
+        test(config, node, Sets.newHashSet(
                 MapSolution.builder().put("y", bob ).put("x", Alice).build(),
                 MapSolution.builder().put("y", beto).put("x", Alice).build()
         ));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testSingleHopPathJoin(@Nonnull Module module) {
+    public void testSingleHopPathJoin(@Nonnull FreqelConfig config) {
         EndpointQueryOp l = new EndpointQueryOp(joinsEp, createQuery(ex("h1"), knows, x));
         EndpointQueryOp r = new EndpointQueryOp(joinsEp, createQuery(x, knows, ex("h3")));
         JoinOp node = JoinOp.create(l, r);
-        test(module, node, Sets.newHashSet(
+        test(config, node, Sets.newHashSet(
                 MapSolution.build(x, ex("h2"))
         ));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testTwoHopsPathJoin(@Nonnull Module module) {
+    public void testTwoHopsPathJoin(@Nonnull FreqelConfig config) {
         EndpointQueryOp l  = new EndpointQueryOp(joinsEp, createQuery(ex("h1"), knows, x));
         EndpointQueryOp r  = new EndpointQueryOp(joinsEp, createQuery(x, knows, y));
         EndpointQueryOp rr = new EndpointQueryOp(joinsEp, createQuery(y, knows, ex("h4")));
         JoinOp lRoot = JoinOp.create(l, r);
         JoinOp root = JoinOp.create(lRoot, rr);
-        test(module, root, Sets.newHashSet(
+        test(config, root, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("h2")).put("y", ex("h3")).build()
         ));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testFiveHopsPathJoinLeftDeep(@Nonnull Module module) {
+    public void testFiveHopsPathJoinLeftDeep(@Nonnull FreqelConfig config) {
         EndpointQueryOp[] leafs = {
           /*0*/ new EndpointQueryOp(joinsEp, createQuery(ex("h1"), knows, x)),
           /*1*/ new EndpointQueryOp(joinsEp, createQuery(x, knows, y)),
@@ -383,14 +303,14 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         JoinOp j1 = JoinOp.create(j0, leafs[2]);
         JoinOp j2 = JoinOp.create(j1, leafs[3]);
         JoinOp j3 = JoinOp.create(j2, leafs[4]);
-        test(module, j3, singleton(MapSolution.builder().put(x, ex("h2"))
+        test(config, j3, singleton(MapSolution.builder().put(x, ex("h2"))
                                                         .put(y, ex("h3"))
                                                         .put(z, ex("h4"))
                                                         .put(w, ex("h5")).build()));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testFiveHopsPathJoinRightDeep(@Nonnull Module module) {
+    public void testFiveHopsPathJoinRightDeep(@Nonnull FreqelConfig config) {
         EndpointQueryOp[] leafs = {
                 /*0*/ new EndpointQueryOp(joinsEp, createQuery(ex("h1"), knows, x)),
                 /*1*/ new EndpointQueryOp(joinsEp, createQuery(x, knows, y)),
@@ -402,14 +322,14 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         JoinOp j1 = JoinOp.create(j0, leafs[2]);
         JoinOp j2 = JoinOp.create(j1, leafs[1]);
         JoinOp j3 = JoinOp.create(j2, leafs[0]);
-        test(module, j3, singleton(MapSolution.builder().put(x, ex("h2"))
+        test(config, j3, singleton(MapSolution.builder().put(x, ex("h2"))
                 .put(y, ex("h3"))
                 .put(z, ex("h4"))
                 .put(w, ex("h5")).build()));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testFiveHopsPathJoinBalanced(@Nonnull Module module) {
+    public void testFiveHopsPathJoinBalanced(@Nonnull FreqelConfig config) {
         EndpointQueryOp[] leafs = {
                 /*0*/ new EndpointQueryOp(joinsEp, createQuery(ex("h1"), knows, x)),
                 /*1*/ new EndpointQueryOp(joinsEp, createQuery(x, knows, y)),
@@ -422,14 +342,14 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         JoinOp j2 = JoinOp.create(leafs[3], leafs[4]);
         JoinOp j3 = JoinOp.create(j1, j2);
 
-        test(module, j3, singleton(MapSolution.builder().put(x, ex("h2"))
+        test(config, j3, singleton(MapSolution.builder().put(x, ex("h2"))
                                                         .put(y, ex("h3"))
                                                         .put(z, ex("h4"))
                                                         .put(w, ex("h5")).build()));
     }
 
     @Test(dataProvider = "modulesData")
-    public void testThreeHopsMultiPathsLeftDeep(@Nonnull Module module) {
+    public void testThreeHopsMultiPathsLeftDeep(@Nonnull FreqelConfig config) {
         EndpointQueryOp[] leafs = {
                 /*0*/ new EndpointQueryOp(joinsEp, createQuery(ex("src"), knows, x)),
                 /*1*/ new EndpointQueryOp(joinsEp, createQuery(x, knows, y)),
@@ -440,7 +360,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         JoinOp j1 = JoinOp.create(j0, leafs[2]);
         JoinOp j2 = JoinOp.create(j1, leafs[3]);
 
-        test(module, j2, Sets.newHashSet(
+        test(config, j2, Sets.newHashSet(
                 MapSolution.builder().put(x, ex("i1")).put(y, ex("i2")).put(z, ex("i3")).build(),
                 MapSolution.builder().put(x, ex("j1")).put(y, ex("j2")).put(z, ex("j3")).build(),
                 MapSolution.builder().put(x, ex("k1")).put(y, ex("i2")).put(z, ex("i3")).build()
@@ -448,7 +368,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData")
-    public void testThreeHopsMultiPathsRightDeep(@Nonnull Module module) {
+    public void testThreeHopsMultiPathsRightDeep(@Nonnull FreqelConfig config) {
         EndpointQueryOp[] leafs = {
                 /*0*/ new EndpointQueryOp(joinsEp, createQuery(ex("src"), knows, x)),
                 /*1*/ new EndpointQueryOp(joinsEp, createQuery(x, knows, y)),
@@ -459,7 +379,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         JoinOp j1 = JoinOp.create(leafs[1], j0);
         JoinOp j2 = JoinOp.create(leafs[0], j1);
 
-        test(module, j2, Sets.newHashSet(
+        test(config, j2, Sets.newHashSet(
                 MapSolution.builder().put(x, ex("i1")).put(y, ex("i2")).put(z, ex("i3")).build(),
                 MapSolution.builder().put(x, ex("j1")).put(y, ex("j2")).put(z, ex("j3")).build(),
                 MapSolution.builder().put(x, ex("k1")).put(y, ex("i2")).put(z, ex("i3")).build()
@@ -467,7 +387,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData")
-    public void testThreeHopsMultiPathsBalanced(@Nonnull Module module) {
+    public void testThreeHopsMultiPathsBalanced(@Nonnull FreqelConfig config) {
         EndpointQueryOp[] leafs = {
                 /*0*/ new EndpointQueryOp(joinsEp, createQuery(ex("src"), knows, x)),
                 /*1*/ new EndpointQueryOp(joinsEp, createQuery(x, knows, y)),
@@ -478,7 +398,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         JoinOp j1 = JoinOp.create(leafs[2], leafs[3]);
         JoinOp j2 = JoinOp.create(j0, j1);
 
-        test(module, j2, Sets.newHashSet(
+        test(config, j2, Sets.newHashSet(
                 MapSolution.builder().put(x, ex("i1")).put(y, ex("i2")).put(z, ex("i3")).build(),
                 MapSolution.builder().put(x, ex("j1")).put(y, ex("j2")).put(z, ex("j3")).build(),
                 MapSolution.builder().put(x, ex("k1")).put(y, ex("i2")).put(z, ex("i3")).build()
@@ -486,11 +406,11 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData")
-    public void testGetOrderAndConsumer(@Nonnull Module module) {
+    public void testGetOrderAndConsumer(@Nonnull FreqelConfig config) {
         EndpointQueryOp l = new EndpointQueryOp(joinsEp, createQuery(x, type, ex("Order")));
         EndpointQueryOp r = new EndpointQueryOp(joinsEp, createQuery(x, ex("hasConsumer"), y));
         JoinOp join = JoinOp.create(l, r);
-        test(module, join, Sets.newHashSet(
+        test(config, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("order/1")).put("y", ex("consumer/1")).build(),
                 MapSolution.builder().put("x", ex("order/2")).put("y", ex("consumer/2")).build(),
                 MapSolution.builder().put("x", ex("order/3")).put("y", ex("consumer/3")).build(),
@@ -504,13 +424,13 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData")
-    public void testGetOrderAndPremiumConsumer(@Nonnull Module module) {
+    public void testGetOrderAndPremiumConsumer(@Nonnull FreqelConfig config) {
         EndpointQueryOp l = new EndpointQueryOp(joinsEp, createQuery(x, type, ex("Order")));
         EndpointQueryOp r = new EndpointQueryOp(joinsEp, createQuery(x, ex("hasConsumer"), y));
         EndpointQueryOp rr = new EndpointQueryOp(joinsEp, createQuery(y, type, ex("PremiumConsumer")));
         JoinOp rightRoot = JoinOp.create(r, rr);
         JoinOp join = JoinOp.create(l, rightRoot);
-        test(module, join, Sets.newHashSet(
+        test(config, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("order/2")).put("y", ex("consumer/2")).build(),
                 MapSolution.builder().put("x", ex("order/3")).put("y", ex("consumer/3")).build(),
                 MapSolution.builder().put("x", ex("order/4")).put("y", ex("consumer/4")).build()
@@ -518,14 +438,14 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData")
-    public void testGetOrderAndConsumerTypeWithProjection(@Nonnull Module module) {
+    public void testGetOrderAndConsumerTypeWithProjection(@Nonnull FreqelConfig config) {
         EndpointQueryOp a = new EndpointQueryOp(joinsEp, createQuery(x, type, ex("Order")));
         EndpointQueryOp b = new EndpointQueryOp(joinsEp, createQuery(x, ex("hasConsumer"), y));
         EndpointQueryOp c = new EndpointQueryOp(joinsEp, createQuery(y, type, z));
         JoinOp leftBuilder = JoinOp.create(a, b);
         JoinOp root = JoinOp.create(leftBuilder, c);
         root.modifiers().add(Projection.of("x", "z"));
-        test(module, root, Sets.newHashSet(
+        test(config, root, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("order/1")).put("z", ex("Consumer")).build(),
                 MapSolution.builder().put("x", ex("order/2")).put("z", ex("Consumer")).build(),
                 MapSolution.builder().put("x", ex("order/3")).put("z", ex("Consumer")).build(),
@@ -542,11 +462,11 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData")
-    public void testGetQuotesAndClients(@Nonnull Module module) {
+    public void testGetQuotesAndClients(@Nonnull FreqelConfig config) {
         EndpointQueryOp l = new EndpointQueryOp(joinsEp, createQuery(x, type, ex("Quote")));
         EndpointQueryOp r = new EndpointQueryOp(joinsEp, createQuery(x, ex("hasClient"), y));
         JoinOp join = JoinOp.create(l, r);
-        test(module, join, Sets.newHashSet(
+        test(config, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("quote/1")).put("y", ex("client/1")).build(),
                 MapSolution.builder().put("x", ex("quote/2")).put("y", ex("client/1")).build(),
                 MapSolution.builder().put("x", ex("quote/3")).put("y", ex("client/1")).build(),
@@ -560,18 +480,18 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData")
-    public void testProductAndCostumer(@Nonnull Module module) {
+    public void testProductAndCostumer(@Nonnull FreqelConfig config) {
         EndpointQueryOp l = new EndpointQueryOp(joinsEp, createQuery(x, ex("soldTo"), y));
         EndpointQueryOp r = new EndpointQueryOp(joinsEp, createQuery(y, type, ex("Costumer")));
         JoinOp join = JoinOp.create(l, r);
-        test(module, join, Sets.newHashSet(
+        test(config, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("product/3")).put("y", ex("costumer/1")).build(),
                 MapSolution.builder().put("x", ex("product/4")).put("y", ex("costumer/2")).build(),
                 MapSolution.builder().put("x", ex("product/5")).put("y", ex("costumer/3")).build()
         ));
 
         join = JoinOp.create(r, l);
-        test(module, join, Sets.newHashSet(
+        test(config, join, Sets.newHashSet(
                 MapSolution.builder().put("x", ex("product/3")).put("y", ex("costumer/1")).build(),
                 MapSolution.builder().put("x", ex("product/4")).put("y", ex("costumer/2")).build(),
                 MapSolution.builder().put("x", ex("product/5")).put("y", ex("costumer/3")).build()
@@ -579,12 +499,12 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData")
-    public void testProductAndCostumerProjectingProduct(@Nonnull Module module) {
+    public void testProductAndCostumerProjectingProduct(@Nonnull FreqelConfig config) {
         EndpointQueryOp l = new EndpointQueryOp(joinsEp, createQuery(x, ex("soldTo"), y));
         EndpointQueryOp r = new EndpointQueryOp(joinsEp, createQuery(y, type, ex("Costumer")));
         JoinOp join = JoinOp.create(l, r);
         join.modifiers().add(Projection.of("x"));
-        test(module, join, Sets.newHashSet(
+        test(config, join, Sets.newHashSet(
                 MapSolution.build(x, ex("product/3")),
                 MapSolution.build(x, ex("product/4")),
                 MapSolution.build(x, ex("product/5"))
@@ -592,7 +512,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
         join = JoinOp.create(r, l);
         join.modifiers().add(Projection.of("x"));
-        test(module, join, Sets.newHashSet(
+        test(config, join, Sets.newHashSet(
                 MapSolution.build(x, ex("product/3")),
                 MapSolution.build(x, ex("product/4")),
                 MapSolution.build(x, ex("product/5"))
@@ -600,12 +520,12 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData")
-    public void testProductAndCostumerProjecting(@Nonnull Module module) {
+    public void testProductAndCostumerProjecting(@Nonnull FreqelConfig config) {
         EndpointQueryOp l = new EndpointQueryOp(joinsEp, createQuery(x, ex("soldTo"), y));
         EndpointQueryOp r = new EndpointQueryOp(joinsEp, createQuery(y, type, ex("Costumer")));
         JoinOp join = JoinOp.create(l, r);
         join.modifiers().add(Projection.of("y"));
-        test(module, join, Sets.newHashSet(
+        test(config, join, Sets.newHashSet(
                 MapSolution.build(y, ex("costumer/1")),
                 MapSolution.build(y, ex("costumer/2")),
                 MapSolution.build(y, ex("costumer/3"))
@@ -613,7 +533,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
 
         join = JoinOp.create(r, l);
         join.modifiers().add(Projection.of("y"));
-        test(module, join, Sets.newHashSet(
+        test(config, join, Sets.newHashSet(
                 MapSolution.build(y, ex("costumer/1")),
                 MapSolution.build(y, ex("costumer/2")),
                 MapSolution.build(y, ex("costumer/3"))
@@ -621,30 +541,30 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     @Test(dataProvider = "modulesData") //no joins, so any module will do
-    public void testQueryApi(@Nonnull Module module) {
+    public void testQueryApi(@Nonnull FreqelConfig config) {
         StdURI consumer1 = ex("consumer/1");
         EndpointQueryOp node = new EndpointQueryOp(typeEp,
                 createQuery(consumer1, AtomInputAnnotation.asRequired(typedThing, "uri").get(),
                             type, x, AtomAnnotation.of(typeAtom)));
-        test(module, node, singleton(MapSolution.build(x, ex("Consumer"))));
+        test(config, node, singleton(MapSolution.build(x, ex("Consumer"))));
     }
 
     @Test(dataProvider = "bindJoinModulesData")
-    public void testBindJoinServiceAndTriple(@Nonnull Module module) {
+    public void testBindJoinServiceAndTriple(@Nonnull FreqelConfig config) {
         EndpointQueryOp q1 = new EndpointQueryOp(joinsEp, createQuery(ex("order/1"), ex("hasConsumer"), x));
         EndpointQueryOp q2 = new EndpointQueryOp(typeEp,
                 createQuery(x, AtomInputAnnotation.asRequired(typedThing, "uri").get(), type, y, AtomAnnotation.of(typeAtom)));
-        test(module, JoinOp.create(q1, q2), singleton(
+        test(config, JoinOp.create(q1, q2), singleton(
                 MapSolution.builder().put(x, ex("consumer/1")).put(y, ex("Consumer")).build()
         ));
         // order under the JoinNode should be irrelevant
-        test(module, JoinOp.create(q2, q1), singleton(
+        test(config, JoinOp.create(q2, q1), singleton(
                 MapSolution.builder().put(x, ex("consumer/1")).put(y, ex("Consumer")).build()
         ));
     }
 
     @Test(dataProvider = "bindJoinModulesData")
-    public void testSinglePathQueryWithThreeServices(@Nonnull Module module) {
+    public void testSinglePathQueryWithThreeServices(@Nonnull FreqelConfig config) {
         EndpointQueryOp n1 = new EndpointQueryOp(poEP, createQuery(
                 ex("h1"), AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, x, AtomAnnotation.of(knowsAtom)));
         EndpointQueryOp n2 = new EndpointQueryOp(poEP,
@@ -653,17 +573,17 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
                 y, AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, z, AtomAnnotation.of(knowsAtom)));
         JoinOp j1 = JoinOp.create(n1, n2);
         JoinOp j2 = JoinOp.create(j1, n3);
-        test(module, j2, singleton(
+        test(config, j2, singleton(
                 MapSolution.builder().put(x, ex("h2")).put(y, ex("h3")).put(z, ex("h4")).build()));
 
         // project at root
         JoinOp j3 = JoinOp.create(j1, n3);
         j3.modifiers().add(Projection.of("z"));
-        test(module, j3, singleton(MapSolution.build(z, ex("h4"))));
+        test(config, j3, singleton(MapSolution.build(z, ex("h4"))));
     }
 
     @Test(dataProvider = "bindJoinModulesData")
-    public void testMultiPathQueryWithFourServices(@Nonnull Module module) {
+    public void testMultiPathQueryWithFourServices(@Nonnull FreqelConfig config) {
         EndpointQueryOp n1 = new EndpointQueryOp(poEP, createQuery(
                 ex("src"), AtomInputAnnotation.asRequired(poThing, "uri").get(), knows, x, AtomAnnotation.of(knowsAtom)));
         EndpointQueryOp n2 = new EndpointQueryOp(poEP, createQuery(
@@ -676,7 +596,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         JoinOp j2 = JoinOp.create(n3, n4);
         JoinOp j3 = JoinOp.create(j1, j2);
         j3.modifiers().add(Projection.of("x", "w"));
-        test(module, j3, Sets.newHashSet(
+        test(config, j3, Sets.newHashSet(
                 MapSolution.builder().put(x, ex("i1")).put(w, ex("dst")).build(),
                 MapSolution.builder().put(x, ex("j1")).put(w, ex("dst")).build(),
                 MapSolution.builder().put(x, ex("k1")).put(w, ex("dst")).build()

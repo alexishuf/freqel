@@ -1,8 +1,8 @@
 package br.ufsc.lapesd.freqel.benchmark.impl;
 
 import br.ufsc.lapesd.freqel.algebra.Op;
-import br.ufsc.lapesd.freqel.util.BenchmarkUtils;
 import br.ufsc.lapesd.freqel.federation.Federation;
+import br.ufsc.lapesd.freqel.federation.FreqelConfig;
 import br.ufsc.lapesd.freqel.federation.PerformanceListener;
 import br.ufsc.lapesd.freqel.federation.performance.ThreadedPerformanceListener;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.Metrics;
@@ -13,8 +13,8 @@ import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.CollectionResults;
 import br.ufsc.lapesd.freqel.server.sparql.impl.CSVResultsFormatter;
+import br.ufsc.lapesd.freqel.util.BenchmarkUtils;
 import com.google.common.base.Stopwatch;
-import com.google.inject.AbstractModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,9 +32,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static br.ufsc.lapesd.freqel.federation.FreqelConfig.Key.PERFORMANCE_LISTENER;
 import static br.ufsc.lapesd.freqel.server.sparql.impl.CSVResultsFormatter.CSV_TYPE;
 import static br.ufsc.lapesd.freqel.server.sparql.impl.CSVResultsFormatter.TSV_TYPE;
 
+@SuppressWarnings("unused")
 public class QueryExperiment {
     private static final Logger logger = LoggerFactory.getLogger(QueryExperiment.class);
 
@@ -87,6 +89,7 @@ public class QueryExperiment {
         return onlyPlan;
     }
 
+    @SuppressWarnings("unused")
     public static class Result {
         private @Nonnull String name;
         private @Nonnull LocalDateTime timestamp;
@@ -282,21 +285,18 @@ public class QueryExperiment {
 
     public @Nonnull Result execute(int run) throws IOException, FederationSpecException {
         LocalDateTime timestamp = LocalDateTime.now(ZoneId.systemDefault());
-        PerformanceListener perf = new ThreadedPerformanceListener();
+
         FederationSpecLoader loader = new FederationSpecLoader();
-        loader.overrideWith(
-                new AbstractModule() {
-                    @Override
-                    protected void configure() {
-                        bind(PerformanceListener.class).toInstance(perf);
-                    }
-                });
+        loader.addConfig(FreqelConfig.createDefault()
+                                     .set(PERFORMANCE_LISTENER, ThreadedPerformanceListener.class));
         CollectionResults collResults = null;
         Stopwatch sw;
-        try (TimeSampler ignored = Metrics.COOLDOWN_MS.createThreadSampler(perf)) {
-            BenchmarkUtils.preheatCooldown();
-        }
+        PerformanceListener perf;
         try (Federation federation = loader.load(federationConfig)) {
+            perf = federation.getPerformanceListener();
+            try (TimeSampler ignored = Metrics.COOLDOWN_MS.createThreadSampler(perf)) {
+                BenchmarkUtils.preheatCooldown();
+            }
             federation.initAllSources(5, TimeUnit.MINUTES);
             sw = Stopwatch.createStarted();
             Op plan = federation.plan(query);

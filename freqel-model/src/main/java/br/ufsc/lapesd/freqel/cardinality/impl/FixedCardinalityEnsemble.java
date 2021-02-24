@@ -8,11 +8,13 @@ import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.inject.Inject;
+import javax.inject.Named;
 
 public class FixedCardinalityEnsemble implements CardinalityEnsemble {
     private final @Nonnull CardinalityHeuristic heuristic;
 
-    public FixedCardinalityEnsemble(@Nonnull CardinalityHeuristic heuristic) {
+    @Inject public FixedCardinalityEnsemble(@Named("fast") @Nonnull CardinalityHeuristic heuristic) {
         this.heuristic = heuristic;
     }
 

@@ -11,11 +11,15 @@ import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
+import br.ufsc.lapesd.freqel.federation.FreqelConfig;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.TestComponent;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.ArbitraryJoinOrderPlanner;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.GreedyJoinOrderPlanner;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.BitsetConjunctivePlanner;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerDispatcher;
+import br.ufsc.lapesd.freqel.federation.planner.equiv.DefaultEquivCleaner;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -34,8 +38,6 @@ import br.ufsc.lapesd.freqel.webapis.TransparencyService;
 import br.ufsc.lapesd.freqel.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
 import com.google.common.collect.Sets;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.testng.annotations.DataProvider;
@@ -94,15 +96,16 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         suppliers = new ArrayList<>();
         for (Class<? extends ConjunctivePlanner> p : plannerClasses) {
             for (Class<? extends JoinOrderPlanner> op : joinOrderPlannerClasses) {
-                Supplier<ConjunctivePlanner> supplier = () -> Guice.createInjector(new AbstractModule() {
-                            @Override
-                            protected void configure() {
-                                bind(ConjunctivePlanner.class).to(p);
-                                if (p.equals(JoinPathsConjunctivePlanner.class) && op.equals(GreedyJoinOrderPlanner.class))
-                                    bind(GreedyJoinOrderPlanner.EquivCleaner.class).toInstance(GreedyJoinOrderPlanner.DefaultEquivCleaner.INSTANCE);
-                                bind(JoinOrderPlanner.class).to(op);
-                            }
-                        }).getInstance(ConjunctivePlanner.class);
+                Supplier<ConjunctivePlanner> supplier = () -> {
+                    FreqelConfig config = FreqelConfig.createDefault();
+                    config.set(FreqelConfig.Key.CONJUNCTIVE_PLANNER, p);
+                    if (p.equals(JoinPathsConjunctivePlanner.class) && op.equals(GreedyJoinOrderPlanner.class))
+                        config.set(FreqelConfig.Key.EQUIV_CLEANER, DefaultEquivCleaner.class);
+                    config.set(FreqelConfig.Key.JOIN_ORDER_PLANNER, op);
+                    TestComponent.Builder b = DaggerTestComponent.builder();
+                    b.overrideFreqelConfig(config);
+                    return b.build().conjunctivePlanner();
+                };
                 String name = p.getSimpleName() + "+" + op.getSimpleName();
                 suppliers.add(new NamedSupplier<>(name, supplier));
             }

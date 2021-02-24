@@ -1,18 +1,23 @@
 package br.ufsc.lapesd.freqel.reason.tbox;
 
-import br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxMaterializer;
-import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.freqel.query.parse.CQueryContext;
-import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.TestContext;
+import br.ufsc.lapesd.freqel.hdt.query.HDTEndpoint;
+import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
+import br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxMaterializer;
+import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.query.results.Results;
+import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.reason.tbox.vlog.SystemVLogMaterializer;
+import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import com.github.lapesd.rdfit.RIt;
+import com.github.lapesd.rdfit.components.hdt.HDTHelpers;
 import com.github.lapesd.rdfit.iterator.RDFIt;
 import com.github.lapesd.rdfit.source.RDFResource;
-import com.google.common.collect.Sets;
 import org.apache.commons.io.FileUtils;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.sparql.graph.GraphFactory;
 import org.apache.jena.vocabulary.OWL2;
 import org.rdfhdt.hdt.hdt.HDTManager;
 import org.rdfhdt.hdt.options.HDTSpecification;
@@ -33,12 +38,16 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
+import static br.ufsc.lapesd.freqel.jena.JenaWrappers.toJenaNode;
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static com.google.common.collect.Sets.newHashSet;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toSet;
 import static org.testng.Assert.*;
 
+@SuppressWarnings("SameParameterValue")
 public class TBoxMaterializerTest implements TestContext {
     private static final Queue<File> tempFiles = new LinkedBlockingQueue<>();
     private static Boolean hasVLog = null;
@@ -63,11 +72,85 @@ public class TBoxMaterializerTest implements TestContext {
         }
     }
 
+    public static class HDTTBoxAdaptor implements TBoxMaterializer {
+        private TPEndpointTBox epTBox;
+        private File hdtFile;
+
+        public HDTTBoxAdaptor() { }
+
+        @Override public void load(@Nonnull TBoxSpec sources) {
+            TBoxMaterializer mat = new TransitiveClosureTBoxMaterializer(sources);
+            try {
+                hdtFile = Files.createTempFile("freqel", ">hdt").toFile();
+                hdtFile.deleteOnExit();
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+            Graph graph = GraphFactory.createDefaultGraph();
+            TPEndpoint ep = mat.getEndpoint();
+            assert ep != null;
+            try (Results r = ep.query(new Triple(x, y, z))) {
+                while (r.hasNext()) {
+                    Solution solution = r.next();
+                    graph.add(new org.apache.jena.graph.Triple(
+                            requireNonNull(toJenaNode(solution.get(x))),
+                            requireNonNull(toJenaNode(solution.get(y))),
+                            requireNonNull(toJenaNode(solution.get(z)))
+                    ));
+                }
+            }
+            HDTHelpers.toHDTFile(hdtFile, RIt.iterateTriples(TripleString.class, graph));
+            try {
+                epTBox = TPEndpointTBox.create(HDTEndpoint.fromFile(hdtFile));
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        @Override public @Nonnull TPEndpoint getEndpoint() {
+            return epTBox.getEndpoint();
+        }
+        @Override @Nonnull public Stream<Term> subClasses(@Nonnull Term term) {
+            return epTBox.subClasses(term);
+        }
+        @Override @Nonnull public Stream<Term> withSubClasses(@Nonnull Term term) {
+            return epTBox.withSubClasses(term);
+        }
+        @Override @Nonnull public Stream<Term> subProperties(@Nonnull Term term) {
+            return epTBox.subProperties(term);
+        }
+        @Override @Nonnull public Stream<Term> withSubProperties(@Nonnull Term term) {
+            return epTBox.withSubProperties(term);
+        }
+        @Override
+        public boolean isSubProperty(@Nonnull Term subProperty, @Nonnull Term superProperty) {
+            return epTBox.isSubProperty(subProperty, superProperty);
+        }
+        @Override public boolean isSubClass(@Nonnull Term subClass, @Nonnull Term superClass) {
+            return epTBox.isSubClass(subClass, superClass);
+        }
+        @Override
+        public boolean isSuperProperty(@Nonnull Term superProperty, @Nonnull Term subProperty) {
+            return epTBox.isSuperProperty(superProperty, subProperty);
+        }
+        @Override public boolean isSuperClass(@Nonnull Term superClass, @Nonnull Term subClass) {
+            return epTBox.isSuperClass(superClass, subClass);
+        }
+        @Override public void close() {
+            if (epTBox != null) {
+                epTBox.close();
+                if (hdtFile.exists() && !hdtFile.delete())
+                    throw new AssertionError("Failed to delete "+hdtFile);
+            }
+        }
+    }
+
     public static final List<NamedSupplier<TBoxMaterializer>> suppliers = Arrays.asList(
             new NamedSupplier<>("HermiT", OWLAPITBoxMaterializer::hermit),
             new NamedSupplier<>("StructuralReasoner", OWLAPITBoxMaterializer::structural),
             new NamedSupplier<>("JFact", OWLAPITBoxMaterializer::jFact),
             new NamedSupplier<>(TransitiveClosureTBoxMaterializer.class),
+            new NamedSupplier<>(HDTTBoxAdaptor.class),
             new NamedSupplier<>("SystemVLogReasoner", () -> {
                 checkHasVLog();
                 SystemVLogMaterializer reasoner = new SystemVLogMaterializer();
@@ -348,11 +431,15 @@ public class TBoxMaterializerTest implements TestContext {
         assertFalse(set.contains(isClassifiedBy));
     }
 
-    private @Nonnull File hdtFileWithoutImports(String resourcePath) throws Exception {
-        File hdtFile = Files.createTempFile("freqel", ".hdt").toFile();
-        hdtFile.deleteOnExit();
-        tempFiles.add(hdtFile);
+    private @Nonnull File tempFile(@Nonnull String suffix) throws IOException {
+        File file = Files.createTempFile("freqel", suffix).toFile();
+        file.deleteOnExit();
+        tempFiles.add(file);
+        return file;
+    }
 
+    private @Nonnull File hdtFileWithoutImports(String resourcePath) throws Exception {
+        File hdtFile = tempFile(".hdt");
         try (FileOutputStream out = new FileOutputStream(hdtFile);
              RDFResource resource = new RDFResource(getClass(), resourcePath);
              RDFIt<TripleString> it = RIt.iterateTriples(TripleString.class, resource);

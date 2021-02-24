@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.freqel.federation.planner;
 
-import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
@@ -8,11 +7,11 @@ import br.ufsc.lapesd.freqel.algebra.inner.PipeOp;
 import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
-import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
-import br.ufsc.lapesd.freqel.federation.SingletonSourceFederation;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
+import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -36,11 +35,8 @@ public class PostPlannerTest implements TestContext {
 
     public static @Nonnull List<Provider<? extends PostPlanner>> providers = singletonList(
             new NamedSupplier<>("default",
-                    () -> SingletonSourceFederation.getInjector().getInstance(PostPlanner.class))
+                    () -> DaggerTestComponent.builder().build().postPlanner())
     );
-
-    public static @Nonnull List<Class<? extends Provider<? extends PostPlanner>>> providerClasses
-            = singletonList(SimpleFederationModule.DefaultPostPlannerProvider.class);
 
     @DataProvider public static Object[][] exactTreeData() {
         EndpointQueryOp query1 = new EndpointQueryOp(e2, createQuery(x, age, u));

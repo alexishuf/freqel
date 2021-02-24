@@ -7,6 +7,7 @@ import br.ufsc.lapesd.freqel.description.TrapDescription;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.federation.Federation;
+import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
@@ -38,7 +39,6 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 
-import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
 import static br.ufsc.lapesd.freqel.query.results.ResultsUtils.applyNonFilterModifiers;
 import static java.util.stream.Collectors.toSet;
 
@@ -166,7 +166,7 @@ public class WebAPICQEndpoint extends AbstractTPEndpoint implements WebApiEndpoi
 
     private @Nonnull Federation getFederation() {
         if (federation == null)
-            federation = createFederation(EndpointDecorators.uncloseable(this));
+            federation = Freqel.createFederation(EndpointDecorators.uncloseable(this));
         return federation;
     }
 

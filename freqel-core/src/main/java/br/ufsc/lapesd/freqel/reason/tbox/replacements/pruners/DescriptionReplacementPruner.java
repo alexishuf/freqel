@@ -9,8 +9,11 @@ import br.ufsc.lapesd.freqel.reason.tbox.replacements.ReplacementContext;
 import br.ufsc.lapesd.freqel.reason.tbox.replacements.ReplacementPruner;
 
 import javax.annotation.Nonnull;
+import javax.inject.Inject;
 
 public class DescriptionReplacementPruner implements ReplacementPruner {
+    @Inject public DescriptionReplacementPruner() { }
+
     @Override
     public boolean shouldPrune(@Nonnull Term original, @Nonnull Term replacement,
                                @Nonnull ReplacementContext ctx) {

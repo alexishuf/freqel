@@ -27,8 +27,7 @@ public class ConjunctionReplaceStep implements PlannerStep, PlannerShallowStep {
 
     private final @Nonnull JoinOrderPlanner joinOrderPlanner;
 
-    @Inject
-    public ConjunctionReplaceStep(@Nonnull JoinOrderPlanner joinOrderPlanner) {
+    @Inject public ConjunctionReplaceStep(@Nonnull JoinOrderPlanner joinOrderPlanner) {
         this.joinOrderPlanner = joinOrderPlanner;
     }
 

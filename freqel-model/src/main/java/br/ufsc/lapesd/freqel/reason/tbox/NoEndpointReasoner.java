@@ -17,7 +17,7 @@ public class NoEndpointReasoner implements EndpointReasoner {
         @Override public @Nonnull NoEndpointReasoner get() { return INSTANCE; }
     }
 
-    @Override public void offerTBox(@Nonnull TBox tBox) { this.tBox = tBox; }
+    @Override public void setTBox(@Nonnull TBox tBox) { this.tBox = tBox; }
     @Override public boolean acceptDisjunctive() { return false; }
 
     @Override public @Nonnull Results apply(@Nonnull EndpointOp op,

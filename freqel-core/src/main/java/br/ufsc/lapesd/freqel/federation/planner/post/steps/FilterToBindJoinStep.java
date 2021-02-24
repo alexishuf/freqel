@@ -18,8 +18,7 @@ import java.util.IdentityHashMap;
 public class FilterToBindJoinStep implements PlannerStep {
     private final @Nonnull FilterJoinPlanner filterJoinPlanner;
 
-    @Inject
-    public FilterToBindJoinStep(@Nonnull FilterJoinPlanner filterJoinPlanner) {
+    @Inject public FilterToBindJoinStep(@Nonnull FilterJoinPlanner filterJoinPlanner) {
         this.filterJoinPlanner = filterJoinPlanner;
     }
 

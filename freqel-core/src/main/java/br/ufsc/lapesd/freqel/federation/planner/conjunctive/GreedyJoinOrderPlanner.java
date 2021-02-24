@@ -12,12 +12,12 @@ import br.ufsc.lapesd.freqel.cardinality.JoinCardinalityEstimator;
 import br.ufsc.lapesd.freqel.federation.PerformanceListener;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.Metrics;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.TimeSampler;
+import br.ufsc.lapesd.freqel.federation.planner.EquivCleaner;
 import br.ufsc.lapesd.freqel.federation.planner.JoinOrderPlanner;
 import br.ufsc.lapesd.freqel.query.modifiers.Optional;
 import br.ufsc.lapesd.freqel.util.indexed.ref.RefIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.inject.ImplementedBy;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,27 +37,6 @@ public class GreedyJoinOrderPlanner implements JoinOrderPlanner {
     private final @Nonnull CardinalityAdder cardAdder;
     private final @Nonnull JoinCardinalityEstimator joinCardinalityEstimator;
     private final @Nonnull EquivCleaner equivCleaner;
-
-    @ImplementedBy(NoEquivCleaner.class)
-    public interface EquivCleaner {
-        @Nonnull Op cleanEquivalents(@Nonnull Op node, @Nonnull Comparator<Op> comparator);
-    }
-
-    public static class NoEquivCleaner implements EquivCleaner {
-        public static final NoEquivCleaner INSTANCE = new NoEquivCleaner();
-        @Override
-        public @Nonnull Op cleanEquivalents(@Nonnull Op node, @Nonnull Comparator<Op> comparator) {
-            return node;
-        }
-    }
-
-    public static class DefaultEquivCleaner implements EquivCleaner {
-        public static final @Nonnull DefaultEquivCleaner INSTANCE = new DefaultEquivCleaner();
-        @Override
-        public @Nonnull Op cleanEquivalents(@Nonnull Op node, @Nonnull Comparator<Op> comparator) {
-            return TreeUtils.cleanEquivalents(node, comparator);
-        }
-    }
 
     @Inject
     public GreedyJoinOrderPlanner(@Nonnull PerformanceListener performance,

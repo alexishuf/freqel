@@ -7,7 +7,7 @@ import br.ufsc.lapesd.freqel.description.TrapDescription;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.MoleculeMatcher;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.federation.planner.ConjunctivePlanner;
+import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.jena.JenaWrappers;
 import br.ufsc.lapesd.freqel.jena.model.term.node.JenaNodeTermFactory;
 import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilterExecutor;
@@ -62,8 +62,6 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.function.Function;
 
-import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.createFederation;
-import static br.ufsc.lapesd.freqel.federation.SingletonSourceFederation.getInjector;
 import static br.ufsc.lapesd.freqel.jena.JenaWrappers.toJenaNode;
 import static br.ufsc.lapesd.freqel.rel.mappings.RelationalMappingUtils.predicate2column;
 import static java.util.Collections.emptySet;
@@ -286,8 +284,9 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
     @Override
     public @Nonnull Results query(@Nonnull CQuery query) {
         AnnotationStatus st = new AnnotationStatus(query);
+        Federation federation = getFederation();
         if (!st.isValid()) {
-            if (st.isEmpty()) return getFederation().query(query);
+            if (st.isEmpty()) return federation.query(query);
             else              st.checkNotPartiallyAnnotated(); //throws IllegalArgumentException
         }
         List<StarSubQuery> stars = StarsHelper.findStars(query);
@@ -308,14 +307,13 @@ public class CSVInMemoryCQEndpoint extends AbstractTPEndpoint implements CQEndpo
                 q.mutateModifiers().addAll(star.getFilters());
                 leaves.add(new EndpointQueryOp(this, q));
             }
-            ConjunctivePlanner planner = getInjector().getInstance(ConjunctivePlanner.class);
-            return getFederation().execute(planner.plan(query, leaves));
+            return federation.execute(federation.getConjunctivePlanner().plan(query, leaves));
         }
     }
 
     private @Nonnull Federation getFederation() {
         if (federation == null)
-            federation = createFederation(EndpointDecorators.uncloseable(this));
+            federation = Freqel.createFederation(EndpointDecorators.uncloseable(this));
         return federation;
     }
 

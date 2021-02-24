@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.util.concurrent.*;
 import java.util.function.IntConsumer;
 
@@ -26,7 +28,8 @@ public class PoolPlanningExecutorService extends ForwardingExecutorService
         this(core, core + (core/3 + 1));
     }
 
-    public PoolPlanningExecutorService(int core, int max) {
+    @Inject public PoolPlanningExecutorService(@Named("planningCoreThreads") int core,
+                                               @Named("planningMaxThreads") int max) {
         this.core = core;
         this.max = max;
         this.references  = 0;

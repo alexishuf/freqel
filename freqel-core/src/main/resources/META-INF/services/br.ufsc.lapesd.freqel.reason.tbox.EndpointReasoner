@@ -1,0 +1,3 @@
+br.ufsc.lapesd.freqel.reason.tbox.NoEndpointReasoner
+# Implementations requiring dependency injection:
+# br.ufsc.lapesd.freqel.reason.tbox.endpoint.HeuristicEndpointReasoner

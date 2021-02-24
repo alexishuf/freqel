@@ -14,18 +14,6 @@ import java.util.*;
 
 public class SourceLoaderRegistry {
     private final static Logger logger = LoggerFactory.getLogger(SourceLoaderRegistry.class);
-    private static SourceLoaderRegistry INSTANCE = null;
-
-    public static @Nonnull SourceLoaderRegistry getDefault() {
-        if (INSTANCE != null)
-            return INSTANCE;
-        SourceLoaderRegistry registry = new SourceLoaderRegistry();
-        ServiceLoader<SourceLoader> svcLoader = ServiceLoader.load(SourceLoader.class);
-        for (SourceLoader sourceLoader : svcLoader)
-            registry.register(sourceLoader);
-        return INSTANCE = registry;
-    }
-
     private final @Nonnull Map<String, SourceLoader> loaders;
 
     public SourceLoaderRegistry() {
@@ -42,7 +30,7 @@ public class SourceLoaderRegistry {
 
     @CheckReturnValue
     public @Nullable SourceLoader get(@Nonnull String name) {
-        return loaders.get(name);
+        return loaders.get(name.trim().toLowerCase());
     }
 
     public @Nonnull SourceLoader getLoaderFor(@Nonnull DictTree tree) throws SourceLoadException {
@@ -51,6 +39,18 @@ public class SourceLoaderRegistry {
         if (loader == null)
             throw new SourceLoadException("No SourceLoader for "+name, tree);
         return loader;
+    }
+
+    public @Nonnull Collection<SourceLoader> getSourceLoaders() {
+        return Collections.unmodifiableCollection(loaders.values());
+    }
+
+    @Contract("-> this") @CanIgnoreReturnValue
+    public @Nonnull SourceLoaderRegistry registerAllSPIs() {
+        ServiceLoader<SourceLoader> svcLoader = ServiceLoader.load(SourceLoader.class);
+        for (SourceLoader sourceLoader : svcLoader)
+            register(sourceLoader);
+        return this;
     }
 
     @Contract("_ -> this") @CanIgnoreReturnValue

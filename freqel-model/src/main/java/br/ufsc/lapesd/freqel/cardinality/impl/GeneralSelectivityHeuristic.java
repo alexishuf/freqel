@@ -19,6 +19,7 @@ import com.google.common.collect.ImmutableMap;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.inject.Inject;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -87,6 +88,8 @@ public class GeneralSelectivityHeuristic implements CardinalityHeuristic {
         map.put(V.FOAF.mbox_sha1sum,     10);
         objectPenalty = ImmutableMap.copyOf(map);
     }
+
+    @Inject public GeneralSelectivityHeuristic() { }
 
     @Override
     public @Nonnull Cardinality estimate(@Nonnull CQuery query, @Nullable TPEndpoint ignored) {

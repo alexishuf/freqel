@@ -24,13 +24,21 @@ public class SPARQLServiceLoader implements SourceLoader {
     private static final Set<String> NAMES = Sets.newHashSet("sparql");
     private static final Set<String> DESCRIPTION_NAMES = Sets.newHashSet("select", "ask");
 
+    private @Nullable SourceCache sourceCache;
+
     @Override
     public @Nonnull Set<String> names() {
         return NAMES;
     }
 
+    @Override public void setTempDir(@Nonnull File ignored) { }
+
+    @Override public void setSourceCache(@Nullable SourceCache sourceCache) {
+        this.sourceCache = sourceCache;
+    }
+
     @Override
-    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec, @Nullable SourceCache cacheDir,
+    public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec,
                                          @Nonnull File reference) throws SourceLoadException {
         String loader = spec.getString("loader", "").trim().toLowerCase();
         if (!loader.equals("sparql"))
@@ -38,7 +46,7 @@ public class SPARQLServiceLoader implements SourceLoader {
         String uri = getURI(spec);
 
         SPARQLClient ep = new SPARQLClient(uri);
-        setupDescription(spec, cacheDir, ep);
+        setupDescription(spec, sourceCache, ep);
         return singleton(ep);
     }
 

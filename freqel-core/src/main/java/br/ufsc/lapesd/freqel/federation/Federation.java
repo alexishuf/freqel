@@ -6,8 +6,9 @@ import br.ufsc.lapesd.freqel.algebra.inner.UnionOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
-import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.cardinality.InnerCardinalityComputer;
+import br.ufsc.lapesd.freqel.description.Description;
+import br.ufsc.lapesd.freqel.description.MatchReasoning;
 import br.ufsc.lapesd.freqel.federation.concurrent.PlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.decomp.FilterAssigner;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;
@@ -18,6 +19,7 @@ import br.ufsc.lapesd.freqel.federation.performance.metrics.TimeSampler;
 import br.ufsc.lapesd.freqel.federation.planner.ConjunctivePlanner;
 import br.ufsc.lapesd.freqel.federation.planner.PostPlanner;
 import br.ufsc.lapesd.freqel.federation.planner.PrePlanner;
+import br.ufsc.lapesd.freqel.federation.spec.source.SourceCache;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.MutableCQuery;
 import br.ufsc.lapesd.freqel.query.TemplateExpander;
@@ -29,11 +31,10 @@ import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
+import br.ufsc.lapesd.freqel.reason.tbox.TBox;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
 import org.jetbrains.annotations.Contract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +66,8 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private final @Nonnull InnerCardinalityComputer cardinalityComputer;
     private final @Nonnull ResultsExecutor resultsExecutor;
     private final @Nonnull PlanningExecutorService executorService;
+    private final @Nonnull SourceCache sourceCache;
+    private final @Nonnull TBox tBox;
     private @Nonnull TemplateExpander templateExpander;
 
     @Inject
@@ -77,12 +80,16 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
                       @Nonnull PerformanceListener performance,
                       @Nonnull InnerCardinalityComputer cardinalityComputer,
                       @Nonnull ResultsExecutor resultsExecutor,
-                      @Nonnull PlanningExecutorService executorService) {
+                      @Nonnull PlanningExecutorService executorService,
+                      @Nonnull SourceCache sourceCache,
+                      @Nonnull TBox tBox) {
         this.prePlanner = prePlanner;
         this.conjunctivePlanner = conjunctivePlanner;
         this.postPlanner = postPlanner;
         this.matchingStrategy = matchingStrategy;
         this.agglutinator = agglutinator;
+        this.sourceCache = sourceCache;
+        this.tBox = tBox;
         agglutinator.setMatchingStrategy(matchingStrategy);
         this.executor = executor;
         this.performance = performance;
@@ -93,15 +100,21 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
         this.executorService.bind();
     }
 
-    public static @Nonnull Federation createDefault() {
-        Injector injector = Guice.createInjector(new SimpleFederationModule());
-        return injector.getInstance(Federation.class);
-    }
-
-
     public @Nonnull Federation setTemplateExpander(@Nonnull TemplateExpander templateExpander) {
         this.templateExpander = templateExpander;
         return this;
+    }
+
+    public @Nonnull SourceCache getSourceCache() {
+        return sourceCache;
+    }
+
+    public @Nonnull TBox getTBox() {
+        return tBox;
+    }
+
+    public @Nonnull ConjunctivePlanner getConjunctivePlanner() {
+        return conjunctivePlanner;
     }
 
     public @Nonnull TemplateExpander getTemplateExpander() {
@@ -128,7 +141,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
      *
      * If the timeout expires, false will be returned, but query() can be safely called.
      * All sources that did not yet completed background initialization will simple return
-     * empty results from their {@link Description#match(CQuery)} calls.
+     * empty results from their {@link Description#match(CQuery, MatchReasoning)} calls.
      *
      * @param timeout timeout value
      * @param unit timeout unit

@@ -14,11 +14,10 @@ import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.description.semantic.AlternativesSemanticSelectDescription;
-import br.ufsc.lapesd.freqel.federation.SimpleFederationModule;
 import br.ufsc.lapesd.freqel.federation.concurrent.PoolPlanningExecutorService;
 import br.ufsc.lapesd.freqel.federation.decomp.match.MatchingStrategy;
 import br.ufsc.lapesd.freqel.federation.decomp.match.SourcesListMatchingStrategy;
-import br.ufsc.lapesd.freqel.federation.performance.NoOpPerformanceListener;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.federation.performance.ThreadedPerformanceListener;
 import br.ufsc.lapesd.freqel.federation.planner.PrePlanner;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.ConjunctivePlanBenchmarksTestBase;
@@ -133,8 +132,7 @@ public class AgglutinatorTest implements TestContext {
     private static @Nonnull List<CQuery>
     getAllQueries(@Nonnull List<String> filenames,
                   @Nonnull Function<String, Op> loader) {
-        PrePlanner prePlanner = new SimpleFederationModule.DefaultPrePlannerProvider(
-                new NoOpPerformanceListener()).get();
+        PrePlanner prePlanner = DaggerTestComponent.builder().build().prePlanner();
 
         List<CQuery> list = new ArrayList<>();
         for (String filename : filenames) {

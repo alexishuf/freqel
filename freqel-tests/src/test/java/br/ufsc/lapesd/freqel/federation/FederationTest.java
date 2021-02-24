@@ -7,38 +7,37 @@ import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.algebra.util.TreeUtils;
-import br.ufsc.lapesd.freqel.cardinality.CardinalityEnsemble;
-import br.ufsc.lapesd.freqel.cardinality.CardinalityHeuristic;
-import br.ufsc.lapesd.freqel.cardinality.EstimatePolicy;
 import br.ufsc.lapesd.freqel.cardinality.impl.GeneralSelectivityHeuristic;
 import br.ufsc.lapesd.freqel.cardinality.impl.NoCardinalityEnsemble;
+import br.ufsc.lapesd.freqel.cardinality.impl.QuickSelectivityHeuristic;
 import br.ufsc.lapesd.freqel.cardinality.impl.WorstCaseCardinalityEnsemble;
 import br.ufsc.lapesd.freqel.description.AskDescription;
 import br.ufsc.lapesd.freqel.description.Description;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
 import br.ufsc.lapesd.freqel.description.semantic.AlternativesSemanticSelectDescription;
-import br.ufsc.lapesd.freqel.federation.concurrent.PlanningExecutorService;
-import br.ufsc.lapesd.freqel.federation.concurrent.PoolPlanningExecutorService;
-import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.Agglutinator;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.EvenAgglutinator;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.ParallelStandardAgglutinator;
 import br.ufsc.lapesd.freqel.federation.decomp.agglutinator.StandardAgglutinator;
-import br.ufsc.lapesd.freqel.federation.decomp.match.MatchingStrategy;
 import br.ufsc.lapesd.freqel.federation.decomp.match.ParallelSourcesListMatchingStrategy;
 import br.ufsc.lapesd.freqel.federation.decomp.match.SourcesListMatchingStrategy;
-import br.ufsc.lapesd.freqel.federation.execution.tree.JoinOpExecutor;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.SimpleExecutionModule;
+import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.DefaultHashJoinOpExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.FixedBindJoinOpExecutor;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.FixedHashJoinOpExecutor;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.bind.BindJoinResultsFactory;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.bind.SimpleBindJoinResults;
-import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.HashJoinResultsFactory;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.InMemoryHashJoinResults;
 import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.ParallelInMemoryHashJoinResults;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
+import br.ufsc.lapesd.freqel.federation.inject.dagger.TestComponent;
 import br.ufsc.lapesd.freqel.federation.performance.NoOpPerformanceListener;
 import br.ufsc.lapesd.freqel.federation.performance.metrics.Metrics;
-import br.ufsc.lapesd.freqel.federation.planner.*;
+import br.ufsc.lapesd.freqel.federation.planner.conjunctive.ArbitraryJoinOrderPlanner;
+import br.ufsc.lapesd.freqel.federation.planner.conjunctive.GreedyJoinOrderPlanner;
+import br.ufsc.lapesd.freqel.federation.planner.conjunctive.JoinPathsConjunctivePlanner;
+import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.BitsetConjunctivePlanner;
+import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerDispatcher;
+import br.ufsc.lapesd.freqel.federation.planner.equiv.DefaultEquivCleaner;
+import br.ufsc.lapesd.freqel.federation.planner.equiv.NoEquivCleaner;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.linkedator.Linkedator;
 import br.ufsc.lapesd.freqel.linkedator.LinkedatorResult;
@@ -58,30 +57,21 @@ import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Results;
-import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.Solution;
-import br.ufsc.lapesd.freqel.query.results.impl.BufferedResultsExecutor;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
-import br.ufsc.lapesd.freqel.query.results.impl.SequentialResultsExecutor;
 import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializer;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
 import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
-import br.ufsc.lapesd.freqel.util.NamedSupplier;
 import br.ufsc.lapesd.freqel.webapis.TransparencyService;
 import br.ufsc.lapesd.freqel.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.freqel.webapis.description.APIMolecule;
 import br.ufsc.lapesd.freqel.webapis.requests.impl.UriTemplateExecutor;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.google.inject.AbstractModule;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.Module;
-import com.google.inject.multibindings.Multibinder;
-import com.google.inject.util.Modules;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
@@ -93,6 +83,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.uri.UriTemplate;
+import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.DataProvider;
@@ -100,8 +91,6 @@ import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.annotation.OverridingMethodsMustInvokeSuper;
-import javax.inject.Provider;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -119,10 +108,12 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.freqel.PlanAssert.assertPlanAnswers;
-import static br.ufsc.lapesd.freqel.federation.SimpleFederationModule.configureCardinalityEstimation;
+import static br.ufsc.lapesd.freqel.algebra.util.TreeUtils.streamPreOrder;
+import static br.ufsc.lapesd.freqel.federation.FreqelConfig.Key.*;
 import static br.ufsc.lapesd.freqel.jena.JenaWrappers.*;
 import static br.ufsc.lapesd.freqel.jena.query.ARQEndpoint.forModel;
 import static br.ufsc.lapesd.freqel.jena.query.ARQEndpoint.forService;
@@ -131,7 +122,6 @@ import static br.ufsc.lapesd.freqel.webapis.TransparencyService.*;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.apache.jena.rdf.model.ResourceFactory.*;
 import static org.testng.Assert.*;
@@ -556,199 +546,77 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         }
     }
 
-    private static abstract class TestModule extends AbstractModule {
-        private final boolean canBindJoin;
-        private final boolean storingPerformanceListener;
-        private final Class<? extends Provider<? extends PrePlanner>> prePlannerSupplierClass;
-        private final Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass;
-        private final Class<? extends ConjunctivePlanner> ip;
-        private final Class<? extends JoinOrderPlanner> jo;
-        private final Class<? extends Agglutinator> ag;
-        private final Class<? extends MatchingStrategy> ms;
-        private final Class<? extends PerformanceListener> pl;
+    private static class FederationFactory {
+        private final FreqelConfig defaultConfig = FreqelConfig.createDefault();
+        private final FreqelConfig config = FreqelConfig.createDefault();
+        private final Map<FreqelConfig.Key, Object> explicit = new HashMap<>();
 
-        protected TestModule(boolean canBindJoin,
-                             Class<? extends Provider<? extends PrePlanner>> prePlannerSupplierClass,
-                             Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass,
-                             Class<? extends ConjunctivePlanner> ip,
-                             Class<? extends JoinOrderPlanner> jo,
-                             Class<? extends MatchingStrategy> ms,
-                             Class<? extends Agglutinator> ag,
-                             Class<? extends PerformanceListener> pl) {
-            this.canBindJoin = canBindJoin;
-            this.storingPerformanceListener =
-                    PerformanceListenerTest.storingClasses.contains(pl);
-            this.prePlannerSupplierClass = prePlannerSupplierClass;
-            this.postPlannerSupplierClass = postPlannerSupplierClass;
-            this.ip = ip;
-            this.jo = jo;
-            this.ag = ag;
-            this.ms = ms;
-            this.pl = pl;
+        public boolean onlyHashJoin() {
+            HashSet<String> hashExecutors = newHashSet(DefaultHashJoinOpExecutor.class.getName(),
+                                                       FixedHashJoinOpExecutor.class.getName());
+            return hashExecutors.contains(config.get(JOIN_OP_EXECUTOR, String.class));
         }
-        public boolean cannotBindJoin() { return !canBindJoin; }
-        public boolean isSlowModule() { return true; }
-        protected boolean canBeFast() {
-            return ConjunctivePlannerTest.isFast(ip, jo)
-                    && fastMatchingStrategies.contains(ms) && fastAgglutinatorClasses.contains(ag);
+        public boolean isDefault() {
+            return explicit.isEmpty();
+        }
+        public boolean isFast() {
+            if (isDefault())
+                return true;
+            String conjPlanner = BitsetConjunctivePlannerDispatcher.class.getName();
+            String matcher = SourcesListMatchingStrategy.class.getName();
+            String agglutinator = StandardAgglutinator.class.getName();
+            String equivCleaner = NoEquivCleaner.class.getName();
+            return config.get(CONJUNCTIVE_PLANNER, String.class).equals(conjPlanner)
+                    && config.get(MATCHING, String.class).equals(matcher)
+                    && config.get(AGGLUTINATOR, String.class).equals(agglutinator)
+                    && config.get(EQUIV_CLEANER, String.class).equals(equivCleaner);
         }
         public boolean hasStoringPerformanceListener() {
-            return storingPerformanceListener;
+            return !config.get(FreqelConfig.Key.PERFORMANCE_LISTENER, String.class)
+                    .equals(NoOpPerformanceListener.class.getName());
         }
 
-        @Override @OverridingMethodsMustInvokeSuper
-        protected void configure() {
-            bind(PrePlanner.class).toProvider(prePlannerSupplierClass);
-            bind(PostPlanner.class).toProvider(postPlannerSupplierClass);
-            bind(ConjunctivePlanner.class).to(ip);
-            bind(JoinOrderPlanner.class).to(jo);
-            bind(MatchingStrategy.class).to(ms);
-            bind(PlanningExecutorService.class).toInstance(new PoolPlanningExecutorService());
-            bind(Agglutinator.class).to(ag);
-            bind(PerformanceListener.class).toInstance(new NamedSupplier<>(pl).get());
+        public FederationFactory assertEquals(@Nonnull FreqelConfig.Key key,
+                                              @Nullable Object expected) {
+            if (expected instanceof Class)
+                expected = ((Class<?>) expected).getName();
+            Assert.assertEquals(config.get(key).toString(), Objects.toString(expected));
+            return this;
         }
 
-        protected @Nonnull String asString(Class<?>... classes) {
-            StringBuilder b = new StringBuilder();
-            b.append(Stream.of(classes).map(Class::getSimpleName).collect(joining("+")));
-            if (classes.length > 0)
-                b.append('+');
-            return b.append(ip.getSimpleName()).append('+')
-                    .append(jo.getSimpleName()).append('+')
-                    .append(ms.getSimpleName()).append('+')
-                    .append(ag.getSimpleName()).append('+')
-                    .append(pl.getSimpleName()).append('+')
-                    .append(prePlannerSupplierClass.getSimpleName()).append('+')
-                    .append(isSlowModule() ? "(fast)" : "(slow)")
-                    .toString();
-        }
-    }
-
-    @FunctionalInterface
-    private interface ModuleFactory {
-        TestModule apply(Class<? extends Provider<? extends PrePlanner>> outerPlannerSupplierClass,
-                         Class<? extends Provider<? extends PostPlanner>> postPlannerSupplierClass,
-                         Class<? extends ConjunctivePlanner> planner,
-                         Class<? extends JoinOrderPlanner> joinOrder,
-                         Class<? extends MatchingStrategy> matchingStrategy,
-                         Class<? extends Agglutinator> agglutinator,
-                         Class<? extends PerformanceListener> performance);
-    }
-
-    private static final @Nonnull List<ModuleFactory> moduleProtoList = asList(
-            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(CardinalityEnsemble.class).toInstance(NoCardinalityEnsemble.INSTANCE);
-//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-                @Override
-                public String toString() { return asString(NoCardinalityEnsemble.class); }
-            },
-            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(CardinalityEnsemble.class).to(WorstCaseCardinalityEnsemble.class);
-
-                    Multibinder<CardinalityHeuristic> mBinder
-                            = Multibinder.newSetBinder(binder(), CardinalityHeuristic.class);
-                    mBinder.addBinding().to(GeneralSelectivityHeuristic.class);
-//                    bind(ResultsExecutor.class).toInstance(new BufferedResultsExecutor());
-                }
-                @Override
-                public boolean isSlowModule() {
-                    return !canBeFast();
-                }
-                @Override
-                public String toString() { return asString(GeneralSelectivityHeuristic.class, BufferedResultsExecutor.class); }
-            },
-            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
-                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-                @Override
-                public String toString() { return asString(SequentialResultsExecutor.class); }
-            },
-            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
-                    bind(ResultsExecutor.class).toInstance(new BufferedResultsExecutor());
-                }
-                @Override
-                public boolean isSlowModule() {
-                    return !canBeFast() || !pl.equals(NoOpPerformanceListener.class);
-                }
-                @Override
-                public String toString() { return asString(BufferedResultsExecutor.class); }
-            },
-            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(false, op, pp, ip, opt, ms, ag, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
-                    bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
-                    configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
-//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-                @Override
-                public String toString() { return asString(InMemoryHashJoinResults.class); }
-            },
-            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(false, op, pp, ip, opt, ms, ag, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
-                    bind(HashJoinResultsFactory.class).toInstance(InMemoryHashJoinResults::new);
-                    configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
-//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-                @Override
-                public String toString() { return asString(InMemoryHashJoinResults.class); }
-            },
-            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(false, op, pp, ip, opt, ms, ag, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(JoinOpExecutor.class).to(FixedHashJoinOpExecutor.class);
-                    bind(HashJoinResultsFactory.class).toInstance(ParallelInMemoryHashJoinResults::new);
-                    configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
-//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-                @Override
-                public String toString() { return asString(ParallelInMemoryHashJoinResults.class); }
-            },
-            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(JoinOpExecutor.class).to(FixedBindJoinOpExecutor.class);
-                    bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
-                    configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
-//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-                @Override
-                public String toString() { return asString(SimpleBindJoinResults.class); }
-            },
-            (op, pp, ip, opt, ms, ag, pl) -> new TestModule(true, op, pp, ip, opt, ms, ag, pl) {
-                @Override
-                protected void configure() {
-                    super.configure();
-                    bind(JoinOpExecutor.class).to(FixedBindJoinOpExecutor.class);
-                    bind(BindJoinResultsFactory.class).to(SimpleBindJoinResults.Factory.class);
-                    configureCardinalityEstimation(binder(), EstimatePolicy.local(50));
-//                    bind(ResultsExecutor.class).toInstance(new SequentialResultsExecutor());
-                }
-                @Override
-                public String toString() { return asString(NoCardinalityEnsemble.class, SimpleBindJoinResults.class); }
+        public FederationFactory set(@Nonnull FreqelConfig.Key key, @Nonnull Object value) {
+            if (value instanceof Class)
+                value = ((Class<?>) value).getName();
+            if (Objects.equals(Objects.toString(defaultConfig.get(key)), Objects.toString(value))) {
+                explicit.remove(key);
+            } else {
+                config.set(key, value);
+                explicit.put(key, value);
             }
-    );
+            return this;
+        }
+
+        public @Nonnull Federation create() {
+            TestComponent.Builder builder = DaggerTestComponent.builder();
+            builder.overrideFreqelConfig(config);
+            return builder.build().federation();
+        }
+
+        @Override public @Nonnull String toString() {
+            StringBuilder b = new StringBuilder("[");
+            for (Map.Entry<FreqelConfig.Key, Object> e : explicit.entrySet()) {
+                if (e.getValue() instanceof Class)
+                    b.append(((Class<?>) e.getValue()).getSimpleName()).append(", ");
+                else if (e.getValue().toString().startsWith("br.ufsc.lapesd"))
+                    b.append(e.getValue().toString().replaceAll(".*\\.", "")).append(", ");
+                else
+                    b.append(e.getKey()).append('=').append(e.getValue()).append(", ");
+            }
+            if (!explicit.isEmpty())
+                b.setLength(b.length()-2);
+            return b.append(']').toString();
+        }
+    }
 
     private Federation federation = null;
     public static final ConcurrentHashMap<String, TPEndpointTest.FusekiEndpoint> fusekiEndpoints
@@ -772,41 +640,75 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         assertEquals(fusekiEndpoints.size(), 0); //no concurrency!
     }
 
-    private static final @Nonnull List<Class<? extends MatchingStrategy>> matchingStrategies =
-            asList(SourcesListMatchingStrategy.class, ParallelSourcesListMatchingStrategy.class);
-    private static final @Nonnull List<Class<? extends MatchingStrategy>> fastMatchingStrategies =
-            singletonList(ParallelSourcesListMatchingStrategy.class);
+    private static final @Nonnull List<Consumer<FederationFactory>> nonCartesianVariants = asList(
+            f -> {
+                f.assertEquals(CARDINALITY_ENSEMBLE, WorstCaseCardinalityEnsemble.class);
+                f.set(CARDINALITY_ENSEMBLE, NoCardinalityEnsemble.class);
+            },
+            f -> f.set(CARDINALITY_HEURISTICS, singletonList(GeneralSelectivityHeuristic.class)),
+            f -> f.set(CARDINALITY_HEURISTICS, singletonList(QuickSelectivityHeuristic.class)),
+            f -> {
+                f.assertEquals(ESTIMATE_QUERY_LOCAL, true);
+                f.assertEquals(ESTIMATE_ASK_REMOTE, false);
+                f.assertEquals(ESTIMATE_LIMIT, 100);
+                f.set(RESULTS_EXECUTOR_CONCURRENCY_FACTOR, 0); //sequential
+            },
+            f -> f.set(RESULTS_EXECUTOR_CONCURRENCY_FACTOR, -1), //unbound
+            f -> {
+                f.set(JOIN_OP_EXECUTOR, FixedHashJoinOpExecutor.class);
+                f.set(HASH_JOIN_RESULTS_FACTORY, InMemoryHashJoinResults.Factory.class);
+            },
+            f -> {
+                f.set(JOIN_OP_EXECUTOR, FixedHashJoinOpExecutor.class);
+                f.set(HASH_JOIN_RESULTS_FACTORY, ParallelInMemoryHashJoinResults.Factory.class);
+            },
+            f -> {
+                f.set(JOIN_OP_EXECUTOR, FixedBindJoinOpExecutor.class);
+                f.set(BIND_JOIN_RESULTS_FACTORY, SimpleBindJoinResults.Factory.class);
+            }
+    );
+    private static final @Nonnull List<FederationFactory> factoryList;
+    static  {
+        List<FederationFactory> factories = new ArrayList<>();
+        List<List<? extends Class<?>>> lists = asList(
+                asList(JoinPathsConjunctivePlanner.class, BitsetConjunctivePlanner.class,
+                        BitsetConjunctivePlannerDispatcher.class),                     // 0
+                asList(ArbitraryJoinOrderPlanner.class, GreedyJoinOrderPlanner.class), // 1
+                asList(NoEquivCleaner.class, DefaultEquivCleaner.class),               // 2
+                asList(SourcesListMatchingStrategy.class,
+                       ParallelSourcesListMatchingStrategy.class),                     // 3
+                asList(EvenAgglutinator.class,
+                       StandardAgglutinator.class,
+                       ParallelStandardAgglutinator.class),                            // 4
+                PerformanceListenerTest.classes                                        // 5
+        );
+        for (List<Class<?>> selection : Lists.cartesianProduct(lists)) {
+            for (Consumer<FederationFactory> variant : nonCartesianVariants) {
+                FederationFactory factory = new FederationFactory();
+                factory.set(CONJUNCTIVE_PLANNER, selection.get(0));
+                factory.set(JOIN_ORDER_PLANNER, selection.get(1));
+                factory.set(EQUIV_CLEANER, selection.get(2));
+                factory.set(MATCHING, selection.get(3));
+                factory.set(AGGLUTINATOR, selection.get(4));
+                factory.set(PERFORMANCE_LISTENER, selection.get(5));
+                variant.accept(factory);
+                factories.add(factory);
+            }
+        }
+        factoryList = factories;
+    }
 
-    private static final @Nonnull List<Class<? extends Agglutinator>> agglutinatorClasses = asList(
-            EvenAgglutinator.class,
-                StandardAgglutinator.class,
-            ParallelStandardAgglutinator.class);
-    private static final @Nonnull List<Class<? extends Agglutinator>>
-            fastAgglutinatorClasses = singletonList(ParallelStandardAgglutinator.class);
-
-    private static final @Nonnull List<TestModule> moduleList =
-            PrePlannerTest.providerClasses.stream()
-                .flatMap(op -> PostPlannerTest.providerClasses.stream()
-                    .flatMap(pp -> ConjunctivePlannerTest.plannerClasses.stream()
-                        .flatMap(ip -> ConjunctivePlannerTest.joinOrderPlannerClasses.stream()
-                            .flatMap(jo -> matchingStrategies.stream()
-                                .flatMap(ms -> agglutinatorClasses.stream()
-                                    .flatMap(ag -> PerformanceListenerTest.classes.stream()
-                                        .flatMap(pl -> moduleProtoList.stream().map(p -> p.apply(op, pp, ip, jo, ms, ag, pl)))
-                                    ))))))
-
-            .collect(toList());
 
     private static @Nonnull Object[][] prependModules(List<List<Object>> in) {
         List<List<Object>> rows = new ArrayList<>();
-        for (TestModule module : moduleList) {
+        for (FederationFactory factory : factoryList) {
             for (List<Object> list : in) {
-                if (((Setup)list.get(0)).requiresBindJoin() && module.cannotBindJoin())
+                if (((Setup)list.get(0)).requiresBindJoin() && factory.onlyHashJoin())
                     continue; //skip
-                if (((Setup)list.get(0)).requiresFastModule() && module.isSlowModule())
+                if (((Setup)list.get(0)).requiresFastModule() && !factory.isFast())
                     continue; //skip
                 ArrayList<Object> row = new ArrayList<>();
-                row.add(module);
+                row.add(factory);
                 row.addAll(list);
                 rows.add(row);
             }
@@ -1021,14 +923,11 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     @Test(dataProvider = "queryData")
-    public void testQuery(@Nonnull Module module, @Nonnull Setup setup,
+    public void testQuery(@Nonnull FederationFactory factory, @Nonnull Setup setup,
                           @Nonnull Object queryObject,  @Nullable Set<Solution> expected) {
-        Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
-                                                        .with(module));
-        federation = injector.getInstance(Federation.class);
+        federation = factory.create();
         setup.accept(federation, target().getUri().toString());
 
-        Set<Solution> actual = new HashSet<>();
         federation.initAllSources(5, TimeUnit.MINUTES);
 //        Stopwatch sw = Stopwatch.createStarted();
         Op query = queryObject instanceof Op ? (Op)queryObject
@@ -1049,8 +948,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         for (int i = 0; i < 4; i++)
             assertPlanAnswers(federation.plan(query), query);
 
+        boolean hasInputs = streamPreOrder(plan).anyMatch(o -> !o.getInputVars().isEmpty());
         // expected may be null telling us that we shouldn't execute, only check the plan
-        if (expected != null)
+        if (expected != null && (!hasInputs || !factory.onlyHashJoin()))
             ResultsAssert.assertExpectedResults(federation.query(query), expected);
     }
 
@@ -1064,16 +964,16 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
         List<List<Object>> withVariants = expandVariants(basic);
         List<List<Object>> withListeners = new ArrayList<>();
-        for (TestModule module : moduleList) {
-            if (!module.hasStoringPerformanceListener())
+        for (FederationFactory factory : factoryList) {
+            if (!factory.hasStoringPerformanceListener())
                 continue; //only use the listeners that store data
             for (List<Object> oldRow : withVariants) {
-                if (((Setup)oldRow.get(0)).requiresBindJoin() && module.cannotBindJoin())
+                if (((Setup)oldRow.get(0)).requiresBindJoin() && factory.onlyHashJoin())
                     continue; //skip
-                if (((Setup)oldRow.get(0)).requiresFastModule() && module.isSlowModule())
+                if (((Setup)oldRow.get(0)).requiresFastModule() && !factory.isFast())
                     continue; //skip
                 List<Object> newRow = new ArrayList<>(oldRow);
-                newRow.add(0, module);
+                newRow.add(0, factory);
                 withListeners.add(newRow);
             }
         }
@@ -1082,11 +982,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     @Test(dataProvider = "performanceListenerData")
-    public void testPerformanceListener(@Nonnull Module module, @Nonnull Setup setup,
+    public void testPerformanceListener(@Nonnull FederationFactory factory, @Nonnull Setup setup,
                                         @Nonnull CQuery query,  @Nullable Set<Solution> expected) {
-        Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
-                .with(module));
-        federation = injector.getInstance(Federation.class);
+        federation = factory.create();
         setup.accept(federation, target().getUri().toString());
 
         federation.initAllSources(5, TimeUnit.MINUTES);
@@ -1128,15 +1026,13 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     @DataProvider
-    public static Object[][] modulesData() {
-        return moduleList.stream().map(m -> new Object[] {m}).toArray(Object[][]::new);
+    public static Object[][] componentFactoryData() {
+        return factoryList.stream().map(m -> new Object[] {m}).toArray(Object[][]::new);
     }
 
-    @Test(dataProvider = "modulesData")
-    public void testEmptyFederation(@Nonnull Module module) throws Exception {
-        Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
-                .with(module));
-        federation = injector.getInstance(Federation.class);
+    @Test(dataProvider = "componentFactoryData")
+    public void testEmptyFederation(@Nonnull FederationFactory factory) throws Exception {
+        federation = factory.create();
         Stopwatch sw = Stopwatch.createStarted();
         federation.initAllSources(20, TimeUnit.SECONDS);
         assertTrue(sw.elapsed(TimeUnit.SECONDS) < 15); // no reason to block
@@ -1148,12 +1044,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         //pass if got here alive
     }
 
-    @Test(dataProvider = "modulesData")
-    public void testUninitializedSources(@Nonnull Module module) throws Exception {
-        Injector injector = Guice.createInjector(Modules.override(new SimpleExecutionModule())
-                .with(module));
-        federation = injector.getInstance(Federation.class);
-
+    @Test(dataProvider = "componentFactoryData")
+    public void testUninitializedSources(@Nonnull FederationFactory factory) throws Exception {
+        federation = factory.create();
         ARQEndpoint dbp = forModel(LargeRDFBenchSelfTest.loadData("DBPedia-Subset.nt"), "DBPedia-Subset");
         dbp.setDescription(new SelectDescription(dbp));
         ARQEndpoint nyt = forService("http://127.0.0.178:8897/sparql");
@@ -1234,7 +1127,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     @DataProvider
     public static @Nonnull Object[][] reasoningQueriesData() throws Exception {
         return Stream.of(
-                asList(new AbstractModule() {}, new SetupSimpleCNC(),
+                asList(new FederationFactory() {}, new SetupSimpleCNC(),
                        loadQuery("cnc-qry-1.sparql"), Sets.newHashSet(
                                MapSolution.build(x, fromJena(createTypedLiteral("11"))),
                                MapSolution.build(x, fromJena(createTypedLiteral("21"))),
@@ -1245,15 +1138,13 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     @Test(dataProvider = "reasoningQueriesData")
-    public void testReasoningQueries(@Nonnull Module module, @Nonnull Setup setup,
+    public void testReasoningQueries(@Nonnull FederationFactory factory, @Nonnull Setup setup,
                                      @Nonnull Op query, @Nonnull Set<Solution> expected) {
-        Module effectiveModule = Modules.override(new SimpleFederationModule()).with(module);
-        Federation federation = Guice.createInjector(effectiveModule).getInstance(Federation.class);
+        Federation federation = factory.create();
         setup.accept(federation, target().getUri().toString());
         federation.initAllSources(5, TimeUnit.MINUTES);
         Op plan = federation.plan(query);
         assertPlanAnswers(plan, query);
-
         ResultsAssert.assertExpectedResults(federation.execute(plan), expected);
     }
 }
