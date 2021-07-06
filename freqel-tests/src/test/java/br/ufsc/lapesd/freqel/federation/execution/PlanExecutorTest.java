@@ -106,7 +106,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         @Path("type")
         public @Nonnull Model type(@QueryParam("uri") String uri) {
             Model src = ModelFactory.createDefaultModel();
-            RDFDataMgr.read(src, getClass().getResourceAsStream("../../rdf-joins.nt"), Lang.TTL);
+            RDFDataMgr.read(src, new TestContext(){}.open("rdf-joins.nt"), Lang.TTL);
             Model out = ModelFactory.createDefaultModel();
             ARQEndpoint ep = ARQEndpoint.forModel(src);
             JenaRes type = fromJena(RDF.type);
@@ -122,7 +122,7 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
         @Path("getPO")
         public @Nonnull Model getPO(@QueryParam("uri") String uri) {
             Model src = ModelFactory.createDefaultModel();
-            RDFDataMgr.read(src, getClass().getResourceAsStream("../../rdf-joins.nt"), Lang.TTL);
+            RDFDataMgr.read(src, new TestContext(){}.open("rdf-joins.nt"), Lang.TTL);
             Model out = ModelFactory.createDefaultModel();
             ARQEndpoint ep = ARQEndpoint.forModel(src);
             try (Results r = ep.query(CQuery.from(new Triple(new StdURI(uri), x, y)))) {
@@ -147,11 +147,11 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     public void methodSetUp() {
         Lang ttl = Lang.TTL;
         Model model = ModelFactory.createDefaultModel();
-        RDFDataMgr.read(model, getClass().getResourceAsStream("../../rdf-1.nt"), ttl);
+        RDFDataMgr.read(model, open("rdf-1.nt"), ttl);
         ep = ARQEndpoint.forModel(model);
 
         model = ModelFactory.createDefaultModel();
-        RDFDataMgr.read(model, getClass().getResourceAsStream("../../rdf-joins.nt"), ttl);
+        RDFDataMgr.read(model, open("rdf-joins.nt"), ttl);
         joinsEp = ARQEndpoint.forModel(model);
 
         Molecule typeMolecule = Molecule.builder("Thing")

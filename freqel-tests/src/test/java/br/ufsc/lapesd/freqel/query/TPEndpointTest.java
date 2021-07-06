@@ -1,8 +1,6 @@
 package br.ufsc.lapesd.freqel.query;
 
 import br.ufsc.lapesd.freqel.TestContext;
-import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
-import br.ufsc.lapesd.freqel.util.NamedFunction;
 import br.ufsc.lapesd.freqel.hdt.query.HDTEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -10,9 +8,11 @@ import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.query.modifiers.*;
+import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilterFactory;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
+import br.ufsc.lapesd.freqel.util.NamedFunction;
 import com.github.lapesd.rdfit.RIt;
 import com.github.lapesd.rdfit.components.hdt.HDTHelpers;
 import com.google.common.collect.Sets;
@@ -169,8 +169,8 @@ public class TPEndpointTest extends EndpointTestBase {
         Set<String> varNames = new HashSet<>();
         query.forEach(t -> {if (t.isVar()) varNames.add(t.asVar().getName());});
 
-        String filename = "../empty.nt";
-        try (Fixture<TPEndpoint> fixture = f.apply(getClass().getResourceAsStream(filename))) {
+        String filename = "empty.nt";
+        try (Fixture<TPEndpoint> fixture = f.apply(open(filename))) {
             try (Results results = fixture.endpoint.query(query)) {
                 assertEquals(results.getVarNames(), varNames);
                 assertFalse(results.hasNext());
@@ -193,7 +193,7 @@ public class TPEndpointTest extends EndpointTestBase {
                                      @Nonnull Triple query, @Nonnull Set<Solution> ex,
                                      boolean poll,
                                      Modifier... modifiers) {
-        try (Fixture<TPEndpoint> fixture = f.apply(getClass().getResourceAsStream(filename))) {
+        try (Fixture<TPEndpoint> fixture = f.apply(open(filename))) {
             Set<Solution> ac = new HashSet<>();
             if (modifiers.length > 0) {
                 MutableCQuery cQuery = MutableCQuery.from(query);
@@ -249,52 +249,52 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testSingleObject(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.Alice, TestContext.knows, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.Alice, TestContext.knows, TestContext.x),
                 singleton(MapSolution.build(TestContext.x, TestContext.Bob)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testSingleObjectWithLimit(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.Alice, TestContext.knows, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.Alice, TestContext.knows, TestContext.x),
                           singleton(MapSolution.build(TestContext.x, TestContext.Bob)), Limit.of(10));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testSingleObjectPoll(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.Alice, TestContext.knows, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.Alice, TestContext.knows, TestContext.x),
                 singleton(MapSolution.build(TestContext.x, TestContext.Bob)), true);
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testSingleObjectPollWithLimit(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.Alice, TestContext.knows, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.Alice, TestContext.knows, TestContext.x),
                 singleton(MapSolution.build(TestContext.x, TestContext.Bob)), true, Limit.of(10));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryTwoObjects(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.Bob, TestContext.name, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.Bob, TestContext.name, TestContext.x),
                 newHashSet(MapSolution.build(TestContext.x, EndpointTestBase.B_NAME1),
                            MapSolution.build(TestContext.x, EndpointTestBase.B_NAME2)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryTwoObjectsPoll(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.Bob, TestContext.name, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.Bob, TestContext.name, TestContext.x),
                 newHashSet(MapSolution.build(TestContext.x, EndpointTestBase.B_NAME1),
                         MapSolution.build(TestContext.x, EndpointTestBase.B_NAME2)), true);
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryTwoSubjects(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.x, TestContext.type, TestContext.Person),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.x, TestContext.type, TestContext.Person),
                 newHashSet(MapSolution.build(TestContext.x, TestContext.Alice),
                            MapSolution.build(TestContext.x, TestContext.Bob)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryObjectWithVarPredicate(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.Alice, TestContext.p, TestContext.o),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.Alice, TestContext.p, TestContext.o),
                 newHashSet(MapSolution.builder().put(TestContext.p, TestContext.knows).put(TestContext.o, TestContext.Bob).build(),
                            MapSolution.builder().put(TestContext.p, TestContext.type).put(TestContext.o, TestContext.Person).build(),
                            MapSolution.builder().put(TestContext.p, TestContext.age).put(TestContext.o, EndpointTestBase.A_AGE).build(),
@@ -303,13 +303,13 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testQuerySubjectFromLiteral(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.x, TestContext.name, EndpointTestBase.B_NAME1),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.x, TestContext.name, EndpointTestBase.B_NAME1),
                 singleton(MapSolution.build(TestContext.x, TestContext.Bob)));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testQuerySubjectObject(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.s, TestContext.name, TestContext.o),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.s, TestContext.name, TestContext.o),
                 newHashSet(MapSolution.builder().put(TestContext.s, TestContext.Alice).put(TestContext.o, EndpointTestBase.A_NAME).build(),
                            MapSolution.builder().put(TestContext.s, TestContext.Bob).put(TestContext.o, EndpointTestBase.B_NAME1).build(),
                            MapSolution.builder().put(TestContext.s, TestContext.Bob).put(TestContext.o, EndpointTestBase.B_NAME2).build()));
@@ -317,7 +317,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryDistinctPredicates(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.s, TestContext.p, TestContext.o),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.s, TestContext.p, TestContext.o),
                 newHashSet(MapSolution.build(TestContext.p, TestContext.knows),
                         MapSolution.build(TestContext.p, TestContext.type),
                         MapSolution.build(TestContext.p, TestContext.age),
@@ -328,7 +328,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testQueryDistinctPredicatesPoll(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.s, TestContext.p, TestContext.o),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.s, TestContext.p, TestContext.o),
                 newHashSet(MapSolution.build(TestContext.p, TestContext.knows),
                         MapSolution.build(TestContext.p, TestContext.type),
                         MapSolution.build(TestContext.p, TestContext.age),
@@ -340,7 +340,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testLimit(Function<InputStream, Fixture<TPEndpoint>> f) {
-        try (Fixture<TPEndpoint> fixture = f.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+        try (Fixture<TPEndpoint> fixture = f.apply(open("rdf-2.nt"))) {
             if (!fixture.endpoint.hasCapability(LIMIT)) return; //silently skip
             CQuery qry = createQuery(TestContext.x, TestContext.knows, TestContext.y, Limit.of(1));
             List<Solution> list = new ArrayList<>();
@@ -354,7 +354,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testForceAskWithVars(Function<InputStream, Fixture<TPEndpoint>> f) {
-        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        InputStream inputStream = open("rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
             CQuery cQuery = createQuery(TestContext.s, TestContext.p, TestContext.o, Ask.INSTANCE);
             try (Results results = fix.endpoint.query(cQuery)) {
@@ -366,7 +366,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testForceAskWithVarsNegative(Function<InputStream, Fixture<TPEndpoint>> f) {
-        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        InputStream inputStream = open("rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
             CQuery cQuery = createQuery(TestContext.s, TestContext.primaryTopic, TestContext.o, Ask.INSTANCE);
             try (Results results = fix.endpoint.query(cQuery)) {
@@ -377,7 +377,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testForceAskWithVarsNegativePoll(Function<InputStream, Fixture<TPEndpoint>> f) {
-        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        InputStream inputStream = open("rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
             CQuery cQuery = createQuery(TestContext.s, TestContext.primaryTopic, TestContext.o, Ask.INSTANCE);
             try (Results results = fix.endpoint.query(cQuery)) {
@@ -389,7 +389,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testAlternatives(Function<InputStream, Fixture<TPEndpoint>> f) {
-        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        InputStream inputStream = open("rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
             EmptyEndpoint a1 = new EmptyEndpoint(), a2 = new EmptyEndpoint();
             fix.endpoint.addAlternative(a1);
@@ -401,7 +401,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testTransitiveAlternative(Function<InputStream, Fixture<TPEndpoint>> f) {
-        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        InputStream inputStream = open("rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
             EmptyEndpoint e1 = new EmptyEndpoint(), e2 = new EmptyEndpoint();
             fix.endpoint.addAlternative(e1);
@@ -415,7 +415,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testReflexiveAlternatives(Function<InputStream, Fixture<TPEndpoint>> f) {
-        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        InputStream inputStream = open("rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
             EmptyEndpoint e = new EmptyEndpoint();
             fix.endpoint.addAlternative(e);
@@ -430,7 +430,7 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testNotAlternative(Function<InputStream, Fixture<TPEndpoint>> f) {
-        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        InputStream inputStream = open("rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
             EmptyEndpoint e1 = new EmptyEndpoint(), e2 = new EmptyEndpoint();
             assertFalse(fix.endpoint.isAlternative(e1));
@@ -447,7 +447,7 @@ public class TPEndpointTest extends EndpointTestBase {
     @Test(dataProvider = "fixtureFactories")
     public void testConcurrentAddAlternative(Function<InputStream, Fixture<TPEndpoint>> f)
     throws InterruptedException, ExecutionException {
-        InputStream inputStream = getClass().getResourceAsStream("../rdf-1.nt");
+        InputStream inputStream = open("rdf-1.nt");
         try (Fixture<TPEndpoint> fix = f.apply(inputStream)) {
             Map<TPEndpoint, Integer> observations = new HashMap<>();
             ExecutorService service = Executors.newCachedThreadPool();
@@ -479,18 +479,18 @@ public class TPEndpointTest extends EndpointTestBase {
 
     @Test(dataProvider = "fixtureFactories")
     public void testFilter(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.s, TestContext.age, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.s, TestContext.age, TestContext.x),
                 newHashSet(MapSolution.builder().put(TestContext.s, TestContext.Alice).put(TestContext.x, lit(23)).build()));
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.s, TestContext.age, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.s, TestContext.age, TestContext.x),
                 Collections.emptySet(), SPARQLFilterFactory.parseFilter("?x > 23"));
     }
 
     @Test(dataProvider = "fixtureFactories")
     public void testFilterPoll(Function<InputStream, Fixture<TPEndpoint>> f) {
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.s, TestContext.age, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.s, TestContext.age, TestContext.x),
                 newHashSet(MapSolution.builder().put(TestContext.s, TestContext.Alice).put(TestContext.x, lit(23)).build()),
                 true);
-        queryResourceTest(f, "../rdf-1.nt", new Triple(TestContext.s, TestContext.age, TestContext.x),
+        queryResourceTest(f, "rdf-1.nt", new Triple(TestContext.s, TestContext.age, TestContext.x),
                 Collections.emptySet(), true,
                 SPARQLFilterFactory.parseFilter("?x > 23"));
     }

@@ -4,9 +4,9 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecLoader;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import org.testng.annotations.Test;
@@ -25,9 +25,9 @@ import static org.testng.Assert.*;
 @Test
 public class TransparencyServicesLiveTest implements TransparencyServiceTestContext {
 
-    private @Nonnull Op loadQuery(@Nonnull String filename)
-            throws IOException, SPARQLParseException {
-        try (InputStream in = getClass().getResourceAsStream(filename)) {
+    @SuppressWarnings("SameParameterValue")
+    private @Nonnull Op loadQuery(@Nonnull String filename) throws IOException, SPARQLParseException {
+        try (InputStream in = open("webapis/"+filename)) {
             assertNotNull(in);
             return SPARQLParser.tolerant().parse(in);
         }

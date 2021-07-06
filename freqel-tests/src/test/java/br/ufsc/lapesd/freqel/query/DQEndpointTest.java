@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.freqel.query;
 
-import br.ufsc.lapesd.freqel.util.NamedFunction;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -13,6 +12,7 @@ import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
+import br.ufsc.lapesd.freqel.util.NamedFunction;
 import com.google.common.collect.Sets;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.RDFS;
@@ -58,8 +58,8 @@ public class DQEndpointTest extends CQEndpointTest {
     protected void queryResourceTest(Function<InputStream, Fixture<CQEndpoint>> f,
                                      @Nonnull Collection<Triple> query,
                                      @Nonnull Set<Solution> ex, boolean poll) {
-        String filename = "../rdf-2.nt";
-        try (Fixture<CQEndpoint> fxt = f.apply(getClass().getResourceAsStream(filename))) {
+        String filename = "rdf-2.nt";
+        try (Fixture<CQEndpoint> fxt = f.apply(open(filename))) {
             Set<Solution> ac = new HashSet<>();
             assertTrue(fxt.endpoint instanceof DQEndpoint, "endpoint should to be a DQEndpoint");
             Op op = new EndpointQueryOp(fxt.endpoint, CQuery.from(query));
@@ -71,13 +71,14 @@ public class DQEndpointTest extends CQEndpointTest {
         }
     }
 
+    @SuppressWarnings("SameParameterValue")
     protected void querySPARQLTest(Function<InputStream, Fixture<DQEndpoint>> f,
                                    @Nonnull String sparql,
                                    @Nonnull Set<Solution> ex,
                                    boolean poll) throws SPARQLParseException {
-        String filename = "../rdf-2.nt";
+        String filename = "rdf-2.nt";
         Op query = SPARQLParser.strict().parse(sparql);
-        try (Fixture<DQEndpoint> fxt = f.apply(getClass().getResourceAsStream(filename))) {
+        try (Fixture<DQEndpoint> fxt = f.apply(open(filename))) {
             Set<Solution> ac = new HashSet<>();
             try (Results results = fxt.endpoint.query(query)) {
                 results.forEachRemaining(ac::add);

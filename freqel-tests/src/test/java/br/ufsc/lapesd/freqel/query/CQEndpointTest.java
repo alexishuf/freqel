@@ -56,8 +56,8 @@ public class CQEndpointTest extends EndpointTestBase {
     protected void queryResourceTest(Function<InputStream, Fixture<CQEndpoint>> f,
                                      @Nonnull Collection<Triple> query,
                                      @Nonnull Set<Solution> ex, boolean poll) {
-        String filename = "../rdf-2.nt";
-        try (Fixture<CQEndpoint> fixture = f.apply(getClass().getResourceAsStream(filename))) {
+        String filename = "rdf-2.nt";
+        try (Fixture<CQEndpoint> fixture = f.apply(open(filename))) {
             Set<Solution> ac = new HashSet<>();
             CQuery cQuery = query instanceof CQuery ? (CQuery) query : CQuery.from(query);
             try (Results results = fixture.endpoint.query(cQuery)) {
@@ -118,7 +118,7 @@ public class CQEndpointTest extends EndpointTestBase {
             throws InterruptedException, ExecutionException {
         ExecutorService exec = Executors.newCachedThreadPool();
         List<Future<?>> futures = new ArrayList<>();
-        try (Fixture<CQEndpoint> f = fac.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+        try (Fixture<CQEndpoint> f = fac.apply(open("rdf-2.nt"))) {
             CQEndpoint ep = f.endpoint;
             for (int i = 0; i < 50; i++) {
                 futures.add(exec.submit(() -> {
@@ -155,7 +155,7 @@ public class CQEndpointTest extends EndpointTestBase {
             throws InterruptedException, ExecutionException {
         ExecutorService exec = Executors.newCachedThreadPool();
         List<Future<?>> futures = new ArrayList<>();
-        try (Fixture<CQEndpoint> f = fac.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+        try (Fixture<CQEndpoint> f = fac.apply(open("rdf-2.nt"))) {
             CQEndpoint ep = f.endpoint;
             for (int i = 0; i < 50; i++) {
                 futures.add(exec.submit(() -> {
@@ -207,7 +207,7 @@ public class CQEndpointTest extends EndpointTestBase {
                 "  ?x foaf:knows ex:Bob ;" +
                 "     foaf:age ?age FILTER(?age <= 23) .\n" +
                 "}";
-        try (Fixture<CQEndpoint> fixture = f.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+        try (Fixture<CQEndpoint> fixture = f.apply(open("rdf-2.nt"))) {
             if (!fixture.endpoint.canQuerySPARQL())
                 return; //not a test target
             Set<Term> actual = new HashSet<>();
@@ -229,7 +229,7 @@ public class CQEndpointTest extends EndpointTestBase {
                 "    ?x foaf:name \"bob\"@en .\n" +
                 "  }\n" +
                 "}";
-        try (Fixture<CQEndpoint> fixture = f.apply(getClass().getResourceAsStream("../rdf-2.nt"))) {
+        try (Fixture<CQEndpoint> fixture = f.apply(open("rdf-2.nt"))) {
             if (!fixture.endpoint.canQuerySPARQL())
                 return; //not a test target
             Set<Term> actual = new HashSet<>();

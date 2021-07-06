@@ -30,7 +30,6 @@ public class CassandraHelper implements AutoCloseable {
     private static final Pattern RX_DROP_KS = Pattern.compile(
             "(?i)DROP\\s+KEYSPACE\\s+(?:IF\\s+EXISTS\\s+)?(\\w+)");
     private static final Holder holder = new Holder();
-    private static final String CONTAINER_JAR = "cassandra-test-container/target/cassandra-test-container-1.0-SNAPSHOT.jar";
 
     private static class Holder {
         private boolean building = false;
@@ -89,6 +88,7 @@ public class CassandraHelper implements AutoCloseable {
             holder.setHelper(helper);
             return helper;
         } catch (Throwable t) {
+            logger.error("Cassandra initialization failed", t);
             holder.giveUp();
             throw t;
         }
@@ -172,8 +172,11 @@ public class CassandraHelper implements AutoCloseable {
         String wrapperPath = "../mvnw" + (SystemUtils.IS_OS_WINDOWS ? ".cmd" : "");
         File project = new File("cassandra-test-container");
         if (!project.exists() || !project.isDirectory()) {
-            throw new FileNotFoundException(project + " not found. Running from " +
-                                            "freqel parent project directory?");
+            project = new File("../cassandra-test-container");
+            if (!project.exists() || !project.isDirectory()) {
+                throw new FileNotFoundException(project + " not found. Running from " +
+                                                          "freqel parent project directory?");
+            }
         }
         Process process = new ProcessBuilder(wrapperPath, "package").directory(project)
                 .redirectError(ProcessBuilder.Redirect.INHERIT)
@@ -186,21 +189,17 @@ public class CassandraHelper implements AutoCloseable {
         }
         if (process.exitValue() != 0)
             throw new IOException("Non-zero ("+process.exitValue()+") maven wrapper exit stattus");
-        assert new File(CONTAINER_JAR).exists();
-        return CONTAINER_JAR;
+        File jar = new File(project, "target/cassandra-test-container-1.0-SNAPSHOT.jar");
+        assert jar.exists() : jar+" maven done with status 0, but "+jar+" does not exist!";
+        return jar.getAbsolutePath();
     }
 
     public @Nonnull CqlSession getSession() {
         return session;
     }
 
-    public void executeCommands(@Nonnull String resourcePath,
-                                @Nonnull Class<?> aClass) throws IOException {
-        executeCommands(aClass.getResourceAsStream(resourcePath));
-    }
     public void executeCommands(@Nonnull InputStream inputStream) throws IOException {
         executeCommands(IOUtils.toString(inputStream, UTF_8));
-
     }
 
     public void executeCommands(@Nonnull String string) {

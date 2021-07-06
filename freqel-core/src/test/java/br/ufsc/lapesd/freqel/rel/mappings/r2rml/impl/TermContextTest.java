@@ -42,7 +42,7 @@ public class TermContextTest implements TestContext {
     @BeforeClass
     public void setUp() throws IOException {
         RRFactory.install();
-        try (InputStream in = getClass().getResourceAsStream("term-context-test.ttl")) {
+        try (InputStream in = open("rel/mappings/r2rml/impl/term-context-test.ttl")) {
             assertNotNull(in);
             model = ModelFactory.createDefaultModel();
             RDFDataMgr.read(model, in, Lang.TTL);

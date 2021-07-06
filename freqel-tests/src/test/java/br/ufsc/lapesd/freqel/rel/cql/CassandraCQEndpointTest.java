@@ -3,13 +3,14 @@ package br.ufsc.lapesd.freqel.rel.cql;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerTest;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.term.Blank;
 import br.ufsc.lapesd.freqel.model.term.Lit;
 import br.ufsc.lapesd.freqel.model.term.std.StdBlank;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.modifiers.Ask;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.ArraySolution;
@@ -17,7 +18,6 @@ import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
 import br.ufsc.lapesd.freqel.rel.mappings.Column;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.TableTag;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import com.datastax.oss.driver.api.core.CqlSession;
 import org.testng.annotations.*;
 
@@ -151,8 +151,8 @@ public class CassandraCQEndpointTest implements TestContext {
     @BeforeClass
     public void setUp() throws IOException, InterruptedException {
         cassandra = CassandraHelper.createCassandra();
-        cassandra.executeCommands("dump-1.cql", getClass());
-        cassandra.executeCommands("dump-2.cql", getClass());
+        cassandra.executeCommands(open("rel/cql/dump-1.cql"));
+        cassandra.executeCommands(open("rel/cql/dump-2.cql"));
     }
 
     @AfterClass

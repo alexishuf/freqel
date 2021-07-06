@@ -4,13 +4,14 @@ import br.ufsc.lapesd.freqel.ResultsAssert;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
 import br.ufsc.lapesd.freqel.description.molecules.Molecule;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.term.Lit;
 import br.ufsc.lapesd.freqel.model.term.URI;
 import br.ufsc.lapesd.freqel.model.term.std.StdBlank;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.modifiers.Ask;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
@@ -21,7 +22,6 @@ import br.ufsc.lapesd.freqel.rel.mappings.context.ContextMapping;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.ColumnsTag;
 import br.ufsc.lapesd.freqel.rel.mappings.tags.TableTag;
 import br.ufsc.lapesd.freqel.util.DictTree;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomAnnotation;
 import org.apache.commons.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -402,10 +402,10 @@ public class JDBCCQEndpointTest implements TestContext {
                           boolean allowDecomposition) throws Exception {
         List<DictTree> mappingDictTrees = DictTree.load().fromResourceList(getClass(), mappingPath);
         ContextMapping mapping = ContextMapping.parse(mappingDictTrees);
-        String url = "jdbc:h2:mem:"+UUID.randomUUID().toString();
+        String url = "jdbc:h2:mem:"+ UUID.randomUUID();
         try (Connection connection = DriverManager.getConnection(url)) {
             try (Statement stmt = connection.createStatement();
-                 InputStream in = getClass().getResourceAsStream(dumpPath)) {
+                 InputStream in = open("rel/sql/"+dumpPath)) {
                 assertNotNull(in);
                 stmt.executeUpdate(IOUtils.toString(in, StandardCharsets.UTF_8));
             }

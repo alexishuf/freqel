@@ -85,7 +85,7 @@ public class RRMappingTest implements TestContext {
     public void testMolecule(@Nonnull String resourcePath,
                              @Nonnull Molecule expected) throws IOException {
         RRMapping mapping;
-        try (InputStream in = getClass().getResourceAsStream(resourcePath)) {
+        try (InputStream in = open("rel/mappings/r2rml/"+resourcePath)) {
             assertNotNull(in);
             mapping = RRMapping.builder().name(resourcePath).load(in);
         }

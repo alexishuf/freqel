@@ -23,7 +23,7 @@
     <errorprone.version>2.3.3</errorprone.version>
     <slf4j.version>1.7.28</slf4j.version>
     <dagger.version>2.32</dagger.version>
-    <rdfit.version>1.0.6</rdfit.version>
+    <rdfit.version>1.0.7</rdfit.version>
   </properties>
 
   <modules>

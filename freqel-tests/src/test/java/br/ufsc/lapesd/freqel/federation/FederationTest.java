@@ -139,9 +139,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
         return new StdURI("http://example.org/"+local);
     }
 
-    private static  @Nonnull ARQEndpoint createEndpoint(@Nonnull String filename) {
+    private static @Nonnull ARQEndpoint createEndpoint(@Nonnull String filename) {
         Model m = ModelFactory.createDefaultModel();
-        RDFDataMgr.read(m, FederationTest.class.getResourceAsStream("../"+filename), Lang.TTL);
+        RDFDataMgr.read(m, new TestContext(){}.open(filename), Lang.TTL);
         return forModel(m);
     }
 
@@ -807,10 +807,10 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
 
     public static @Nonnull List<List<Object>> transparencyJoinsData()
             throws IOException, SPARQLParseException {
-        Class<FederationTest> myClass = FederationTest.class;
         String[] sparql = new String[4];
         for (int i = 0; i < 3; i++) {
-            try (InputStream in = myClass.getResourceAsStream("transparency-query-"+i+".sparql")) {
+            String queryFile = "federation/transparency-query-" + i + ".sparql";
+            try (InputStream in = new TestContext(){}.open(queryFile)) {
                 sparql[i] = IOUtils.toString(in, StandardCharsets.UTF_8);
             }
         }
@@ -1119,7 +1119,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     private static Op loadQuery(@Nonnull String filename) throws Exception {
-        try (InputStream in = FederationTest.class.getResourceAsStream(filename)) {
+        try (InputStream in = new TestContext(){}.open(filename)) {
             return SPARQLParser.strict().parse(in);
         }
     }

@@ -142,7 +142,7 @@ public class RRTemplateTest implements TestContext {
                               @Nonnull String termMapLocalName,
                               @Nonnull RDFNode expected) throws IOException {
         TermMap termMap;
-        try (InputStream in = getClass().getResourceAsStream("term-maps.ttl")) {
+        try (InputStream in = open("rel/mappings/r2rml/term-maps.ttl")) {
             assertNotNull(in);
             Model model = ModelFactory.createDefaultModel();
             RDFDataMgr.read(model, in, Lang.TTL);

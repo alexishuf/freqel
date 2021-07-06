@@ -334,7 +334,7 @@ public class ContextMappingTest implements TestContext {
                           @Nonnull String expectedResource) throws Exception {
         ContextMapping.resetNextIdForTesting();
         Model expected = ModelFactory.createDefaultModel();
-        try (InputStream in = getClass().getResourceAsStream(expectedResource)) {
+        try (InputStream in = open("rel/mappings/context/"+expectedResource)) {
             assertNotNull(in);
             RDFDataMgr.read(expected, in, Lang.TTL);
         }

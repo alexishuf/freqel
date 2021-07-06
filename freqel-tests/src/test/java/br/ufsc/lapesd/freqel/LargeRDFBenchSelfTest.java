@@ -64,7 +64,7 @@ import static org.testng.Assert.*;
  * This class checks data is valid and that the queries yield expected answers from the data
  * (without federating).
  */
-public class LargeRDFBenchSelfTest {
+public class LargeRDFBenchSelfTest implements TestContext {
     private static final Logger logger = LoggerFactory.getLogger(LargeRDFBenchSelfTest.class);
     public static List<String> DATA_FILENAMES = Arrays.asList(
             "Affymetrix.nt",
@@ -328,7 +328,7 @@ public class LargeRDFBenchSelfTest {
     @Test
     public void testParseAllQueries() throws Exception {
         SPARQLParser parser = SPARQLParser.tolerant();
-        try (InputStream in = getClass().getResourceAsStream("LargeRDFBench-all-queries.zip")) {
+        try (InputStream in = open("LargeRDFBench-all-queries.zip")) {
             ZipInputStream zip = new ZipInputStream(in);
             for (ZipEntry e = zip.getNextEntry(); e != null; e = zip.getNextEntry()) {
                 if (e.isDirectory()) continue;

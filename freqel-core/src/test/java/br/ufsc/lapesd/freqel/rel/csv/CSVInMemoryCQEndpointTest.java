@@ -1,11 +1,11 @@
 package br.ufsc.lapesd.freqel.rel.csv;
 
 import br.ufsc.lapesd.freqel.TestContext;
+import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
-import br.ufsc.lapesd.freqel.jena.query.modifiers.filter.JenaSPARQLFilter;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
@@ -119,7 +119,7 @@ public class CSVInMemoryCQEndpointTest implements TestContext {
             builder.addIdColumn("id");
         ContextMapping mapping = builder.endTable().build();
         CSVInMemoryCQEndpoint ep;
-        try (InputStream in = getClass().getResourceAsStream(csvPath)) {
+        try (InputStream in = open("rel/csv/"+csvPath)) {
             assertNotNull(in);
             ep = CSVInMemoryCQEndpoint.loader(mapping).load(in, StandardCharsets.UTF_8);
         }
@@ -131,7 +131,7 @@ public class CSVInMemoryCQEndpointTest implements TestContext {
 
     private boolean hasId(@Nonnull String csvPath) throws IOException {
         CSVFormat format = CSVFormat.DEFAULT.withFirstRecordAsHeader();
-        try (InputStream in = getClass().getResourceAsStream(csvPath);
+        try (InputStream in = open("rel/csv/"+csvPath);
              Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8);
              CSVParser parser = new CSVParser(reader, format)) {
             return parser.getHeaderNames().contains("id");

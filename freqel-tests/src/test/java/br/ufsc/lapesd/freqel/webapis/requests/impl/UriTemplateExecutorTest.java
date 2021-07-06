@@ -1,6 +1,5 @@
 package br.ufsc.lapesd.freqel.webapis.requests.impl;
 
-import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.Lit;
@@ -12,6 +11,7 @@ import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
+import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.webapis.requests.parsers.impl.MappedJsonResponseParser;
 import com.google.common.collect.Sets;
 import com.google.gson.JsonElement;
@@ -54,7 +54,7 @@ public class UriTemplateExecutorTest extends JerseyTestNg.ContainerPerClassTest 
         @Path("rdf/{name:.*}")
         public Model getRDF(@PathParam("name") String name) {
             Model model = ModelFactory.createDefaultModel();
-            InputStream in = Service.class.getResourceAsStream("../../../" + name);
+            InputStream in = new TestContext() {}.open(name);
             RDFDataMgr.read(model, in, Lang.TTL);
             return model;
         }
@@ -90,7 +90,7 @@ public class UriTemplateExecutorTest extends JerseyTestNg.ContainerPerClassTest 
         RDFDataMgr.read(actual, new StringReader(json), null, Lang.JSONLD);
 
         Model expected = ModelFactory.createDefaultModel();
-        InputStream in = getClass().getResourceAsStream("../../../rdf-1.nt");
+        InputStream in = open("rdf-1.nt");
         RDFDataMgr.read(expected, in, Lang.NT);
 
         assertTrue(expected.isIsomorphicWith(actual));

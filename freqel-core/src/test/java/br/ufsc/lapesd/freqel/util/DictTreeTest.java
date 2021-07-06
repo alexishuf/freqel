@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.util;
 
+import br.ufsc.lapesd.freqel.TestContext;
 import com.google.common.base.Splitter;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -25,7 +26,7 @@ import static java.util.stream.Collectors.toList;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
-public class DictTreeTest {
+public class DictTreeTest implements TestContext {
 
     private final String yamlWithSlashProperty =
             "root:\n" +
@@ -60,7 +61,7 @@ public class DictTreeTest {
     @Test(dataProvider = "testPathData")
     public void testJsonStream(String path, String jsonExpected) throws IOException {
         DictTree map;
-        try (InputStream inputStream = getClass().getResourceAsStream("test.json")) {
+        try (InputStream inputStream = open("util/test.json")) {
             map = DictTree.load("test.json").fromJson(inputStream);
         }
         doPathTest(map, path, jsonExpected);
@@ -69,7 +70,7 @@ public class DictTreeTest {
     @Test(dataProvider = "testPathData")
     public void testYamlStream(String path, String jsonExpected) throws IOException {
         DictTree map;
-        try (InputStream inputStream = getClass().getResourceAsStream("test.yaml")) {
+        try (InputStream inputStream = open("util/test.yaml")) {
             map = DictTree.load("test.yaml").fromYaml(inputStream);
         }
         doPathTest(map, path, jsonExpected);
@@ -78,7 +79,7 @@ public class DictTreeTest {
     @Test(dataProvider = "testPathData")
     public void testYamlDocBreakStream(String path, String jsonExpected) throws IOException {
         DictTree map;
-        try (InputStream inputStream = getClass().getResourceAsStream("test+doc_break.yaml")) {
+        try (InputStream inputStream = open("util/test+doc_break.yaml")) {
             map = DictTree.load("test+doc_break.yaml").fromYaml(inputStream);
         }
         doPathTest(map, path, jsonExpected);
@@ -87,7 +88,7 @@ public class DictTreeTest {
     @Test(dataProvider = "testPathData")
     public void testAutoJsonStream(String path, String jsonExpected) throws IOException {
         DictTree map;
-        try (InputStream inputStream = getClass().getResourceAsStream("test.json")) {
+        try (InputStream inputStream = open("util/test.json")) {
             map = DictTree.load("test").fromInputStream(inputStream);
         }
         doPathTest(map, path, jsonExpected);
@@ -96,7 +97,7 @@ public class DictTreeTest {
     @Test(dataProvider = "testPathData")
     public void testAutoYamlStream(String path, String jsonExpected) throws IOException {
         DictTree map;
-        try (InputStream inputStream = getClass().getResourceAsStream("test.yaml")) {
+        try (InputStream inputStream = open("util/test.yaml")) {
             map = DictTree.load("test").fromInputStream(inputStream);
         }
         doPathTest(map, path, jsonExpected);
