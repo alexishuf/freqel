@@ -106,7 +106,7 @@ public class AskDescriptionTest implements TestContext {
     @BeforeClass
     public void setUp() {
         rdf1 = ModelFactory.createDefaultModel();
-        RDFDataMgr.read(rdf1, getClass().getResourceAsStream("../rdf-1.nt"), Lang.TTL);
+        RDFDataMgr.read(rdf1, open("rdf-1.nt"), Lang.TTL);
     }
 
     @AfterClass

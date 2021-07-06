@@ -293,13 +293,16 @@ public abstract class AbstractInnerOp extends AbstractOp implements InnerOp {
 
     @Override
     public @Nonnull StringBuilder toString(@Nonnull StringBuilder b) {
-        checkState(children != null, "Previous takeChildren() handle not closed");
         if (isProjected())
             b.append(getPiWithNames()).append('(');
         String sep = toStringSeparator();
-        for (Op child : getChildren())
-            child.toString(b).append(sep);
-        b.setLength(b.length()-sep.length());
+        if (children == null) {
+            b.append("CHILDREN_TAKEN");
+        } else {
+            for (Op child : getChildren())
+                child.toString(b).append(sep);
+            b.setLength(b.length()-sep.length());
+        }
         if (isProjected())
             b.append(')');
         return b;

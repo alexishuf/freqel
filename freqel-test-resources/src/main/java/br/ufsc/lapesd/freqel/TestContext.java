@@ -14,6 +14,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 
 import javax.annotation.Nonnull;
+import java.io.InputStream;
 
 public interface TestContext {
     @Nonnull String EX = "http://example.org/";
@@ -66,6 +67,28 @@ public interface TestContext {
     }
     default @Nonnull Lit date(String iso) {
         return StdLit.fromEscaped(iso, xsdDate);
+    }
+
+    default @Nonnull InputStream open(@Nonnull String path) {
+        String full = "br/ufsc/lapesd/freqel/"
+                + path.replaceAll("^/+", "")
+                      .replaceAll("br/+ufsc/+lapesd/+freqel/+", "");
+        InputStream is = ClassLoader.getSystemClassLoader().getResourceAsStream(full);
+        if (is != null) return is;
+
+        is = Thread.currentThread().getContextClassLoader().getResourceAsStream(full);
+        if (is != null) return is;
+
+        is = Thread.currentThread().getContextClassLoader().getResourceAsStream("/"+full);
+        if (is != null) return is;
+
+        is = ClassLoader.getSystemClassLoader().getResourceAsStream("/"+full);
+        if (is != null) return is;
+
+        is = getClass().getResourceAsStream(full.replace("br/ufsc/lapesd/freqel/", ""));
+        if (is == null)
+            throw new IllegalArgumentException("Bad resource path: "+path);
+        return is;
     }
 
     @Nonnull URI Person   = new StdURI(FOAF.Person.getURI());

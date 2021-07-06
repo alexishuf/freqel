@@ -546,9 +546,9 @@ public class APIMoleculeMatcherTest implements TestContext {
 
     @Test
     public void regressionTestBogusEGs() throws Exception {
-        String resourcePath = "../../federation/transparency-query-2.sparql";
+        String resourcePath = "federation/transparency-query-2.sparql";
         CQuery query;
-        try (InputStream in = getClass().getResourceAsStream(resourcePath)) {
+        try (InputStream in = open(resourcePath)) {
             query = SPARQLParser.strict().parseConjunctive(new InputStreamReader(in, UTF_8));
         }
         WebTarget target = ClientBuilder.newClient().target("http://dummy.example.org:1234/");

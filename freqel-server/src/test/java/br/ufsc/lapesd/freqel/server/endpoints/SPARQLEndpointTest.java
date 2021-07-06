@@ -53,12 +53,10 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
 
     @SuppressWarnings("SameParameterValue")
     private @Nonnull TPEndpoint getSource(@Nonnull String resourceRelativePath) {
-        try (InputStream in = getClass().getResourceAsStream(resourceRelativePath)) {
-            if (in == null)
-                fail("Resource "+resourceRelativePath+" not found");
+        try (InputStream in = open(resourceRelativePath)) {
             Model model = ModelFactory.createDefaultModel();
             RDFDataMgr.read(model, in, Lang.NT);
-            ARQEndpoint ep = ARQEndpoint.forModel(model, "rdf-1.nt");
+            ARQEndpoint ep = ARQEndpoint.forModel(model, resourceRelativePath);
             return ep.setDescription(new SelectDescription(ep));
         } catch (IOException e) {
             fail("Unexpected exception", e);
@@ -69,7 +67,7 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
     @Override
     protected Application configure() {
         federation = Freqel.createFederation();
-        federation.addSource(getSource("../../rdf-1.nt"));
+        federation.addSource(getSource("rdf-1.nt"));
         return new ResourceConfig()
                 .property(Federation.class.getName(), federation)
                 .register(SPARQLEndpoint.class);

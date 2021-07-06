@@ -5,6 +5,7 @@ import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.JoinOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EndpointQueryOp;
 import br.ufsc.lapesd.freqel.description.molecules.Atom;
+import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
 import br.ufsc.lapesd.freqel.jena.JenaWrappers;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.JenaSolution;
@@ -17,13 +18,12 @@ import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.model.term.std.StdVar;
 import br.ufsc.lapesd.freqel.query.CQuery;
+import br.ufsc.lapesd.freqel.query.annotations.PureDescriptive;
 import br.ufsc.lapesd.freqel.query.modifiers.*;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
-import br.ufsc.lapesd.freqel.description.molecules.annotations.AtomInputAnnotation;
-import br.ufsc.lapesd.freqel.query.annotations.PureDescriptive;
 import com.google.common.collect.Sets;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.query.*;
@@ -186,7 +186,7 @@ public class SPARQLStringTest implements TestContext {
 
     private @Nonnull Model getRdf2() throws IOException {
         Model model = ModelFactory.createDefaultModel();
-        try (InputStream stream = getClass().getResourceAsStream("../rdf-2.nt")) {
+        try (InputStream stream = open("rdf-2.nt")) {
             assertNotNull(stream);
             RDFDataMgr.read(model, stream, Lang.TTL);
         }

@@ -20,7 +20,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nullable;
-import java.io.InputStream;
 import java.util.*;
 
 import static java.util.Arrays.asList;
@@ -35,8 +34,7 @@ public class EndpointIteratorResultsTest implements TestContext {
 
     private ARQEndpoint createEndpoint(String resourcePath) {
         Model model = ModelFactory.createDefaultModel();
-        InputStream in = getClass().getResourceAsStream(resourcePath);
-        RDFDataMgr.read(model, in, Lang.TTL);
+        RDFDataMgr.read(model, open(resourcePath), Lang.TTL);
         return ARQEndpoint.forModel(model);
     }
 
@@ -44,8 +42,8 @@ public class EndpointIteratorResultsTest implements TestContext {
     public void setUp() {
         e1 = new EmptyEndpoint();
         e2 = new EmptyEndpoint();
-        rdf1 = createEndpoint("../../rdf-1.nt");
-        rdf2 = createEndpoint("../../rdf-2.nt");
+        rdf1 = createEndpoint("rdf-1.nt");
+        rdf2 = createEndpoint("rdf-2.nt");
     }
 
     @AfterMethod

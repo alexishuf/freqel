@@ -142,7 +142,7 @@ public class SelectDescriptionTest implements TestContext {
     @BeforeClass(groups = {"fast"})
     public void setUp() {
         Model model = ModelFactory.createDefaultModel();
-        RDFDataMgr.read(model, getClass().getResourceAsStream("../rdf-1.nt"), Lang.TTL);
+        RDFDataMgr.read(model, open("rdf-1.nt"), Lang.TTL);
         rdf1 = new CountedARQEndpoint("rdf-1.nt",
                 q -> QueryExecutionFactory.create(q, model), null,
                 () -> {}, true);

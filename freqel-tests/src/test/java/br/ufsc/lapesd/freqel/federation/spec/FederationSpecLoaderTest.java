@@ -40,7 +40,7 @@ public class FederationSpecLoaderTest implements TestContext {
     @BeforeClass
     public void classSetUp() throws Exception {
         rdf1 = ModelFactory.createDefaultModel();
-        try (InputStream stream = getClass().getResourceAsStream("../../rdf-1.nt")) {
+        try (InputStream stream = open("rdf-1.nt")) {
             assertNotNull(stream);
             RDFDataMgr.read(rdf1, stream, Lang.TTL);
         }

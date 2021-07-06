@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.reason.tbox;
 
+import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.jena.ModelUtils;
 import br.ufsc.lapesd.freqel.util.ExtractedResource;
 import com.github.lapesd.rdfit.source.RDFInputStream;
@@ -19,7 +20,7 @@ import static org.apache.jena.rdf.model.ResourceFactory.createResource;
 import static org.testng.Assert.*;
 
 @Test(groups = {"fast"})
-public class TBoxSpecTest {
+public class TBoxSpecTest implements TestContext {
     private TBoxSpec fullSpec, emptySpec;
     private ExtractedResource provo, time;
     private static final String TIME_URI = "http://www.w3.org/2006/time";
@@ -30,7 +31,7 @@ public class TBoxSpecTest {
         Model onto1, onto2;
         onto1 = new TBoxSpec().fetchOwlImports(false).addResource("onto-1.ttl").loadModel();
         onto2 = new TBoxSpec().fetchOwlImports(false).addResource("onto-2.ttl").loadModel();
-        InputStream onto3 = getClass().getResourceAsStream("../../onto-3.ttl");
+        InputStream onto3 = open("onto-3.ttl");
         assertNotNull(onto3);
         fullSpec = new TBoxSpec()
                 .add(onto1)

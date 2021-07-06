@@ -68,9 +68,9 @@ public class HDTResults extends AbstractResults implements Results {
             try {
                 next = createSolution(ts);
             } catch (NTParseException e) {
-                assert false : "HDT iterator spit invalid data";
                 logger.error("{}.createSolution({}) failed to parse some terms. Variables: {}. " +
                              "Ignoring TripleString", this, ts, names, e);
+                assert false : "HDT iterator spit invalid data";
             } finally {
                 if (pendingEstimate > 0)
                     --pendingEstimate;

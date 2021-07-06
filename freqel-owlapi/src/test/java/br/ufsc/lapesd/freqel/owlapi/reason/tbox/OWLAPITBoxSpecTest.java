@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.owlapi.reason.tbox;
 
+import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.jena.ModelUtils;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.freqel.util.ExtractedResource;
@@ -20,11 +21,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static java.util.stream.Collectors.toSet;
-import static org.apache.jena.rdf.model.ResourceFactory.createResource;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = {"fast"})
-public class OWLAPITBoxSpecTest {
+public class OWLAPITBoxSpecTest implements TestContext {
     private TBoxSpec fullSpec;
     private ExtractedResource provo, time;
     private static final String TIME_URI = "http://www.w3.org/2006/time";
@@ -34,17 +35,17 @@ public class OWLAPITBoxSpecTest {
         Model onto1, onto2;
         onto1 = new TBoxSpec().fetchOwlImports(false).addResource("onto-1.ttl").loadModel();
         onto2 = new TBoxSpec().fetchOwlImports(false).addResource("onto-2.ttl").loadModel();
-        InputStream onto3 = getClass().getResourceAsStream("../../onto-3.ttl");
+        InputStream onto3 = open("onto-3.ttl");
         assertNotNull(onto3);
         fullSpec = new TBoxSpec()
                 .add(onto1)
                 .add(ModelUtils.toTemp(onto2, false))
                 .add(new RDFInputStream(onto3, RDFLangs.TTL))
-                .addResource(OWLAPITBoxSpecTest.class, "../../onto-4.ttl")
+                .addResource(OWLAPITBoxSpecTest.class, "../../../onto-4.ttl")
                 .add(TIME_URI);
 
-        provo = new ExtractedResource(getClass(), "../../prov-o.ttl");
-        time = new ExtractedResource(getClass(), "../../time.ttl");
+        provo = new ExtractedResource(getClass(), "../../../prov-o.ttl");
+        time = new ExtractedResource(getClass(), "../../../time.ttl");
     }
 
     @AfterMethod
