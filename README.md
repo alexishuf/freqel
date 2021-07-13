@@ -22,15 +22,9 @@ around 30min. For machines with limitted RAM size or slow hard drives
 
 To get jars quickly, skip tests: `./mvnw package -DskipTests=true`. For 
 development purposes, fast-running tests are under the "fast" TestNG group and
-take around 20 seconds for the slowest module (`freqel-tests`) 
+take around 20 seconds for the slowest module (`freqel-tests`). From the 
+command-line, run fast tests with `./mvnw verify -Dgroups=fast`.
 
-```xml
-<dependency>
-  <groupId>br.ufsc.lapesd.freqel</groupId>
-  <artifactId>freqel</artifactId>
-  <version>1.0-SNAPSHOT</version>
-</dependency>
-```
 
 How to use it
 -------------
@@ -90,11 +84,16 @@ see [the reference](doc/CONFIG.md).
 
 ### Running the federation as an SPARQL endpoint
 
-In this mode, configuration is placed on a file:
+In this mode, configuration stays on a JSON or YAML file:
 
 ```shell
-java -jar freqel-server/target/freqel-server-1.0-SNAPSHOT.jar --config federation.yaml
+freqel-server/target/freqel-server --config federation.yaml
 ```
+
+> The freqel-server binary is just a shell script concatenated with 
+> `freqel-server-1.0-SNAPSHOT.jar` that `java ${JVM_ARGS} -jar ` itself.
+> That is, you may pass options to the JVM setting the JVM_ARGS environment 
+> variable or you may use that file as an argument to the `-jar` flag.
 
 This will run a SPARQL endpoint listening at 
 [http://127.0.0.1:4040/sparql/query](http://127.0.0.1:4040/sparql/query). 

@@ -8,3 +8,6 @@
 ### Maven template
 target/
 dependency-reduced-pom.xml
+
+# copied by Makefile
+/docker/freqel-server
