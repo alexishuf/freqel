@@ -1,13 +1,12 @@
 package br.ufsc.lapesd.freqel.server.sparql.impl;
 
+import br.ufsc.lapesd.freqel.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.server.sparql.FormattedResults;
 import br.ufsc.lapesd.freqel.server.sparql.ResultsFormatter;
 import com.google.common.collect.Sets;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -16,8 +15,9 @@ import javax.ws.rs.core.MediaType;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Set;
 
 public class CSVResultsFormatter implements ResultsFormatter {
@@ -27,6 +27,61 @@ public class CSVResultsFormatter implements ResultsFormatter {
             TSV_TYPE = new MediaType("text", "tsv");
     public static final @Nonnull Set<MediaType> TYPES =
             Sets.newHashSet(CSV_TYPE, TAB_SV_TYPE, TSV_TYPE);
+
+    @FunctionalInterface
+    private interface Serializer {
+        void serialize(@Nullable Term term, @Nonnull Writer writer) throws IOException;
+    }
+
+    private static final @Nonnull Serializer CSV_SERIALIZER = (t, w) -> {
+        if (t == null)
+             return;
+        if (t.isLiteral()) {
+            String string = t.asLiteral().getLexicalForm();
+            if (string.isEmpty()) {
+                w.write(string);
+                return;
+            }
+            int length = string.length();
+            char first = string.charAt(0), last = string.charAt(length - 1);
+            if (first < ' ' || last < ' ' || string.indexOf(',') >= 0) {
+                for (int i = 0; i < length; i++) {
+                    char c = string.charAt(i);
+                    if (c == '"')
+                        w.write('"');
+                    w.write(c);
+                }
+                w.write('"');
+            } else {
+                w.write(string);
+            }
+        } else {
+            w.write(t.toString(StdPrefixDict.EMPTY));
+        }
+    };
+    private static final @Nonnull Serializer TSV_SERIALIZER = (t, w) -> {
+        if (t == null)
+            return;
+        if (t.isBlank()) {
+            w.write(t.toString());
+        } else if (t.isLiteral()) {
+            String string = t.asLiteral().toNT();
+            int size = string.length();
+            for (int i = 0; i < size; i++) {
+                char c = string.charAt(i);
+                switch (c) {
+                    case '\t': w.append('\\').append('t'); break;
+                    case '\n': w.append('\\').append('n'); break;
+                    case '\r': w.append('\\').append('r'); break;
+                    default: w.append(c);
+                }
+            }
+        } else if (t.isURI()) {
+            w.append('<').append(t.toString(StdPrefixDict.EMPTY)).append('>');
+        } else {
+            w.write(t.toString(StdPrefixDict.EMPTY));
+        }
+    };
 
     @Override
     public @Nonnull Set<MediaType> outputMediaTypes() {
@@ -47,34 +102,8 @@ public class CSVResultsFormatter implements ResultsFormatter {
         throw new IllegalArgumentException("Unsupported MediaType "+requestMediaType);
     }
 
-    private @Nonnull CSVFormat toFormat(@Nonnull MediaType mediaType) {
-        if (mediaType.isCompatible(CSV_TYPE))
-            return CSVFormat.RFC4180;
-        // text/tsv is non standard and only arises when using qonsole, which doesn't like \r\ns
-        if (mediaType.isCompatible(TSV_TYPE) && !mediaType.isWildcardSubtype())
-            return CSVFormat.RFC4180.withDelimiter('\t').withRecordSeparator('\n');
-        else
-            return CSVFormat.RFC4180.withDelimiter('\t');
-    }
-
-    private @Nonnull String serialize(boolean isCSV, @Nullable Term term) {
-        if (term == null) return "";
-        if (term.isBlank()) return term.toString();
-        if (isCSV) {
-            if (term.isLiteral()) return term.asLiteral().getLexicalForm();
-            else if (term.isURI()) return term.asURI().getURI();
-            else throw new IllegalArgumentException("Bad term type"+term.getType()+" for "+term);
-        } else {
-            if (term.isLiteral()) {
-                return term.asLiteral().toNT().replaceAll("\t", "\\t")
-                                              .replaceAll("\r", "\\r").replaceAll("\n", "\\n");
-            }
-            else if (term.isURI()) {
-                return term.asURI().toNT();
-            } else {
-                throw new IllegalArgumentException("Bad term type"+term.getType()+" for "+term);
-            }
-        }
+    private char delimiterFor(@Nonnull MediaType mediaType) {
+        return mediaType.isCompatible(CSV_TYPE) ? ',' : '\t';
     }
 
     @Override
@@ -82,19 +111,24 @@ public class CSVResultsFormatter implements ResultsFormatter {
                                             @Nullable MediaType requestMediaType) {
         MediaType mediaType = selectMediaType(requestMediaType);
         Charset charset = Charset.forName(mediaType.getParameters().get("charset"));
+        char del = delimiterFor(mediaType);
+        String eol = del == '\t' ? "\n" : "\r\n";
 
-        CSVFormat csvFormat = toFormat(mediaType);
-        boolean isCsv = csvFormat.getDelimiter() == ',';
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-        try (OutputStreamWriter writer = new OutputStreamWriter(byteOut, charset);
-             CSVPrinter printer = new CSVPrinter(writer, csvFormat)) {
-            ArrayList<String> headers = new ArrayList<>(results.getVarNames());
-            printer.printRecord(headers);
+        Serializer serializer = del == ',' ? CSV_SERIALIZER : TSV_SERIALIZER;
+        try (OutputStreamWriter writer = new OutputStreamWriter(byteOut, charset)) {
+            Set<String> names = results.getVarNames();
+            writeHeaders(writer, del, names);
+            writer.write(eol);
             while (results.hasNext()) {
                 Solution next = results.next();
-                for (String header : headers)
-                    printer.print(serialize(isCsv, next.get(header)));
-                printer.println();
+                boolean first = true;
+                for (String name : names) {
+                    if (!first) writer.write(del);
+                    else        first = false;
+                    serializer.serialize(next.get(name), writer);
+                }
+                writer.write(eol);
             }
         } catch (IOException e) {
             throw new RuntimeException(e); //should never occur
@@ -103,5 +137,16 @@ public class CSVResultsFormatter implements ResultsFormatter {
         }
 
         return new FormattedResults(mediaType, byteOut.toByteArray());
+    }
+
+    private void writeHeaders(@Nonnull Writer writer, char del,
+                              @Nonnull Collection<String> varNames) throws IOException {
+        boolean first = true;
+        for (String varName : varNames) {
+            if (!first) writer.append(del);
+            else        first = false;
+            if (del == '\t') writer.append('?');
+            writer.append(varName);
+        }
     }
 }

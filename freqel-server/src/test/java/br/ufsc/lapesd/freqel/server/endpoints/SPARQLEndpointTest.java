@@ -87,10 +87,10 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
 
         results1TSV = new HashSet<>();
         map.clear();
-        map.put("x", "<"+Alice.getURI()+">");
-        map.put("name", "\"bob\"@en");
+        map.put("?x", "<"+Alice.getURI()+">");
+        map.put("?name", "\"bob\"@en");
         results1TSV.add(new HashMap<>(map));
-        map.put("name", "\"beto\"@pt");
+        map.put("?name", "\"beto\"@pt");
         results1TSV.add(new HashMap<>(map));
     }
 
@@ -126,17 +126,18 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
 
     @Test
     public void testQueryGetTSVResultsViaParam() throws IOException {
-        String json = target("sparql/query")
+        String tsv = target("sparql/query")
                 .queryParam("query", PercentEncoder.encode(query1))
                 .queryParam("output", "tsv")
                 .request(MediaType.TEXT_HTML_TYPE) /* bogus accept is overridden */
                 .get(String.class);
 
-        HashSet<String> vars = Sets.newHashSet("x", "name");
+        HashSet<String> vars = Sets.newHashSet("?x", "?name");
 
         Set<Map<String, String>> solutions = new HashSet<>();
-        CSVFormat format = CSVFormat.RFC4180.withDelimiter('\t').withFirstRecordAsHeader();
-        try (StringReader reader = new StringReader(json);
+        CSVFormat format = CSVFormat.DEFAULT.withFirstRecordAsHeader().withDelimiter('\t')
+                .withQuote('\'').withRecordSeparator('\n');
+        try (StringReader reader = new StringReader(tsv);
              CSVParser parser = new CSVParser(reader, format)) {
             assertEquals(new HashSet<>(parser.getHeaderNames()), vars);
             for (CSVRecord record : parser) {

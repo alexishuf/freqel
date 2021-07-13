@@ -135,7 +135,9 @@ public class DictTree {
         public  @Nonnull
         DictTree fromFile(@Nonnull File file) throws IOException {
             UriResolver fallback = this.uriResolver;
-            this.uriResolver = new FileResolver(file.getParentFile(), fallback);
+            File parentFile = file.getParentFile();
+            parentFile = parentFile == null ? new File("") : parentFile;
+            this.uriResolver = new FileResolver(parentFile, fallback);
             try {
                 if (file.getName().toLowerCase().endsWith(".yaml"))
                     return fromYamlFile(file);

@@ -8,7 +8,7 @@ Configuration:
         pattern: "%d{ISO8601} [%t] %-5p %c{1.} - %m%n"
   Loggers:
     Root:
-      level: info
+      level: warn
       AppenderRef:
         - ref: Console_Appender
     logger:
@@ -17,8 +17,13 @@ Configuration:
         additivity: false
         AppenderRef:
           - ref: Console_Appender
-       - name: br.ufsc.lapesd.freqel.server
-         level: debug
-         additivity: false
-         AppenderRef:
-           - ref: Console_Appender
+      - name: com.github.lapesd.rdfit
+        level: info
+        additivity: false
+        AppenderRef:
+          - ref: Console_Appender
+      - name: br.ufsc.lapesd.freqel.server
+        level: debug
+        additivity: false
+        AppenderRef:
+          - ref: Console_Appender

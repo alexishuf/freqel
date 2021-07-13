@@ -142,6 +142,22 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.skife.maven</groupId>
+        <artifactId>really-executable-jar-maven-plugin</artifactId>
+        <version>1.5.0</version>
+        <configuration>
+          <programFile>freqel-server</programFile>
+          <scriptFile>${project.basedir}/src/packaging/launcher.sh</scriptFile>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>really-executable-jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 

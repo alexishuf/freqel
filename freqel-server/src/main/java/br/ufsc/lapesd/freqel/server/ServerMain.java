@@ -6,19 +6,15 @@ import br.ufsc.lapesd.freqel.federation.spec.FederationSpecLoader;
 import br.ufsc.lapesd.freqel.server.endpoints.Qonfig;
 import br.ufsc.lapesd.freqel.server.endpoints.SPARQLEndpoint;
 import br.ufsc.lapesd.freqel.server.endpoints.UIFiles;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
 import javax.annotation.Nonnull;
-import javax.ws.rs.ext.RuntimeDelegate;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.net.InetSocketAddress;
 import java.net.URI;
 
 import static org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory.createHttpServer;
@@ -28,7 +24,7 @@ public class ServerMain {
     private boolean help = false;
 
     @Option(name = "--address", usage = "Server listen address")
-    private @Nonnull String listenAddress = "127.0.0.1";
+    private @Nonnull String listenAddress = "0.0.0.0";
 
     @Option(name = "--port", aliases = {"-p"}, usage = "Server listen port")
     private int port = 4040;
@@ -53,12 +49,10 @@ public class ServerMain {
         } catch (CmdLineException e) {
             System.err.println(e.getLocalizedMessage());
             printHelp(System.err, parser);
+            System.exit(1);
         }
-        if (app.help) {
-            printHelp(System.out, parser);
-        } else {
-            app.run();
-        }
+        if (app.help) printHelp(System.out, parser);
+        else          app.run();
     }
 
     public @Nonnull ResourceConfig getApplication() throws IOException, FederationSpecException {
