@@ -901,6 +901,15 @@ public class FreqelConfig {
         }
     }
 
+    /**
+     * Tests whether there is an explicit configuration for given key.
+     * @param key the Key to test for
+     * @return true iff a value was explicitly set.
+     */
+    public boolean has(@Nonnull Key key) {
+        return values.containsKey(key);
+    }
+
     public Object get(@Nonnull Key key) {
         return values.getOrDefault(key, key.getDefault());
     }
