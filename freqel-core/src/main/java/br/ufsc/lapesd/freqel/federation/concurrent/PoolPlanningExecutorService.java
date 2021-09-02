@@ -8,17 +8,41 @@ import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntConsumer;
 
 import static java.lang.String.format;
+import static java.lang.System.getSecurityManager;
+import static java.lang.Thread.currentThread;
 
 public class PoolPlanningExecutorService extends ForwardingExecutorService
         implements PlanningExecutorService {
     private static final @Nonnull Logger logger =
             LoggerFactory.getLogger(PoolPlanningExecutorService.class);
+    private static final @Nonnull AtomicInteger nextPoolId = new AtomicInteger(0);
+
     private ThreadPoolExecutor executor;
     private final int core, max;
     private int references;
+    private final @Nonnull ThreadFactory threadFactory = new ThreadFactory() {
+        private final @Nonnull AtomicInteger nextThreadId = new AtomicInteger(0);
+        private final @Nonnull ThreadGroup group = getSecurityManager() == null
+                                                 ? currentThread().getThreadGroup()
+                                                 : getSecurityManager().getThreadGroup();
+        private final @Nonnull String namePrefix = PoolPlanningExecutorService.class.getSimpleName()
+                                                 + "-" + nextPoolId.getAndIncrement();
+
+
+        @Override public Thread newThread(@Nonnull Runnable r) {
+            String name = namePrefix + "-" + nextThreadId.getAndIncrement();
+            Thread thread = new Thread(group, r, name, 0);
+            if (!thread.isDaemon())
+                thread.setDaemon(true);
+            if (thread.getPriority() != Thread.NORM_PRIORITY)
+                thread.setPriority(Thread.NORM_PRIORITY);
+            return thread;
+        }
+    };
 
     public PoolPlanningExecutorService() {
         this(Runtime.getRuntime().availableProcessors());
@@ -46,7 +70,8 @@ public class PoolPlanningExecutorService extends ForwardingExecutorService
             assert references > 0;
             assert references == 1;
             executor = new ThreadPoolExecutor(core, max, 30, TimeUnit.SECONDS,
-                    new ArrayBlockingQueue<>(core), new ThreadPoolExecutor.CallerRunsPolicy());
+                                              new ArrayBlockingQueue<>(core), threadFactory,
+                                              new ThreadPoolExecutor.CallerRunsPolicy());
         }
     }
 
