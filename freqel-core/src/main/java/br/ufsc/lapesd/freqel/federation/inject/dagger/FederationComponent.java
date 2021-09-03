@@ -20,6 +20,7 @@ import br.ufsc.lapesd.freqel.federation.spec.source.SourceLoaderRegistry;
 import br.ufsc.lapesd.freqel.query.results.ResultsExecutor;
 import br.ufsc.lapesd.freqel.reason.tbox.TBox;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializer;
+import br.ufsc.lapesd.freqel.util.BackoffStrategy;
 import dagger.BindsInstance;
 import dagger.Component;
 
@@ -103,6 +104,7 @@ public interface FederationComponent {
 
         @BindsInstance Builder overrideSourceCache(@Nullable @Named("override") SourceCache c);
         @BindsInstance Builder overrideSourcesCacheDir(@Nullable @Named("sourceCacheDirOverride") File d);
+        @BindsInstance Builder overrideIndexingBackoffStrategy(@Nullable @Named("indexingOverride") BackoffStrategy s);
 
         FederationComponent build();
     }

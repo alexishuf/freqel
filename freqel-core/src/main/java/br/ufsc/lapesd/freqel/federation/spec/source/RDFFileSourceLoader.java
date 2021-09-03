@@ -2,6 +2,7 @@ package br.ufsc.lapesd.freqel.federation.spec.source;
 
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.util.BackoffStrategy;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import com.github.lapesd.rdfit.components.jena.JenaHelpers;
 import com.github.lapesd.rdfit.errors.RDFItException;
@@ -32,6 +33,8 @@ public class RDFFileSourceLoader implements SourceLoader {
     @Override public void setTempDir(@Nonnull File ignored) { }
 
     @Override public void setSourceCache(@Nullable SourceCache ignored) { }
+
+    @Override public void setIndexingBackoffStrategy(@Nonnull BackoffStrategy ignored) { }
 
     @Override
     public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec,

@@ -72,5 +72,6 @@ ENV JVM_ARGS=""
 # >--- --- ---=[ Entrypoint ]=--- --- ---<
 VOLUME /data
 VOLUME /config
+WORKDIR /data
 ENTRYPOINT ["freqel-server"]
 CMD ["--config", "/config/federation.yaml"]

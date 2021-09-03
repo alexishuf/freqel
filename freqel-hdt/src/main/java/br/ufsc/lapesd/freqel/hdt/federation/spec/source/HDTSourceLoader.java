@@ -5,6 +5,7 @@ import br.ufsc.lapesd.freqel.federation.spec.source.SourceLoadException;
 import br.ufsc.lapesd.freqel.federation.spec.source.SourceLoader;
 import br.ufsc.lapesd.freqel.hdt.query.HDTEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.util.BackoffStrategy;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -39,6 +40,8 @@ public class HDTSourceLoader implements SourceLoader {
     @Override public void setSourceCache(@Nullable SourceCache sourceCache) {
         this.sourceCache = sourceCache;
     }
+
+    @Override public void setIndexingBackoffStrategy(@Nonnull BackoffStrategy ignored) { }
 
     private @Nonnull File createTempFile() throws IOException {
         if (!tempDir.exists() && !tempDir.mkdirs())

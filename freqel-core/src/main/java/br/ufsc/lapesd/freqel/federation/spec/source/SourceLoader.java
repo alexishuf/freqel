@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.util.BackoffStrategy;
 import br.ufsc.lapesd.freqel.util.DictTree;
 
 import javax.annotation.Nonnull;
@@ -26,6 +27,13 @@ public interface SourceLoader {
      * @param sourceCache a {@link SourceCache} instance.
      */
     void setSourceCache(@Nullable SourceCache sourceCache);
+
+    /**
+     * Set a {@link BackoffStrategy} to apply if queries sent as part of a-priori indexing fail.
+     *
+     * @param strategy the {@link BackoffStrategy} to apply in case of failed indexing queries
+     */
+    void setIndexingBackoffStrategy(@Nonnull BackoffStrategy strategy);
 
     /**
      * Loads the source described by the given sourceSpec.

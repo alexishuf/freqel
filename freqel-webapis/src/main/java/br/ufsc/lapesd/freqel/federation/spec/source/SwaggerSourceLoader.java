@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.util.BackoffStrategy;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.freqel.webapis.parser.APIDescriptionParseException;
@@ -28,6 +29,8 @@ public class SwaggerSourceLoader implements SourceLoader {
     @Override public void setTempDir(@Nonnull File ignored) { }
 
     @Override public void setSourceCache(@Nullable SourceCache sourceCache) { }
+
+    @Override public void setIndexingBackoffStrategy(@Nonnull BackoffStrategy ignored) {}
 
     @Override
     public @Nonnull Set<TPEndpoint> load(@Nonnull DictTree spec,

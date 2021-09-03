@@ -4,6 +4,8 @@ import com.esotericsoftware.yamlbeans.YamlException;
 import com.esotericsoftware.yamlbeans.YamlReader;
 import com.esotericsoftware.yamlbeans.YamlWriter;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -18,6 +20,8 @@ import java.util.Map;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class SourceCache {
+    private static final @Nonnull Logger logger = LoggerFactory.getLogger(SourceCache.class);
+
     private final  @Nonnull File dir;
     private @Nonnull Index index = new Index(null);
 
@@ -101,15 +105,28 @@ public class SourceCache {
         return this;
     }
 
+    private @Nonnull File createDirIfMissing() throws IOException {
+        String path = dir.getAbsolutePath();
+        if (dir.exists() && !dir.isDirectory()) {
+            logger.warn("Removing non-dir {} to mkdir a sources cache dir in this path.", path);
+            if (!dir.delete())
+                throw new IOException("Could not delete file "+path+" to create sources cache dir");
+        }
+        if (!dir.exists() && !dir.mkdirs())
+            throw new IOException("Could not create sources cache dir " + path);
+        return dir;
+    }
+
     @CanIgnoreReturnValue
     public synchronized @Nonnull SourceCache saveIndex() throws IOException {
-        if (index.map != null)
-            index.write(new File(dir, "index.yaml"));
+        if (index.map != null) {
+            index.write(new File(createDirIfMissing(), "index.yaml"));
+        }
         return this;
     }
 
     public synchronized @Nullable File getFile(@Nonnull String fileType,
-                                  @Nonnull String sourceId) throws IOException {
+                                               @Nonnull String sourceId) throws IOException {
         loadIndex();
         String path = index.getFile(sourceId, fileType);
         if (path == null)
@@ -121,11 +138,13 @@ public class SourceCache {
         return new File(dir, path).getAbsoluteFile();
     }
 
-    public synchronized @Nonnull File createFile(@Nonnull String fileType, @Nonnull String ext,
-                                    @Nonnull String sourceIdentifier) throws IOException {
+    public synchronized @Nonnull File
+    createFile(@Nonnull String fileType, @Nonnull String ext,
+               @Nonnull String sourceIdentifier) throws IOException {
         File file = getFile(fileType, sourceIdentifier);
         if (file != null) return file;
 
+        createDirIfMissing();
         Path path = Files.createTempFile(dir.toPath(), fileType + "-", "." + ext);
         index.setFile(sourceIdentifier, fileType, dir.toPath().relativize(path).toString());
         saveIndex();

@@ -22,6 +22,7 @@ import br.ufsc.lapesd.freqel.reason.tbox.NoEndpointReasoner;
 import br.ufsc.lapesd.freqel.reason.tbox.NoOpTBoxMaterializer;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.freqel.util.DictTree;
+import br.ufsc.lapesd.freqel.util.ExponentialBackoff;
 import com.github.lapesd.rdfit.util.Utils;
 import com.google.common.base.Splitter;
 
@@ -128,6 +129,21 @@ public class FreqelConfig {
         SOURCES_CACHE_DIR {
             @Override public @Nullable File parse(@Nullable Object value) throws InvalidValueException {
                 return parseDir(value);
+            }
+        },
+        INDEXING_FIRST_BACKOFF_MILLISECONDS {
+            @Override public @Nonnull Integer parse(@Nullable Object value) throws InvalidValueException {
+                return parseInteger(value);
+            }
+        },
+        INDEXING_BACKOFF_MAX_COUNT {
+            @Override public @Nonnull Integer parse(@Nullable Object value) throws InvalidValueException {
+                return parseInteger(value);
+            }
+        },
+        INDEXING_BACKOFF_STRATEGY {
+            @Override public @Nullable Object parse(@Nullable Object value) throws InvalidValueException {
+                return parseClassName(value);
             }
         },
         MATCHING {
@@ -528,6 +544,8 @@ public class FreqelConfig {
                 case LARGE_CARDINALITY_THRESHOLD:
                 case HUGE_CARDINALITY_THRESHOLD:
                 case REL_CARDINALITY_ADDER_NONEMPTY_MIN:
+                case INDEXING_BACKOFF_MAX_COUNT:
+                case INDEXING_FIRST_BACKOFF_MILLISECONDS:
                     return Integer.class;
                 case ESTIMATE_QUERY_LOCAL:
                 case ESTIMATE_QUERY_REMOTE:
@@ -575,6 +593,7 @@ public class FreqelConfig {
                 case CARTESIAN_OP_EXECUTOR:
                 case EMPTY_OP_EXECUTOR:
                 case PIPE_OP_EXECUTOR:
+                case INDEXING_BACKOFF_STRATEGY:
                     return String.class;
                 case CARDINALITY_HEURISTICS:
                     return Set.class;
@@ -695,6 +714,12 @@ public class FreqelConfig {
                     return new File("materialized");
                 case SOURCES_CACHE_DIR:
                     return new File("cache");
+                case INDEXING_FIRST_BACKOFF_MILLISECONDS:
+                    return 4000;
+                case INDEXING_BACKOFF_MAX_COUNT:
+                    return 5; // starting from 4000, worst case will be 127 seconds
+                case INDEXING_BACKOFF_STRATEGY:
+                    return ExponentialBackoff.class.getName();
                 case TEMP_DIR:
                     String path = System.getProperty("java.io.tmpdir");
                     assert path != null;

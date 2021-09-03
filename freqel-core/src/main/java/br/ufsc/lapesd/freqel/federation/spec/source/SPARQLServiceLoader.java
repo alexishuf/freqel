@@ -3,7 +3,9 @@ package br.ufsc.lapesd.freqel.federation.spec.source;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
+import br.ufsc.lapesd.freqel.util.BackoffStrategy;
 import br.ufsc.lapesd.freqel.util.DictTree;
+import br.ufsc.lapesd.freqel.util.ExponentialBackoff;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Sets;
 import org.slf4j.Logger;
@@ -25,6 +27,7 @@ public class SPARQLServiceLoader implements SourceLoader {
     private static final Set<String> DESCRIPTION_NAMES = Sets.newHashSet("select", "ask");
 
     private @Nullable SourceCache sourceCache;
+    private @Nonnull BackoffStrategy backoffStrategy = ExponentialBackoff.neverRetry();
 
     @Override
     public @Nonnull Set<String> names() {
@@ -35,6 +38,10 @@ public class SPARQLServiceLoader implements SourceLoader {
 
     @Override public void setSourceCache(@Nullable SourceCache sourceCache) {
         this.sourceCache = sourceCache;
+    }
+
+    @Override public void setIndexingBackoffStrategy(@Nonnull BackoffStrategy strategy) {
+        this.backoffStrategy = strategy;
     }
 
     @Override
@@ -80,6 +87,8 @@ public class SPARQLServiceLoader implements SourceLoader {
             }
             ep.setDescription(description);
         }
+        if (description != null)
+            description.setBackoffStrategy(backoffStrategy);
     }
 
     private @Nonnull String getURI(@Nonnull DictTree spec) throws SourceLoadException {

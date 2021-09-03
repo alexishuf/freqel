@@ -15,6 +15,8 @@ import br.ufsc.lapesd.freqel.query.endpoint.exceptions.MissingCapabilityExceptio
 import br.ufsc.lapesd.freqel.query.modifiers.Distinct;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.results.Results;
+import br.ufsc.lapesd.freqel.util.BackoffStrategy;
+import br.ufsc.lapesd.freqel.util.ExponentialBackoff;
 import br.ufsc.lapesd.freqel.util.LogUtils;
 import com.esotericsoftware.yamlbeans.YamlReader;
 import com.esotericsoftware.yamlbeans.YamlWriter;
@@ -51,6 +53,7 @@ public class SelectDescription implements Description {
     protected @Nullable Set<Term> predicates, classes;
     private @Nullable Future<?> updateTask = null;
     private @Nullable SaveSpec saveSpec = null;
+    private @Nonnull BackoffStrategy backoffStrategy = ExponentialBackoff.neverRetry();
     private boolean isUpdated = false;
 
     public SelectDescription(@Nonnull CQEndpoint endpoint) throws MissingCapabilityException {
@@ -159,6 +162,10 @@ public class SelectDescription implements Description {
     protected boolean initSync() {
         init();
         return waitForInit(60000);
+    }
+
+    public void setBackoffStrategy(@Nonnull BackoffStrategy template) {
+        backoffStrategy = template.create();
     }
 
     public synchronized void saveWhenReady(@Nonnull SourceCache sourceCache,
@@ -300,19 +307,24 @@ public class SelectDescription implements Description {
         MutableCQuery cQuery = MutableCQuery.from(query);
         cQuery.mutateModifiers().add(Projection.of(varName));
         cQuery.mutateModifiers().add(Distinct.INSTANCE);
-        Set<Term> set = null;
-        try (Results results = endpoint.query(cQuery)) {
-            set = new HashSet<>();
-            while (results.hasNext())
-                set.add(requireNonNull(results.next().get(varName)));
-            return set;
-        } catch (Exception e) {
-            logger.error("Problem fetching results from {} for {}", endpoint,
-                         LogUtils.toString(cQuery), e);
-            throw e;
-        } finally {
-            if (set != null)
-                LogUtils.logQuery(logger, cQuery, endpoint, set.size(), sw);
+        backoffStrategy.reset();
+        while (true) {
+            Set<Term> set = null;
+            try (Results results = endpoint.query(cQuery)) {
+                set = new HashSet<>();
+                while (results.hasNext())
+                    set.add(requireNonNull(results.next().get(varName)));
+                return set;
+            } catch (Exception e) {
+                logger.error("{} fetching results from {} for {}. Will {}retry",
+                             e.getClass().getSimpleName(), endpoint, LogUtils.toString(cQuery),
+                             backoffStrategy.canRetry() ? "": "not ", e);
+                if (!backoffStrategy.backOff())
+                    throw e;
+            } finally {
+                if (set != null)
+                    LogUtils.logQuery(logger, cQuery, endpoint, set.size(), sw);
+            }
         }
     }
 
