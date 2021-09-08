@@ -12,7 +12,6 @@ import br.ufsc.lapesd.freqel.model.prefix.StdPrefixDict;
 import br.ufsc.lapesd.freqel.model.term.Lit;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.URI;
-import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.PureDescriptive;
@@ -128,6 +127,10 @@ public class SPARQLString {
 
     public @Nonnull String getSparql() {
         return sparql;
+    }
+
+    @Override public @Nonnull String toString() {
+        return getSparql();
     }
 
     public static void writePrefixes(@Nonnull StringBuilder b, @Nonnull PrefixDict dict) {
