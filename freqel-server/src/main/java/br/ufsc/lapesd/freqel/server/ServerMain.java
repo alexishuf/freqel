@@ -12,6 +12,9 @@ import br.ufsc.lapesd.freqel.util.DictTree;
 import com.esotericsoftware.yamlbeans.YamlWriter;
 import com.google.common.base.Stopwatch;
 import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -42,6 +45,15 @@ public class ServerMain {
 
     @Option(name = "--port", aliases = {"-p"}, usage = "Server listen port")
     private int port = 4040;
+
+    @Option(name = "--verbose", aliases = {"-v"}, usage = "Increase log verbosity to DEBUG " +
+            "(less verbose than TRACE) on freqel and rdfit code only")
+    private boolean verbose;
+
+    @Option(name = "--extra-verbose", aliases = {"-V"}, usage = "Increase log verbosity to " +
+            "TRACE level on all loggers. This will generate a lot of messages. Use only in " +
+            "case of extrema despair")
+    private boolean reallyVerbose;
 
     @Option(name = "--purge-index", usage = "Remove any indices (including ASK caches) " +
             "for sources before proceeding with a re-index (whether --only-index was give or not)")
@@ -127,6 +139,7 @@ public class ServerMain {
     }
 
     public void run() throws Exception {
+        applyVerbosity();
         if (generateConfig || onlyGenerateConfig) {
             generateConfig();
             if (onlyGenerateConfig)
@@ -155,6 +168,18 @@ public class ServerMain {
         System.out.printf("Query interface listening on http://%s:%d/ui/index.html",
                           listenAddress, port);
         Thread.currentThread().join();
+    }
+
+    private void applyVerbosity() {
+        String rootName = LogManager.getRootLogger().getName();
+        if (reallyVerbose) {
+            Configurator.setLevel(rootName, Level.TRACE);
+            Configurator.setLevel("br.ufsc.lapesd.freqel", Level.TRACE);
+        } else if (verbose) {
+            Configurator.setLevel("br.ufsc.lapesd.freqel", Level.DEBUG);
+            Configurator.setLevel("br.ufsc.lapesd.freqel.server", Level.TRACE);
+            Configurator.setLevel("br.ufsc.lapesd.freqel.description", Level.TRACE);
+        }
     }
 
     private @Nonnull Map<String, Object> createSource(@Nonnull String url,
