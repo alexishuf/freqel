@@ -136,8 +136,11 @@ public class SelectDescription implements Description {
     fromCache(@Nonnull CQEndpoint endpoint, @Nonnull SourceCache cache,
               @Nonnull String endpointId) throws IOException {
         File file = cache.getFile("select-description", endpointId);
-        if (file != null)
-            return fromYaml(endpoint, file);
+        if (file != null) {
+            SelectDescription description = fromYaml(endpoint, file);
+            description.isUpdated = cache.shouldTrustCaches();
+            return description;
+        }
         return null;
     }
     public static @Nonnull SelectDescription

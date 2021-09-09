@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.federation.spec.source;
 
+import br.ufsc.lapesd.freqel.federation.FreqelConfig;
 import com.esotericsoftware.yamlbeans.YamlException;
 import com.esotericsoftware.yamlbeans.YamlReader;
 import com.esotericsoftware.yamlbeans.YamlWriter;
@@ -18,12 +19,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Objects.requireNonNull;
 
 public class SourceCache {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(SourceCache.class);
 
     private final  @Nonnull File dir;
     private @Nonnull Index index = new Index(null);
+    private final boolean trustCaches;
 
     @SuppressWarnings("unchecked")
     private static class Index {
@@ -65,8 +68,14 @@ public class SourceCache {
         }
     }
 
-    @Inject public SourceCache(@Named("sourceCacheDir") @Nonnull File dir) {
+    @Inject public SourceCache(@Named("sourceCacheDir") @Nonnull File dir,
+                               @Named("trustSourceCache") Boolean trustCaches) {
         this.dir = dir;
+        this.trustCaches = trustCaches;
+    }
+
+    public SourceCache(@Named("sourceCacheDir") @Nonnull File dir) {
+        this(dir, (Boolean)requireNonNull(FreqelConfig.Key.TRUST_SOURCE_CACHE.getDefault()));
     }
 
     /**
@@ -153,5 +162,9 @@ public class SourceCache {
 
     public @Nonnull File getDir() {
         return dir;
+    }
+
+    public boolean shouldTrustCaches() {
+        return trustCaches;
     }
 }

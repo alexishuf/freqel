@@ -39,7 +39,8 @@ import java.util.Set;
         ReasoningModule.class
 })
 @Singleton
-public interface FederationComponent {
+public
+interface FederationComponent {
     Federation federation();
     FreqelConfig config();
     SourceLoaderRegistry sourceLoaders();
@@ -102,6 +103,7 @@ public interface FederationComponent {
 
         /* --- --- --- Stuff from SourcesModule --- --- --- */
 
+        @BindsInstance Builder overrideTrustSourceCache(@Nullable @Named("overrideTrustSourceCache") Boolean v);
         @BindsInstance Builder overrideSourceCache(@Nullable @Named("override") SourceCache c);
         @BindsInstance Builder overrideSourcesCacheDir(@Nullable @Named("sourceCacheDirOverride") File d);
         @BindsInstance Builder overrideIndexingBackoffStrategy(@Nullable @Named("indexingOverride") BackoffStrategy s);

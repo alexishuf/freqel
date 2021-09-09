@@ -126,6 +126,12 @@ public class FreqelConfig {
                 return parseDir(value);
             }
         },
+        TRUST_SOURCE_CACHE {
+            @Override
+            public @Nonnull Object parse(@Nullable Object value) throws InvalidValueException {
+                return parseBool(value, true);
+            }
+        },
         SOURCES_CACHE_DIR {
             @Override public @Nullable File parse(@Nullable Object value) throws InvalidValueException {
                 return parseDir(value);
@@ -563,6 +569,7 @@ public class FreqelConfig {
                 case POSTPLANNER_PUSH_LIMIT:
                 case POSTPLANNER_PIPE_CLEANER:
                 case POSTPLANNER_PUSH_DISJUNCTIVE:
+                case TRUST_SOURCE_CACHE:
                     return Boolean.class;
                 case TBOX_HDT:
                 case TBOX_RDF:
@@ -647,6 +654,7 @@ public class FreqelConfig {
                 case POSTPLANNER_PUSH_LIMIT:
                 case POSTPLANNER_PIPE_CLEANER:
                 case POSTPLANNER_PUSH_DISJUNCTIVE:
+                case TRUST_SOURCE_CACHE:
                     return true;
                 case TBOX_HDT:
                 case TBOX_RDF:

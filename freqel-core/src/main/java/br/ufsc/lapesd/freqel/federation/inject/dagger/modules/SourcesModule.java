@@ -37,6 +37,12 @@ public abstract class SourcesModule {
         return registry;
     }
 
+    @Provides public static @Nonnull @Named("trustSourceCache") Boolean
+    trustSourceCache(@Nullable @Named("overrideTrustSourceCache") Boolean override,
+                     @Nonnull FreqelConfig config) {
+        return override != null ? override : config.get(TRUST_SOURCE_CACHE, Boolean.class);
+    }
+
     @Provides @Reusable public static @Named("sourceCacheDir") File
     sourceCacheDir(@Named("sourceCacheDirOverride") @Nullable File dir, FreqelConfig config) {
         return dir != null ? dir : requireNonNull(config.get(SOURCES_CACHE_DIR, File.class));
@@ -44,8 +50,8 @@ public abstract class SourcesModule {
 
     @Provides @Singleton public static SourceCache
     sourcesCache(@Named("override") @Nullable SourceCache override,
-                 @Named("sourceCacheDir") File dir) {
-        SourceCache instance = override != null ? override : new SourceCache(dir);
+                 @Named("sourceCacheDir") File dir, @Named("trustSourceCache") Boolean trustCache) {
+        SourceCache instance = override != null ? override : new SourceCache(dir, trustCache);
         try {
             instance.loadIndex();
         } catch (IOException e) {
