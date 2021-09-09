@@ -154,7 +154,7 @@ public class ServerMain {
             federation = getFederation();
         }
         if (onlyIndex) {
-            updateIndex(federation);
+            fillIndex(federation);
             federation.close();
             return; // to not spin SPARQL endpoint
         }
@@ -242,9 +242,9 @@ public class ServerMain {
                     selectWithClasses.size(), selectWithoutClasses.size(), ask.size());
     }
 
-    private void updateIndex(@Nonnull Federation federation) throws TimeoutException {
+    private void fillIndex(@Nonnull Federation federation) throws TimeoutException {
         for (TPEndpoint source : federation.getSources())
-            source.getDescription().update();
+            source.getDescription().init(); //only if missing or !TRUST_SOURCE_CACHE
         int maxMs = onlyIndexSeconds*1000;
         Stopwatch sw = Stopwatch.createStarted();
         int complete = 0, nSources = federation.getSources().size();
