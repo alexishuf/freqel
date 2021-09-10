@@ -2,8 +2,8 @@ package br.ufsc.lapesd.freqel.server.endpoints;
 
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.federation.Federation;
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.parse.UnsupportedSPARQLFeatureException;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.server.sparql.ResultsFormatterDispatcher;
@@ -72,7 +72,24 @@ public class SPARQLEndpoint {
     }
 
     @GET
-    @Path("query")
+    public @Nonnull Response get(@QueryParam("query") String query, @Context UriInfo uriInfo,
+                                 @Context HttpHeaders headers) {
+        return queryGet(query, uriInfo, headers);
+    }
+
+    @POST @Consumes("application/x-www-form-urlencoded")
+    public @Nonnull Response form(@FormParam("query") String query, @Context UriInfo uriInfo,
+                                  @Context HttpHeaders headers) {
+        return queryForm(query, uriInfo, headers);
+    }
+
+    @POST @Consumes("application/sparql-query")
+    public @Nonnull Response post(String query, @Context UriInfo uriInfo,
+                                  @Context HttpHeaders headers) {
+        return queryPost(query, uriInfo, headers);
+    }
+
+    @GET @Path("query")
     public @Nonnull Response queryGet(@QueryParam("query") String query, @Context UriInfo uriInfo,
                                       @Context HttpHeaders headers) {
         try {
@@ -84,22 +101,22 @@ public class SPARQLEndpoint {
     }
 
     @POST
-    @Consumes("application/x-www-form-urlencoded")
     @Path("query")
+    @Consumes("application/x-www-form-urlencoded")
     public @Nonnull Response queryForm(@FormParam("query") String query, @Context UriInfo uriInfo,
                                        @Context HttpHeaders headers) {
         try {
             return handleQuery(query, headers, uriInfo);
         } catch (Exception e) {
             logger.warn("Exception thrown while processing POST " +
-                        "application/x-www-form-urlencoded {}", uriInfo.getRequestUri(), e);
+                    "application/x-www-form-urlencoded {}", uriInfo.getRequestUri(), e);
             throw e;
         }
     }
 
     @POST
-    @Consumes("application/sparql-query")
     @Path("query")
+    @Consumes("application/sparql-query")
     public @Nonnull Response queryPost(String query, @Context UriInfo uriInfo,
                                        @Context HttpHeaders headers) {
         try {

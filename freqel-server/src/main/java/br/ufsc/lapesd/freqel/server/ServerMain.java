@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Comparator.naturalOrder;
 import static org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory.createHttpServer;
 
 @SuppressWarnings({"FieldMayBeFinal", "MismatchedQueryAndUpdateOfCollection"})
@@ -163,11 +164,31 @@ public class ServerMain {
         org.glassfish.grizzly.http.server.HttpServer server = createHttpServer(serverURI, app, true);
         server.start();
 
-        System.out.printf("SPARQL endpoint listening on http://%s:%d/sparql/query " +
-                          "via GET and POST (form and plain)\n", listenAddress, port);
-        System.out.printf("Query interface listening on http://%s:%d/ui/index.html",
-                          listenAddress, port);
+        printBox("SPARQL endpoint listening at http://%1$s:%2$d/sparql\n" +
+                 "Accepted query methods are GET and form-encoded or plain POST\n" +
+                 "GUI is at http://%1$s:%2$d/ui/index.html", listenAddress, port);
+
         Thread.currentThread().join();
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private void printBox(@Nonnull String format, Object... args) {
+        String expanded = String.format(format, args);
+        String[] lines = expanded.split("\n");
+        int innerWidth = Arrays.stream(lines).map(String::length).max(naturalOrder()).orElse(40);
+        printBoxLine(innerWidth);
+        for (String line : lines) {
+            System.out.append("| ").append(line);
+            for (int i = line.length(); i < innerWidth; i++) System.out.append(' ');
+            System.out.append(" |\n");
+        }
+        printBoxLine(innerWidth);
+    }
+
+    private void printBoxLine(int innerWidth) {
+        System.out.print("+-");
+        for (int i = 0; i < innerWidth; i++) System.out.append('-');
+        System.out.print("-+\n");
     }
 
     private void applyVerbosity() {
