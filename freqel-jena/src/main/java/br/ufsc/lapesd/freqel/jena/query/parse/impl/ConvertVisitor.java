@@ -1,5 +1,6 @@
 package br.ufsc.lapesd.freqel.jena.query.parse.impl;
 
+import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.TakenChildren;
 import br.ufsc.lapesd.freqel.algebra.inner.ConjunctionOp;
@@ -24,6 +25,7 @@ import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryVisitor;
@@ -97,7 +99,27 @@ public class ConvertVisitor implements QueryVisitor {
             varsUniverse.add(v.getVarName());
         projectionVars = varsUniverse.immutableFullSubset();
         outerModifiers.add(new Projection(projectionVars));
+        List<String> graphs = query.getGraphURIs();
+        List<String> namedGraphs = query.getNamedGraphURIs();
+        if (hasReasoningGraphURI(namedGraphs) || hasReasoningGraphURI(graphs))
+            outerModifiers.add(Reasoning.INSTANCE);
     }
+
+    private static final @Nonnull Set<String> NON_REASONING_GRAPH_URIS = Sets.newHashSet(
+            V.Freqel.Entailment.Graph.Simple.getURI(),
+            V.Freqel.Entailment.Graph.RDF.getURI(),
+            V.Freqel.Entailment.Graph.D.getURI()
+    );
+
+    private static boolean hasReasoningGraphURI(@Nonnull Collection<String> uris) {
+        for (String uri : uris) {
+            boolean starts = uri.startsWith(V.Freqel.Entailment.Graph.NS);
+            if (starts && !NON_REASONING_GRAPH_URIS.contains(uri))
+                return true;
+        }
+        return false;
+    }
+
     @Override
     public void visitConstructResultForm(Query query) {
         throw new FeatureException("CONSTRUCT queries are not supported");

@@ -15,15 +15,15 @@ public class Freqel {
         return DaggerFederationComponent.builder().build().federation();
     }
 
-    public static @Nonnull Federation createFederation(File specFile)
+    public static @Nonnull Federation createFederation(@Nonnull File specFile)
             throws IOException, FederationSpecException {
         FederationSpecLoader loader = new FederationSpecLoader();
         return loader.load(specFile);
     }
 
-    public static @Nonnull Federation createFederation(@Nonnull TPEndpoint ep) {
+    public static @Nonnull Federation createFederation(@Nonnull TPEndpoint... eps) {
         Federation federation = createFederation();
-        federation.addSource(ep);
+        for (TPEndpoint ep : eps) federation.addSource(ep);
         return federation;
     }
 
@@ -33,13 +33,14 @@ public class Freqel {
     }
 
     public static @Nonnull Federation createFederation(@Nonnull FreqelConfig config,
-                                                       @Nonnull TPEndpoint ep) {
+                                                       @Nonnull TPEndpoint... eps) {
         Federation federation = createFederation(config);
-        federation.addSource(ep);
+        for (TPEndpoint ep : eps)
+            federation.addSource(ep);
         return federation;
     }
 
-    public static @Nonnull FederationComponent.Builder createFederationBuilder() {
+    public static @Nonnull FederationComponent.Builder builder() {
         return DaggerFederationComponent.builder();
     }
 }

@@ -75,7 +75,7 @@ public class HeuristicEndpointReasonerTest implements TestContext {
         List<FederationComponent.Builder> builders = asList(
                 DaggerFederationComponent.builder(),
                 DaggerFederationComponent.builder()
-                        .overrideFreqelConfig(FreqelConfig.createDefault()
+                        .overrideFreqelConfig(FreqelConfig.fromHardCodedDefaults()
                                 .set(ENDPOINT_REASONER,
                                      HeuristicEndpointReasoner.class))
         );

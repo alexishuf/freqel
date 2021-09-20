@@ -97,7 +97,7 @@ public class ConjunctivePlannerTest implements TransparencyServiceTestContext {
         for (Class<? extends ConjunctivePlanner> p : plannerClasses) {
             for (Class<? extends JoinOrderPlanner> op : joinOrderPlannerClasses) {
                 Supplier<ConjunctivePlanner> supplier = () -> {
-                    FreqelConfig config = FreqelConfig.createDefault();
+                    FreqelConfig config = FreqelConfig.fromHardCodedDefaults();
                     config.set(FreqelConfig.Key.CONJUNCTIVE_PLANNER, p);
                     if (p.equals(JoinPathsConjunctivePlanner.class) && op.equals(GreedyJoinOrderPlanner.class))
                         config.set(FreqelConfig.Key.EQUIV_CLEANER, DefaultEquivCleaner.class);

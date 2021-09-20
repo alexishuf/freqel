@@ -18,6 +18,9 @@ import br.ufsc.lapesd.freqel.federation.planner.conjunctive.GreedyJoinOrderPlann
 import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.BitsetConjunctivePlannerDispatcher;
 import br.ufsc.lapesd.freqel.federation.planner.equiv.NoEquivCleaner;
 import br.ufsc.lapesd.freqel.federation.planner.utils.DefaultFilterJoinPlanner;
+import br.ufsc.lapesd.freqel.reason.regimes.EntailmentEvidences;
+import br.ufsc.lapesd.freqel.reason.regimes.SourcedEntailmentRegime;
+import br.ufsc.lapesd.freqel.reason.tbox.EndpointReasonerEntailmentRegimeDetector;
 import br.ufsc.lapesd.freqel.reason.tbox.NoEndpointReasoner;
 import br.ufsc.lapesd.freqel.reason.tbox.NoOpTBoxMaterializer;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
@@ -76,6 +79,17 @@ public class FreqelConfig {
     }
 
     public enum Key {
+        ADVERTISED_REASONING {
+            @Override
+            public SourcedEntailmentRegime parse(@Nullable Object v) throws InvalidValueException {
+                EntailmentEvidences def = EntailmentEvidences.SINGLE_SOURCE_ABOX;
+                try {
+                    return v == null ? null : SourcedEntailmentRegime.fromString(v.toString(), def);
+                } catch (IllegalArgumentException e) {
+                    throw new InvalidValueException(this, v, e.getMessage());
+                }
+            }
+        },
         ENDPOINT_REASONER {
             @Override public @Nonnull String parse(@Nullable Object value) throws InvalidValueException {
                 return parseClassName(value);
@@ -412,7 +426,7 @@ public class FreqelConfig {
 
         protected String parseClassName(@Nullable Object value) throws InvalidValueException {
             if (value == null) {
-                Object fallback = getDefault();
+                Object fallback = getDefault(null);
                 return fallback == null ? null : fallback.toString();
             }
             if (value instanceof Class) return ((Class<?>) value).getName();
@@ -440,7 +454,7 @@ public class FreqelConfig {
 
         protected @Nonnull Integer parseInteger(@Nullable Object value) throws InvalidValueException {
             if (value == null)
-                return (Integer) Objects.requireNonNull(getDefault());
+                return (Integer) Objects.requireNonNull(getDefault(null));
             try {
                 return Integer.parseInt(value.toString());
             } catch (NumberFormatException e) {
@@ -450,7 +464,7 @@ public class FreqelConfig {
 
         protected @Nonnull Double parseDouble(@Nullable Object value) throws InvalidValueException {
             if (value == null)
-                return (Double) Objects.requireNonNull(getDefault());
+                return (Double) Objects.requireNonNull(getDefault(null));
             try {
                 return Double.parseDouble(value.toString());
             } catch (NumberFormatException e) {
@@ -571,6 +585,8 @@ public class FreqelConfig {
                 case POSTPLANNER_PUSH_DISJUNCTIVE:
                 case TRUST_SOURCE_CACHE:
                     return Boolean.class;
+                case ADVERTISED_REASONING:
+                    return SourcedEntailmentRegime.class;
                 case TBOX_HDT:
                 case TBOX_RDF:
                 case ENDPOINT_REASONER:
@@ -614,7 +630,7 @@ public class FreqelConfig {
             throw new UnsupportedOperationException();
         }
 
-        public @Nullable Object getDefault() {
+        public @Nullable Object getDefault(@Nullable FreqelConfig config) {
             switch (this) {
                 case RESULTS_EXECUTOR_CONCURRENCY_FACTOR:
                     return -1.0;
@@ -658,6 +674,17 @@ public class FreqelConfig {
                     return true;
                 case TBOX_HDT:
                 case TBOX_RDF:
+                    return null;
+                case ADVERTISED_REASONING:
+                    if (config == null)
+                        return null;
+                    ServiceLoader<EndpointReasonerEntailmentRegimeDetector> loader;
+                    loader = ServiceLoader.load(EndpointReasonerEntailmentRegimeDetector.class);
+                    for (EndpointReasonerEntailmentRegimeDetector detector : loader) {
+                        SourcedEntailmentRegime regime = detector.get(config);
+                        if (regime != null)
+                            return regime;
+                    }
                     return null;
                 case ENDPOINT_REASONER:
                     return NoEndpointReasoner.class.getName();
@@ -926,9 +953,17 @@ public class FreqelConfig {
             readFrom(source);
     }
 
-    public static @Nonnull FreqelConfig createDefault() {
+    public static @Nonnull FreqelConfig fromDefaultSources() {
         try {
             return new FreqelConfig();
+        } catch (IOException | InvalidValueException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static @Nonnull FreqelConfig fromHardCodedDefaults() {
+        try {
+            return new FreqelConfig(Collections.emptyList());
         } catch (IOException | InvalidValueException e) {
             throw new RuntimeException(e);
         }
@@ -944,7 +979,7 @@ public class FreqelConfig {
     }
 
     public Object get(@Nonnull Key key) {
-        return values.getOrDefault(key, key.getDefault());
+        return values.getOrDefault(key, key.getDefault(this));
     }
     public @Nonnull <T> T orElse(@Nonnull Key key, @Nonnull T fallback) {
         //noinspection unchecked
@@ -953,7 +988,7 @@ public class FreqelConfig {
     public <T> T get(@Nonnull Key key, @Nonnull Class<T> cls) {
         assert cls.isAssignableFrom(key.getValueClass());
         //noinspection unchecked
-        return (T)values.getOrDefault(key, key.getDefault());
+        return (T)values.getOrDefault(key, key.getDefault(this));
     }
 
     public @Nonnull FreqelConfig reset(@Nonnull Key k) {
@@ -992,7 +1027,7 @@ public class FreqelConfig {
         Object missing = new Object();
         for (Key key : Key.values()) {
             Object v = values.getOrDefault(key, missing);
-            if (v != missing && !Objects.equals(v, key.getDefault())) {
+            if (v != missing && !Objects.equals(v, key.getDefault(this))) {
                 if (v instanceof String && CLASS_RX.matcher(v.toString()).matches()) {
                     v = v.toString().replaceAll("(\\w)[^.]+\\.", "$1.");
                     v = v.toString().replace("b.u.l.f.", "...");

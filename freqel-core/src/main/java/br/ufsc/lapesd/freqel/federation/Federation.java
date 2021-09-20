@@ -56,6 +56,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(Federation.class);
 
+    private final @Nonnull FreqelConfig freqelConfig;
     private final @Nonnull MatchingStrategy matchingStrategy;
     private final @Nonnull Agglutinator agglutinator;
     private final @Nonnull PrePlanner prePlanner;
@@ -71,7 +72,8 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     private @Nonnull TemplateExpander templateExpander;
 
     @Inject
-    public Federation(@Nonnull PrePlanner prePlanner,
+    public Federation(@Nonnull FreqelConfig freqelConfig,
+                      @Nonnull PrePlanner prePlanner,
                       @Nonnull ConjunctivePlanner conjunctivePlanner,
                       @Nonnull PostPlanner postPlanner,
                       @Nonnull MatchingStrategy matchingStrategy,
@@ -83,6 +85,7 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
                       @Nonnull PlanningExecutorService executorService,
                       @Nonnull SourceCache sourceCache,
                       @Nonnull TBox tBox) {
+        this.freqelConfig = freqelConfig;
         this.prePlanner = prePlanner;
         this.conjunctivePlanner = conjunctivePlanner;
         this.postPlanner = postPlanner;
@@ -103,6 +106,10 @@ public class Federation extends AbstractTPEndpoint implements CQEndpoint {
     public @Nonnull Federation setTemplateExpander(@Nonnull TemplateExpander templateExpander) {
         this.templateExpander = templateExpander;
         return this;
+    }
+
+    public @Nonnull FreqelConfig getFreqelConfig() {
+        return freqelConfig;
     }
 
     public @Nonnull SourceCache getSourceCache() {

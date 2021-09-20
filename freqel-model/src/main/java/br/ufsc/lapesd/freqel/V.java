@@ -1,9 +1,32 @@
 package br.ufsc.lapesd.freqel;
 
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
+import br.ufsc.lapesd.freqel.reason.regimes.W3CEntailmentRegimes;
 
 @SuppressWarnings("unused")
 public class V {
+    public static class Freqel {
+        public static final String NS = "http://alexishuf.github.io/freqel/";
+        public static final StdURI evidences = new StdURI(NS+"evidences");
+
+        public static class Entailment {
+            public static final String NS = Freqel.NS+"entailment/";
+            public static final StdURI evidences = new StdURI(NS+"evidences");
+
+            public static class Graph {
+                public static final String NS = Entailment.NS + "graph/";
+
+                public static final StdURI Simple = new StdURI(NS+W3CEntailmentRegimes.SIMPLE.name());
+                public static final StdURI RDF = new StdURI(NS+W3CEntailmentRegimes.RDF.name());
+                public static final StdURI RDFS = new StdURI(NS+W3CEntailmentRegimes.RDFS.name());
+                public static final StdURI D = new StdURI(NS+W3CEntailmentRegimes.D.name());
+                public static final StdURI OWL_DIRECT = new StdURI(NS+W3CEntailmentRegimes.OWL_DIRECT.name());
+                public static final StdURI OWL_RDF_BASED = new StdURI(NS+W3CEntailmentRegimes.OWL_RDF_BASED.name());
+                public static final StdURI RIF = new StdURI(NS+W3CEntailmentRegimes.RIF.name());
+            }
+        }
+    }
+
     public static class RDF {
         public static final String ONTOLOGY_IRI = "http://www.w3.org/1999/02/22-rdf-syntax-ns";
         public static final String NS = ONTOLOGY_IRI+"#";
@@ -57,7 +80,6 @@ public class V {
         public static final StdURI equivalentClass = new StdURI(NS+"equivalentClass");
         public static final StdURI distinctMembers = new StdURI(NS+"distinctMembers");
         public static final StdURI oneOf = new StdURI(NS+"oneOf");
-        public static final StdURI sameAs = new StdURI(NS+"sameAs");
         public static final StdURI incompatibleWith = new StdURI(NS+"incompatibleWith");
         public static final StdURI minCardinality = new StdURI(NS+"minCardinality");
         public static final StdURI complementOf = new StdURI(NS+"complementOf");
@@ -65,7 +87,6 @@ public class V {
         public static final StdURI equivalentProperty = new StdURI(NS+"equivalentProperty");
         public static final StdURI inverseOf = new StdURI(NS+"inverseOf");
         public static final StdURI backwardCompatibleWith = new StdURI(NS+"backwardCompatibleWith");
-        public static final StdURI differentFrom = new StdURI(NS+"differentFrom");
         public static final StdURI priorVersion = new StdURI(NS+"priorVersion");
         public static final StdURI imports = new StdURI(NS+"imports");
         public static final StdURI allValuesFrom = new StdURI(NS+"allValuesFrom");
@@ -75,6 +96,12 @@ public class V {
         public static final StdURI disjointWith = new StdURI(NS+"disjointWith");
         public static final StdURI cardinality = new StdURI(NS+"cardinality");
         public static final StdURI intersectionOf = new StdURI(NS+"intersectionOf");
+        public static final StdURI sameAs = new StdURI(NS+"sameAs");
+        public static final StdURI differentFrom = new StdURI(NS+"differentFrom");
+        public static final StdURI topDataProperty = new StdURI(NS+"topDataProperty");
+        public static final StdURI topObjectProperty = new StdURI(NS+"topObjectProperty");
+        public static final StdURI bottomDataProperty = new StdURI(NS+"bottomDataProperty");
+        public static final StdURI bottomObjectProperty = new StdURI(NS+"bottomObjectProperty");
         public static final StdURI Thing = new StdURI(NS+"Thing");
         public static final StdURI DataRange = new StdURI(NS+"DataRange");
         public static final StdURI Ontology = new StdURI(NS+"Ontology");

@@ -32,7 +32,8 @@ public class SimpleIndexSubset<T> extends AbstractSet<T> implements IndexSubset<
     @Override public @Nonnull Bitset getBitset() { return bs; }
 
     @Override public @Nonnull ImmIndexSubset<T> asImmutable() {
-        return new SimpleImmIndexSubset<>(parent, bs);
+        return bs.isEmpty() ? parent.immutableEmptySubset()
+                            : new SimpleImmIndexSubset<>(parent, bs);
     }
 
     @Override public @Nonnull IndexSubset<T> complement() {

@@ -1,12 +1,12 @@
 package br.ufsc.lapesd.freqel.cnc;
 
 import br.ufsc.lapesd.freqel.PlanAssert;
-import br.ufsc.lapesd.freqel.util.TempDir;
 import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecLoader;
 import br.ufsc.lapesd.freqel.jena.JenaWrappers;
+import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.model.term.Term;
 import br.ufsc.lapesd.freqel.model.term.Var;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
@@ -15,7 +15,7 @@ import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
-import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
+import br.ufsc.lapesd.freqel.util.TempDir;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;

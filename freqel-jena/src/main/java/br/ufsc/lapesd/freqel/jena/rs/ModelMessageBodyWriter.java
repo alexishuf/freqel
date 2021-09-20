@@ -1,6 +1,5 @@
-package br.ufsc.lapesd.freqel.util;
+package br.ufsc.lapesd.freqel.jena.rs;
 
-import br.ufsc.lapesd.freqel.webapis.requests.impl.ModelMessageBodyReader;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;

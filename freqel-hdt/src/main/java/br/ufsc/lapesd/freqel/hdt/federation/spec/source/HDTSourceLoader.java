@@ -17,13 +17,14 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
-import java.util.Collections;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class HDTSourceLoader implements SourceLoader {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(HDTSourceLoader.class);
     private static final @Nonnull Set<String> NAMES = Collections.singleton("hdt");
+    private static final @Nonnull List<String> LOCATION_KEYS =
+            Arrays.asList("file", "location", "uri", "url");
     private static final @Nonnull Pattern URI_RX = Pattern.compile("^[^:]+:");
     private @Nonnull File tempDir = new File(System.getProperty("java.io.tmpdir"));
     private @Nullable SourceCache sourceCache;
@@ -61,12 +62,14 @@ public class HDTSourceLoader implements SourceLoader {
     }
 
     private @Nonnull File getFile(DictTree s, @Nonnull File reference) throws SourceLoadException {
-        String path = s.getString("file");
+        String path = LOCATION_KEYS.stream().map(s::getString).filter(Objects::nonNull).findFirst()
+                .orElseThrow(() -> new SourceLoadException("No location/file/url entry!", s));
+
         if (path != null)
             return new File(reference, path);
         path = s.getString("location", s.getString("uri", s.getString("uri")));
         if (path == null)
-            throw new SourceLoadException("No file/location/uri/url entry!", s);
+            throw new SourceLoadException("No "+String.join("/", LOCATION_KEYS)+" entry!", s);
         if (URI_RX.matcher(path).find() && !path.startsWith("file:")) {
             File outFile = null;
             try {
@@ -87,7 +90,12 @@ public class HDTSourceLoader implements SourceLoader {
                                               " to "+outFile, e, s);
             }
             path = outFile.getAbsolutePath();
+        } else if (path.startsWith("file://")) { // path is a URL
+            path = path.substring(7);
+        } else if (path.startsWith("file:")) { // path is a URI (no leading // required)
+            path = path.substring(5);
         }
-        return new File(path);
+        File file = new File(path);
+        return !path.startsWith("/") && !file.isAbsolute() ? new File(reference, path) : file;
     }
 }

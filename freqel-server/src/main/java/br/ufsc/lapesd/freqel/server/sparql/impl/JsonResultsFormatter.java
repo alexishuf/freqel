@@ -37,8 +37,10 @@ public class JsonResultsFormatter implements ResultsFormatter {
     @Override
     public @Nonnull FormattedResults format(@Nonnull @WillClose Results results, boolean isAsk,
                                             @Nullable MediaType mediaType) {
-        if (mediaType != null && !APPLICATION_JSON_TYPE.isCompatible(mediaType))
+        if (mediaType != null && !APPLICATION_JSON_TYPE.isCompatible(mediaType)
+                && !SPARQL_JSON_TYPE.isCompatible(mediaType)) {
             throw new IllegalArgumentException("Unsupported MediaType "+mediaType);
+        }
         return isAsk ? formatAsk(results) : formatResults(results);
     }
 

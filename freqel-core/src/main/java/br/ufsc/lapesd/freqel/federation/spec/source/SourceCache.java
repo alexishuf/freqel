@@ -75,7 +75,7 @@ public class SourceCache {
     }
 
     public SourceCache(@Named("sourceCacheDir") @Nonnull File dir) {
-        this(dir, (Boolean)requireNonNull(FreqelConfig.Key.TRUST_SOURCE_CACHE.getDefault()));
+        this(dir, (Boolean)requireNonNull(FreqelConfig.Key.TRUST_SOURCE_CACHE.getDefault(null)));
     }
 
     /**

@@ -115,7 +115,7 @@ public abstract class ConjunctivePlanBenchmarksTestBase {
     public void testPlan(@Nonnull Class<? extends JoinOrderPlanner> joinOrderPlannerClass,
                          @Nonnull CQuery query, @Nonnull List<Op> fragments) {
         TestComponent.Builder builder = DaggerTestComponent.builder();
-        builder.overrideFreqelConfig(FreqelConfig.createDefault()
+        builder.overrideFreqelConfig(FreqelConfig.fromHardCodedDefaults()
                 .set(FreqelConfig.Key.JOIN_ORDER_PLANNER, joinOrderPlannerClass));
         ConjunctivePlanner planner = builder.build().conjunctivePlanner();
         Op plan = planner.plan(query, fragments);

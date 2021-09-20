@@ -18,12 +18,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 
 public class RDFFileSourceLoader implements SourceLoader {
     private static final @Nonnull Pattern URI_RX = Pattern.compile("^[^:]+:");
     private static final @Nonnull Set<String> NAMES = Sets.newHashSet("rdf-file", "rdf-url");
+    private static final @Nonnull Set<String> LOCATION_KEYS =
+            Sets.newHashSet("location", "locations", "file", "files", "url", "urls", "uri", "uris");
 
     @Override
     public @Nonnull Set<String> names() {
@@ -43,14 +44,13 @@ public class RDFFileSourceLoader implements SourceLoader {
         List<String> nameParts = new ArrayList<>();
         String loader = spec.getString("loader", "");
         if (!loader.equals("rdf-file")) {
-            throw new IllegalArgumentException("Loader "+loader+" not supported by "+this);
-        } else if (!spec.containsKey("file") && !spec.containsKey("files")
-                && !spec.containsKey("url" ) && !spec.containsKey("urls" )) {
-            throw new SourceLoadException("No file/files/url/urls property present " +
-                                          "in this source spec!", spec);
-        }
+            throw new IllegalArgumentException("Loader " + loader + " not supported by " + this);
+        } else if (LOCATION_KEYS.stream().noneMatch(spec::containsKey)) {
 
-        for (String key : asList("file", "files", "url", "urls")) {
+            throw new SourceLoadException("No "+String.join("/", LOCATION_KEYS)+
+                                          " property present in this source spec!", spec);
+        }
+        for (String key : LOCATION_KEYS) {
             for (Object source : spec.getListNN(key))
                 nameParts.add(loadSource(spec, source.toString(), model, reference));
         }

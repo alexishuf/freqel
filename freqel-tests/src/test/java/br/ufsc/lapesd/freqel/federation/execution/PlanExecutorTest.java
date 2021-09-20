@@ -22,6 +22,7 @@ import br.ufsc.lapesd.freqel.federation.execution.tree.impl.joins.hash.ParallelI
 import br.ufsc.lapesd.freqel.federation.inject.dagger.DaggerTestComponent;
 import br.ufsc.lapesd.freqel.jena.model.term.JenaRes;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
@@ -30,7 +31,6 @@ import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.query.results.impl.MapSolution;
-import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
 import br.ufsc.lapesd.freqel.webapis.description.APIMolecule;
 import br.ufsc.lapesd.freqel.webapis.requests.impl.UriTemplateExecutor;
@@ -57,7 +57,7 @@ import java.net.URLEncoder;
 import java.util.*;
 
 import static br.ufsc.lapesd.freqel.federation.FreqelConfig.Key.*;
-import static br.ufsc.lapesd.freqel.federation.FreqelConfig.createDefault;
+import static br.ufsc.lapesd.freqel.federation.FreqelConfig.fromHardCodedDefaults;
 import static br.ufsc.lapesd.freqel.jena.JenaWrappers.*;
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
@@ -74,14 +74,14 @@ public class PlanExecutorTest extends JerseyTestNg.ContainerPerClassTest impleme
     }
 
     public static final @Nonnull List<FreqelConfig> configs = asList(
-            createDefault().set(JOIN_OP_EXECUTOR, FixedHashJoinOpExecutor.class)
+            fromHardCodedDefaults().set(JOIN_OP_EXECUTOR, FixedHashJoinOpExecutor.class)
                            .set(HASH_JOIN_RESULTS_FACTORY, InMemoryHashJoinResults.Factory.class),
-            createDefault().set(JOIN_OP_EXECUTOR, FixedHashJoinOpExecutor.class)
+            fromHardCodedDefaults().set(JOIN_OP_EXECUTOR, FixedHashJoinOpExecutor.class)
                            .set(HASH_JOIN_RESULTS_FACTORY, ParallelInMemoryHashJoinResults.Factory.class),
-            createDefault().set(JOIN_OP_EXECUTOR, DefaultHashJoinOpExecutor.class),
-            createDefault().set(JOIN_OP_EXECUTOR, DefaultJoinOpExecutor.class)
+            fromHardCodedDefaults().set(JOIN_OP_EXECUTOR, DefaultHashJoinOpExecutor.class),
+            fromHardCodedDefaults().set(JOIN_OP_EXECUTOR, DefaultJoinOpExecutor.class)
                            .set(BIND_JOIN_RESULTS_FACTORY, SimpleBindJoinResults.Factory.class),
-            createDefault().set(JOIN_OP_EXECUTOR, FixedBindJoinOpExecutor.class)
+            fromHardCodedDefaults().set(JOIN_OP_EXECUTOR, FixedBindJoinOpExecutor.class)
                            .set(BIND_JOIN_RESULTS_FACTORY, SimpleBindJoinResults.Factory.class)
     );
 

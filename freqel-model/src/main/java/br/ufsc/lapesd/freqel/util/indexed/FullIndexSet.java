@@ -1,13 +1,17 @@
 package br.ufsc.lapesd.freqel.util.indexed;
 
+import br.ufsc.lapesd.freqel.util.indexed.subset.ImmIndexSubset;
+import br.ufsc.lapesd.freqel.util.indexed.subset.SimpleImmIndexSubset;
 import br.ufsc.lapesd.freqel.util.ref.IdentityHashSet;
 import com.google.common.collect.Maps;
 import com.google.errorprone.annotations.CheckReturnValue;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 
 public class FullIndexSet<T> extends BaseIndexSet<T> {
+    protected @Nullable ImmIndexSubset<T> emptySubset;
 
     public FullIndexSet(int capacity) {
         this(Maps.newHashMapWithExpectedSize(capacity), new ArrayList<>(capacity));
@@ -91,6 +95,12 @@ public class FullIndexSet<T> extends BaseIndexSet<T> {
 
     @Override public @Nonnull ImmIndexSet<T> immutableCopy() {
         return new ImmFullIndexSet<>(new HashMap<>(indexMap), new ArrayList<>(data));
+    }
+
+    @Override public @Nonnull ImmIndexSubset<T> immutableEmptySubset() {
+        if (emptySubset == null)
+            emptySubset = SimpleImmIndexSubset.createEmpty(this);
+        return emptySubset;
     }
 
     @Override public void clear() {

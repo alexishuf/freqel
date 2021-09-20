@@ -44,7 +44,7 @@ import java.util.stream.Stream;
 import static br.ufsc.lapesd.freqel.algebra.JoinInfo.getJoinability;
 import static br.ufsc.lapesd.freqel.algebra.util.TreeUtils.*;
 import static br.ufsc.lapesd.freqel.federation.FreqelConfig.Key.*;
-import static br.ufsc.lapesd.freqel.federation.FreqelConfig.createDefault;
+import static br.ufsc.lapesd.freqel.federation.FreqelConfig.fromHardCodedDefaults;
 import static br.ufsc.lapesd.freqel.query.parse.CQueryContext.createQuery;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -79,13 +79,13 @@ public class JoinOrderPlannerTest implements TestContext {
                     new NamedSupplier<>(ArbitraryJoinOrderPlanner.class),
                     new NamedSupplier<>("Default JoinOrderPlanner",
                             () -> DaggerTestComponent.builder()
-                                    .overrideFreqelConfig(createDefault()
+                                    .overrideFreqelConfig(fromHardCodedDefaults()
                                             .set(EQUIV_CLEANER, DefaultEquivCleaner.class))
                                     .build().joinOrderPlanner()),
                     new NamedSupplier<>("Default GreedyJoinOrderPlanner",
                             () -> {
                                 TestComponent.Builder b = DaggerTestComponent.builder();
-                                b.overrideFreqelConfig(createDefault()
+                                b.overrideFreqelConfig(fromHardCodedDefaults()
                                         .set(EQUIV_CLEANER, DefaultEquivCleaner.class)
                                         .set(JOIN_ORDER_PLANNER, GreedyJoinOrderPlanner.class));
                                 return b.build().joinOrderPlanner();
@@ -94,7 +94,7 @@ public class JoinOrderPlannerTest implements TestContext {
                             () -> {
                                 TestComponent.Builder b = DaggerTestComponent.builder();
                                 b.overrideEquivCleaner(DefaultEquivCleaner.INSTANCE);
-                                b.overrideFreqelConfig(createDefault()
+                                b.overrideFreqelConfig(fromHardCodedDefaults()
                                         .set(JOIN_ORDER_PLANNER, GreedyJoinOrderPlanner.class)
                                         .set(CARDINALITY_ENSEMBLE, NoCardinalityEnsemble.class));
                                 return b.build().joinOrderPlanner();
@@ -102,7 +102,7 @@ public class JoinOrderPlannerTest implements TestContext {
                     new NamedSupplier<>("GreedyJoinOrderPlanner+GeneralSelectivityHeuristic",
                             () -> {
                                 TestComponent.Builder b = DaggerTestComponent.builder();
-                                b.overrideFreqelConfig(createDefault()
+                                b.overrideFreqelConfig(fromHardCodedDefaults()
                                         .set(CARDINALITY_ENSEMBLE, WorstCaseCardinalityEnsemble.class)
                                         .set(EQUIV_CLEANER, DefaultEquivCleaner.class)
                                         .set(CARDINALITY_HEURISTICS, singleton(GeneralSelectivityHeuristic.class))
@@ -113,7 +113,7 @@ public class JoinOrderPlannerTest implements TestContext {
                     new NamedSupplier<>("GreedyJoinOrderPlanner+QuickSelectivityHeuristic",
                             () -> {
                                 TestComponent.Builder b = DaggerTestComponent.builder();
-                                b.overrideFreqelConfig(createDefault()
+                                b.overrideFreqelConfig(fromHardCodedDefaults()
                                         .set(CARDINALITY_ENSEMBLE, WorstCaseCardinalityEnsemble.class)
                                         .set(EQUIV_CLEANER, DefaultEquivCleaner.class)
                                         .set(CARDINALITY_HEURISTICS, singleton(QuickSelectivityHeuristic.class))

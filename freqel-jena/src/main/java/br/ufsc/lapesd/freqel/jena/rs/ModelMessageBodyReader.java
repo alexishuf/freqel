@@ -1,4 +1,4 @@
-package br.ufsc.lapesd.freqel.webapis.requests.impl;
+package br.ufsc.lapesd.freqel.jena.rs;
 
 import com.google.errorprone.annotations.concurrent.LazyInit;
 import org.apache.jena.rdf.model.Model;

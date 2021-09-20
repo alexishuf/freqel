@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.freqel.webapis.requests.parsers.impl;
 
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyReader;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.freqel.webapis.requests.HTTPRequestInfo;
-import br.ufsc.lapesd.freqel.webapis.requests.impl.ModelMessageBodyReader;
 import br.ufsc.lapesd.freqel.webapis.requests.parsers.ResponseParser;
 import com.google.errorprone.annotations.Immutable;
 import org.apache.jena.rdf.model.Model;

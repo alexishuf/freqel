@@ -2,6 +2,8 @@ package br.ufsc.lapesd.freqel.federation;
 
 import br.ufsc.lapesd.freqel.federation.FreqelConfig.ConfigSource;
 import br.ufsc.lapesd.freqel.federation.FreqelConfig.InvalidValueException;
+import br.ufsc.lapesd.freqel.reason.regimes.SourcedEntailmentRegime;
+import br.ufsc.lapesd.freqel.reason.regimes.W3CEntailmentRegimes;
 import org.apache.commons.io.FileUtils;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -20,6 +22,8 @@ import java.util.stream.Stream;
 
 import static br.ufsc.lapesd.freqel.federation.FreqelConfig.ConfigSource.JAVA_PROPERTIES;
 import static br.ufsc.lapesd.freqel.federation.FreqelConfig.Key.*;
+import static br.ufsc.lapesd.freqel.reason.regimes.EntailmentEvidences.SINGLE_SOURCE;
+import static br.ufsc.lapesd.freqel.reason.regimes.EntailmentEvidences.SINGLE_SOURCE_ABOX;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -179,6 +183,37 @@ public class FreqelConfigTest {
         } finally {
             System.clearProperty("sources.cache.dir");
         }
+    }
 
+    @DataProvider
+    public @Nonnull Object[][] parseAdvertisedReasoningData() {
+        String rdfs = W3CEntailmentRegimes.RDFS.iri();
+        return Stream.of(
+                asList(null, null, false),
+                asList("", null, true),
+                asList("@", null, true),
+                asList(rdfs,
+                       new SourcedEntailmentRegime(SINGLE_SOURCE_ABOX, W3CEntailmentRegimes.RDFS),
+                       false),
+                asList("SINGLE_SOURCE@"+rdfs,
+                       new SourcedEntailmentRegime(SINGLE_SOURCE, W3CEntailmentRegimes.RDFS),
+                       false),
+                asList("SINGLE-SOURCE@"+rdfs,
+                       new SourcedEntailmentRegime(SINGLE_SOURCE, W3CEntailmentRegimes.RDFS),
+                       false),
+                asList("single-source-abox@"+rdfs,
+                       new SourcedEntailmentRegime(SINGLE_SOURCE_ABOX, W3CEntailmentRegimes.RDFS),
+                       false)
+        ).map(List::toArray).toArray(Object[][]::new);
+    }
+
+    @Test(dataProvider = "parseAdvertisedReasoningData")
+    public void testParseAdvertisedReasoning(Object value, SourcedEntailmentRegime expected,
+                                             boolean expectException) {
+        try {
+            assertEquals(ADVERTISED_REASONING.parse(value), expected);
+        } catch (InvalidValueException e) {
+            assertTrue(expectException, "Unexpected "+e);
+        }
     }
 }

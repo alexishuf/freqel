@@ -4,6 +4,7 @@ import br.ufsc.lapesd.freqel.util.bitset.Bitsets;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.NotInParentException;
 import br.ufsc.lapesd.freqel.util.indexed.subset.IndexSubset;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 
 import javax.annotation.Nonnull;
@@ -183,5 +184,9 @@ public class CollectionUtils {
         if (collection instanceof Set)
             return Collections.unmodifiableSet((Set<T>)collection);
         return Collections.unmodifiableSet(new HashSet<>(collection));
+    }
+
+    public static @Nonnull <T> List<T> unmodifiableList(@Nullable Collection<T> coll) {
+        return (coll == null || coll.isEmpty()) ? ImmutableList.of() : ImmutableList.copyOf(coll);
     }
 }

@@ -39,6 +39,7 @@ import br.ufsc.lapesd.freqel.federation.planner.conjunctive.bitset.BitsetConjunc
 import br.ufsc.lapesd.freqel.federation.planner.equiv.DefaultEquivCleaner;
 import br.ufsc.lapesd.freqel.federation.planner.equiv.NoEquivCleaner;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.linkedator.Linkedator;
 import br.ufsc.lapesd.freqel.linkedator.LinkedatorResult;
 import br.ufsc.lapesd.freqel.model.Triple;
@@ -63,7 +64,6 @@ import br.ufsc.lapesd.freqel.reason.tbox.EmptyTBox;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxMaterializer;
 import br.ufsc.lapesd.freqel.reason.tbox.TBoxSpec;
 import br.ufsc.lapesd.freqel.reason.tbox.TransitiveClosureTBoxMaterializer;
-import br.ufsc.lapesd.freqel.util.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.webapis.TransparencyService;
 import br.ufsc.lapesd.freqel.webapis.TransparencyServiceTestContext;
 import br.ufsc.lapesd.freqel.webapis.WebAPICQEndpoint;
@@ -547,8 +547,8 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     private static class FederationFactory {
-        private final FreqelConfig defaultConfig = FreqelConfig.createDefault();
-        private final FreqelConfig config = FreqelConfig.createDefault();
+        private final FreqelConfig defaultConfig = FreqelConfig.fromHardCodedDefaults();
+        private final FreqelConfig config = FreqelConfig.fromHardCodedDefaults();
         private final Map<FreqelConfig.Key, Object> explicit = new HashMap<>();
 
         public boolean onlyHashJoin() {

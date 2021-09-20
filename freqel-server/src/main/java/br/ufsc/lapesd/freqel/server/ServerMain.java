@@ -4,6 +4,7 @@ import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.FreqelConfig;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecLoader;
+import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.server.endpoints.Qonfig;
 import br.ufsc.lapesd.freqel.server.endpoints.SPARQLEndpoint;
@@ -131,6 +132,7 @@ public class ServerMain {
         return new ResourceConfig()
                 .property(Federation.class.getName(), federation)
                 .register(SPARQLEndpoint.class)
+                .register(ModelMessageBodyWriter.class)
                 .register(Qonfig.class)
                 .register(UIFiles.class);
     }

@@ -61,7 +61,7 @@ public class FederationSpecLoader {
     private @Nonnull FederationComponent
     createComponent(@Nonnull DictTree spec, @Nonnull File refDir) throws FederationSpecException {
         FederationComponent.Builder b = DaggerFederationComponent.builder();
-        FreqelConfig config = FreqelConfig.createDefault();
+        FreqelConfig config = FreqelConfig.fromDefaultSources();
         if (layers != null)
             layers.forEach(config::readFrom);
         try {

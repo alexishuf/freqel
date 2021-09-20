@@ -77,7 +77,7 @@ public class JoinPathsConjunctivePlannerTest implements TestContext {
         return new JoinPathsConjunctivePlanner(new ArbitraryJoinOrderPlanner(),
                 new DefaultInnerCardinalityComputer(ThresholdCardinalityComparator.DEFAULT,
                                                     RelativeCardinalityAdder.DEFAULT),
-                PlanningModule.prePlanner(null, FreqelConfig.createDefault(),
+                PlanningModule.prePlanner(null, FreqelConfig.fromHardCodedDefaults(),
                         NoOpPerformanceListener.INSTANCE));
     }
 

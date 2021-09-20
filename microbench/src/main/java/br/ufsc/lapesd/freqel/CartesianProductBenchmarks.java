@@ -81,12 +81,12 @@ public class CartesianProductBenchmarks {
         resultsExecutor = parallelResultsExecutor ? new BufferedResultsExecutor()
                                                   : new SequentialResultsExecutor();
         TestComponent.Builder b = DaggerTestComponent.builder();
-        b.overrideFreqelConfig(FreqelConfig.createDefault()
+        b.overrideFreqelConfig(FreqelConfig.fromHardCodedDefaults()
                 .set(FreqelConfig.Key.CARTESIAN_OP_EXECUTOR, EagerCartesianOpExecutor.class));
         b.overrideResultsExecutor(resultsExecutor);
         planExecutorEager = b.build().planExecutor();
         b = DaggerTestComponent.builder();
-        b.overrideFreqelConfig(FreqelConfig.createDefault()
+        b.overrideFreqelConfig(FreqelConfig.fromHardCodedDefaults()
                 .set(FreqelConfig.Key.CARTESIAN_OP_EXECUTOR, LazyCartesianOpExecutor.class));
         b.overrideResultsExecutor(resultsExecutor);
         planExecutorLazy = b.build().planExecutor();

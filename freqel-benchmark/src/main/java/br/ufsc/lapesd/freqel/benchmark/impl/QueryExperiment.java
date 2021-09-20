@@ -287,7 +287,7 @@ public class QueryExperiment {
         LocalDateTime timestamp = LocalDateTime.now(ZoneId.systemDefault());
 
         FederationSpecLoader loader = new FederationSpecLoader();
-        loader.addConfig(FreqelConfig.createDefault()
+        loader.addConfig(FreqelConfig.fromDefaultSources()
                                      .set(PERFORMANCE_LISTENER, ThreadedPerformanceListener.class));
         CollectionResults collResults = null;
         Stopwatch sw;

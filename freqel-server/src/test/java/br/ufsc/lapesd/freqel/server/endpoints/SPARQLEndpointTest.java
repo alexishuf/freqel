@@ -4,14 +4,20 @@ import br.ufsc.lapesd.freqel.TestContext;
 import br.ufsc.lapesd.freqel.description.SelectDescription;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.Freqel;
+import br.ufsc.lapesd.freqel.jena.model.vocab.SPARQLSD;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
+import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.reason.regimes.W3CEntailmentRegimes;
 import br.ufsc.lapesd.freqel.server.utils.PercentEncoder;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import com.google.common.collect.Sets;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
@@ -26,6 +32,8 @@ import org.testng.annotations.Test;
 import javax.annotation.Nonnull;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
@@ -34,6 +42,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.testng.Assert.*;
 
 public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest implements TestContext {
@@ -52,10 +61,11 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
 
 
     @SuppressWarnings("SameParameterValue")
-    private @Nonnull TPEndpoint getSource(@Nonnull String resourceRelativePath) {
-        try (InputStream in = open(resourceRelativePath)) {
+    static @Nonnull TPEndpoint createSource(@Nonnull String resourceRelativePath,
+                                            @Nonnull Lang lang) {
+        try (InputStream in = new TestContext(){}.open(resourceRelativePath)) {
             Model model = ModelFactory.createDefaultModel();
-            RDFDataMgr.read(model, in, Lang.NT);
+            RDFDataMgr.read(model, in, lang);
             ARQEndpoint ep = ARQEndpoint.forModel(model, resourceRelativePath);
             return ep.setDescription(new SelectDescription(ep));
         } catch (IOException e) {
@@ -67,9 +77,10 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
     @Override
     protected Application configure() {
         federation = Freqel.createFederation();
-        federation.addSource(getSource("rdf-1.nt"));
+        federation.addSource(createSource("rdf-1.nt", Lang.NT));
         return new ResourceConfig()
                 .property(Federation.class.getName(), federation)
+                .register(ModelMessageBodyWriter.class)
                 .register(SPARQLEndpoint.class);
     }
 
@@ -149,5 +160,40 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
         }
 
         assertEquals(solutions, results1TSV);
+    }
+
+    @Test
+    public void testServiceDescriptionNoReasoning() {
+        Response response = target("/sparql").request().accept("*/*").get();
+        assertEquals(response.getStatus(), 200);
+        assertEquals(response.getMediaType(), MediaType.valueOf("text/turtle"));
+        String ttl = response.readEntity(String.class);
+        Model model = ModelFactory.createDefaultModel();
+        RDFDataMgr.read(model, new ByteArrayInputStream(ttl.getBytes(UTF_8)), Lang.TTL);
+        assertFalse(model.isEmpty());
+
+        String prolog = "PREFIX sd: <" + SPARQLSD.NS + ">\n" +
+                        "PREFIX ent: <" + W3CEntailmentRegimes.NS + ">\n" +
+                        "SELECT * WHERE {\n";
+        // single service in description
+        try (QueryExecution ex = QueryExecutionFactory.create(prolog+"?s a sd:Service}", model)) {
+            ResultSet rs = ex.execSelect();
+            assertTrue(rs.hasNext());
+            assertEquals(rs.next().get("s"), model.createResource(target("/sparql").getUri().toString()));
+            assertFalse(rs.hasNext(), "Single");
+        }
+        // test simple entailment regime  by default and on a named graph
+        try (QueryExecution ex = QueryExecutionFactory.create(prolog +
+                "  <" + target("/sparql").getUri().toString() + "> a sd:Service;\n" +
+                "    sd:defaultEntailmentRegime <"+W3CEntailmentRegimes.SIMPLE.iri()+">;\n" +
+                "    sd:defaultDataset ?ds.\n" +
+                "  ?ds a sd:Dataset;\n" +
+                "    sd:defaultGraph ?defGraph;\n" +
+                "    sd:namedGraph/sd:entailmentRegime ent:Simple.}", model)) {
+            ResultSet rs = ex.execSelect();
+            assertTrue(rs.hasNext());
+            rs.next();
+            assertFalse(rs.hasNext(), "Expected a single solution (federation has no reasoning enabled");
+        }
     }
 }
