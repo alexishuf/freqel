@@ -7,9 +7,13 @@ import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ChunkedEncoderRegistry {
     private static final @Nonnull ChunkedEncoderRegistry INSTANCE;
+    private static final Pattern MT_RX = Pattern.compile("^\\s*([^/;, ]+/[^/;, ]+)");
+
     static {
         ChunkedEncoderRegistry registry = new ChunkedEncoderRegistry();
         registry.register(new TSVChunkedEncoder());
@@ -56,10 +60,9 @@ public class ChunkedEncoderRegistry {
      *         {@link ChunkedEncoder} for the given mediaType.
      */
     public @Nullable ChunkedEncoder get(@Nonnull Object mediaType) {
-        String string = mediaType.toString().trim().toLowerCase();
-        int end = string.indexOf(' ');
-        if (end >= 0)
-            string = string.substring(0, end);
-        return type2encoder.getOrDefault(string, null);
+        Matcher matcher = MT_RX.matcher(mediaType.toString());
+        if (!matcher.find())
+            return null;
+        return type2encoder.getOrDefault(matcher.group(1).toLowerCase(), null);
     }
 }

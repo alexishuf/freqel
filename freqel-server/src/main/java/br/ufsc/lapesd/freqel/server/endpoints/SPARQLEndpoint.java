@@ -14,6 +14,7 @@ import br.ufsc.lapesd.freqel.reason.regimes.SourcedEntailmentRegime;
 import br.ufsc.lapesd.freqel.reason.regimes.W3CEntailmentRegimes;
 import br.ufsc.lapesd.freqel.server.results.ChunkedEncoder;
 import br.ufsc.lapesd.freqel.server.results.ChunkedEncoderRegistry;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.escape.Escaper;
 import com.google.common.net.MediaType;
@@ -65,6 +66,7 @@ public class SPARQLEndpoint {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(SPARQLEndpoint.class);
     private static final @Nonnull Pattern OUT_PARAM_RX = Pattern.compile("[?&](?:format|out(?:put)?)=([^&#]*)");
     private static final @Nonnull List<MediaType> PREFERRED_RDF_TYPES;
+    private static final @Nonnull Comparator<MediaType> REV_Q_COMPARATOR;
     private static final @Nonnull List<MediaType> PREFERRED_RESULT_TYPES = asList(
             parse("text/tab-separated-values"),
             parse("application/sparql-results+json"),
@@ -80,6 +82,16 @@ public class SPARQLEndpoint {
             list.add(0, ct);
         }
         PREFERRED_RDF_TYPES = list.stream().map(MediaType::parse).collect(Collectors.toList());
+
+        Comparator<MediaType> comparator = Comparator.comparing(m -> {
+            ImmutableList<String> qs = m.parameters().get("q");
+            try {
+                return qs.isEmpty() ? 1.0 : Double.parseDouble(qs.get(0));
+            } catch (NumberFormatException e) {
+                throw new RequestException(406, "Bad q-value for" + m);
+            }
+        });
+        REV_Q_COMPARATOR = comparator.reversed();
     }
 
     private final @Nonnull Federation federation;
@@ -349,40 +361,62 @@ public class SPARQLEndpoint {
         }
     }
 
+    private static boolean match(@Nonnull String accepted, @Nonnull String offer) {
+        return accepted.equals("*") || accepted.equals(offer);
+    }
+    private static boolean match(@Nonnull MediaType accepted, @Nonnull MediaType offer) {
+        return match(accepted.type(), offer.type()) && match(accepted.subtype(), offer.subtype());
+    }
+
+    private static @Nullable MediaType tryMatch(@Nonnull List<MediaType> offers,
+                                                @Nonnull MediaType accepted,
+                                                @Nonnull List<String> acceptedCharsets) {
+        MediaType mt = offers.stream().filter(o -> match(accepted, o)).findFirst().orElse(null);
+        if (mt == null)
+            return null;
+        HashMultimap<String, String> params = null;
+        for (Map.Entry<String, String> e : accepted.parameters().entries()) {
+            if (!e.getKey().equals("q")) {
+                if (params == null)
+                    params = HashMultimap.create();
+                params.put(e.getKey(), e.getValue());
+            }
+        }
+        String acceptedCharset = null;
+        for (int i = 0, sz = acceptedCharsets.size(); acceptedCharset == null && i < sz; i++) {
+            String name = acceptedCharsets.get(i);
+            try {
+                if (Charset.isSupported(name)) acceptedCharset = name;
+            } catch (IllegalCharsetNameException ignored) { }
+        }
+        if (params != null) {
+            if (!params.containsKey("charset") && acceptedCharset != null)
+                params.put("charset", acceptedCharset);
+            mt = mt.withParameters(params);
+        } else if (acceptedCharset != null) {
+            mt = mt.withCharset(Charset.forName(acceptedCharset));
+        }
+        return mt;
+    }
+
     private @Nonnull MediaType
     chooseMediaType(@Nonnull HttpServerRequest request, @Nonnull List<MediaType> preferred) {
         List<String> hs = new ArrayList<>(request.requestHeaders().getAll(ACCEPT));
         addQueryParamAcceptedTypes(request, hs);
         if (hs.isEmpty())
             hs.add(preferred.get(0).toString());
+        List<String> acceptedCharsets = request.requestHeaders()
+                .getAll(HttpHeaderNames.ACCEPT_CHARSET).stream()
+                .flatMap(s -> Arrays.stream(s.split(", *")))
+                .collect(Collectors.toList());
         MediaType mt = hs.stream()
                 .flatMap(s -> Arrays.stream(s.split(", *")))
                 .map(MediaType::parse)
-                .sorted(Comparator.comparing(m -> {
-                    ImmutableList<String> list = m.parameters().get("q");
-                    try {
-                        return list.isEmpty() ? 1.0 : Double.parseDouble(list.get(0));
-                    } catch (NumberFormatException e) {
-                        throw new RequestException(406, "Bad q-value for"+m);
-                    }
-                })).map(accepted -> {
-                    MediaType best = preferred.stream()
-                            .filter(o -> o.is(accepted)).findFirst().orElse(null);
-                    ImmutableList<String> charsets = accepted.parameters().get("charset");
-                    return best == null || charsets.isEmpty() ? best
-                            : best.withCharset(Charset.forName(charsets.get(0)));
-                }).filter(Objects::nonNull).findFirst().orElse(null);
-        if (mt != null) {
-            return request.requestHeaders().getAll(HttpHeaderNames.ACCEPT_CHARSET).stream()
-                    .flatMap(s -> Arrays.stream(s.split(", *")))
-                    .map(s -> {
-                        try {
-                            return Charset.forName(s);
-                        } catch (IllegalCharsetNameException e) {
-                            return null;
-                        }
-                    }).filter(Objects::nonNull).findFirst().map(mt::withCharset).orElse(mt);
-        }
+                .sorted(REV_Q_COMPARATOR)
+                .map(accepted -> tryMatch(preferred, accepted, acceptedCharsets))
+                .filter(Objects::nonNull).findFirst().orElse(null);
+        if (mt != null)
+            return mt;
         String offered = preferred.toString().replaceAll("^\\[|]$", "");
         throw new RequestException(406, "Cannot produce any of the media types given " +
                                     "in Accept headers. Supported media types are: "+offered);

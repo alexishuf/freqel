@@ -155,25 +155,38 @@ public class SPARQLEndpointTest implements TestContext {
     }
 
     @Test
+    public void testGetTSVResults() throws IOException {
+        String accept = "text/tab-separated-values; charset=utf-8, text/tab-separated-values; q=0.9";
+        String tsv = get(uri("query", query1), accept);
+        HashSet<String> expectedVars = Sets.newHashSet("?x", "?name");
+        Set<Map<String, String>> solutions = parseTSV(tsv, expectedVars);
+        assertEquals(solutions, results1TSV);
+    }
+
+    @Test
     public void testQueryGetTSVResultsViaParam() throws IOException {
         String tsv =  get(uri("query", query1, "output", "tsv"), "text/html");
-        HashSet<String> vars = Sets.newHashSet("?x", "?name");
+        HashSet<String> expectedVars = Sets.newHashSet("?x", "?name");
+        Set<Map<String, String>> solutions = parseTSV(tsv, expectedVars);
+        assertEquals(solutions, results1TSV);
+    }
 
+    private @Nonnull Set<Map<String, String>>
+    parseTSV(@Nonnull String tsv, @Nonnull HashSet<String> expectedVars) throws IOException {
         Set<Map<String, String>> solutions = new HashSet<>();
         CSVFormat format = CSVFormat.DEFAULT.withFirstRecordAsHeader().withDelimiter('\t')
                 .withQuote('\'').withRecordSeparator('\n');
         try (StringReader reader = new StringReader(tsv);
              CSVParser parser = new CSVParser(reader, format)) {
-            assertEquals(new HashSet<>(parser.getHeaderNames()), vars);
+            assertEquals(new HashSet<>(parser.getHeaderNames()), expectedVars);
             for (CSVRecord record : parser) {
                 Map<String, String> solution = new HashMap<>();
-                for (String var : vars)
+                for (String var : expectedVars)
                     solution.put(var, record.get(var));
                 solutions.add(solution);
             }
         }
-
-        assertEquals(solutions, results1TSV);
+        return solutions;
     }
 
     @Test
