@@ -6,12 +6,12 @@ import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.jena.model.vocab.SPARQLSD;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
-import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.reason.regimes.W3CEntailmentRegimes;
 import br.ufsc.lapesd.freqel.server.utils.PercentEncoder;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import com.google.common.collect.Sets;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -23,16 +23,15 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.sparql.vocabulary.FOAF;
-import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.test.JerseyTestNg;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+import reactor.netty.DisposableServer;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.http.client.HttpClientResponse;
+import reactor.netty.http.server.HttpServer;
 
 import javax.annotation.Nonnull;
-import javax.ws.rs.core.Application;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,9 +44,10 @@ import java.util.Set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.testng.Assert.*;
 
-public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest implements TestContext {
+public class SPARQLEndpointTest implements TestContext {
 
     private Federation federation;
+    private DisposableServer server;
     private final String query1 = "PREFIX ex: <"+EX+">\n" +
             "PREFIX foaf: <"+ FOAF.NS +">\n" +
             "SELECT ?x ?name WHERE {\n" +
@@ -74,20 +74,16 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
         return null;
     }
 
-    @Override
-    protected Application configure() {
+    @BeforeClass(timeOut = 60000)
+    public void setUp() {
         federation = Freqel.createFederation();
         federation.addSource(createSource("rdf-1.nt", Lang.NT));
-        return new ResourceConfig()
-                .property(Federation.class.getName(), federation)
-                .register(ModelMessageBodyWriter.class)
-                .register(SPARQLEndpoint.class);
-    }
+        SPARQLEndpoint endpoint = new SPARQLEndpoint(federation);
+        server = HttpServer.create().host("127.0.0.1").route(routes ->
+                routes.get("/sparql", endpoint::handle)
+                        .post("/sparql", endpoint::handle)
+        ).bindNow();
 
-    @BeforeClass
-    @Override
-    public void setUp() throws Exception {
-        super.setUp();
         results1 = new HashSet<>();
         Map<String, String> map = new HashMap<>();
         map.put("x", Alice.getURI());
@@ -105,19 +101,42 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
         results1TSV.add(new HashMap<>(map));
     }
 
-    @AfterClass
-    @Override
-    public void tearDown() throws Exception {
-        super.tearDown();
+    @AfterClass(timeOut = 30000)
+    public void tearDown() {
+        server.disposeNow();
         if (federation != null)
             federation.close();
     }
 
+    private @Nonnull String uri(@Nonnull String... keysAndValues) {
+        if (keysAndValues.length % 2 > 0)
+            throw new IllegalArgumentException("keysAndValues.length is not even");
+        StringBuilder builder = new StringBuilder("http://127.0.0.1:")
+                .append(server.port()).append("/sparql?");
+        for (int i = 0; i < keysAndValues.length; i += 2) {
+            String value = PercentEncoder.encode(keysAndValues[i + 1]);
+            builder.append(keysAndValues[i]).append('=').append(value).append('&');
+        }
+        builder.setLength(builder.length()-1);
+        return builder.toString();
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private @Nonnull String get(@Nonnull String uri, @Nonnull String accept) {
+        String string = HttpClient.create()
+                .headers(b -> b.set(HttpHeaderNames.ACCEPT, accept)).get()
+                .uri(uri)
+                .responseContent().aggregate().asString(UTF_8).block();
+        assertNotNull(string);
+        assertFalse(string.isEmpty());
+        return string;
+    }
+
+
     @Test
     public void testQueryGetJsonResults() throws IOException {
-        String json = target("sparql/query")
-                .queryParam("query", PercentEncoder.encode(query1))
-                .request(MediaType.APPLICATION_JSON_TYPE).get(String.class);
+        String json = get(uri("query", query1),
+                          "application/sparql-results+json");
         DictTree tree = DictTree.load().fromJsonString(json);
 
         HashSet<String> vars = Sets.newHashSet("x", "name");
@@ -137,12 +156,7 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
 
     @Test
     public void testQueryGetTSVResultsViaParam() throws IOException {
-        String tsv = target("sparql/query")
-                .queryParam("query", PercentEncoder.encode(query1))
-                .queryParam("output", "tsv")
-                .request(MediaType.TEXT_HTML_TYPE) /* bogus accept is overridden */
-                .get(String.class);
-
+        String tsv =  get(uri("query", query1, "output", "tsv"), "text/html");
         HashSet<String> vars = Sets.newHashSet("?x", "?name");
 
         Set<Map<String, String>> solutions = new HashSet<>();
@@ -164,12 +178,20 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
 
     @Test
     public void testServiceDescriptionNoReasoning() {
-        Response response = target("/sparql").request().accept("*/*").get();
-        assertEquals(response.getStatus(), 200);
-        assertEquals(response.getMediaType(), MediaType.valueOf("text/turtle"));
-        String ttl = response.readEntity(String.class);
+        HttpClientResponse response = HttpClient.create()
+                .headers(h -> h.set(HttpHeaderNames.ACCEPT, "*/*")).get().uri(uri())
+                .response().block();
+        String body = HttpClient.create()
+                .headers(h -> h.set(HttpHeaderNames.ACCEPT, "*/*")).get().uri(uri())
+                .responseContent().aggregate().asString(UTF_8).block();
+        assertNotNull(response);
+        assertEquals(response.status().code(), 200);
+        assertEquals(response.responseHeaders().get(HttpHeaderNames.CONTENT_TYPE),
+                     "text/turtle");
+
+        assertNotNull(body);
         Model model = ModelFactory.createDefaultModel();
-        RDFDataMgr.read(model, new ByteArrayInputStream(ttl.getBytes(UTF_8)), Lang.TTL);
+        RDFDataMgr.read(model, new ByteArrayInputStream(body.getBytes(UTF_8)), Lang.TTL);
         assertFalse(model.isEmpty());
 
         String prolog = "PREFIX sd: <" + SPARQLSD.NS + ">\n" +
@@ -179,12 +201,12 @@ public class SPARQLEndpointTest extends JerseyTestNg.ContainerPerClassTest imple
         try (QueryExecution ex = QueryExecutionFactory.create(prolog+"?s a sd:Service}", model)) {
             ResultSet rs = ex.execSelect();
             assertTrue(rs.hasNext());
-            assertEquals(rs.next().get("s"), model.createResource(target("/sparql").getUri().toString()));
+            assertEquals(rs.next().get("s"), model.createResource(uri()));
             assertFalse(rs.hasNext(), "Single");
         }
         // test simple entailment regime  by default and on a named graph
         try (QueryExecution ex = QueryExecutionFactory.create(prolog +
-                "  <" + target("/sparql").getUri().toString() + "> a sd:Service;\n" +
+                "  <"+uri()+"> a sd:Service;\n" +
                 "    sd:defaultEntailmentRegime <"+W3CEntailmentRegimes.SIMPLE.iri()+">;\n" +
                 "    sd:defaultDataset ?ds.\n" +
                 "  ?ds a sd:Dataset;\n" +

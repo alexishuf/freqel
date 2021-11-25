@@ -4,11 +4,8 @@ import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.FreqelConfig;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecException;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecLoader;
-import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
-import br.ufsc.lapesd.freqel.server.endpoints.Qonfig;
 import br.ufsc.lapesd.freqel.server.endpoints.SPARQLEndpoint;
-import br.ufsc.lapesd.freqel.server.endpoints.UIFiles;
 import br.ufsc.lapesd.freqel.util.DictTree;
 import com.esotericsoftware.yamlbeans.YamlWriter;
 import com.google.common.base.Stopwatch;
@@ -16,16 +13,16 @@ import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.glassfish.jersey.server.ResourceConfig;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.netty.DisposableServer;
+import reactor.netty.http.server.HttpServer;
 
 import javax.annotation.Nonnull;
 import java.io.*;
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -33,7 +30,6 @@ import java.util.concurrent.TimeoutException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Comparator.naturalOrder;
-import static org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory.createHttpServer;
 
 @SuppressWarnings({"FieldMayBeFinal", "MismatchedQueryAndUpdateOfCollection"})
 public class ServerMain {
@@ -128,15 +124,6 @@ public class ServerMain {
         }
     }
 
-    public @Nonnull ResourceConfig getApplication(@Nonnull Federation federation) {
-        return new ResourceConfig()
-                .property(Federation.class.getName(), federation)
-                .register(SPARQLEndpoint.class)
-                .register(ModelMessageBodyWriter.class)
-                .register(Qonfig.class)
-                .register(UIFiles.class);
-    }
-
     @Nonnull private Federation getFederation() throws IOException, FederationSpecException {
         return new FederationSpecLoader().load(config);
     }
@@ -161,16 +148,20 @@ public class ServerMain {
             federation.close();
             return; // to not spin SPARQL endpoint
         }
-        URI serverURI = new URI("http://"+listenAddress+":"+port);
-        ResourceConfig app = getApplication(getFederation());
-        org.glassfish.grizzly.http.server.HttpServer server = createHttpServer(serverURI, app, true);
-        server.start();
-
+        SPARQLEndpoint ep = new SPARQLEndpoint(federation);
+        DisposableServer server = HttpServer.create()
+                .host(listenAddress)
+                .port(port)
+                .route(routes -> routes
+                        .get("/sparql", ep::handle)
+                        .post("/sparql", ep::handle)
+                        .get("/sparql/query", ep::handle)
+                        .post("/sparql/query", ep::handle))
+                .bindNow();
         printBox("SPARQL endpoint listening at http://%1$s:%2$d/sparql\n" +
-                 "Accepted query methods are GET and form-encoded or plain POST\n" +
-                 "GUI is at http://%1$s:%2$d/ui/index.html", listenAddress, port);
-
-        Thread.currentThread().join();
+                "Accepted query methods are GET and form-encoded or plain POST\n" +
+                "GUI is at http://%1$s:%2$d/ui/index.html", listenAddress, port);
+        server.onDispose().block();
     }
 
     @SuppressWarnings("SameParameterValue")

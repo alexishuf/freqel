@@ -71,6 +71,15 @@
 
     <!-- Embedded server stuff -->
     <dependency>
+      <groupId>io.projectreactor.netty</groupId>
+      <artifactId>reactor-netty-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.projectreactor.netty</groupId>
+      <artifactId>reactor-netty-http</artifactId>
+    </dependency>
+    <!-- Embedded JAX-RS used only during tests to serve TransparencyService -->
+    <dependency>
       <groupId>org.glassfish.jersey.inject</groupId>
       <artifactId>jersey-hk2</artifactId>
       <version>${jersey.version}</version>
@@ -93,19 +102,13 @@
     <dependency>
       <groupId>org.testng</groupId>
       <artifactId>testng</artifactId>
-      <version>6.14.3</version>
+      <version>7.4.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>br.ufsc.lapesd.freqel</groupId>
       <artifactId>freqel-tests</artifactId>
       <version>1.0-SNAPSHOT</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.glassfish.jersey.test-framework.providers</groupId>
-      <artifactId>jersey-test-framework-provider-jdk-http</artifactId>
-      <version>${jersey.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

@@ -8,44 +8,69 @@ import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.query.modifiers.Reasoning;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
-import br.ufsc.lapesd.freqel.query.parse.UnsupportedSPARQLFeatureException;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.reason.regimes.EntailmentRegime;
 import br.ufsc.lapesd.freqel.reason.regimes.SourcedEntailmentRegime;
 import br.ufsc.lapesd.freqel.reason.regimes.W3CEntailmentRegimes;
-import br.ufsc.lapesd.freqel.server.sparql.ResultsFormatterDispatcher;
+import br.ufsc.lapesd.freqel.server.results.ChunkedEncoder;
+import br.ufsc.lapesd.freqel.server.results.ChunkedEncoderRegistry;
+import com.google.common.collect.ImmutableList;
 import com.google.common.escape.Escaper;
+import com.google.common.net.MediaType;
 import com.google.common.net.UrlEscapers;
+import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import org.apache.commons.io.output.StringBuilderWriter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.vocabulary.RDF;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
+import reactor.netty.http.server.HttpServerRequest;
+import reactor.netty.http.server.HttpServerResponse;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.ws.rs.*;
-import javax.ws.rs.core.*;
+import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static br.ufsc.lapesd.freqel.federation.FreqelConfig.Key.ADVERTISED_REASONING;
 import static br.ufsc.lapesd.freqel.reason.regimes.EntailmentEvidences.CROSS_SOURCE;
 import static br.ufsc.lapesd.freqel.reason.regimes.W3CEntailmentRegimes.SIMPLE;
-import static java.lang.String.format;
-import static java.lang.String.join;
+import static com.google.common.net.MediaType.parse;
+import static io.netty.handler.codec.http.HttpHeaderNames.ACCEPT;
+import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE;
+import static java.lang.Integer.parseInt;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN_TYPE;
 
-@Path("/sparql")
+
+@SuppressWarnings("UnstableApiUsage")
 public class SPARQLEndpoint {
     private static final @Nonnull Logger logger = LoggerFactory.getLogger(SPARQLEndpoint.class);
+    private static final @Nonnull Pattern OUT_PARAM_RX = Pattern.compile("[?&](?:format|out(?:put)?)=([^&#]*)");
     private static final @Nonnull List<MediaType> PREFERRED_RDF_TYPES;
+    private static final @Nonnull List<MediaType> PREFERRED_RESULT_TYPES = asList(
+            parse("text/tab-separated-values"),
+            parse("application/sparql-results+json"),
+            parse("text/csv"));
+    private static final String QUERY_TYPE = "application/sparql-query";
+    private static final String FORM_TYPE = "application/x-www-form-urlencoded";
 
     static {
         ArrayList<String> list = new ArrayList<>(ModelMessageBodyWriter.getSupportedContentTypes());
@@ -54,120 +79,197 @@ public class SPARQLEndpoint {
             list.remove(ct);
             list.add(0, ct);
         }
-        PREFERRED_RDF_TYPES = list.stream().map(MediaType::valueOf).collect(Collectors.toList());
+        PREFERRED_RDF_TYPES = list.stream().map(MediaType::parse).collect(Collectors.toList());
     }
 
-    public static final @Nonnull MediaType JSON_TYPE =
-            new MediaType("application", "sparql-results+json");
+    private final @Nonnull Federation federation;
+    private final String reasoningGraphIRI;
+    private final @Nonnull ChunkedEncoderRegistry encoderRegistry;
+    private final SPARQLParser parser = SPARQLParser.tolerant();
+    private final @Nonnull List<MediaType> resultTypes;
 
-    private @Context Application application;
-    private SourcedEntailmentRegime reasoningRegime;
-    private String reasoningGraphIRI;
-
-    private @Nonnull Federation getFederation() {
-        String key = Federation.class.getName();
-        Object obj = application.getProperties().get(key);
-        if (obj == null)
-            throw new IllegalArgumentException("Property "+ key +" not set");
-        if (!(obj instanceof Federation))
-            throw new IllegalArgumentException("Property "+ key +" is not a Federation");
-        return (Federation)obj;
+    public SPARQLEndpoint(@Nonnull Federation federation) {
+        this(federation, ChunkedEncoderRegistry.get());
     }
 
-    private @Nonnull SourcedEntailmentRegime getReasoningRegime() {
-        if (reasoningRegime == null) {
-            reasoningRegime = getFederation().getFreqelConfig()
-                    .get(ADVERTISED_REASONING, SourcedEntailmentRegime.class);
+    public SPARQLEndpoint(@Nonnull Federation federation,
+                          @Nonnull ChunkedEncoderRegistry encoderRegistry) {
+        this.federation = federation;
+        this.encoderRegistry = encoderRegistry;
+        SourcedEntailmentRegime reasoningRegime = federation.getFreqelConfig()
+                .get(ADVERTISED_REASONING, SourcedEntailmentRegime.class);
+        this.reasoningGraphIRI = getReasoningGraphIRI(reasoningRegime);
+        List<MediaType> list = encoderRegistry.supportedTypes().stream()
+                                              .map(MediaType::parse).collect(Collectors.toList());
+        ListIterator<MediaType> it;
+        it = PREFERRED_RESULT_TYPES.listIterator(PREFERRED_RESULT_TYPES.size());
+        while (it.hasPrevious()) {
+            MediaType mt = it.previous();
+            list.remove(mt);
+            list.add(0, mt);
         }
-        return reasoningRegime;
+        this.resultTypes = list;
     }
 
-    private @Nonnull String getReasoningGraphIRI() {
-        if (reasoningGraphIRI != null)
-            return reasoningGraphIRI;
-        SourcedEntailmentRegime sr = getReasoningRegime();
+    private static @Nonnull String getReasoningGraphIRI(@Nonnull SourcedEntailmentRegime sr) {
         EntailmentRegime regime = sr.regime();
         if (regime instanceof W3CEntailmentRegimes.W3CRegime)
-            return reasoningGraphIRI = ((W3CEntailmentRegimes.W3CRegime)regime).getGraphIRI();
+            return ((W3CEntailmentRegimes.W3CRegime)regime).getGraphIRI();
         Escaper escaper = UrlEscapers.urlPathSegmentEscaper();
-        return reasoningGraphIRI = V.Freqel.Entailment.Graph.NS + escaper.escape(regime.name());
+        return V.Freqel.Entailment.Graph.NS + escaper.escape(regime.name());
     }
 
-    private @Nonnull Response handleQuery(@Nullable String query, boolean reason,
-                                          @Nullable HttpHeaders headers, UriInfo uriInfo) {
-        query = query == null ? "" : query;
-        try {
-            Op parsed = SPARQLParser.tolerant().parse(query);
-            if (reason)
-                parsed.modifiers().add(Reasoning.INSTANCE);
-            Results results = getFederation().query(parsed);
-            return ResultsFormatterDispatcher.getDefault()
-                    .format(results, parsed.modifiers().ask() != null, headers, uriInfo)
-                    .toResponse().build();
-        } catch (UnsupportedSPARQLFeatureException e) {
-            return createExceptionResponse(query, "Unsupported SPARQL Feature", e);
-        } catch (SPARQLParseException e) {
-            return createExceptionResponse(query, "Query Syntax Error", e);
-        } catch (Throwable t) { //includes QueryExecutionException
-            return createExceptionResponse(query, "Query Execution Failed", t);
-        }
+    private static @Nonnull String unescape(@Nonnull String str) {
+        return unescape(str, 0, str.length());
     }
 
-    private @Nonnull Response createExceptionResponse(@Nonnull String query,
-                                                      @Nonnull String reason,
-                                                      @Nonnull Throwable t) {
-        StringBuilderWriter stringBuilderWriter = new StringBuilderWriter();
-        t.printStackTrace(new PrintWriter(stringBuilderWriter));
-        String trace = stringBuilderWriter.toString();
-        String message = format("Execution of query failed: %s\n" +
-                "Query:\n" +
-                "%s\n" +
-                "Traceback:\n" +
-                "%s\n", t.getMessage(), query, trace);
-        return Response.status(500, reason).type(TEXT_PLAIN_TYPE).entity(message).build();
-    }
-
-    @GET
-    public @Nonnull Response get(@QueryParam("query") String query, @Context UriInfo uriInfo,
-                                 @Context HttpHeaders headers) {
-        return queryGet(query, uriInfo, headers);
-    }
-
-    @POST @Consumes("application/x-www-form-urlencoded")
-    public @Nonnull Response form(@FormParam("query") String query,
-                                  @FormParam("default-graph-iri") List<String> defGraphIRIs,
-                                  @FormParam("named-graph-iri") List<String> namedGraphIRIs,
-                                  @Context UriInfo uriInfo,
-                                  @Context HttpHeaders headers) {
-        return queryForm(query, defGraphIRIs, namedGraphIRIs, uriInfo, headers);
-    }
-
-    @POST @Consumes("application/sparql-query")
-    public @Nonnull Response post(String query, @Context UriInfo uriInfo,
-                                  @Context HttpHeaders headers) {
-        return queryPost(query, uriInfo, headers);
-    }
-
-    @GET @Path("query")
-    public @Nonnull Response queryGet(@QueryParam("query") String query, @Context UriInfo uriInfo,
-                                      @Context HttpHeaders headers) {
-        try {
-            if (query == null) {
-                return serviceDescription(headers, uriInfo);
+    private static @Nonnull String unescape(@Nonnull String str, int begin, int end) {
+        StringBuilder b = new StringBuilder(str.length()*2);
+        if (!str.contains("%20"))
+            str = str.replace('+', ' ');
+        while (begin < end) {
+            int i = str.indexOf('%', begin);
+            int pctIndex = i < 0 ? end : i;
+            b.append(str, begin, pctIndex);
+            if (pctIndex+2 < end) {
+                try {
+                    char ch = (char) parseInt(str.substring(pctIndex+1, pctIndex+3), 16);
+                    b.append(ch);
+                } catch (NumberFormatException e) {
+                    String msg = "Bad escape: \""+str.substring(pctIndex, pctIndex+3)+"\"";
+                    throw new RequestException(400, msg);
+                }
+                begin = pctIndex+3;
+            } else if (pctIndex < end) {
+                String bad = str.substring(pctIndex, end);
+                String msg = "Invalid %-escape \""+bad+"\": unexpected end-of-string";
+                throw new RequestException(400, msg);
+            } else {
+                begin = pctIndex;
             }
-            return handleQuery(query, reasoningRequested(uriInfo), headers, uriInfo);
-        } catch (Exception e) {
-            logger.warn("Exception thrown while processing GET {}", uriInfo.getRequestUri(), e);
-            throw e;
         }
+        return b.toString();
     }
 
-    private boolean reasoningRequested(@Nonnull UriInfo uriInfo) {
-        MultivaluedMap<String, String> ps = uriInfo.getQueryParameters();
-        String rIRI = getReasoningGraphIRI();
-        List<String> el = Collections.emptyList();
-        return ps.getOrDefault("default-graph-uri", el).contains(rIRI)
-                || ps.getOrDefault("named-graph-uri", el).contains(rIRI);
+    private @Nonnull Mono<ByteBuf> createError(@Nonnull HttpServerResponse response,
+                                               @Nonnull HttpResponseStatus status,
+                                               @Nullable Throwable t,
+                                               @Nonnull String fmt, Object... args) {
+        ByteBuf bb = response.alloc().buffer();
+        String msg = fmt.isEmpty() ? "" : String.format(fmt, args);
+        bb.writeCharSequence(msg, UTF_8);
+        if (t != null) {
+            StringBuilderWriter sbWriter = new StringBuilderWriter();
+            try (PrintWriter pw = new PrintWriter(sbWriter, true)) {
+                t.printStackTrace(pw);
+            }
+            bb.writeCharSequence(sbWriter.toString(), UTF_8);
+        }
+        response.chunkedTransfer(false)
+                .status(status)
+                .header(CONTENT_TYPE, "text/plain; charset=utf-8");
+        return Mono.just(bb);
+    }
+
+    private final class Params {
+        final @Nonnull List<String> defGraphURIs = new ArrayList<>();
+        final @Nonnull List<String> namedGraphURIs = new ArrayList<>();
+        @Nonnull String query = "";
+
+        public Params(@Nonnull HttpServerRequest request) {
+            if (request.method() == HttpMethod.GET) {
+                parseURI(request.uri());
+            } else if (request.method() == HttpMethod.POST) {
+                String ct = request.requestHeaders().get(CONTENT_TYPE, QUERY_TYPE);
+                Charset reqCharset = MediaType.parse(ct).charset().or(UTF_8);
+                String data = request.receive().aggregate().asString(reqCharset).block();
+                if (data == null) {
+                    throw new RequestException(400, "POST without request body!");
+                } else if (request.isFormUrlencoded()) {
+                    parse(data, 0);
+                } else if (ct.equals(QUERY_TYPE)) {
+                    query = unescape(data, 0, data.length());
+                } else {
+                    throw new RequestException(400, "POST requests body must be either "+
+                            FORM_TYPE+" or "+QUERY_TYPE+". Cannot process Content-Type \""+ct+"\"");
+                }
+            } else {
+                throw new RequestException(406, "Method "+request.method()+" is not allowed " +
+                        "in SPARQL protocol. Use GET or POST");
+            }
+        }
+
+        boolean isReasoning() {
+            return defGraphURIs.contains(reasoningGraphIRI)
+                    || namedGraphURIs.contains(reasoningGraphIRI);
+        }
+
+        void parseURI(@Nonnull String uri) {
+            int start = uri.indexOf('?');
+            parse(uri, start < 0 ? uri.length() : start+1);
+        }
+
+        void parse(@Nonnull String string, int start) {
+            while (start < string.length()) {
+                int eqIdx = string.indexOf('=', start);
+                if (eqIdx < 0)
+                    throw new RequestException(400, "No = in "+FORM_TYPE);
+                int end = string.indexOf('&', eqIdx);
+                end = end < 0 ? string.length() : end;
+                String key = string.substring(start, eqIdx).trim();
+                String value = unescape(string, eqIdx+1, end);
+                if (key.equals("query")) query = value;
+                else if (key.equals("default-graph-uri")) defGraphURIs.add(value);
+                else if (key.equals("named-graph-uri")) namedGraphURIs.add(value);
+                start = end+1;
+            }
+        }
+
+    }
+
+    public @Nonnull Publisher<Void> handle(@Nonnull HttpServerRequest request,
+                                           @Nonnull HttpServerResponse response) {
+        Publisher<? extends ByteBuf> content;
+        try {
+            Params params = new Params(request);
+            if (params.query.isEmpty()) {
+                content = serviceDescription(request, response);
+            } else {
+                MediaType mt = chooseMediaType(request, resultTypes);
+                ChunkedEncoder encoder = encoderRegistry.get(mt);
+                if (encoder == null)
+                    throw new RequestException(500, "No encoder for " + mt);
+                Op query = parseQuery(params);
+                Results results = federation.query(query);
+                content = encoder.encode(response.alloc(), results,
+                                         query.modifiers().ask() != null,
+                                          mt.charset().orNull());
+                response.chunkedTransfer(true).header(CONTENT_TYPE, mt.toString())
+                        .status(HttpResponseStatus.OK);
+            }
+        } catch (RequestException |SPARQLParseException e) {
+            content = createError(response, HttpResponseStatus.BAD_REQUEST,
+                    null, "%s", e.getMessage());
+        } catch (Throwable t) {
+            content = createError(response, HttpResponseStatus.INTERNAL_SERVER_ERROR, t,
+                                 "Unexpected exception while processing request");
+        }
+        return response.send(content);
+    }
+
+    @Nonnull private Op parseQuery(Params params) throws SPARQLParseException {
+        Op parsed;
+        try {
+            parsed = parser.parse(params.query);
+        } catch (SPARQLParseException e) {
+            if (params.query.contains("+"))
+                parsed = parser.parse(params.query = params.query.replace('+', ' '));
+            else
+                throw e;
+        }
+        if (params.isReasoning())
+            parsed.modifiers().add(Reasoning.INSTANCE);
+        return parsed;
     }
 
     private @Nonnull Resource createReasoningGraph(@Nonnull Model model, @Nonnull String baseURI,
@@ -187,21 +289,23 @@ public class SPARQLEndpoint {
         return namedGraph;
     }
 
-    private @Nonnull Response serviceDescription(@Nonnull HttpHeaders headers,
-                                                 @Nonnull UriInfo uriInfo) {
-        MediaType rdfMediaType = chooseRDFMediaType(headers);
-        if (rdfMediaType == null) {
-            return Response.status(Response.Status.NOT_ACCEPTABLE)
-                    .type(TEXT_PLAIN_TYPE)
-                    .entity("No RDF representation supported by this server matches the given " +
-                            "Accept header value "+
-                            join(", ", headers.getRequestHeader("Accept")))
-                    .build();
-        }
+    private @Nonnull Publisher<? extends ByteBuf>
+    serviceDescription(@Nonnull HttpServerRequest request, @Nonnull HttpServerResponse response) {
+        MediaType mt = chooseMediaType(request, PREFERRED_RDF_TYPES);
+        Lang lang = RDFLanguages.contentTypeToLang(mt.type()+"/"+mt.subtype());
+        if (lang == null)
+            throw new RequestException(500, "Requested RDF syntax not available: "+mt);
 
         Model model = ModelFactory.createDefaultModel();
-        String uri = uriInfo.getRequestUri().toString().replaceAll("/$", "");
-        Federation federation = getFederation();
+        String uri = request.uri().replaceAll("/$", "");
+        if (!uri.startsWith("http://") && uri.startsWith("/")) {
+            InetSocketAddress a = request.hostAddress();
+            if (a != null) {
+                String host = request.requestHeaders().get(HttpHeaderNames.HOST, a.getHostString());
+                String portString = host.matches(".*:\\d+$") ? "" : ":" + a.getPort();
+                uri = "http://" + host + portString + uri;
+            }
+        }
         SourcedEntailmentRegime simpleRegime = new SourcedEntailmentRegime(CROSS_SOURCE, SIMPLE);
         Resource simpleGraph = createReasoningGraph(model, uri, simpleRegime);
         Resource dataset = model.createResource(uri + "/dataset")
@@ -223,61 +327,97 @@ public class SPARQLEndpoint {
                 .addProperty(SPARQLSD.resultFormat, SPARQLSD.CSV_RESULTS)
                 .addProperty(SPARQLSD.defaultEntailmentRegime, model.createResource(SIMPLE.iri()))
                 .addProperty(SPARQLSD.defaultDataset, dataset);
-        return Response.ok(model, rdfMediaType).build();
+
+        ByteBuf bb = response.alloc().buffer();
+        RDFDataMgr.write(new OutputStream() {
+            @Override public void write(int b) {bb.writeByte(b);}
+            @Override public void write(@Nonnull byte[] b, int i, int l) {bb.writeBytes(b, i, l);}
+        }, model, lang);
+        response.header(CONTENT_TYPE, mt.toString()).status(HttpResponseStatus.OK);
+        return Mono.just(bb);
     }
 
-    /**
-     * Choose best match for RDF representation content type among the "Accept" header values.
-     *
-     * @param headers request headers
-     * @return A MediaType handled by {@link ModelMessageBodyWriter} or null of there is no
-     *         acceptable content type.
-     */
-    private @Nullable MediaType chooseRDFMediaType(@Nonnull HttpHeaders headers) {
-        for (MediaType r : headers.getAcceptableMediaTypes()) {
-            for (MediaType o : PREFERRED_RDF_TYPES) {
-                if (r.isCompatible(o)) {
-                    if (r.isWildcardType() || r.isWildcardSubtype())
-                        return new MediaType(o.getType(), o.getSubtype(), r.getParameters());
-                    else
-                        return r;
+    public static class RequestException extends RuntimeException {
+        public final int status;
+        public RequestException(int status, String message) {
+            super(message);
+            this.status = status;
+        }
+
+        public int getStatus() {
+            return status;
+        }
+    }
+
+    private @Nonnull MediaType
+    chooseMediaType(@Nonnull HttpServerRequest request, @Nonnull List<MediaType> preferred) {
+        List<String> hs = new ArrayList<>(request.requestHeaders().getAll(ACCEPT));
+        addQueryParamAcceptedTypes(request, hs);
+        if (hs.isEmpty())
+            hs.add(preferred.get(0).toString());
+        MediaType mt = hs.stream()
+                .flatMap(s -> Arrays.stream(s.split(", *")))
+                .map(MediaType::parse)
+                .sorted(Comparator.comparing(m -> {
+                    ImmutableList<String> list = m.parameters().get("q");
+                    try {
+                        return list.isEmpty() ? 1.0 : Double.parseDouble(list.get(0));
+                    } catch (NumberFormatException e) {
+                        throw new RequestException(406, "Bad q-value for"+m);
+                    }
+                })).map(accepted -> {
+                    MediaType best = preferred.stream()
+                            .filter(o -> o.is(accepted)).findFirst().orElse(null);
+                    ImmutableList<String> charsets = accepted.parameters().get("charset");
+                    return best == null || charsets.isEmpty() ? best
+                            : best.withCharset(Charset.forName(charsets.get(0)));
+                }).filter(Objects::nonNull).findFirst().orElse(null);
+        if (mt != null) {
+            return request.requestHeaders().getAll(HttpHeaderNames.ACCEPT_CHARSET).stream()
+                    .flatMap(s -> Arrays.stream(s.split(", *")))
+                    .map(s -> {
+                        try {
+                            return Charset.forName(s);
+                        } catch (IllegalCharsetNameException e) {
+                            return null;
+                        }
+                    }).filter(Objects::nonNull).findFirst().map(mt::withCharset).orElse(mt);
+        }
+        String offered = preferred.toString().replaceAll("^\\[|]$", "");
+        throw new RequestException(406, "Cannot produce any of the media types given " +
+                                    "in Accept headers. Supported media types are: "+offered);
+    }
+
+    private void addQueryParamAcceptedTypes(@Nonnull HttpServerRequest request, List<String> hs) {
+        Matcher matcher = OUT_PARAM_RX.matcher(request.uri());
+        while (matcher.find()) {
+            String type = unescape(matcher.group(1));
+            if (type.indexOf('/') >= 0) {
+                try {
+                    hs.add(0, MediaType.parse(type).toString());
+                } catch (IllegalArgumentException e) {
+                    throw new RequestException(400, "Bad output format in query parameter: "+type);
+                }
+            } else {
+                switch (type.trim().toLowerCase()) {
+                    case "csv":
+                    case "comma-separated-values":
+                        hs.add(0, "text/csv");
+                        break;
+                    case "tsv":
+                    case "tab-separated-values":
+                        hs.add(0, "text/tab-separated-values");
+                        break;
+                    case "json":
+                        hs.add(0, "application/sparql-results+json");
+                        break;
+                    case "xml":
+                        hs.add(0, "application/sparql-results+xml");
+                        break;
+                    default:
+                        throw new RequestException(400, "Bad output format in query parameter: "+type);
                 }
             }
-        }
-        return null;
-    }
-
-    @POST
-    @Path("query")
-    @Consumes("application/x-www-form-urlencoded")
-    public @Nonnull Response queryForm(@FormParam("query") String query,
-                                       @FormParam("default-graph-iri") List<String> defGraphIRIs,
-                                       @FormParam("named-graph-iri") List<String> namedGraphIRIs,
-                                       @Context UriInfo uriInfo,
-                                       @Context HttpHeaders headers) {
-        try {
-            String rIRI = getReasoningGraphIRI();
-            boolean reason = defGraphIRIs.contains(rIRI) || namedGraphIRIs.contains(rIRI);
-            return handleQuery(query, reason, headers, uriInfo);
-        } catch (Exception e) {
-            logger.warn("Exception thrown while processing POST " +
-                    "application/x-www-form-urlencoded {}", uriInfo.getRequestUri(), e);
-            throw e;
-        }
-    }
-
-    @POST
-    @Path("query")
-    @Consumes("application/sparql-query")
-    public @Nonnull Response queryPost(String query, @Context UriInfo uriInfo,
-                                       @Context HttpHeaders headers) {
-        try {
-            return handleQuery(query, reasoningRequested(uriInfo), headers, uriInfo);
-        } catch (Exception e) {
-            logger.warn("Exception thrown while processing POST application/sparql-query {}",
-                    uriInfo.getRequestUri(), e);
-            throw e;
-
         }
     }
 }

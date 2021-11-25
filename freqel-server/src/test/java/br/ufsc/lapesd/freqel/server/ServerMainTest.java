@@ -1,15 +1,15 @@
 package br.ufsc.lapesd.freqel.server;
 
-import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
-import br.ufsc.lapesd.freqel.util.TempDir;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.spec.FederationSpecLoader;
+import br.ufsc.lapesd.freqel.query.parse.SPARQLParser;
 import br.ufsc.lapesd.freqel.query.results.Results;
 import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.server.utils.PercentEncoder;
 import br.ufsc.lapesd.freqel.util.ChildJVM;
 import br.ufsc.lapesd.freqel.util.DictTree;
+import br.ufsc.lapesd.freqel.util.TempDir;
 import br.ufsc.lapesd.freqel.webapis.TransparencyService;
 import br.ufsc.lapesd.freqel.webapis.TransparencyServiceTestContext;
 import com.google.common.collect.Sets;
@@ -101,7 +101,7 @@ public class ServerMainTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     private String waitForListening(ChildJVM process) throws Exception {
-        Pattern rx = Pattern.compile("SPARQL endpoint listening on (http://[^/]+/sparql/query)");
+        Pattern rx = Pattern.compile("SPARQL endpoint listening at (http://[^/]+/sparql)");
 
         BufferedReader reader = process.getStdOutReader();
         CompletableFuture<String> uriFuture = new CompletableFuture<>();

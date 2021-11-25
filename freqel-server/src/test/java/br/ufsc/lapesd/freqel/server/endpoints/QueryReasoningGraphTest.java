@@ -5,7 +5,6 @@ import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.federation.Federation;
 import br.ufsc.lapesd.freqel.federation.Freqel;
 import br.ufsc.lapesd.freqel.federation.FreqelConfig;
-import br.ufsc.lapesd.freqel.jena.rs.ModelMessageBodyWriter;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.reason.regimes.W3CEntailmentRegimes;
 import br.ufsc.lapesd.freqel.reason.tbox.endpoint.HeuristicEndpointReasoner;
@@ -15,16 +14,15 @@ import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.sparql.engine.http.QueryEngineHTTP;
-import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.test.JerseyTestNg;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+import reactor.netty.DisposableServer;
+import reactor.netty.http.server.HttpServer;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.ws.rs.core.Application;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,7 +37,8 @@ import static java.util.Collections.singletonList;
 import static org.apache.jena.query.QueryExecutionFactory.createServiceRequest;
 import static org.testng.Assert.assertEquals;
 
-public class QueryReasoningGraphTest extends JerseyTestNg.ContainerPerClassTest implements TestContext {
+@Test(groups = {"fast"})
+public class QueryReasoningGraphTest  implements TestContext {
 
     private static final String PREFIXES = "PREFIX rdfs: <"+V.RDFS.NS+">\n" +
             "PREFIX xsd: <"+ V.XSD.NS +">\n" +
@@ -51,18 +50,9 @@ public class QueryReasoningGraphTest extends JerseyTestNg.ContainerPerClassTest 
     private Federation federation;
     private File tBoxFile;
     private String endpointURI;
+    private DisposableServer server;
 
-    @AfterClass @Override public void tearDown() throws Exception {
-        super.tearDown();
-        if (federation != null)
-            federation.close();
-        if (tBoxFile != null && tBoxFile.exists() && !tBoxFile.delete())
-            Assert.fail("Failed to delete tBoxFile at " + tBoxFile);
-        tBoxFile = null;
-        federation = null;
-    }
-
-    @Override protected Application configure() {
+    @BeforeClass(timeOut = 60000) public void beforeClass() {
         String tBoxResource = "reason/tbox/replacements/generators/subterm-onto.ttl";
         String aBoxResource = "reason/tbox/replacements/generators/subterm-1.ttl";
 
@@ -82,15 +72,22 @@ public class QueryReasoningGraphTest extends JerseyTestNg.ContainerPerClassTest 
                 .set(FreqelConfig.Key.ENDPOINT_REASONER, HeuristicEndpointReasoner.class.getName());
         federation = Freqel.createFederation(cfg, source);
 
-        return new ResourceConfig()
-                .property(Federation.class.getName(), federation)
-                .register(SPARQLEndpoint.class)
-                .register(ModelMessageBodyWriter.class);
+        SPARQLEndpoint ep = new SPARQLEndpoint(federation);
+        server = HttpServer.create().host("127.0.0.1")
+                .route(r -> r.get("/sparql", ep::handle).post("/sparql", ep::handle))
+                .bindNow();
+        endpointURI = "http://127.0.0.1:"+server.port()+"/sparql";
     }
 
-    @BeforeMethod
-    public void beforeMethod() {
-        endpointURI = target("/sparql").getUri().toString();
+    @AfterClass(timeOut = 30000) public void afterClass() {
+        server.disposeNow();
+        if (federation != null)
+            federation.close();
+        if (tBoxFile != null && tBoxFile.exists() && !tBoxFile.delete())
+            Assert.fail("Failed to delete tBoxFile at " + tBoxFile);
+        tBoxFile = null;
+        federation = null;
+        server = null;
     }
 
     @SuppressWarnings("SameParameterValue")
