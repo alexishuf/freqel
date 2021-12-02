@@ -16,6 +16,7 @@ import br.ufsc.lapesd.freqel.util.NamedFunction;
 import com.github.lapesd.rdfit.RIt;
 import com.github.lapesd.rdfit.components.hdt.HDTHelpers;
 import com.google.common.collect.Sets;
+import org.apache.jena.fuseki.FusekiException;
 import org.apache.jena.fuseki.main.FusekiServer;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
@@ -34,6 +35,7 @@ import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.BindException;
 import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.util.*;
@@ -58,19 +60,28 @@ public class TPEndpointTest extends EndpointTestBase {
         public @Nonnull String uri;
 
         public FusekiEndpoint(@Nonnull Dataset ds) {
-            int port = 3331;
-            try (ServerSocket serverSocket = new ServerSocket(0, 50, getLocalHost())) {
-                port = serverSocket.getLocalPort();
-            } catch (IOException ignored) { }
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException ignored) { }
-            server = FusekiServer.create().add("/ds", ds)
-                    .loopback(true).port(port)
-                    .build();
-            server.start();
-            uri = "http://localhost:" + server.getPort() + "/ds/query";
-            ep = ARQEndpoint.forService(uri);
+            FusekiServer server = null;
+            while (server == null) {
+                int port = 3131;
+                try (ServerSocket s = new ServerSocket(0, 50, getLocalHost())) {
+                    port = s.getLocalPort();
+                } catch (IOException ignored) { }
+                for (int i = 0; server == null && i < 6 ; i++) {
+                    try {
+                        server = FusekiServer.create().add("/ds", ds)
+                                             .loopback(true).port(port).build().start();
+                    } catch (FusekiException e) {
+                        if (!(e.getCause() instanceof BindException))
+                            throw e;
+                        try {
+                            Thread.sleep(50);
+                        } catch (InterruptedException ignored) { }
+                    }
+                }
+            }
+            this.server = server;
+            this.uri = "http://localhost:" + server.getPort() + "/ds/query";
+            this.ep = ARQEndpoint.forService(uri);
         }
 
         @Override
