@@ -5,6 +5,7 @@ import br.ufsc.lapesd.freqel.hdt.query.HDTEndpoint;
 import br.ufsc.lapesd.freqel.jena.query.ARQEndpoint;
 import br.ufsc.lapesd.freqel.model.Triple;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
+import br.ufsc.lapesd.freqel.query.endpoint.impl.CompliantTSVSPARQLClient;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.EmptyEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.query.modifiers.*;
@@ -168,6 +169,16 @@ public class TPEndpointTest extends EndpointTestBase {
                 };
             }));
         }
+        endpoints.add(new NamedFunction<>("HDTSS+CompliantTSVSPARQLClient", stream -> {
+            HDTSSProcess server = HDTSSProcess.forRDF(stream, Lang.TTL);
+            CompliantTSVSPARQLClient client = new CompliantTSVSPARQLClient(server.getEndpoint());
+            return new Fixture<TPEndpoint>(client) {
+                @Override public void close() {
+                    server.close();
+                    client.close();
+                }
+            };
+        }));
     }
 
     @DataProvider

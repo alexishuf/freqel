@@ -1,0 +1,3 @@
+[submodule "hdtss"]
+	path = hdtss
+	url = https://github.com/alexishuf/hdtss.git

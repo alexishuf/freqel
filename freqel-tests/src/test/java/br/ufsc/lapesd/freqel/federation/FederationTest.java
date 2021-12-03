@@ -48,11 +48,13 @@ import br.ufsc.lapesd.freqel.model.term.std.StdLit;
 import br.ufsc.lapesd.freqel.model.term.std.StdURI;
 import br.ufsc.lapesd.freqel.owlapi.reason.tbox.OWLAPITBoxMaterializer;
 import br.ufsc.lapesd.freqel.query.CQuery;
+import br.ufsc.lapesd.freqel.query.HDTSSProcess;
 import br.ufsc.lapesd.freqel.query.TPEndpointTest;
 import br.ufsc.lapesd.freqel.query.endpoint.AbstractTPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.CQEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.TPEndpoint;
 import br.ufsc.lapesd.freqel.query.endpoint.decorators.EndpointDecorators;
+import br.ufsc.lapesd.freqel.query.endpoint.impl.CompliantTSVSPARQLClient;
 import br.ufsc.lapesd.freqel.query.endpoint.impl.SPARQLClient;
 import br.ufsc.lapesd.freqel.query.modifiers.Projection;
 import br.ufsc.lapesd.freqel.query.parse.SPARQLParseException;
@@ -430,11 +432,15 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                                         @Nonnull String variantName) {
             CQEndpoint ep = null;
             Description description = null;
-            if (variantName.contains("SPARQLClient")) {
-                String key = "SetupLargeRDFBench-"+endpointName;
-                TPEndpointTest.FusekiEndpoint fuseki = fusekiEndpoints.computeIfAbsent(key, k ->
+            String epKey = "SetupLargeRDFBench-" + endpointName;
+            if (variantName.contains("+SPARQLClient")) {
+                TPEndpointTest.FusekiEndpoint fuseki = fusekiEndpoints.computeIfAbsent(epKey, k ->
                         new TPEndpointTest.FusekiEndpoint(DatasetFactory.create(model)));
                 ep = new SPARQLClient(fuseki.uri);
+            } else if (variantName.contains("CompliantTSVSPARQLClient")) {
+                HDTSSProcess hdtss = hdtssEndpoints
+                        .computeIfAbsent(epKey, k -> HDTSSProcess.forRDF(model));
+                ep = new CompliantTSVSPARQLClient(hdtss.getEndpoint());
             } else if (variantName.contains("ARQEndpoint")) {
                 ep = ARQEndpoint.forModel(model, endpointName);
             }
@@ -497,6 +503,7 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
                 /* 5 */ "SelectDescription+fetchClasses+SPARQLClient",
                 /* 6 */ "AskDescription+SPARQLClient",
                 /* 7 */ "SelectDescription+SPARQLClient+union",
+                /* 8 */ "SelectDescription+fetchClasses+CompliantTSVSPARQLClient",
         };
 
         public SetupBSBM(int variantIdx) {
@@ -619,8 +626,9 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     }
 
     private Federation federation = null;
-    public static final ConcurrentHashMap<String, TPEndpointTest.FusekiEndpoint> fusekiEndpoints
+    public static final Map<String, TPEndpointTest.FusekiEndpoint> fusekiEndpoints
             = new ConcurrentHashMap<>();
+    public static final Map<String, HDTSSProcess> hdtssEndpoints = new ConcurrentHashMap<>();
 
     @AfterMethod
     public void methodTearDown() {
@@ -632,12 +640,32 @@ public class FederationTest extends JerseyTestNg.ContainerPerClassTest
     @Override
     public void tearDown() throws Exception {
         super.tearDown();
-        Set<String> names = fusekiEndpoints.keySet();
-        for (String name : names) {
-            fusekiEndpoints.get(name).close();
+        List<Throwable> errors = new ArrayList<>();
+        for (String name : fusekiEndpoints.keySet()) {
+            try {
+                fusekiEndpoints.get(name).close();
+            } catch (Throwable t) {
+                errors.add(t);
+            }
             fusekiEndpoints.remove(name);
         }
+        for (String name : hdtssEndpoints.keySet()) {
+            try {
+                hdtssEndpoints.get(name).close();
+            } catch (Throwable t) {
+                errors.add(t);
+            }
+            hdtssEndpoints.remove(name);
+        }
         assertEquals(fusekiEndpoints.size(), 0); //no concurrency!
+        assertEquals(hdtssEndpoints.size(), 0); //no concurrency!
+        if (!errors.isEmpty()) {
+            Throwable t = errors.get(0);
+            for (int i = 1; i < errors.size(); i++)
+                t.addSuppressed(errors.get(i));
+            if (t instanceof Error) throw (Error)t;
+            else                    throw (Exception) t;
+        }
     }
 
     private static final @Nonnull List<Consumer<FederationFactory>> nonCartesianVariants = asList(

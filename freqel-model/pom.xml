@@ -42,7 +42,10 @@
       <version>1</version>
       <scope>compile</scope>
     </dependency>
-
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
+    </dependency>
 
     <!-- Test dependencies -->
 
