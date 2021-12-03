@@ -1,10 +1,10 @@
 package br.ufsc.lapesd.freqel.rel.cql;
 
 import br.ufsc.lapesd.freqel.util.ChildJVM;
+import br.ufsc.lapesd.freqel.util.ProcessUtils;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.google.common.base.Splitter;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,7 +121,7 @@ public class CassandraHelper implements AutoCloseable {
                 interrupted = true;
             } catch (ExecutionException e) {
                 try {
-                    stopProcess(p, "Cassandra");
+                    ProcessUtils.stopProcess(p, "Cassandra");
                 } catch (Throwable t) {
                     logger.error("Ignoring failure to stop process {} while handling " +
                             "ExecutionException from readiness waiter thread", p, t);
@@ -137,7 +137,17 @@ public class CassandraHelper implements AutoCloseable {
     }
 
     private static CassandraHelper initCassandra() throws IOException, InterruptedException {
-        Process p = new ProcessBuilder(ChildJVM.getJavaPath(), "-jar", buildContainer())
+        String javaPath = ChildJVM.getJavaOlderThan(15);
+        if (javaPath == null) {
+            throw new AssertionError("Running the cassandra test container under " +
+                    "OpenJDK/GraalVM >= 15 will hang. Tried but could not guess the location of " +
+                    "an older JVM on this machine");
+        }
+        File jar = ProcessUtils.mavenWrapperBuild(
+                "cassandra-test-container", "../",
+                "cassandra-test-container-1.0-SNAPSHOT.jar", "package");
+        Process p = new ProcessBuilder()
+                .command(javaPath, "-jar", jar.getAbsolutePath())
                 .redirectError(ProcessBuilder.Redirect.INHERIT)
                 .redirectOutput(ProcessBuilder.Redirect.PIPE)
                 .start();
@@ -147,7 +157,7 @@ public class CassandraHelper implements AutoCloseable {
         waiterThread.start();
         boolean interrupted = waitForReadyFuture(p, future);
         if (interrupted || Thread.interrupted()) {
-            stopProcess(p, "Cassandra"); // abort creation
+            ProcessUtils.stopProcess(p, "Cassandra"); // abort creation
             throw new InterruptedException();
         }
         CqlSession session;
@@ -157,7 +167,7 @@ public class CassandraHelper implements AutoCloseable {
                     .withLocalDatacenter("datacenter1").build();
         } catch (Throwable t) {
             try {
-                stopProcess(p, "Cassandra");
+                ProcessUtils.stopProcess(p, "Cassandra");
             } catch (Throwable t2) {
                 logger.error("Ignoring failure to stop process {} while handling failure " +
                              "to get CqlSession", p, t2);
@@ -166,32 +176,6 @@ public class CassandraHelper implements AutoCloseable {
             throw t;
         }
         return new CassandraHelper(session, p);
-    }
-
-    private static @Nonnull String buildContainer() throws IOException, InterruptedException {
-        String wrapperPath = "../mvnw" + (SystemUtils.IS_OS_WINDOWS ? ".cmd" : "");
-        File project = new File("cassandra-test-container");
-        if (!project.exists() || !project.isDirectory()) {
-            project = new File("../cassandra-test-container");
-            if (!project.exists() || !project.isDirectory()) {
-                throw new FileNotFoundException(project + " not found. Running from " +
-                                                          "freqel parent project directory?");
-            }
-        }
-        Process process = new ProcessBuilder(wrapperPath, "package").directory(project)
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                .start();
-        if (!process.waitFor(2, TimeUnit.MINUTES)) {
-            logger.error("Maven wrapper {} is taking too long. Will kill and give up", process);
-            stopProcess(process, "Maven wrapper ("+wrapperPath+")");
-            throw new IOException("Maven wrapper for "+project+" timed out after 2 min");
-        }
-        if (process.exitValue() != 0)
-            throw new IOException("Non-zero ("+process.exitValue()+") maven wrapper exit stattus");
-        File jar = new File(project, "target/cassandra-test-container-1.0-SNAPSHOT.jar");
-        assert jar.exists() : jar+" maven done with status 0, but "+jar+" does not exist!";
-        return jar.getAbsolutePath();
     }
 
     public @Nonnull CqlSession getSession() {
@@ -231,20 +215,7 @@ public class CassandraHelper implements AutoCloseable {
         OutputStream stream = process.getOutputStream();
         stream.write(UTF_8.encode("DIE\n").array());
         stream.flush();
-        if (!process.waitFor(30, TimeUnit.SECONDS)) {
-            logger.warn("DIE command didn't finish Cassandra container in 30s. Sending SIGKILL");
-            stopProcess(process, "Cassandra");
-        }
+        ProcessUtils.waitOrStopProcess(process, 30, TimeUnit.SECONDS, "Cassandra");
         holder.setHelper(null);
-    }
-
-    private static void stopProcess(@Nonnull Process process,
-                                    @Nonnull String what) throws InterruptedException {
-        process.destroy();
-        if (!process.waitFor(5, TimeUnit.SECONDS)) {
-            logger.error(what +" did not finish in 5s after SIGKILL, sending SIGTERM...");
-            if (!process.destroyForcibly().waitFor(5, TimeUnit.SECONDS))
-                logger.error(what +" did not finish in 5s after SIGTERM. Will ignore");
-        }
     }
 }

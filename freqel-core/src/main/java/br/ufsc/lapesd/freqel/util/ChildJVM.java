@@ -7,10 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -50,9 +47,59 @@ public class ChildJVM implements AutoCloseable {
                (SystemUtils.IS_OS_WINDOWS ? ".exe" : "");
     }
 
+    public static @Nullable String getJavaOlderThan(int forbidden) {
+        String path = getJavaPath();
+        int currentVersion = javaVersion(path);
+        if (currentVersion < forbidden)
+            return path;
+        String currentString = Integer.toString(currentVersion);
+        for (int i = currentVersion-1; i >= 8; i--) {
+            String guess = path.replace(currentString, Integer.toString(i));
+            if (new File(guess).canExecute() && javaVersion(guess) < forbidden)
+                return guess;
+        }
+        return null;
+    }
+
+    public static int javaVersion() {
+        return javaVersion(getJavaPath());
+    }
+
+    private static int parseJavaVersion(String string) {
+        return Integer.parseInt(string.replaceAll("^1\\.", ""));
+    }
+
+    public static int javaVersion(String javaPath){
+        if (!new File(javaPath).canExecute())
+            throw new IllegalArgumentException(javaPath+" is not executable");
+        Process process;
+        try {
+            process = new ProcessBuilder().command(javaPath, "-version")
+                    .redirectOutput(ProcessBuilder.Redirect.PIPE)
+                    .redirectErrorStream(true).start();
+        } catch (IOException e) {
+            logger.error("Failed to start child JVM from {}", javaPath);
+            return parseJavaVersion(System.getProperty("java.version"));
+        }
+        int version = 0;
+        try (InputStream is = process.getInputStream();
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+            Pattern pattern = Pattern.compile("version\\s*\"?(1\\.\\d+|\\d\\d+)");
+            for (String l = reader.readLine(); l != null; l = reader.readLine()) {
+                Matcher m = pattern.matcher(l);
+                if (m.find() && version == 0)
+                    version = parseJavaVersion(m.group(1));
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Unexpected IOException", e);
+        }
+        ProcessUtils.waitProcessUninterruptibly(process, 10, TimeUnit.SECONDS);
+        return version;
+    }
+
     public static class Builder {
         private final @Nonnull Class<?> aClass;
-        private @Nonnull final String java;
+        private @Nonnull String java;
         private final List<String> appArguments = new ArrayList<>();
         private final List<String> jvmArguments = new ArrayList<>();
         private @Nonnull ProcessBuilder.Redirect inRedirect = ProcessBuilder.Redirect.PIPE,
@@ -69,6 +116,14 @@ public class ChildJVM implements AutoCloseable {
             java = getJavaPath();
             xmx = String.valueOf(Runtime.getRuntime().maxMemory());
             classpath = System.getProperty("java.class.path");
+        }
+
+        @CanIgnoreReturnValue
+        public @Nonnull Builder withJava(@Nonnull String javaPath) {
+            if (!new File(javaPath).canExecute())
+                throw new IllegalArgumentException("Given java path "+javaPath+" is not executable");
+            this.java = javaPath;
+            return this;
         }
 
         @CanIgnoreReturnValue
@@ -259,6 +314,6 @@ public class ChildJVM implements AutoCloseable {
 
     @Override
     public String toString() {
-        return "ChildJVM["+process.toString()+"]["+abbrevCommand()+"]";
+        return "ChildJVM["+process+"]["+abbrevCommand()+"]";
     }
 }
