@@ -87,7 +87,7 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
         prefixNames = ImmFullIndexSet.empty();
     }
 
-    protected StdPrefixDict(@Nonnull IndexSet<String> prefixNames,
+    public StdPrefixDict(@Nonnull IndexSet<String> prefixNames,
                                @Nonnull List<String> uriPrefixes) {
         this.uriPrefixes = uriPrefixes;
         this.prefixNames = prefixNames;

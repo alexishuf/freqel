@@ -3,6 +3,7 @@ package br.ufsc.lapesd.freqel.model;
 import br.ufsc.lapesd.freqel.V;
 import br.ufsc.lapesd.freqel.algebra.Op;
 import br.ufsc.lapesd.freqel.algebra.inner.*;
+import br.ufsc.lapesd.freqel.algebra.leaf.DQueryOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.EmptyOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.QueryOp;
 import br.ufsc.lapesd.freqel.algebra.leaf.SPARQLValuesTemplateOp;
@@ -16,15 +17,15 @@ import br.ufsc.lapesd.freqel.query.CQuery;
 import br.ufsc.lapesd.freqel.query.annotations.InputAnnotation;
 import br.ufsc.lapesd.freqel.query.annotations.PureDescriptive;
 import br.ufsc.lapesd.freqel.query.annotations.TermAnnotation;
+import br.ufsc.lapesd.freqel.query.modifiers.Optional;
 import br.ufsc.lapesd.freqel.query.modifiers.*;
 import br.ufsc.lapesd.freqel.query.modifiers.filter.SPARQLFilter;
 import br.ufsc.lapesd.freqel.query.results.Solution;
+import br.ufsc.lapesd.freqel.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 
 import javax.annotation.Nonnull;
-import java.util.Collection;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 
 import static java.util.stream.Collectors.joining;
 
@@ -52,7 +53,7 @@ public class SPARQLString {
         boolean ask = query.attr().isAsk();
         boolean distinct = query.getModifiers().distinct() != null;
         int limit = query.attr().limit();
-        PrefixDict dict = query.getPrefixDict(StdPrefixDict.STANDARD);
+        PrefixDict dict = new ProtoPrefixes().add(query).toDict();
         // honor projection if present, else expose only vars in triple patterns
         Projection p = query.getModifiers().projection();
         Set<String> varNames = p == null ? query.attr().publicTripleVarNames() : p.getVarNames();
@@ -131,6 +132,56 @@ public class SPARQLString {
 
     @Override public @Nonnull String toString() {
         return getSparql();
+    }
+
+    public static class ProtoPrefixes {
+        final Set<String> once = new HashSet<>();
+        final @Nonnull IndexSet<String> names = new FullIndexSet<>(10);
+        final @Nonnull IndexSet<String> prefixes = new FullIndexSet<>(10);
+
+        public @Nonnull PrefixDict toDict() {
+            return !names.isEmpty() ? new StdPrefixDict(names, prefixes) : StdPrefixDict.EMPTY;
+        }
+        public @Nonnull ProtoPrefixes add(@Nonnull CQuery query) {
+            for (Triple triple : query) add(triple);
+            for (SPARQLFilter filter : query.getModifiers().filters()) {
+                for (Term term : filter.getTerms())
+                    add(term, true);
+            }
+            return this;
+        }
+        public @Nonnull ProtoPrefixes add(@Nonnull Op op) {
+            if (op instanceof QueryOp) {
+                add(((QueryOp) op).getQuery());
+            } else if (op instanceof DQueryOp) {
+                add(((DQueryOp)op).getQuery());
+            } else {
+                for (Op child : op.getChildren()) add(child);
+            }
+            return this;
+        }
+        public void add(@Nonnull Term term, boolean noOnceCheck) {
+            String u = term.isLiteral() ? term.asLiteral().getDatatype().getURI()
+                                     : (term.isURI() ? term.asURI().getURI() : null);
+            if (u != null) {
+                int sep = Math.max(u.lastIndexOf('#'), u.lastIndexOf('/'));
+                if (sep > 0) {
+                    String prefix = u.substring(0, sep+1);
+                    if (!once.add(prefix) || noOnceCheck) { // if seen more than once
+                        if (prefixes.add(prefix)) {// if not yet added
+                            String genName = "ns" + prefixes.size();
+                            String name = StdPrefixDict.DEFAULT.shortenPrefix(prefix, genName);
+                            names.add(name);
+                        }
+                    }
+                }
+            }
+        }
+        public void add(@Nonnull Triple triple) {
+            add(triple.getSubject(), false);
+            add(triple.getPredicate(), false);
+            add(triple.getObject(), false);
+        }
     }
 
     public static void writePrefixes(@Nonnull StringBuilder b, @Nonnull PrefixDict dict) {
@@ -214,6 +265,17 @@ public class SPARQLString {
             b.append(term2SPARQL(triple.getObject(), dict)).append(" . ");
         }
         return b;
+    }
+
+    private static void addPrefix(@Nonnull Term term, @Nonnull PrefixDict dict,
+                                  @Nonnull Set<String> used) {
+        String prefix = null;
+        if (term.isLiteral())
+            prefix = dict.shorten(term.asLiteral().getDatatype()).getPrefix();
+        else if (term.isURI())
+            prefix = dict.shorten(term.asURI()).getPrefix();
+        if (prefix != null)
+            used.add(prefix);
     }
 
     public static boolean omitTriple(@Nonnull Triple triple, @Nonnull CQuery query) {
