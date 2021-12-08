@@ -1,6 +1,7 @@
 package br.ufsc.lapesd.freqel.query.results;
 
 import br.ufsc.lapesd.freqel.util.indexed.FullIndexSet;
+import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -13,8 +14,8 @@ public abstract class AbstractResults implements Results {
     private boolean optional = false;
 
     protected AbstractResults(@Nonnull Collection<String> varNames) {
-        this.varNames = varNames instanceof Set ? (Set<String>)varNames
-                                                : FullIndexSet.from(varNames);
+        this.varNames = varNames instanceof IndexSet ? (Set<String>)varNames
+                                                     : FullIndexSet.from(varNames);
     }
 
     @Override

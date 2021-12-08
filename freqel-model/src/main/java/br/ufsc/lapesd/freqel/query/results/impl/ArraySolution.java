@@ -22,6 +22,8 @@ public class ArraySolution extends AbstractSolution implements MutableSolution {
     private final @Nonnull Term[] values;
     public static final @Nonnull ArraySolution EMPTY
             = new ArraySolution(ImmFullIndexSet.empty(), new Term[0]);
+    public static final @Nonnull ValueFactory EMPTY_FACTORY
+            = new ArraySolution.ValueFactory(FullIndexSet.fromDistinct(Collections.emptySet()));
 
 
     public ArraySolution(@Nonnull IndexSet<String> vars, @Nonnull Term[] values) {

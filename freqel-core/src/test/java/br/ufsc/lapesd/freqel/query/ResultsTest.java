@@ -16,6 +16,8 @@ import reactor.core.publisher.Flux;
 
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -23,6 +25,7 @@ import java.util.stream.IntStream;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 @Test(groups = {"fast"})
 public class ResultsTest implements TestContext {
@@ -76,6 +79,117 @@ public class ResultsTest implements TestContext {
                 coll -> new PublisherResults(Flux.fromIterable(coll), xSet, 10, 1)));
         factories.add(new NamedFunction<>("10-5 Flux-based PublisherResults",
                 coll -> new PublisherResults(Flux.fromIterable(coll), xSet, 10, 5)));
+        factories.add(new NamedFunction<>("QueueResults with full queue",
+                coll -> {
+                    BlockingQueue<Solution> q = new ArrayBlockingQueue<>(coll.size()+1);
+                    q.addAll(coll);
+                    q.add(QueueResults.DEFAULT_END);
+                    return new QueueResults(xSet, q);
+                }));
+        factories.add(new NamedFunction<>("QueueResults with full queue custom end",
+                coll -> {
+                    Solution end = ArraySolution.forVars(singletonList("customEmpty"))
+                                                .fromValues(StdLit.fromEscaped("custom"));
+                    BlockingQueue<Solution> q = new ArrayBlockingQueue<>(coll.size()+1);
+                    q.addAll(coll);
+                    q.add(end);
+                    return new QueueResults(xSet, q, end);
+                }));
+        factories.add(new NamedFunction<>("QueueResults with 1-pulled queue",
+                coll -> {
+                    BlockingQueue<Solution> q = new ArrayBlockingQueue<>(1);
+                    AtomicInteger next = new AtomicInteger(0);
+                    q.add(coll.isEmpty() ? QueueResults.DEFAULT_END
+                                         : coll.get(next.getAndIncrement()));
+                    QueueResults results = new QueueResults(xSet, q);
+                    results.afterConsume(() -> {
+                        int i = next.getAndIncrement();
+                        q.add(i >= coll.size() ? QueueResults.DEFAULT_END : coll.get(i));
+                    });
+                    return results;
+                }));
+        factories.add(new NamedFunction<>("QueueResults with 2-pulled queue",
+                coll -> {
+                    BlockingQueue<Solution> q = new ArrayBlockingQueue<>(2);
+                    AtomicInteger next = new AtomicInteger(0);
+                    if (coll.isEmpty()) {
+                        q.add(QueueResults.DEFAULT_END);
+                    } else if (coll.size() == 1) {
+                        q.add(coll.get(next.getAndIncrement()));
+                        q.add(QueueResults.DEFAULT_END);
+                    } else {
+                        q.add(coll.get(next.getAndIncrement()));
+                        q.add(coll.get(next.getAndIncrement()));
+                    }
+                    QueueResults results = new QueueResults(xSet, q);
+                    results.afterConsume(() -> {
+                        if (q.remainingCapacity() >= 2) {
+                            for (int i = 0; i < 2; i++) {
+                                int nextIdx = next.getAndIncrement();
+                                if (nextIdx >= coll.size()) {
+                                    q.add(QueueResults.DEFAULT_END);
+                                    break;
+                                } else {
+                                    q.add(coll.get(nextIdx));
+                                }
+                            }
+                        }
+                    });
+                    return results;
+                }));
+        factories.add(new NamedFunction<>("QueueResults with concurrent producers",
+                coll -> {
+                    ArrayBlockingQueue<Solution> q = new ArrayBlockingQueue<>(2);
+                    AtomicInteger next = new AtomicInteger(0);
+                    int nThreads = Runtime.getRuntime().availableProcessors() * 2;
+                    ExecutorService executor = Executors.newCachedThreadPool();
+                    List<Future<?>> futures = new ArrayList<>();
+                    for (int i = 0; i < nThreads; i++) {
+                        futures.add(executor.submit(() -> {
+                            for (int idx = next.getAndIncrement(); idx < coll.size();
+                                 idx = next.getAndIncrement()) {
+                                boolean interrupted = false;
+                                while (true) {
+                                    try {
+                                        q.put(coll.get(idx));
+                                        break;
+                                    } catch (InterruptedException e) {
+                                        interrupted = true;
+                                    }
+                                }
+                                if (interrupted)
+                                    Thread.currentThread().interrupt();
+                            }
+                        }));
+                    }
+                    executor.submit(() -> {
+                        for (Future<?> f : futures) {
+                            try {
+                                f.get();
+                            } catch (InterruptedException | ExecutionException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        boolean interrupted = false;
+                        while (true) {
+                            try {
+                                q.put(QueueResults.DEFAULT_END);
+                                break;
+                            } catch (InterruptedException e) {
+                                interrupted = true;
+                            }
+                        }
+                        if (interrupted)
+                            Thread.currentThread().interrupt();
+                    });
+                    return new QueueResults(xSet, q).onClose(() -> {
+                        executor.shutdown();
+                        assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS),
+                                  "some worker task executor blocked?");
+                        return null;
+                    });
+                }));
+
     }
 
     @DataProvider
@@ -106,7 +220,7 @@ public class ResultsTest implements TestContext {
         }
     }
 
-    @Test(dataProvider = "factoriesData")
+    @Test(dataProvider = "factoriesData", invocationCount = 4, threadPoolSize = 4)
     public void testEmpty(Function<Collection<Solution>, Results> fac) {
         collectionTest(fac, expectedNone);
     }
@@ -126,7 +240,7 @@ public class ResultsTest implements TestContext {
         collectionTest(fac, expectedThree);
     }
 
-    @Test(dataProvider = "factoriesData")
+    @Test(dataProvider = "factoriesData", invocationCount = 4, threadPoolSize = 4)
     public void test10(Function<Collection<Solution>, Results> fac) {
         collectionTest(fac, expected10);
     }
