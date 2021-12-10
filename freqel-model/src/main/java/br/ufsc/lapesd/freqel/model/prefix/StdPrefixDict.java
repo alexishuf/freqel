@@ -169,8 +169,11 @@ public class StdPrefixDict extends AbstractPrefixDict implements MutablePrefixDi
         idx = (-1)*(idx+1) - 1;
         if (idx >= 0) {
             String prefix = uriPrefixes.get(idx);
-            if (uri.startsWith(prefix))
-                return new Shortened(uri, prefixNames.get(idx), prefix.length());
+            if (uri.startsWith(prefix)) {
+                // do not shorten if local name would have '/'
+                if (uri.indexOf('/', prefix.length()) < 0)
+                    return new Shortened(uri, prefixNames.get(idx), prefix.length());
+            }
         }
         return new Shortened(uri); // no match
     }
