@@ -15,7 +15,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.annotation.Nonnull;
-import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
@@ -29,10 +28,10 @@ import static org.testng.Assert.*;
 
 public class CQEndpointTest extends EndpointTestBase {
     private static final @Nonnull
-    List<NamedFunction<InputStream, Fixture<CQEndpoint>>> endpoints = new ArrayList<>();
+    List<NamedFunction<String, Fixture<CQEndpoint>>> endpoints = new ArrayList<>();
 
     static {
-        for (NamedFunction<InputStream, Fixture<TPEndpoint>> f : TPEndpointTest.endpoints) {
+        for (NamedFunction<String, Fixture<TPEndpoint>> f : TPEndpointTest.endpoints) {
             if (f.toString().startsWith("ARQEndpoint") || f.toString().contains("SPARQL")) {
                 //noinspection unchecked,rawtypes
                 endpoints.add((NamedFunction) f);
@@ -46,18 +45,18 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @SuppressWarnings("SameParameterValue")
-    protected void queryResourceTest(Function<InputStream, Fixture<CQEndpoint>> f,
+    protected void queryResourceTest(Function<String, Fixture<CQEndpoint>> f,
                                      @Nonnull Collection<Triple> query,
                                      @Nonnull Set<Solution> ex) {
         queryResourceTest(f, query, ex, false);
     }
 
     @SuppressWarnings("SameParameterValue")
-    protected void queryResourceTest(Function<InputStream, Fixture<CQEndpoint>> f,
+    protected void queryResourceTest(Function<String, Fixture<CQEndpoint>> f,
                                      @Nonnull Collection<Triple> query,
                                      @Nonnull Set<Solution> ex, boolean poll) {
         String filename = "rdf-2.nt";
-        try (Fixture<CQEndpoint> fixture = f.apply(open(filename))) {
+        try (Fixture<CQEndpoint> fixture = f.apply(filename)) {
             Set<Solution> ac = new HashSet<>();
             CQuery cQuery = query instanceof CQuery ? (CQuery) query : CQuery.from(query);
             try (Results results = fixture.endpoint.query(cQuery)) {
@@ -69,21 +68,21 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testTPSelect(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testTPSelect(Function<String, Fixture<CQEndpoint>> f) {
         queryResourceTest(f, singletonList(new Triple(s, knows, Bob)),
                 newHashSet(MapSolution.build(s, Alice),
                            MapSolution.build(s, Dave)));
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testTPSelectPoll(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testTPSelectPoll(Function<String, Fixture<CQEndpoint>> f) {
         queryResourceTest(f, singletonList(new Triple(s, knows, Bob)),
                 newHashSet(MapSolution.build(s, Alice),
                            MapSolution.build(s, Dave)), true);
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testConjunctiveSelect(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testConjunctiveSelect(Function<String, Fixture<CQEndpoint>> f) {
         List<Triple> query = asList(new Triple(s, knows, Bob),
                                     new Triple(s, age, A_AGE));
         queryResourceTest(f, query, singleton(MapSolution.build(s, Alice)));
@@ -91,14 +90,14 @@ public class CQEndpointTest extends EndpointTestBase {
 
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testConjunctiveSelectPoll(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testConjunctiveSelectPoll(Function<String, Fixture<CQEndpoint>> f) {
         List<Triple> query = asList(new Triple(s, knows, Bob),
                 new Triple(s, age, A_AGE));
         queryResourceTest(f, query, singleton(MapSolution.build(s, Alice)), true);
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testConjunctiveAsk(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testConjunctiveAsk(Function<String, Fixture<CQEndpoint>> f) {
         List<Triple> query = asList(new Triple(Charlie, type, Person),
                                     new Triple(Charlie, age, A_AGE),
                                     new Triple(Alice, knows, Bob));
@@ -106,7 +105,7 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testNegativeConjunctiveAsk(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testNegativeConjunctiveAsk(Function<String, Fixture<CQEndpoint>> f) {
         List<Triple> query = asList(new Triple(Charlie, type, Person), //ok
                                     new Triple(Charlie, age, A_AGE),   //ok
                                     new Triple(Alice, knows, Dave));   //wrong
@@ -114,11 +113,11 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testParallelQuerying(Function<InputStream, Fixture<CQEndpoint>> fac)
+    public void testParallelQuerying(Function<String, Fixture<CQEndpoint>> fac)
             throws InterruptedException, ExecutionException {
         ExecutorService exec = Executors.newCachedThreadPool();
         List<Future<?>> futures = new ArrayList<>();
-        try (Fixture<CQEndpoint> f = fac.apply(open("rdf-2.nt"))) {
+        try (Fixture<CQEndpoint> f = fac.apply("rdf-2.nt")) {
             CQEndpoint ep = f.endpoint;
             for (int i = 0; i < 50; i++) {
                 futures.add(exec.submit(() -> {
@@ -151,11 +150,11 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testParallelQueryingPoll(Function<InputStream, Fixture<CQEndpoint>> fac)
+    public void testParallelQueryingPoll(Function<String, Fixture<CQEndpoint>> fac)
             throws InterruptedException, ExecutionException {
         ExecutorService exec = Executors.newCachedThreadPool();
         List<Future<?>> futures = new ArrayList<>();
-        try (Fixture<CQEndpoint> f = fac.apply(open("rdf-2.nt"))) {
+        try (Fixture<CQEndpoint> f = fac.apply("rdf-2.nt")) {
             CQEndpoint ep = f.endpoint;
             for (int i = 0; i < 50; i++) {
                 futures.add(exec.submit(() -> {
@@ -190,7 +189,7 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testConjunctiveSingleVarFilter(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testConjunctiveSingleVarFilter(Function<String, Fixture<CQEndpoint>> f) {
         CQuery query = createQuery(x, knows, Bob,
                                    x, age,   y,
                                    SPARQLFilterFactory.parseFilter("?y > 20"));
@@ -200,14 +199,14 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testRawSPARQLConjunctive(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testRawSPARQLConjunctive(Function<String, Fixture<CQEndpoint>> f) {
         String sparql = "PREFIX foaf: <"+ FOAF.NS +">\n" +
                 "PREFIX ex: <"+EX+">\n" +
                 "SELECT * WHERE {\n" +
                 "  ?x foaf:knows ex:Bob ;" +
                 "     foaf:age ?age FILTER(?age <= 23) .\n" +
                 "}";
-        try (Fixture<CQEndpoint> fixture = f.apply(open("rdf-2.nt"))) {
+        try (Fixture<CQEndpoint> fixture = f.apply("rdf-2.nt")) {
             if (!fixture.endpoint.canQuerySPARQL())
                 return; //not a test target
             Set<Term> actual = new HashSet<>();
@@ -218,7 +217,7 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testRawSPARQLUNION(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testRawSPARQLUNION(Function<String, Fixture<CQEndpoint>> f) {
         String sparql = "PREFIX ex: <" + EX + ">\n" +
                 "PREFIX foaf: <"+ FOAF.NS +">\n" +
                 "SELECT * WHERE {\n" +
@@ -229,7 +228,7 @@ public class CQEndpointTest extends EndpointTestBase {
                 "    ?x foaf:name \"bob\"@en .\n" +
                 "  }\n" +
                 "}";
-        try (Fixture<CQEndpoint> fixture = f.apply(open("rdf-2.nt"))) {
+        try (Fixture<CQEndpoint> fixture = f.apply("rdf-2.nt")) {
             if (!fixture.endpoint.canQuerySPARQL())
                 return; //not a test target
             Set<Term> actual = new HashSet<>();
@@ -240,7 +239,7 @@ public class CQEndpointTest extends EndpointTestBase {
     }
 
     @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
-    public void testConjunctiveTwoVarsFilter(Function<InputStream, Fixture<CQEndpoint>> f) {
+    public void testConjunctiveTwoVarsFilter(Function<String, Fixture<CQEndpoint>> f) {
         CQuery query = createQuery(x, knows, Bob,
                                    x, age,   u,
                                    y, knows, Bob,
