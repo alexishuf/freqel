@@ -88,7 +88,7 @@ public class DQEndpointTest extends CQEndpointTest {
         }
     }
 
-    @Test(dataProvider = "fixtureFactories")
+    @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
     public void testUnion(Function<InputStream, Fixture<DQEndpoint>> f) throws SPARQLParseException {
         querySPARQLTest(f, PROLOG+"SELECT ?x {\n" +
                 "  {\n" +
@@ -104,7 +104,7 @@ public class DQEndpointTest extends CQEndpointTest {
                 ), false);
     }
 
-    @Test(dataProvider = "fixtureFactories")
+    @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
     public void testOptional(Function<InputStream, Fixture<DQEndpoint>> f) throws SPARQLParseException {
         querySPARQLTest(f, PROLOG+"SELECT * {\n" +
                 "  ?x foaf:knows ?y .\n" +
@@ -116,7 +116,7 @@ public class DQEndpointTest extends CQEndpointTest {
                 ), false);
     }
 
-    @Test(dataProvider = "fixtureFactories")
+    @Test(dataProvider = "fixtureFactories", groups = {"endpointTest"})
     public void testOptionalInsideUnion(Function<InputStream, Fixture<DQEndpoint>> f) throws SPARQLParseException {
         Lit i25 = lit(25);
         querySPARQLTest(f, PROLOG+"SELECT ?x ?u ?y ?v {\n" +

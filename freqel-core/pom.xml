@@ -113,6 +113,30 @@
       <artifactId>reactor-netty-http</artifactId>
     </dependency>
 
+    <!-- netty stuff (bom on freqel-parent) -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http2</artifactId> <!-- pulls -http -->
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-epoll</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-resolver-dns-classes-macos</artifactId>
+    </dependency>
+    <dependency> <!-- linux >= 5.1 -->
+      <groupId>io.netty.incubator</groupId>
+      <artifactId>netty-incubator-transport-native-io_uring</artifactId>
+      <version>0.0.10.Final</version>
+      <classifier>linux-x86_64</classifier>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId> <!-- linux >= 5.1 -->
+      <artifactId>netty-transport-native-kqueue</artifactId>
+      <classifier>osx-x86_64</classifier>
+    </dependency>
 
     <!-- test-only dependencies -->
 
