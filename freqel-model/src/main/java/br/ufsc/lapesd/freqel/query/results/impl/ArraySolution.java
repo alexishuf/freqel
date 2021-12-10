@@ -6,7 +6,6 @@ import br.ufsc.lapesd.freqel.query.results.Solution;
 import br.ufsc.lapesd.freqel.util.indexed.FullIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.ImmFullIndexSet;
 import br.ufsc.lapesd.freqel.util.indexed.IndexSet;
-import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.errorprone.annotations.CheckReturnValue;
 import org.jetbrains.annotations.Contract;
@@ -113,9 +112,11 @@ public class ArraySolution extends AbstractSolution implements MutableSolution {
         }
 
         @CheckReturnValue
-        public @Nonnull ArraySolution fromValues(@Nonnull Collection<Term> collection) {
-            Preconditions.checkArgument(collection.size() == vars.size());
-            Term[] values = collection.toArray(new Term[0]);
+        public @Nonnull ArraySolution fromValues(@Nonnull Collection<Term> coll) {
+            int size = coll.size();
+            if (size != vars.size())
+                throw new IllegalArgumentException("Expected "+vars.size()+" terms, got "+size);
+            Term[] values = coll.toArray(new Term[size]);
             return new ArraySolution(vars, values);
         }
 
